@@ -1,0 +1,336 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<sbml xmlns="http://www.sbml.org/sbml/level3/version1/core" xmlns:fbc="http://www.sbml.org/sbml/level3/version1/fbc/version2" level="3" version="1" fbc:required="false">
+  <model id="methanogen_core_mc" name="Methanosarcina sp. — methanogenic core" fbc:strict="true">
+    <listOfUnitDefinitions>
+      <unitDefinition id="mmol_per_gDW_per_hr">
+        <listOfUnits>
+          <unit kind="mole" exponent="1" scale="-3" multiplier="1"/>
+          <unit kind="gram" exponent="-1" scale="0" multiplier="1"/>
+          <unit kind="second" exponent="-1" scale="0" multiplier="3600"/>
+        </listOfUnits>
+      </unitDefinition>
+    </listOfUnitDefinitions>
+  <listOfCompartments>
+    <compartment id="c" name="Cytoplasm" constant="true"/>
+    <compartment id="e" name="Extracellular" constant="true"/>
+  </listOfCompartments>
+  <listOfSpecies>
+    <species id="M_ac_c" name="Acetate [Cytoplasm]" compartment="c" hasOnlySubstanceUnits="false" boundaryCondition="false" constant="false" fbc:charge="-1" fbc:chemicalFormula="C2H3O2"/>
+    <species id="M_ac_e" name="Acetate [Extracellular]" compartment="e" hasOnlySubstanceUnits="false" boundaryCondition="false" constant="false" fbc:charge="-1" fbc:chemicalFormula="C2H3O2"/>
+    <species id="M_accoa_c" name="Acetyl-CoA [Cytoplasm]" compartment="c" hasOnlySubstanceUnits="false" boundaryCondition="false" constant="false" fbc:charge="-4" fbc:chemicalFormula="C23H34N7O17P3S"/>
+    <species id="M_actp_c" name="Acetyl phosphate [Cytoplasm]" compartment="c" hasOnlySubstanceUnits="false" boundaryCondition="false" constant="false" fbc:charge="-2" fbc:chemicalFormula="C2H3O5P"/>
+    <species id="M_adp_c" name="ADP [Cytoplasm]" compartment="c" hasOnlySubstanceUnits="false" boundaryCondition="false" constant="false" fbc:charge="-3" fbc:chemicalFormula="C10H12N5O10P2"/>
+    <species id="M_atp_c" name="ATP [Cytoplasm]" compartment="c" hasOnlySubstanceUnits="false" boundaryCondition="false" constant="false" fbc:charge="-4" fbc:chemicalFormula="C10H12N5O13P3"/>
+    <species id="M_ch4_c" name="Methane [Cytoplasm]" compartment="c" hasOnlySubstanceUnits="false" boundaryCondition="false" constant="false" fbc:charge="0" fbc:chemicalFormula="CH4"/>
+    <species id="M_ch4_e" name="Methane [Extracellular]" compartment="e" hasOnlySubstanceUnits="false" boundaryCondition="false" constant="false" fbc:charge="0" fbc:chemicalFormula="CH4"/>
+    <species id="M_co2_c" name="CO2 [Cytoplasm]" compartment="c" hasOnlySubstanceUnits="false" boundaryCondition="false" constant="false" fbc:charge="0" fbc:chemicalFormula="CO2"/>
+    <species id="M_co2_e" name="CO2 [Extracellular]" compartment="e" hasOnlySubstanceUnits="false" boundaryCondition="false" constant="false" fbc:charge="0" fbc:chemicalFormula="CO2"/>
+    <species id="M_coa_c" name="Coenzyme A [Cytoplasm]" compartment="c" hasOnlySubstanceUnits="false" boundaryCondition="false" constant="false" fbc:charge="-4" fbc:chemicalFormula="C21H32N7O16P3S"/>
+    <species id="M_h_c" name="H+ [Cytoplasm]" compartment="c" hasOnlySubstanceUnits="false" boundaryCondition="false" constant="false" fbc:charge="1" fbc:chemicalFormula="H"/>
+    <species id="M_h_e" name="H+ [Extracellular]" compartment="e" hasOnlySubstanceUnits="false" boundaryCondition="false" constant="false" fbc:charge="1" fbc:chemicalFormula="H"/>
+    <species id="M_h2_c" name="H2 [Cytoplasm]" compartment="c" hasOnlySubstanceUnits="false" boundaryCondition="false" constant="false" fbc:charge="0" fbc:chemicalFormula="H2"/>
+    <species id="M_h2_e" name="H2 [Extracellular]" compartment="e" hasOnlySubstanceUnits="false" boundaryCondition="false" constant="false" fbc:charge="0" fbc:chemicalFormula="H2"/>
+    <species id="M_h2o_c" name="H2O [Cytoplasm]" compartment="c" hasOnlySubstanceUnits="false" boundaryCondition="false" constant="false" fbc:charge="0" fbc:chemicalFormula="H2O"/>
+    <species id="M_h2o_e" name="H2O [Extracellular]" compartment="e" hasOnlySubstanceUnits="false" boundaryCondition="false" constant="false" fbc:charge="0" fbc:chemicalFormula="H2O"/>
+    <species id="M_hco3_c" name="Bicarbonate [Cytoplasm]" compartment="c" hasOnlySubstanceUnits="false" boundaryCondition="false" constant="false" fbc:charge="-1" fbc:chemicalFormula="CHO3"/>
+    <species id="M_nh4_c" name="Ammonium [Cytoplasm]" compartment="c" hasOnlySubstanceUnits="false" boundaryCondition="false" constant="false" fbc:charge="1" fbc:chemicalFormula="H4N"/>
+    <species id="M_nh4_e" name="Ammonium [Extracellular]" compartment="e" hasOnlySubstanceUnits="false" boundaryCondition="false" constant="false" fbc:charge="1" fbc:chemicalFormula="H4N"/>
+    <species id="M_pi_c" name="Phosphate [Cytoplasm]" compartment="c" hasOnlySubstanceUnits="false" boundaryCondition="false" constant="false" fbc:charge="-2" fbc:chemicalFormula="HO4P"/>
+    <species id="M_pi_e" name="Phosphate [Extracellular]" compartment="e" hasOnlySubstanceUnits="false" boundaryCondition="false" constant="false" fbc:charge="-2" fbc:chemicalFormula="HO4P"/>
+  </listOfSpecies>
+  <listOfParameters>
+    <parameter id="cobra_default_lb" value="-1000" constant="true" sboTerm="SBO:0000626" units="mmol_per_gDW_per_hr"/>
+    <parameter id="cobra_default_ub" value="1000" constant="true" sboTerm="SBO:0000626" units="mmol_per_gDW_per_hr"/>
+    <parameter id="cobra_0_bound" value="0" constant="true" sboTerm="SBO:0000626" units="mmol_per_gDW_per_hr"/>
+    <parameter id="R_ATPM_lower_bound" value="1" constant="true" sboTerm="SBO:0000626" units="mmol_per_gDW_per_hr"/>
+    <parameter id="R_EX_ac_e_lower_bound" value="-10" constant="true" sboTerm="SBO:0000626" units="mmol_per_gDW_per_hr"/>
+    <parameter id="R_EX_h2_e_lower_bound" value="-20" constant="true" sboTerm="SBO:0000626" units="mmol_per_gDW_per_hr"/>
+  </listOfParameters>
+  <listOfReactions>
+    <reaction id="R_ACKr" name="Acetate kinase" reversible="true" fast="false" fbc:lowerFluxBound="cobra_default_lb" fbc:upperFluxBound="cobra_default_ub">
+      <notes>
+        <html:p xmlns:html="http://www.w3.org/1999/xhtml">SUBSYSTEM: Carbon assimilation</html:p>
+      </notes>
+      <listOfReactants>
+        <speciesReference species="M_ac_c" stoichiometry="1" constant="true"/>
+        <speciesReference species="M_atp_c" stoichiometry="1" constant="true"/>
+      </listOfReactants>
+      <listOfProducts>
+        <speciesReference species="M_actp_c" stoichiometry="1" constant="true"/>
+        <speciesReference species="M_adp_c" stoichiometry="1" constant="true"/>
+      </listOfProducts>
+    </reaction>
+    <reaction id="R_PTAr" name="Fosfotransacetilasa" reversible="true" fast="false" fbc:lowerFluxBound="cobra_default_lb" fbc:upperFluxBound="cobra_default_ub">
+      <notes>
+        <html:p xmlns:html="http://www.w3.org/1999/xhtml">SUBSYSTEM: Carbon assimilation</html:p>
+      </notes>
+      <listOfReactants>
+        <speciesReference species="M_accoa_c" stoichiometry="1" constant="true"/>
+        <speciesReference species="M_pi_c" stoichiometry="1" constant="true"/>
+      </listOfReactants>
+      <listOfProducts>
+        <speciesReference species="M_actp_c" stoichiometry="1" constant="true"/>
+        <speciesReference species="M_coa_c" stoichiometry="1" constant="true"/>
+      </listOfProducts>
+    </reaction>
+    <reaction id="R_MCRac" name="Acetoclastic methanogenesis (CODH/ACS + MCR, lumped energetics)" reversible="false" fast="false" fbc:lowerFluxBound="cobra_0_bound" fbc:upperFluxBound="cobra_default_ub">
+      <notes>
+        <html:p xmlns:html="http://www.w3.org/1999/xhtml">SUBSYSTEM: Methanogenesis</html:p>
+      </notes>
+      <listOfReactants>
+        <speciesReference species="M_accoa_c" stoichiometry="1" constant="true"/>
+        <speciesReference species="M_h2o_c" stoichiometry="0.5" constant="true"/>
+        <speciesReference species="M_adp_c" stoichiometry="1.5" constant="true"/>
+        <speciesReference species="M_pi_c" stoichiometry="1.5" constant="true"/>
+        <speciesReference species="M_h_c" stoichiometry="0.5" constant="true"/>
+      </listOfReactants>
+      <listOfProducts>
+        <speciesReference species="M_ch4_c" stoichiometry="1" constant="true"/>
+        <speciesReference species="M_hco3_c" stoichiometry="1" constant="true"/>
+        <speciesReference species="M_coa_c" stoichiometry="1" constant="true"/>
+        <speciesReference species="M_atp_c" stoichiometry="1.5" constant="true"/>
+      </listOfProducts>
+    </reaction>
+    <reaction id="R_MCRh2" name="Hydrogenotrophic methanogenesis (lumped energetics)" reversible="false" fast="false" fbc:lowerFluxBound="cobra_0_bound" fbc:upperFluxBound="cobra_default_ub">
+      <notes>
+        <html:p xmlns:html="http://www.w3.org/1999/xhtml">SUBSYSTEM: Methanogenesis</html:p>
+      </notes>
+      <listOfReactants>
+        <speciesReference species="M_h2_c" stoichiometry="4" constant="true"/>
+        <speciesReference species="M_hco3_c" stoichiometry="1" constant="true"/>
+        <speciesReference species="M_h_c" stoichiometry="2" constant="true"/>
+        <speciesReference species="M_adp_c" stoichiometry="1" constant="true"/>
+        <speciesReference species="M_pi_c" stoichiometry="1" constant="true"/>
+      </listOfReactants>
+      <listOfProducts>
+        <speciesReference species="M_ch4_c" stoichiometry="1" constant="true"/>
+        <speciesReference species="M_h2o_c" stoichiometry="4" constant="true"/>
+        <speciesReference species="M_atp_c" stoichiometry="1" constant="true"/>
+      </listOfProducts>
+    </reaction>
+    <reaction id="R_CODH_ACS" name="Wood-Ljungdahl pathway (CODH/ACS): fixes CO2 into acetyl-CoA" reversible="false" fast="false" fbc:lowerFluxBound="cobra_0_bound" fbc:upperFluxBound="cobra_default_ub">
+      <notes>
+        <html:p xmlns:html="http://www.w3.org/1999/xhtml">SUBSYSTEM: Carbon assimilation</html:p>
+      </notes>
+      <listOfReactants>
+        <speciesReference species="M_hco3_c" stoichiometry="2" constant="true"/>
+        <speciesReference species="M_h2_c" stoichiometry="4" constant="true"/>
+        <speciesReference species="M_coa_c" stoichiometry="1" constant="true"/>
+        <speciesReference species="M_atp_c" stoichiometry="1" constant="true"/>
+        <speciesReference species="M_h_c" stoichiometry="1" constant="true"/>
+      </listOfReactants>
+      <listOfProducts>
+        <speciesReference species="M_accoa_c" stoichiometry="1" constant="true"/>
+        <speciesReference species="M_adp_c" stoichiometry="1" constant="true"/>
+        <speciesReference species="M_pi_c" stoichiometry="1" constant="true"/>
+        <speciesReference species="M_h2o_c" stoichiometry="4" constant="true"/>
+      </listOfProducts>
+    </reaction>
+    <reaction id="R_HCO3E" name="Carbonic anhydrase" reversible="true" fast="false" fbc:lowerFluxBound="cobra_default_lb" fbc:upperFluxBound="cobra_default_ub">
+      <notes>
+        <html:p xmlns:html="http://www.w3.org/1999/xhtml">SUBSYSTEM: Carbon assimilation</html:p>
+      </notes>
+      <listOfReactants>
+        <speciesReference species="M_co2_c" stoichiometry="1" constant="true"/>
+        <speciesReference species="M_h2o_c" stoichiometry="1" constant="true"/>
+      </listOfReactants>
+      <listOfProducts>
+        <speciesReference species="M_h_c" stoichiometry="1" constant="true"/>
+        <speciesReference species="M_hco3_c" stoichiometry="1" constant="true"/>
+      </listOfProducts>
+    </reaction>
+    <reaction id="R_ATPM" name="Non-growth-associated maintenance" reversible="false" fast="false" fbc:lowerFluxBound="R_ATPM_lower_bound" fbc:upperFluxBound="cobra_default_ub">
+      <notes>
+        <html:p xmlns:html="http://www.w3.org/1999/xhtml">SUBSYSTEM: Methanogenesis</html:p>
+      </notes>
+      <listOfReactants>
+        <speciesReference species="M_atp_c" stoichiometry="1" constant="true"/>
+        <speciesReference species="M_h2o_c" stoichiometry="1" constant="true"/>
+      </listOfReactants>
+      <listOfProducts>
+        <speciesReference species="M_adp_c" stoichiometry="1" constant="true"/>
+        <speciesReference species="M_h_c" stoichiometry="1" constant="true"/>
+        <speciesReference species="M_pi_c" stoichiometry="1" constant="true"/>
+      </listOfProducts>
+    </reaction>
+    <reaction id="R_ACt" name="Simporte acetato/H+" reversible="true" fast="false" fbc:lowerFluxBound="cobra_default_lb" fbc:upperFluxBound="cobra_default_ub">
+      <notes>
+        <html:p xmlns:html="http://www.w3.org/1999/xhtml">SUBSYSTEM: Membrane transport</html:p>
+      </notes>
+      <listOfReactants>
+        <speciesReference species="M_ac_e" stoichiometry="1" constant="true"/>
+        <speciesReference species="M_h_e" stoichiometry="1" constant="true"/>
+      </listOfReactants>
+      <listOfProducts>
+        <speciesReference species="M_ac_c" stoichiometry="1" constant="true"/>
+        <speciesReference species="M_h_c" stoichiometry="1" constant="true"/>
+      </listOfProducts>
+    </reaction>
+    <reaction id="R_CH4t" name="Methane diffusion" reversible="true" fast="false" fbc:lowerFluxBound="cobra_default_lb" fbc:upperFluxBound="cobra_default_ub">
+      <notes>
+        <html:p xmlns:html="http://www.w3.org/1999/xhtml">SUBSYSTEM: Membrane transport</html:p>
+      </notes>
+      <listOfReactants>
+        <speciesReference species="M_ch4_c" stoichiometry="1" constant="true"/>
+      </listOfReactants>
+      <listOfProducts>
+        <speciesReference species="M_ch4_e" stoichiometry="1" constant="true"/>
+      </listOfProducts>
+    </reaction>
+    <reaction id="R_H2t" name="H2 diffusion" reversible="true" fast="false" fbc:lowerFluxBound="cobra_default_lb" fbc:upperFluxBound="cobra_default_ub">
+      <notes>
+        <html:p xmlns:html="http://www.w3.org/1999/xhtml">SUBSYSTEM: Membrane transport</html:p>
+      </notes>
+      <listOfReactants>
+        <speciesReference species="M_h2_e" stoichiometry="1" constant="true"/>
+      </listOfReactants>
+      <listOfProducts>
+        <speciesReference species="M_h2_c" stoichiometry="1" constant="true"/>
+      </listOfProducts>
+    </reaction>
+    <reaction id="R_CO2t" name="CO2 diffusion" reversible="true" fast="false" fbc:lowerFluxBound="cobra_default_lb" fbc:upperFluxBound="cobra_default_ub">
+      <notes>
+        <html:p xmlns:html="http://www.w3.org/1999/xhtml">SUBSYSTEM: Membrane transport</html:p>
+      </notes>
+      <listOfReactants>
+        <speciesReference species="M_co2_e" stoichiometry="1" constant="true"/>
+      </listOfReactants>
+      <listOfProducts>
+        <speciesReference species="M_co2_c" stoichiometry="1" constant="true"/>
+      </listOfProducts>
+    </reaction>
+    <reaction id="R_H2Ot" name="Agua" reversible="true" fast="false" fbc:lowerFluxBound="cobra_default_lb" fbc:upperFluxBound="cobra_default_ub">
+      <notes>
+        <html:p xmlns:html="http://www.w3.org/1999/xhtml">SUBSYSTEM: Membrane transport</html:p>
+      </notes>
+      <listOfReactants>
+        <speciesReference species="M_h2o_e" stoichiometry="1" constant="true"/>
+      </listOfReactants>
+      <listOfProducts>
+        <speciesReference species="M_h2o_c" stoichiometry="1" constant="true"/>
+      </listOfProducts>
+    </reaction>
+    <reaction id="R_NH4t" name="Amonio" reversible="true" fast="false" fbc:lowerFluxBound="cobra_default_lb" fbc:upperFluxBound="cobra_default_ub">
+      <notes>
+        <html:p xmlns:html="http://www.w3.org/1999/xhtml">SUBSYSTEM: Membrane transport</html:p>
+      </notes>
+      <listOfReactants>
+        <speciesReference species="M_nh4_e" stoichiometry="1" constant="true"/>
+      </listOfReactants>
+      <listOfProducts>
+        <speciesReference species="M_nh4_c" stoichiometry="1" constant="true"/>
+      </listOfProducts>
+    </reaction>
+    <reaction id="R_PIt" name="Fosfato" reversible="true" fast="false" fbc:lowerFluxBound="cobra_default_lb" fbc:upperFluxBound="cobra_default_ub">
+      <notes>
+        <html:p xmlns:html="http://www.w3.org/1999/xhtml">SUBSYSTEM: Membrane transport</html:p>
+      </notes>
+      <listOfReactants>
+        <speciesReference species="M_pi_e" stoichiometry="1" constant="true"/>
+      </listOfReactants>
+      <listOfProducts>
+        <speciesReference species="M_pi_c" stoichiometry="1" constant="true"/>
+      </listOfProducts>
+    </reaction>
+    <reaction id="R_Ht" name="Proton" reversible="true" fast="false" fbc:lowerFluxBound="cobra_default_lb" fbc:upperFluxBound="cobra_default_ub">
+      <notes>
+        <html:p xmlns:html="http://www.w3.org/1999/xhtml">SUBSYSTEM: Membrane transport</html:p>
+      </notes>
+      <listOfReactants>
+        <speciesReference species="M_h_e" stoichiometry="1" constant="true"/>
+      </listOfReactants>
+      <listOfProducts>
+        <speciesReference species="M_h_c" stoichiometry="1" constant="true"/>
+      </listOfProducts>
+    </reaction>
+    <reaction id="R_EX_ac_e" name="Acetate exchange" reversible="true" fast="false" fbc:lowerFluxBound="R_EX_ac_e_lower_bound" fbc:upperFluxBound="cobra_default_ub">
+      <notes>
+        <html:p xmlns:html="http://www.w3.org/1999/xhtml">SUBSYSTEM: Exchange</html:p>
+      </notes>
+      <listOfReactants>
+        <speciesReference species="M_ac_e" stoichiometry="1" constant="true"/>
+      </listOfReactants>
+    </reaction>
+    <reaction id="R_EX_h2_e" name="H2 exchange" reversible="true" fast="false" fbc:lowerFluxBound="R_EX_h2_e_lower_bound" fbc:upperFluxBound="cobra_default_ub">
+      <notes>
+        <html:p xmlns:html="http://www.w3.org/1999/xhtml">SUBSYSTEM: Exchange</html:p>
+      </notes>
+      <listOfReactants>
+        <speciesReference species="M_h2_e" stoichiometry="1" constant="true"/>
+      </listOfReactants>
+    </reaction>
+    <reaction id="R_EX_co2_e" name="CO2 exchange" reversible="true" fast="false" fbc:lowerFluxBound="cobra_default_lb" fbc:upperFluxBound="cobra_default_ub">
+      <notes>
+        <html:p xmlns:html="http://www.w3.org/1999/xhtml">SUBSYSTEM: Exchange</html:p>
+      </notes>
+      <listOfReactants>
+        <speciesReference species="M_co2_e" stoichiometry="1" constant="true"/>
+      </listOfReactants>
+    </reaction>
+    <reaction id="R_EX_ch4_e" name="Methane exchange" reversible="false" fast="false" fbc:lowerFluxBound="cobra_0_bound" fbc:upperFluxBound="cobra_default_ub">
+      <notes>
+        <html:p xmlns:html="http://www.w3.org/1999/xhtml">SUBSYSTEM: Exchange</html:p>
+      </notes>
+      <listOfReactants>
+        <speciesReference species="M_ch4_e" stoichiometry="1" constant="true"/>
+      </listOfReactants>
+    </reaction>
+    <reaction id="R_EX_h2o_e" name="H2O exchange" reversible="true" fast="false" fbc:lowerFluxBound="cobra_default_lb" fbc:upperFluxBound="cobra_default_ub">
+      <notes>
+        <html:p xmlns:html="http://www.w3.org/1999/xhtml">SUBSYSTEM: Exchange</html:p>
+      </notes>
+      <listOfReactants>
+        <speciesReference species="M_h2o_e" stoichiometry="1" constant="true"/>
+      </listOfReactants>
+    </reaction>
+    <reaction id="R_EX_nh4_e" name="Ammonium exchange" reversible="true" fast="false" fbc:lowerFluxBound="cobra_default_lb" fbc:upperFluxBound="cobra_default_ub">
+      <notes>
+        <html:p xmlns:html="http://www.w3.org/1999/xhtml">SUBSYSTEM: Exchange</html:p>
+      </notes>
+      <listOfReactants>
+        <speciesReference species="M_nh4_e" stoichiometry="1" constant="true"/>
+      </listOfReactants>
+    </reaction>
+    <reaction id="R_EX_pi_e" name="Phosphate exchange" reversible="true" fast="false" fbc:lowerFluxBound="cobra_default_lb" fbc:upperFluxBound="cobra_default_ub">
+      <notes>
+        <html:p xmlns:html="http://www.w3.org/1999/xhtml">SUBSYSTEM: Exchange</html:p>
+      </notes>
+      <listOfReactants>
+        <speciesReference species="M_pi_e" stoichiometry="1" constant="true"/>
+      </listOfReactants>
+    </reaction>
+    <reaction id="R_EX_h_e" name="H+ exchange" reversible="true" fast="false" fbc:lowerFluxBound="cobra_default_lb" fbc:upperFluxBound="cobra_default_ub">
+      <notes>
+        <html:p xmlns:html="http://www.w3.org/1999/xhtml">SUBSYSTEM: Exchange</html:p>
+      </notes>
+      <listOfReactants>
+        <speciesReference species="M_h_e" stoichiometry="1" constant="true"/>
+      </listOfReactants>
+    </reaction>
+    <reaction id="R_BIOMASS_Mb_core" name="Biomass (methanogen core, lumped)" reversible="false" fast="false" fbc:lowerFluxBound="cobra_0_bound" fbc:upperFluxBound="cobra_default_ub">
+      <notes>
+        <html:p xmlns:html="http://www.w3.org/1999/xhtml">SUBSYSTEM: Biomass</html:p>
+      </notes>
+      <listOfReactants>
+        <speciesReference species="M_accoa_c" stoichiometry="3" constant="true"/>
+        <speciesReference species="M_atp_c" stoichiometry="30" constant="true"/>
+        <speciesReference species="M_nh4_c" stoichiometry="2" constant="true"/>
+        <speciesReference species="M_h2o_c" stoichiometry="30" constant="true"/>
+      </listOfReactants>
+      <listOfProducts>
+        <speciesReference species="M_adp_c" stoichiometry="30" constant="true"/>
+        <speciesReference species="M_coa_c" stoichiometry="3" constant="true"/>
+        <speciesReference species="M_pi_c" stoichiometry="30" constant="true"/>
+        <speciesReference species="M_h_c" stoichiometry="32" constant="true"/>
+      </listOfProducts>
+    </reaction>
+  </listOfReactions>
+    <fbc:listOfObjectives fbc:activeObjective="obj">
+      <fbc:objective fbc:id="obj" fbc:type="maximize">
+        <fbc:listOfFluxObjectives>
+        <fbc:fluxObjective fbc:reaction="R_BIOMASS_Mb_core" fbc:coefficient="1"/>
+        </fbc:listOfFluxObjectives>
+      </fbc:objective>
+    </fbc:listOfObjectives>
+  </model>
+</sbml>

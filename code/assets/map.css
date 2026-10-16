@@ -1,0 +1,383 @@
+/*
+ * Typography and interaction states for the SVG map.
+ *
+ * Every label size is multiplied by --label-scale, which the app raises as the
+ * map zooms out: the geometry is laid out at full canvas resolution, so without
+ * this the names shrink into specks in the fitted view.
+ */
+
+.emc-map {
+  font-family: "Inter", "Segoe UI", system-ui, -apple-system, sans-serif;
+  --label-scale: 1;
+  --frame-label-scale: 1;
+}
+
+/*
+ * Name plates of compartments, cells and the medium are scaled whole, pill and
+ * text together, so the text cannot outgrow the pill it is written in. They
+ * all share one size: --frame-label-scale keeps it constant on screen as the
+ * map zooms out, and --fit holds a plate back only where its own compartment
+ * is too small for that. The scaling is about the plate's own corner, which
+ * the renderer puts at the origin of the group.
+ */
+.emc-frame-label {
+  transform: scale(min(var(--frame-label-scale, 1), var(--fit, 1000)));
+}
+.emc-cell-name { font-size: 17px; font-weight: 700; }
+.emc-comp-text { font-size: 11.5px; font-weight: 700; text-transform: uppercase; }
+
+.emc-label { pointer-events: none; }
+.emc-label-draggable {
+  pointer-events: all;
+  cursor: grab;
+  user-select: none;
+  touch-action: none;
+}
+.stage.is-dragging-metabolite-label,
+.stage.is-dragging-metabolite-label * { cursor: grabbing !important; }
+.emc-label-met { font-size: calc(12.5px * var(--label-scale)); font-weight: 600; }
+.emc-label-medium { font-size: calc(15px * var(--label-scale)); font-weight: 700; }
+.emc-label-currency { font-size: calc(9.5px * var(--label-scale)); font-weight: 500; opacity: 0.72; }
+.emc-label-rxn { font-size: calc(11px * var(--label-scale)); font-weight: 600; opacity: 0.92; }
+.emc-label-rxn-adjacent {
+  dominant-baseline: central;
+  font-weight: 700;
+}
+/* The name of a reaction lying on its side stands clear of its bar. */
+.emc-label-rxn-above { font-weight: 700; }
+.emc-label-rxn-below {
+  dominant-baseline: hanging;
+  font-weight: 700;
+}
+
+/* Zoomed far out, the small type is noise rather than information. */
+.emc-map.is-far .emc-label-currency,
+.emc-map.is-far .emc-label-rxn { display: none; }
+
+.emc-seg { transition: stroke-width 120ms ease, opacity 120ms ease; }
+.emc-seg.is-selected { opacity: 1; }
+
+.emc-marker { cursor: pointer; }
+.emc-marker:hover rect { stroke: var(--ink, #0f172a); stroke-width: 2.4; }
+
+.emc-node { cursor: pointer; }
+.emc-node:hover { stroke: var(--ink, #0f172a); }
+
+/*
+ * Primary metabolites and shared-medium metabolites can be picked up and moved
+ * by hand; cofactor satellites are positioned by their reaction and keep the
+ * plain pointer.
+ */
+.emc-node-metabolite,
+.emc-node-medium { cursor: grab; }
+.emc-node.is-dragging { cursor: grabbing; }
+
+.emc-crossfeed { pointer-events: none; }
+.emc-arrow { pointer-events: none; }
+
+/*
+ * Cross-feeding lines. The pointer finds a line by a wide transparent stroke
+ * over it; the line under the pointer thickens (never thinner than a few
+ * pixels on screen) and the others step back, so one line can be followed
+ * through a bundle. A click pins a name tag to it (mapview.js).
+ */
+.emc-crossfeed-route { cursor: pointer; }
+.emc-crossfeed-arrow { pointer-events: none; }
+.emc-crossfeed-hit { pointer-events: stroke; }
+.emc-layer-crossfeed-routed:hover .emc-crossfeed-route { opacity: 0.18; }
+.emc-layer-crossfeed-routed .emc-crossfeed-route:hover { opacity: 1; }
+.emc-crossfeed-route:hover .emc-crossfeed,
+.emc-crossfeed-route.is-picked .emc-crossfeed {
+  stroke-width: max(calc(var(--w, 4) * 2.2px), calc(5px * var(--frame-label-scale, 1)));
+}
+.emc-crossfeed-route:hover .emc-crossfeed-arrow,
+.emc-crossfeed-route.is-picked .emc-crossfeed-arrow {
+  transform-box: fill-box;
+  transform-origin: center;
+  transform: scale(1.7);
+}
+.emc-layer-crossfeed-tag { pointer-events: none; }
+.emc-seg.is-disabled-reaction { stroke-dasharray: 8 5; }
+.emc-label-rxn.is-disabled-reaction { fill: #db2777; font-weight: 700; }
+.emc-ko-mark { pointer-events: none; }
+.emc-marker.is-inactive-species:hover rect { stroke-width: 1.1; }
+.emc-map .emc-layer-text .emc-label.is-inactive-species { opacity: 0.28; }
+.emc-comp-label { pointer-events: all; cursor: grab; }
+.stage.is-dragging-compartment-label .emc-comp-label { cursor: grabbing; }
+.emc-cell-plate { pointer-events: auto; cursor: pointer; }
+.emc-cell-plate:hover text { text-decoration: underline; text-underline-offset: 3px; }
+
+
+/* ------------------------------------------------ boundary interaction */
+
+/*
+ * The band that receives the pointer never changes shape, and never paints.
+ *
+ * It used to do both: hovering set stroke-width to a fixed 20, and once the
+ * band was sized for the zoom (tens of map units) that *shrank* it. The pointer
+ * fell outside, hover ended, the band grew back under the pointer, hover began
+ * again — a loop at frame rate, which is the flicker, the cursor switching
+ * between two hands, and the reason a press could not land.
+ *
+ * The glow is a separate rect with no pointer events, so lighting it up cannot
+ * move anything. Its stroke does not scale, so the highlight is the same few
+ * pixels at every zoom.
+ */
+.emc-boundary-hit {
+  cursor: pointer;
+}
+
+.emc-boundary-glow {
+  vector-effect: non-scaling-stroke;
+  transition: stroke 120ms ease;
+}
+
+.emc-boundary-hit:hover + .emc-boundary-glow {
+  stroke: rgba(37, 99, 235, 0.55);
+}
+
+.emc-map.emc-dark .emc-boundary-hit:hover + .emc-boundary-glow {
+  stroke: rgba(96, 165, 250, 0.65);
+}
+
+
+/* ------------------------------------------------ reaction editing */
+
+.emc-reaction-handle,
+.emc-control-handle,
+.emc-control-hit { cursor: grab; }
+.emc-control-hit {
+  fill: transparent;
+  stroke: none;
+  pointer-events: all;
+  touch-action: none;
+}
+.emc-reaction-handle:hover,
+.emc-control-handle:hover { stroke-width: 3; }
+.emc-reaction-handle.is-dragging,
+.emc-control-handle.is-dragging { cursor: grabbing; }
+.emc-control-guide {
+  pointer-events: none;
+  stroke: currentColor;
+  stroke-width: 1;
+  stroke-dasharray: 3 4;
+  opacity: 0.28;
+}
+
+
+/* ------------------------------------------------ cell geometry editor */
+.emc-geometry-handle { cursor: pointer; }
+.emc-geometry-move { cursor: move; }
+.emc-geometry-nw, .emc-geometry-se { cursor: nwse-resize; }
+.emc-geometry-ne, .emc-geometry-sw { cursor: nesw-resize; }
+.emc-geometry-n, .emc-geometry-s { cursor: ns-resize; }
+.emc-geometry-e, .emc-geometry-w { cursor: ew-resize; }
+/* Each shape diamond runs along one edge: the corner one along the top, the oval one down the side. */
+.emc-geometry-corner { cursor: ew-resize; }
+.emc-geometry-oval { cursor: ns-resize; }
+.emc-geometry-handle:hover { stroke-width: 3; }
+.emc-geometry-selection { vector-effect: non-scaling-stroke; }
+
+
+/* Escher-style cubic branch controls */
+.emc-control-b1 { cursor: grab; }
+.emc-control-b2 { cursor: grab; }
+.emc-control-anchor { cursor: grab; }
+.emc-control-guide-metabolite,
+.emc-control-guide-reaction {
+  pointer-events: none;
+  opacity: 0.42;
+}
+/* The lever that turns a reaction's backbone about its centre. */
+.emc-rotate-handle { cursor: alias; }
+.emc-rotate-guide {
+  pointer-events: none;
+  stroke: #16a34a;
+  opacity: 0.55;
+  stroke-dasharray: 3 3;
+  vector-effect: non-scaling-stroke;
+}
+
+
+/* ------------------------------------------------ multi-selection */
+/* The shaded region a group covers. Kept faint: it marks an area, and the
+   marks inside it carry the selection colour themselves. */
+.emc-multi-area {
+  fill: var(--accent, #2563eb);
+  fill-opacity: .10;
+  stroke: var(--accent, #2563eb);
+  stroke-opacity: .45;
+  stroke-width: 1.5;
+  stroke-dasharray: 8 6;
+  vector-effect: non-scaling-stroke;
+}
+.emc-dark .emc-multi-area { fill-opacity: .16; stroke-opacity: .6; }
+
+.emc-multi-drag-hit {
+  fill: none;
+  stroke: transparent;
+  pointer-events: stroke;
+  cursor: grab;
+}
+.emc-multi-drag-outline {
+  fill: none;
+  stroke: var(--accent, #60a5fa);
+  stroke-width: 1.5;
+  stroke-opacity: 0;
+  vector-effect: non-scaling-stroke;
+  pointer-events: none;
+}
+.emc-layer-multi-border:hover .emc-multi-drag-outline {
+  stroke-opacity: .9;
+}
+.stage.is-dragging-group .emc-multi-drag-hit {
+  cursor: grabbing;
+}
+
+.emc-node.is-multi-selected {
+  stroke: var(--accent, #2563eb) !important;
+  stroke-width: 4px !important;
+  filter: url(#emc-glow);
+}
+/* A matching visual instance will be joined here when the dragged node drops. */
+.emc-node.is-merge-target {
+  stroke: #16a34a !important;
+  stroke-width: 4px !important;
+  vector-effect: non-scaling-stroke;
+  filter: url(#emc-glow);
+}
+.emc-dark .emc-node.is-merge-target { stroke: #4ade80 !important; }
+.emc-marker.is-multi-selected rect {
+  stroke: var(--accent, #2563eb) !important;
+  stroke-width: 3px !important;
+}
+.emc-seg.is-multi-selected {
+  opacity: 1;
+  filter: url(#emc-glow);
+}
+.emc-select-ring.is-multi {
+  pointer-events: none;
+}
+
+/* An annotation caught by the rectangle. Text cannot carry a selection stroke
+   the way a circle can — it would thicken the glyphs — so it gets a plate
+   behind it instead, drawn under the text in the same layer. */
+.emc-map-text-selected {
+  fill: var(--accent, #2563eb);
+  fill-opacity: .18;
+  stroke: var(--accent, #2563eb);
+  stroke-opacity: .75;
+  stroke-width: 1.5;
+  vector-effect: non-scaling-stroke;
+  pointer-events: none;
+}
+.emc-dark .emc-map-text-selected { fill-opacity: .28; }
+
+
+/* ------------------------------------------------------ free map annotations */
+.emc-map-text {
+  cursor: grab;
+  font-family: "Inter", "Segoe UI", system-ui, -apple-system, sans-serif;
+  font-weight: 650;
+  letter-spacing: 0.01em;
+  user-select: none;
+  -webkit-user-select: none;
+}
+.emc-map-text:hover {
+  text-decoration: underline;
+  text-decoration-thickness: 1.5px;
+  text-underline-offset: 3px;
+}
+.stage.is-dragging-text .emc-map-text { cursor: grabbing; }
+
+
+/* ------------------------------------------------ flux variability labels */
+.emc-label-fva {
+  font-size: calc(10.5px * var(--label-scale));
+  font-variant-numeric: tabular-nums;
+  font-weight: 650;
+}
+
+
+/* ------------------------------------------------ primary / secondary metabolites */
+.emc-node-primary {
+  opacity: 1;
+}
+.emc-node-secondary {
+  opacity: 0.78;
+  stroke-width: 1.8px !important;
+}
+.emc-label-primary {
+  opacity: 1;
+}
+.emc-label-secondary {
+  font-size: calc(9.5px * var(--label-scale));
+  font-weight: 500;
+  opacity: 0.68;
+}
+.emc-map.is-far .emc-label-secondary {
+  display: none;
+}
+
+
+/* ------------------------------------------------ resizable drawing canvas */
+.emc-canvas-frame {
+  vector-effect: non-scaling-stroke;
+}
+.emc-canvas-resize-hit {
+  touch-action: none;
+}
+.emc-canvas-resize-right,
+.emc-canvas-resize-left {
+  cursor: ew-resize;
+}
+.emc-canvas-resize-bottom,
+.emc-canvas-resize-top {
+  cursor: ns-resize;
+}
+.emc-canvas-resize-corner {
+  cursor: nwse-resize;
+}
+.emc-canvas-resize-guide {
+  vector-effect: non-scaling-stroke;
+}
+
+/* ------------------------------------------------ pathway ribbons */
+.emc-layer-pathway-ribbons,
+.emc-pathway-ribbon { pointer-events: none; }
+.emc-pathway-ribbon { transition: opacity 120ms ease, stroke-width 120ms ease; }
+
+/* ------------------------------------------------------------ Cell boundary */
+.emc-cell-boundary {
+  vector-effect: non-scaling-stroke;
+  cursor: pointer;
+  transition: stroke-width 120ms ease, opacity 120ms ease;
+}
+.emc-cell-boundary:hover {
+  stroke-width: 4.5;
+  opacity: 1;
+}
+
+/*
+ * Invisible pointer targets (renderHitTargets in mapview.js). They sit under
+ * the artwork, so the glyphs keep their own hover styling, and the app resizes
+ * them from the live zoom so a target never shrinks below ~24 px on screen.
+ */
+.emc-hit { fill: transparent; stroke: none; pointer-events: all; }
+.emc-hit-reaction { cursor: pointer; }
+.emc-hit-node { cursor: grab; }
+.stage.is-dragging-node .emc-hit-node { cursor: grabbing; }
+
+/* While a drawing tool is live, presses belong to the canvas underneath. */
+.stage.is-drawing-tool .emc-hit { pointer-events: none; }
+
+/* Keep species colours while making labels on dark compartments legible. */
+.emc-map.emc-dark .emc-cell-name { filter: brightness(1.3); }
+.emc-map.emc-dark .emc-label-secondary,
+.emc-map.emc-dark .emc-label-currency { opacity: .85; }
+.emc-map.emc-dark .emc-control-guide { opacity: .5; }
+.emc-map.emc-dark .emc-select-ring.is-multi { stroke: var(--accent, #60a5fa); }
+
+/* A reaction with no flux in the solution, drawn the way the segments are: off. */
+.emc-label-rxn.is-off { fill: #8a8d96; }
+.emc-map.emc-dark .emc-label-rxn.is-off { fill: #7c8799; }

@@ -1,0 +1,331 @@
+[
+ {
+  "scenario": "consorcio-anaerobio",
+  "settings": "default",
+  "options": {},
+  "file": "large/map/layout-consorcio-anaerobio-default.json"
+ },
+ {
+  "scenario": "consorcio-anaerobio",
+  "settings": "compact",
+  "options": {
+   "cellGap": 120,
+   "minShell": 38,
+   "nodeSpacing": 0.82,
+   "cellAreaMultiplier": 1
+  },
+  "file": "large/map/layout-consorcio-anaerobio-compact.json"
+ },
+ {
+  "scenario": "consorcio-anaerobio",
+  "settings": "normal",
+  "options": {
+   "cellGap": 180,
+   "minShell": 48,
+   "nodeSpacing": 1.08,
+   "cellAreaMultiplier": 3
+  },
+  "file": "large/map/layout-consorcio-anaerobio-normal.json"
+ },
+ {
+  "scenario": "consorcio-anaerobio",
+  "settings": "spacious",
+  "options": {
+   "cellGap": 240,
+   "minShell": 60,
+   "nodeSpacing": 1.42,
+   "cellAreaMultiplier": 6
+  },
+  "file": "large/map/layout-consorcio-anaerobio-spacious.json"
+ },
+ {
+  "scenario": "consorcio-anaerobio",
+  "settings": "none",
+  "options": {
+   "contents": "none"
+  },
+  "file": "map/layout-consorcio-anaerobio-none.json"
+ },
+ {
+  "scenario": "aerobio-mixto",
+  "settings": "default",
+  "options": {},
+  "file": "large/map/layout-aerobio-mixto-default.json"
+ },
+ {
+  "scenario": "aerobio-mixto",
+  "settings": "compact",
+  "options": {
+   "cellGap": 120,
+   "minShell": 38,
+   "nodeSpacing": 0.82,
+   "cellAreaMultiplier": 1
+  },
+  "file": "large/map/layout-aerobio-mixto-compact.json"
+ },
+ {
+  "scenario": "aerobio-mixto",
+  "settings": "normal",
+  "options": {
+   "cellGap": 180,
+   "minShell": 48,
+   "nodeSpacing": 1.08,
+   "cellAreaMultiplier": 3
+  },
+  "file": "large/map/layout-aerobio-mixto-normal.json"
+ },
+ {
+  "scenario": "aerobio-mixto",
+  "settings": "spacious",
+  "options": {
+   "cellGap": 240,
+   "minShell": 60,
+   "nodeSpacing": 1.42,
+   "cellAreaMultiplier": 6
+  },
+  "file": "large/map/layout-aerobio-mixto-spacious.json"
+ },
+ {
+  "scenario": "aerobio-mixto",
+  "settings": "none",
+  "options": {
+   "contents": "none"
+  },
+  "file": "map/layout-aerobio-mixto-none.json"
+ },
+ {
+  "scenario": "fototrofo-heterotrofo",
+  "settings": "default",
+  "options": {},
+  "file": "large/map/layout-fototrofo-heterotrofo-default.json"
+ },
+ {
+  "scenario": "fototrofo-heterotrofo",
+  "settings": "compact",
+  "options": {
+   "cellGap": 120,
+   "minShell": 38,
+   "nodeSpacing": 0.82,
+   "cellAreaMultiplier": 1
+  },
+  "file": "large/map/layout-fototrofo-heterotrofo-compact.json"
+ },
+ {
+  "scenario": "fototrofo-heterotrofo",
+  "settings": "normal",
+  "options": {
+   "cellGap": 180,
+   "minShell": 48,
+   "nodeSpacing": 1.08,
+   "cellAreaMultiplier": 3
+  },
+  "file": "large/map/layout-fototrofo-heterotrofo-normal.json"
+ },
+ {
+  "scenario": "fototrofo-heterotrofo",
+  "settings": "spacious",
+  "options": {
+   "cellGap": 240,
+   "minShell": 60,
+   "nodeSpacing": 1.42,
+   "cellAreaMultiplier": 6
+  },
+  "file": "large/map/layout-fototrofo-heterotrofo-spacious.json"
+ },
+ {
+  "scenario": "fototrofo-heterotrofo",
+  "settings": "none",
+  "options": {
+   "contents": "none"
+  },
+  "file": "map/layout-fototrofo-heterotrofo-none.json"
+ },
+ {
+  "scenario": "metanogenesis",
+  "settings": "default",
+  "options": {},
+  "file": "large/map/layout-metanogenesis-default.json"
+ },
+ {
+  "scenario": "metanogenesis",
+  "settings": "compact",
+  "options": {
+   "cellGap": 120,
+   "minShell": 38,
+   "nodeSpacing": 0.82,
+   "cellAreaMultiplier": 1
+  },
+  "file": "large/map/layout-metanogenesis-compact.json"
+ },
+ {
+  "scenario": "metanogenesis",
+  "settings": "normal",
+  "options": {
+   "cellGap": 180,
+   "minShell": 48,
+   "nodeSpacing": 1.08,
+   "cellAreaMultiplier": 3
+  },
+  "file": "large/map/layout-metanogenesis-normal.json"
+ },
+ {
+  "scenario": "metanogenesis",
+  "settings": "spacious",
+  "options": {
+   "cellGap": 240,
+   "minShell": 60,
+   "nodeSpacing": 1.42,
+   "cellAreaMultiplier": 6
+  },
+  "file": "map/layout-metanogenesis-spacious.json"
+ },
+ {
+  "scenario": "metanogenesis",
+  "settings": "none",
+  "options": {
+   "contents": "none"
+  },
+  "file": "map/layout-metanogenesis-none.json"
+ },
+ {
+  "scenario": "todas",
+  "settings": "default",
+  "options": {},
+  "file": "large/map/layout-todas-default.json"
+ },
+ {
+  "scenario": "todas",
+  "settings": "compact",
+  "options": {
+   "cellGap": 120,
+   "minShell": 38,
+   "nodeSpacing": 0.82,
+   "cellAreaMultiplier": 1
+  },
+  "file": "large/map/layout-todas-compact.json"
+ },
+ {
+  "scenario": "todas",
+  "settings": "normal",
+  "options": {
+   "cellGap": 180,
+   "minShell": 48,
+   "nodeSpacing": 1.08,
+   "cellAreaMultiplier": 3
+  },
+  "file": "large/map/layout-todas-normal.json"
+ },
+ {
+  "scenario": "todas",
+  "settings": "spacious",
+  "options": {
+   "cellGap": 240,
+   "minShell": 60,
+   "nodeSpacing": 1.42,
+   "cellAreaMultiplier": 6
+  },
+  "file": "large/map/layout-todas-spacious.json"
+ },
+ {
+  "scenario": "todas",
+  "settings": "none",
+  "options": {
+   "contents": "none"
+  },
+  "file": "map/layout-todas-none.json"
+ },
+ {
+  "scenario": "solo-ecoli",
+  "settings": "default",
+  "options": {},
+  "file": "map/layout-solo-ecoli-default.json"
+ },
+ {
+  "scenario": "solo-ecoli",
+  "settings": "compact",
+  "options": {
+   "cellGap": 120,
+   "minShell": 38,
+   "nodeSpacing": 0.82,
+   "cellAreaMultiplier": 1
+  },
+  "file": "large/map/layout-solo-ecoli-compact.json"
+ },
+ {
+  "scenario": "solo-ecoli",
+  "settings": "normal",
+  "options": {
+   "cellGap": 180,
+   "minShell": 48,
+   "nodeSpacing": 1.08,
+   "cellAreaMultiplier": 3
+  },
+  "file": "large/map/layout-solo-ecoli-normal.json"
+ },
+ {
+  "scenario": "solo-ecoli",
+  "settings": "spacious",
+  "options": {
+   "cellGap": 240,
+   "minShell": 60,
+   "nodeSpacing": 1.42,
+   "cellAreaMultiplier": 6
+  },
+  "file": "large/map/layout-solo-ecoli-spacious.json"
+ },
+ {
+  "scenario": "solo-ecoli",
+  "settings": "none",
+  "options": {
+   "contents": "none"
+  },
+  "file": "map/layout-solo-ecoli-none.json"
+ },
+ {
+  "scenario": "solo-levadura",
+  "settings": "default",
+  "options": {},
+  "file": "large/map/layout-solo-levadura-default.json"
+ },
+ {
+  "scenario": "solo-levadura",
+  "settings": "compact",
+  "options": {
+   "cellGap": 120,
+   "minShell": 38,
+   "nodeSpacing": 0.82,
+   "cellAreaMultiplier": 1
+  },
+  "file": "map/layout-solo-levadura-compact.json"
+ },
+ {
+  "scenario": "solo-levadura",
+  "settings": "normal",
+  "options": {
+   "cellGap": 180,
+   "minShell": 48,
+   "nodeSpacing": 1.08,
+   "cellAreaMultiplier": 3
+  },
+  "file": "large/map/layout-solo-levadura-normal.json"
+ },
+ {
+  "scenario": "solo-levadura",
+  "settings": "spacious",
+  "options": {
+   "cellGap": 240,
+   "minShell": 60,
+   "nodeSpacing": 1.42,
+   "cellAreaMultiplier": 6
+  },
+  "file": "large/map/layout-solo-levadura-spacious.json"
+ },
+ {
+  "scenario": "solo-levadura",
+  "settings": "none",
+  "options": {
+   "contents": "none"
+  },
+  "file": "map/layout-solo-levadura-none.json"
+ }
+]

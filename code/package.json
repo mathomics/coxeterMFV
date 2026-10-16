@@ -1,0 +1,28 @@
+{
+  "name": "coxeter-multicell-flux-visualizer",
+  "version": "0.1.0",
+  "description": "Coxeter Multicell Flux Visualizer (Coxeter-MFV): metabolic flux visualization and community FBA with explicit multicell and subcellular compartment boundaries.",
+  "type": "module",
+  "license": "MIT",
+  "private": true,
+  "scripts": {
+    "serve": "node tools/serve.mjs",
+    "build:standalone": "node tools/build-standalone.mjs",
+    "vendor:glpk": "node tools/vendor-glpk.mjs",
+    "test": "node --test test/*.test.mjs",
+    "validate": "node tools/validate-models.mjs",
+    "check:browser": "node tools/browser-run.mjs",
+    "check:standalone": "node tools/check-standalone.mjs",
+    "check:sbml": "node tools/check-sbml.mjs",
+    "build:communities": "node tools/build-published-communities.mjs",
+    "build:published-assets": "node tools/build-published-assets.mjs",
+    "validate:gut9": "node tools/build-gut9.mjs",
+    "run:figure4": "node tools/run-gut9-figure4.mjs"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "dependencies": {
+    "glpk.js": "^5.0.0"
+  }
+}

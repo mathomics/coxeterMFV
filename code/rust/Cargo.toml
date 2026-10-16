@@ -1,0 +1,58 @@
+[workspace]
+resolver = "3"
+members = [
+    "crates/coxeter-core",
+    "crates/coxeter-io",
+    "crates/coxeter-solver",
+    "crates/coxeter-map",
+    "crates/coxeter-render",
+    "crates/coxeter-analysis",
+    "crates/coxeter-state",
+    "crates/coxeter-canvas",
+    "crates/coxeter-app",
+]
+
+[workspace.package]
+version = "0.1.0"
+edition = "2024"
+license = "MIT"
+rust-version = "1.85"
+
+[workspace.dependencies]
+serde = { version = "1", features = ["derive"] }
+# preserve_order: JSON objects keep their key order, as JavaScript objects do.
+# float_roundtrip: every number is parsed to the exact double JavaScript reads.
+serde_json = { version = "1", features = ["preserve_order", "float_roundtrip"] }
+indexmap = { version = "2", features = ["serde"] }
+regex = "1"
+thiserror = "2"
+anyhow = "1"
+icu_collator = "2"
+coxeter-core = { path = "crates/coxeter-core" }
+
+[profile.dev]
+# Keeps target/ small on a disk that has little room; backtraces still name lines.
+debug = "line-tables-only"
+
+[profile.dev.package."*"]
+opt-level = 2
+
+# `"*"` covers dependencies only. The crates on the map's hot path (every
+# drag step: edit, render, tessellate, paint) are optimised too, or `cargo
+# run` drags at a fraction of the release speed. The others stay at 0 to
+# keep rebuilds quick.
+[profile.dev.package.coxeter-core]
+opt-level = 2
+[profile.dev.package.coxeter-map]
+opt-level = 2
+[profile.dev.package.coxeter-render]
+opt-level = 2
+[profile.dev.package.coxeter-canvas]
+opt-level = 2
+
+[profile.test]
+debug = "line-tables-only"
+
+[profile.release]
+lto = "thin"
+codegen-units = 4

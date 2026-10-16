@@ -1,0 +1,33 @@
+[package]
+name = "coxeter-canvas"
+description = "The map widget: painting, camera, hit-testing and gestures of src/ui/app.js, on egui."
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[dependencies]
+coxeter-core.workspace = true
+coxeter-map = { path = "../coxeter-map" }
+coxeter-render = { path = "../coxeter-render" }
+serde_json.workspace = true
+indexmap.workspace = true
+egui = "0.36"
+# Fill and stroke tessellation of every shape of the map (curves, arcs, joins, caps).
+lyon_tessellation = "1.0.22"
+# SVG path data (`d`), every command, relative ones and arcs included; usvg already uses it.
+svgtypes = "0.16.1"
+# Text as outlines, with the libraries (and versions) usvg/resvg and egui use:
+# the system's fonts, shaping, glyph outlines.
+fontdb = "0.24"
+harfrust = "0.12.0"
+skrifa = "0.44"
+# The layers of a repainted tree are compared with the drawn one in parallel.
+rayon = "1.12.0"
+# The settled layer: the visible map rasterised once the camera is still (and
+# the painter parity tests' reference), the version coxeter-render exports with.
+resvg = { version = "0.48.1", default-features = false, features = ["text", "system-fonts", "memmap-fonts"] }
+
+[dev-dependencies]
+eframe = "0.36"
+egui_kittest = { version = "0.36", features = ["wgpu", "snapshot"] }
+image = { version = "0.25", default-features = false, features = ["png"] }

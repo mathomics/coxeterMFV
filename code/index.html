@@ -1,0 +1,173 @@
+<!doctype html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Coxeter Multicell Flux Visualizer — multicell, multicompartment metabolic maps</title>
+<meta name="description" content="Coxeter-MFV: a multicell, multicompartment metabolic flux visualizer with explicit cell and organelle boundaries, and community FBA.">
+<script id="theme-init">
+try {
+  const theme = localStorage.getItem('coxeter-theme');
+  document.documentElement.dataset.theme = theme === 'dark' || (theme !== 'light' && matchMedia('(prefers-color-scheme: dark)').matches) ? 'dark' : 'light';
+} catch (_) {}
+</script>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect x='2' y='6' width='28' height='20' rx='6' fill='none' stroke='%230284c7' stroke-width='3'/><rect x='9' y='12' width='14' height='8' rx='4' fill='%23dc2626' opacity='.8'/></svg>">
+<link rel="stylesheet" href="assets/app.css">
+<link rel="stylesheet" href="assets/map.css">
+</head>
+<body>
+<div class="app is-results-collapsed" id="app-shell">
+  <header class="topbar">
+    <div class="brand" aria-label="Coxeter Multicell Flux Visualizer">
+      <svg class="brand-mark" viewBox="0 0 34 34" aria-hidden="true">
+        <path d="M7 25 14 17 19 8 27 13" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"/>
+        <circle cx="7" cy="25" r="4"/><circle cx="14" cy="17" r="3.3"/><circle cx="19" cy="8" r="4"/><circle cx="27" cy="13" r="3"/>
+      </svg>
+      <div><h1 title="Coxeter Multicell Flux Visualizer">Coxeter-MFV</h1><span>Edit Map · Edit Model · Simulate</span></div>
+    </div>
+
+    <div class="model-identity">
+      <strong id="model-name">Loading model…</strong>
+      <span class="model-kind" id="model-kind"></span>
+    </div>
+
+    <div class="grow"></div>
+    <div class="save-state" id="save-state"><span>✓</span><strong>Saved</strong></div>
+    <div class="status" id="status" title="Analysis status">
+      <span class="dot"></span><span id="status-text">Loading models…</span>
+    </div>
+
+    <button class="header-search" data-action="open-workspace" data-workspace="library" title="Find reactions (Ctrl+F)">⌕ <span>Find reaction</span></button>
+    <button class="theme-button" data-action="toggle-theme" aria-label="Switch to dark theme" title="Switch to dark theme">◐ <span id="theme-label">Dark</span></button>
+    <details class="top-menu file-menu">
+      <summary>File <span>⌄</span></summary>
+      <div class="top-menu-popover">
+        <small>IMPORT</small>
+        <button data-action="import-models">Model (JSON / SBML)</button>
+        <button data-action="import-metatranscriptomics">Metatranscriptomics (CSV / TSV)</button>
+        <button data-action="map-load">Map JSON</button>
+        <button data-action="discard-waiting-map" id="waiting-map-item" hidden>Forget waiting map</button>
+        <button data-action="import-state">Scenario</button>
+        <button data-action="import-reproducibility">Reproducibility bundle</button>
+        <small>EXPORT / SAVE A LOCAL COPY</small>
+        <button data-action="map-save">Map JSON</button>
+        <button data-action="export-model-json">Model JSON</button>
+        <button data-action="export-svg">SVG map</button>
+        <button data-action="export-png">PNG map</button>
+        <button data-action="export-csv">Flux table (CSV)</button>
+        <button data-action="export-state">Scenario</button>
+        <button data-action="export-reproducibility">Reproducibility bundle</button>
+        <button data-action="export-methods-provenance">Methods / provenance report</button>
+      </div>
+    </details>
+    <details class="top-menu analysis-menu">
+      <summary><span class="run-icon">▶</span> <span class="run-label">Simulate</span> <span>⌄</span></summary>
+      <div class="top-menu-popover analysis-popover">
+        <small>FLUX ANALYSIS</small>
+        <button data-action="run-fba"><b>FBA</b><span>Flux balance analysis</span></button>
+        <button data-action="run-pfba"><b>pFBA</b><span>Parsimonious FBA</span></button>
+        <button data-action="run-fva"><b>FVA</b><span>Flux variability analysis</span></button>
+        <button data-action="run-loopless"><b>Loopless FBA</b><span>Exclude internal cycles</span></button>
+        <button data-action="open-workspace" data-workspace="analysis">Simulation settings</button>
+      </div>
+    </details>
+  </header>
+
+  <div class="workspace">
+    <aside class="left-panel" id="left-panel" aria-label="Task panel">
+      <nav class="panel-tabs" aria-label="Workspace task">
+        <button class="is-active" data-action="left-tab" data-tab="build" aria-current="page">Edit Map</button>
+        <button data-action="left-tab" data-tab="model">Edit Model</button>
+        <button data-action="left-tab" data-tab="analysis">Simulate</button>
+        <button class="panel-collapse" data-action="toggle-left" aria-label="Collapse task panel" title="Collapse task panel">‹</button>
+      </nav>
+      <div class="toolbox" aria-label="Editing tools">
+        <span class="section-label">Editing tools</span>
+        <button class="tool-button is-active" data-action="tool-select" data-tool="select" title="Select and move: drag a reaction or metabolite to move it, the background to sweep a selection. Click a compartment's membrane to select it, then drag its centre handle to move it, a corner to resize it, or the middle of a side to change only its width or height"><span>↖</span>Select</button>
+        <button class="tool-button" data-action="tool-pan" data-tool="pan" title="Pan Mode: drag anywhere to move the map. Nothing can be selected until another tool is chosen"><span>✥</span>Pan Mode</button>
+        <button class="tool-button" data-action="tool-edit" data-tool="edit" title="Show and move reaction control points to adjust reaction paths"><span>⌘</span>Edit Control Points</button>
+        <button class="tool-button" data-action="tool-reaction" data-tool="reaction" title="Add Reaction mode: click a metabolite to list addable reactions"><span>⌁</span>Add Reaction</button>
+        <button class="tool-button" data-action="tool-metabolite" data-tool="metabolite"><span>○</span>Add Metabolite</button>
+        <button class="tool-button" data-action="tool-text" data-tool="text"><span>T</span>Text</button>
+        <button class="tool-button" data-action="tool-compartment" data-tool="compartment" title="Add an existing model compartment to the map"><span>▣</span>Add Compartment</button>
+        <button class="tool-button" data-action="tool-cell" data-tool="cell" title="Add an existing model species as a cell on the map"><span>⬡</span>Add Cell</button>
+      </div>
+      <div id="task-panel" class="task-panel" aria-live="polite"></div>
+      <div class="panel-footer"><span>Map edits stay separate from the model.</span><button data-action="toggle-focus" title="Give the map more space">Focus mode</button></div>
+    </aside>
+
+    <main class="canvas-column">
+      <div class="canvas-toolbar" aria-label="Map toolbar">
+        <button class="toolbar-label" data-action="toggle-left" aria-expanded="true" aria-controls="left-panel">☷ <span>Tools</span></button>
+        <button data-action="map-undo" aria-label="Undo map edit" title="Undo map edit (Ctrl+Z)">↶</button>
+        <button data-action="map-redo" aria-label="Redo map edit" title="Redo map edit (Ctrl+Y)">↷</button>
+        <span class="toolbar-separator"></span>
+        <button data-action="zoom-out" title="Zoom out">−</button>
+        <button data-action="zoom-in" title="Zoom in">+</button>
+        <button data-action="zoom-fit" title="Fit map to screen">⤢</button>
+        <span class="zoom-readout" id="zoom-readout">100%</span>
+        <span class="toolbar-tool-name" id="active-tool-label">Select</span>
+        <div class="layout-preset-toolbar" role="group" aria-label="Map layout density">
+          <span>Layout:</span>
+          <button data-action="layout-preset" data-layout-preset="compact" type="button">Compact</button>
+          <button data-action="layout-preset" data-layout-preset="normal" type="button">Normal</button>
+          <button data-action="layout-preset" data-layout-preset="spacious" type="button">Spacious</button>
+        </div>
+        <span class="grow"></span>
+        <details class="canvas-view">
+          <summary>View ⌄</summary>
+          <div class="view-popover" id="view-controls"></div>
+        </details>
+        <button class="toolbar-label" data-action="toggle-inspector" aria-controls="inspector-panel" title="Show or hide selection properties">Inspector</button>
+      </div>
+      <div class="stage" id="stage" aria-label="Metabolic map"></div>
+      <section class="workspace-editor" id="workspace-editor" aria-label="Workspace editor" hidden>
+        <header class="workspace-editor-header">
+          <div><span class="workspace-breadcrumb">Workspace</span><h2 id="workspace-title">Model</h2></div>
+          <button data-action="close-workspace">← Return to map</button>
+        </header>
+        <div class="sidebar workspace-fields" id="sidebar" aria-label="Workspace controls"></div>
+      </section>
+      <section class="results-panel" id="results-panel" aria-label="Analysis results">
+        <div class="results-resize" aria-hidden="true"></div>
+        <nav class="results-tabs" aria-label="Results views">
+          <button class="is-active" data-action="results-tab" data-tab="analysis" aria-pressed="true">Analysis results</button>
+          <button data-action="results-tab" data-tab="table" aria-pressed="false">Table view</button>
+          <button data-action="results-tab" data-tab="logs" aria-pressed="false">Logs</button>
+          <span class="grow"></span>
+          <span id="results-summary" class="results-summary" aria-live="polite"></span>
+          <button data-action="maximize-results" class="panel-collapse" title="Maximize results" aria-label="Maximize results">⤢</button>
+          <button data-action="toggle-results" class="panel-collapse" title="Collapse results">⌄</button>
+        </nav>
+        <div class="results-content" id="results-content"></div>
+      </section>
+    </main>
+
+    <aside class="inspector-panel" id="inspector-panel" aria-label="Inspector and layout settings">
+      <div class="panel-tabs inspector-tabs" role="tablist" aria-label="Right panel">
+        <button class="is-active" data-action="right-tab" data-tab="inspector" role="tab" aria-selected="true">Inspector</button>
+        <button data-action="right-tab" data-tab="layout" role="tab" aria-selected="false">Layout</button>
+        <button data-action="toggle-inspector" class="panel-collapse" title="Collapse right panel">›</button>
+      </div>
+      <div class="inspector" id="inspector"></div>
+    </aside>
+  </div>
+</div>
+
+<input type="file" id="file-input" accept="application/json" hidden>
+<input type="file" id="map-file-input" accept="application/json" hidden>
+<input type="file" id="omics-file-input" accept="text/csv,.csv" hidden>
+<input type="file" id="model-file-input" accept="application/json,application/xml,text/xml,.json,.xml,.sbml" multiple hidden>
+<input type="file" id="metatranscriptomics-file-input" accept=".csv,.tsv,text/csv,text/tab-separated-values" hidden>
+<input type="file" id="reproducibility-file-input" accept="application/json,.json" hidden>
+<script>
+window.__COXETER_BUILD__ = window.__COXETER_BUILD__ || {
+  version: '0.1.0',
+  gitCommit: null,
+  gitBranch: null,
+  buildTime: null
+};
+</script>
+<script type="module" src="src/ui/app.js"></script>
+</body>
+</html>

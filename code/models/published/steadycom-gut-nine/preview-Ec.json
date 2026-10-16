@@ -1,0 +1,1215 @@
+{
+ "id": "Ec_preview",
+ "name": "Escherichia coli — map excerpt, 20 of 2404 reactions",
+ "cell": {
+  "name": "Ec",
+  "organism": "Escherichia coli",
+  "shape": "rounded",
+  "color": "#0891b2",
+  "note": "2404 reactions in the full model"
+ },
+ "compartments": {
+  "c": "Cytosol",
+  "e": "Extracellular",
+  "p": "Periplasm"
+ },
+ "metabolites": [
+  {
+   "id": "10fthf[c_Ec]",
+   "name": "10-Formyltetrahydrofolate",
+   "compartment": "c",
+   "formula": "C20H21N7O7",
+   "charge": 0
+  },
+  {
+   "id": "2dmmql8[c_Ec]",
+   "name": "2-Demethylmenaquinol 8",
+   "compartment": "c",
+   "formula": "C50H72O2",
+   "charge": 0
+  },
+  {
+   "id": "2fe2s[c_Ec]",
+   "name": "[2Fe-2S] iron-sulfur cluster",
+   "compartment": "c",
+   "formula": "S2Fe2",
+   "charge": 0
+  },
+  {
+   "id": "4fe4s[c_Ec]",
+   "name": "[4Fe-4S] iron-sulfur cluster",
+   "compartment": "c",
+   "formula": "S4Fe4",
+   "charge": 0
+  },
+  {
+   "id": "5mthf[c_Ec]",
+   "name": "5-Methyltetrahydrofolate",
+   "compartment": "c",
+   "formula": "C20H24N7O6",
+   "charge": 0
+  },
+  {
+   "id": "accoa[c_Ec]",
+   "name": "Acetyl-CoA",
+   "compartment": "c",
+   "formula": "C23H34N7O17P3S",
+   "charge": 0
+  },
+  {
+   "id": "adocbl[c_Ec]",
+   "name": "Adenosylcobalamin",
+   "compartment": "c",
+   "formula": "C72H100CoN18O17P",
+   "charge": 0
+  },
+  {
+   "id": "adp[c_Ec]",
+   "name": "ADP",
+   "compartment": "c",
+   "formula": "C10H12N5O10P2",
+   "charge": 0
+  },
+  {
+   "id": "ala-L[c_Ec]",
+   "name": "L-Alanine",
+   "compartment": "c",
+   "formula": "C3H7NO2",
+   "charge": 0
+  },
+  {
+   "id": "amet[c_Ec]",
+   "name": "S-Adenosyl-L-methionine",
+   "compartment": "c",
+   "formula": "C15H23N6O5S",
+   "charge": 0
+  },
+  {
+   "id": "arg-L[c_Ec]",
+   "name": "L-Arginine",
+   "compartment": "c",
+   "formula": "C6H15N4O2",
+   "charge": 0
+  },
+  {
+   "id": "asn-L[c_Ec]",
+   "name": "L-Asparagine",
+   "compartment": "c",
+   "formula": "C4H8N2O3",
+   "charge": 0
+  },
+  {
+   "id": "asp-L[c_Ec]",
+   "name": "L-Aspartate",
+   "compartment": "c",
+   "formula": "C4H6NO4",
+   "charge": 0
+  },
+  {
+   "id": "atp[c_Ec]",
+   "name": "ATP",
+   "compartment": "c",
+   "formula": "C10H12N5O13P3",
+   "charge": 0
+  },
+  {
+   "id": "bmocogdp[c_Ec]",
+   "name": "bis-molybdopterin guanine dinucleotide",
+   "compartment": "c",
+   "formula": "C40H44N20O27P4S4Mo",
+   "charge": 0
+  },
+  {
+   "id": "btn[c_Ec]",
+   "name": "Biotin",
+   "compartment": "c",
+   "formula": "C10H15N2O3S",
+   "charge": 0
+  },
+  {
+   "id": "ca2[c_Ec]",
+   "name": "Calcium",
+   "compartment": "c",
+   "formula": "Ca",
+   "charge": 0
+  },
+  {
+   "id": "chor[c_Ec]",
+   "name": "chorismate",
+   "compartment": "c",
+   "formula": "C10H8O6",
+   "charge": 0
+  },
+  {
+   "id": "cl[c_Ec]",
+   "name": "Chloride",
+   "compartment": "c",
+   "formula": "Cl",
+   "charge": 0
+  },
+  {
+   "id": "coa[c_Ec]",
+   "name": "Coenzyme A",
+   "compartment": "c",
+   "formula": "C21H32N7O16P3S",
+   "charge": 0
+  },
+  {
+   "id": "cobalt2[c_Ec]",
+   "name": "Co2+",
+   "compartment": "c",
+   "formula": "Co",
+   "charge": 0
+  },
+  {
+   "id": "ctp[c_Ec]",
+   "name": "CTP",
+   "compartment": "c",
+   "formula": "C9H12N3O14P3",
+   "charge": 0
+  },
+  {
+   "id": "cu2[c_Ec]",
+   "name": "Cu2+",
+   "compartment": "c",
+   "formula": "Cu",
+   "charge": 0
+  },
+  {
+   "id": "cys-L[c_Ec]",
+   "name": "L-Cysteine",
+   "compartment": "c",
+   "formula": "C3H7NO2S",
+   "charge": 0
+  },
+  {
+   "id": "datp[c_Ec]",
+   "name": "dATP",
+   "compartment": "c",
+   "formula": "C10H12N5O12P3",
+   "charge": 0
+  },
+  {
+   "id": "dctp[c_Ec]",
+   "name": "dCTP",
+   "compartment": "c",
+   "formula": "C9H12N3O13P3",
+   "charge": 0
+  },
+  {
+   "id": "dgtp[c_Ec]",
+   "name": "dGTP",
+   "compartment": "c",
+   "formula": "C10H12N5O13P3",
+   "charge": 0
+  },
+  {
+   "id": "dttp[c_Ec]",
+   "name": "dTTP",
+   "compartment": "c",
+   "formula": "C10H13N2O14P3",
+   "charge": 0
+  },
+  {
+   "id": "enter[c_Ec]",
+   "name": "Enterochelin",
+   "compartment": "c",
+   "formula": "C30H27N3O15",
+   "charge": 0
+  },
+  {
+   "id": "fad[c_Ec]",
+   "name": "Flavin adenine dinucleotide oxidized",
+   "compartment": "c",
+   "formula": "C27H31N9O15P2",
+   "charge": 0
+  },
+  {
+   "id": "fe2[c_Ec]",
+   "name": "Fe2+",
+   "compartment": "c",
+   "formula": "Fe",
+   "charge": 0
+  },
+  {
+   "id": "fe3[c_Ec]",
+   "name": "Fe3+",
+   "compartment": "c",
+   "formula": "Fe",
+   "charge": 0
+  },
+  {
+   "id": "gln-L[c_Ec]",
+   "name": "L-Glutamine",
+   "compartment": "c",
+   "formula": "C5H10N2O3",
+   "charge": 0
+  },
+  {
+   "id": "glu-L[c_Ec]",
+   "name": "L-Glutamate",
+   "compartment": "c",
+   "formula": "C5H8NO4",
+   "charge": 0
+  },
+  {
+   "id": "gly[c_Ec]",
+   "name": "Glycine",
+   "compartment": "c",
+   "formula": "C2H5NO2",
+   "charge": 0
+  },
+  {
+   "id": "glycogen[c_Ec]",
+   "name": "glycogen",
+   "compartment": "c",
+   "formula": "C6H10O5",
+   "charge": 0
+  },
+  {
+   "id": "gthrd[c_Ec]",
+   "name": "Reduced glutathione",
+   "compartment": "c",
+   "formula": "C10H16N3O6S",
+   "charge": 0
+  },
+  {
+   "id": "gtp[c_Ec]",
+   "name": "GTP",
+   "compartment": "c",
+   "formula": "C10H12N5O14P3",
+   "charge": 0
+  },
+  {
+   "id": "h[c_Ec]",
+   "name": "H+",
+   "compartment": "c",
+   "formula": "H",
+   "charge": 0
+  },
+  {
+   "id": "h2o[c_Ec]",
+   "name": "H2O",
+   "compartment": "c",
+   "formula": "H2O",
+   "charge": 0
+  },
+  {
+   "id": "hemeO[c_Ec]",
+   "name": "Heme O",
+   "compartment": "c",
+   "formula": "C49H56FeN4O5",
+   "charge": 0
+  },
+  {
+   "id": "his-L[c_Ec]",
+   "name": "L-Histidine",
+   "compartment": "c",
+   "formula": "C6H9N3O2",
+   "charge": 0
+  },
+  {
+   "id": "ile-L[c_Ec]",
+   "name": "L-Isoleucine",
+   "compartment": "c",
+   "formula": "C6H13NO2",
+   "charge": 0
+  },
+  {
+   "id": "k[c_Ec]",
+   "name": "potassium",
+   "compartment": "c",
+   "formula": "K",
+   "charge": 0
+  },
+  {
+   "id": "leu-L[c_Ec]",
+   "name": "L-Leucine",
+   "compartment": "c",
+   "formula": "C6H13NO2",
+   "charge": 0
+  },
+  {
+   "id": "lipopb[c_Ec]",
+   "name": "lipoate (protein bound)",
+   "compartment": "c",
+   "formula": "C8H13OS2",
+   "charge": 0
+  },
+  {
+   "id": "lys-L[c_Ec]",
+   "name": "L-Lysine",
+   "compartment": "c",
+   "formula": "C6H15N2O2",
+   "charge": 0
+  },
+  {
+   "id": "malcoa[c_Ec]",
+   "name": "Malonyl-CoA",
+   "compartment": "c",
+   "formula": "C24H33N7O19P3S",
+   "charge": 0
+  },
+  {
+   "id": "met-L[c_Ec]",
+   "name": "L-Methionine",
+   "compartment": "c",
+   "formula": "C5H11NO2S",
+   "charge": 0
+  },
+  {
+   "id": "mg2[c_Ec]",
+   "name": "magnesium",
+   "compartment": "c",
+   "formula": "Mg",
+   "charge": 0
+  },
+  {
+   "id": "mlthf[c_Ec]",
+   "name": "5,10-Methylenetetrahydrofolate",
+   "compartment": "c",
+   "formula": "C20H21N7O6",
+   "charge": 0
+  },
+  {
+   "id": "mn2[c_Ec]",
+   "name": "Mn2+",
+   "compartment": "c",
+   "formula": "Mn",
+   "charge": 0
+  },
+  {
+   "id": "mobd[c_Ec]",
+   "name": "Molybdate",
+   "compartment": "c",
+   "formula": "MoO4",
+   "charge": 0
+  },
+  {
+   "id": "mococdp[c_Ec]",
+   "name": "molybdopterin cytosine dinucleotide",
+   "compartment": "c",
+   "formula": "C19H22N8O15P2S2Mo",
+   "charge": 0
+  },
+  {
+   "id": "mocogdp[c_Ec]",
+   "name": "molybdopterin guanine dinucleotide",
+   "compartment": "c",
+   "formula": "C20H22N10O15P2S2Mo",
+   "charge": 0
+  },
+  {
+   "id": "mql8[c_Ec]",
+   "name": "Menaquinol 8",
+   "compartment": "c",
+   "formula": "C51H74O2",
+   "charge": 0
+  },
+  {
+   "id": "nad[c_Ec]",
+   "name": "Nicotinamide adenine dinucleotide",
+   "compartment": "c",
+   "formula": "C21H26N7O14P2",
+   "charge": 0
+  },
+  {
+   "id": "nadh[c_Ec]",
+   "name": "Nicotinamide adenine dinucleotide - reduced",
+   "compartment": "c",
+   "formula": "C21H27N7O14P2",
+   "charge": 0
+  },
+  {
+   "id": "nadp[c_Ec]",
+   "name": "Nicotinamide adenine dinucleotide phosphate",
+   "compartment": "c",
+   "formula": "C21H25N7O17P3",
+   "charge": 0
+  },
+  {
+   "id": "nadph[c_Ec]",
+   "name": "Nicotinamide adenine dinucleotide phosphate - reduced",
+   "compartment": "c",
+   "formula": "C21H26N7O17P3",
+   "charge": 0
+  },
+  {
+   "id": "nh4[c_Ec]",
+   "name": "Ammonium",
+   "compartment": "c",
+   "formula": "H4N",
+   "charge": 0
+  },
+  {
+   "id": "ni2[c_Ec]",
+   "name": "nickel",
+   "compartment": "c",
+   "formula": "Ni",
+   "charge": 0
+  },
+  {
+   "id": "pe160[c_Ec]",
+   "name": "phosphatidylethanolamine (dihexadecanoyl, n-C16:0)",
+   "compartment": "c",
+   "formula": "C37H74N1O8P1",
+   "charge": 0
+  },
+  {
+   "id": "pe161[c_Ec]",
+   "name": "phosphatidylethanolamine (dihexadec-9enoyl, n-C16:1)",
+   "compartment": "c",
+   "formula": "C37H70N1O8P1",
+   "charge": 0
+  },
+  {
+   "id": "pe181[c_Ec]",
+   "name": "phosphatidylethanolamine (dioctadec-11-enoyl, n-C18:1)",
+   "compartment": "c",
+   "formula": "C41H78N1O8P1",
+   "charge": 0
+  },
+  {
+   "id": "pg160[c_Ec]",
+   "name": "Phosphatidylglycerol (dihexadecanoyl, n-C16:0)",
+   "compartment": "c",
+   "formula": "C38H74O10P1",
+   "charge": 0
+  },
+  {
+   "id": "pg161[c_Ec]",
+   "name": "Phosphatidylglycerol (dihexadec-9-enoyl, n-C16:1)",
+   "compartment": "c",
+   "formula": "C38H70O10P1",
+   "charge": 0
+  },
+  {
+   "id": "pg181[c_Ec]",
+   "name": "Phosphatidylglycerol (dioctadec-11-enoyl, n-C18:1)",
+   "compartment": "c",
+   "formula": "C42H78O10P1",
+   "charge": 0
+  },
+  {
+   "id": "phe-L[c_Ec]",
+   "name": "L-Phenylalanine",
+   "compartment": "c",
+   "formula": "C9H11NO2",
+   "charge": 0
+  },
+  {
+   "id": "pheme[c_Ec]",
+   "name": "Protoheme",
+   "compartment": "c",
+   "formula": "C34H30FeN4O4",
+   "charge": 0
+  },
+  {
+   "id": "pi[c_Ec]",
+   "name": "Phosphate",
+   "compartment": "c",
+   "formula": "HO4P",
+   "charge": 0
+  },
+  {
+   "id": "ppi[c_Ec]",
+   "name": "Diphosphate",
+   "compartment": "c",
+   "formula": "HO7P2",
+   "charge": 0
+  },
+  {
+   "id": "pro-L[c_Ec]",
+   "name": "L-Proline",
+   "compartment": "c",
+   "formula": "C5H9NO2",
+   "charge": 0
+  },
+  {
+   "id": "ptrc[c_Ec]",
+   "name": "Putrescine",
+   "compartment": "c",
+   "formula": "C4H14N2",
+   "charge": 0
+  },
+  {
+   "id": "pydx5p[c_Ec]",
+   "name": "Pyridoxal 5'-phosphate",
+   "compartment": "c",
+   "formula": "C8H8NO6P",
+   "charge": 0
+  },
+  {
+   "id": "q8h2[c_Ec]",
+   "name": "Ubiquinol-8",
+   "compartment": "c",
+   "formula": "C49H76O4",
+   "charge": 0
+  },
+  {
+   "id": "ribflv[c_Ec]",
+   "name": "Riboflavin",
+   "compartment": "c",
+   "formula": "C17H20N4O6",
+   "charge": 0
+  },
+  {
+   "id": "ser-L[c_Ec]",
+   "name": "L-Serine",
+   "compartment": "c",
+   "formula": "C3H7NO3",
+   "charge": 0
+  },
+  {
+   "id": "sheme[c_Ec]",
+   "name": "Siroheme",
+   "compartment": "c",
+   "formula": "C42H36FeN4O16",
+   "charge": 0
+  },
+  {
+   "id": "so4[c_Ec]",
+   "name": "Sulfate",
+   "compartment": "c",
+   "formula": "O4S",
+   "charge": 0
+  },
+  {
+   "id": "spmd[c_Ec]",
+   "name": "Spermidine",
+   "compartment": "c",
+   "formula": "C7H22N3",
+   "charge": 0
+  },
+  {
+   "id": "succoa[c_Ec]",
+   "name": "Succinyl-CoA",
+   "compartment": "c",
+   "formula": "C25H35N7O19P3S",
+   "charge": 0
+  },
+  {
+   "id": "thf[c_Ec]",
+   "name": "5,6,7,8-Tetrahydrofolate",
+   "compartment": "c",
+   "formula": "C19H21N7O6",
+   "charge": 0
+  },
+  {
+   "id": "thmpp[c_Ec]",
+   "name": "Thiamine diphosphate",
+   "compartment": "c",
+   "formula": "C12H16N4O7P2S",
+   "charge": 0
+  },
+  {
+   "id": "thr-L[c_Ec]",
+   "name": "L-Threonine",
+   "compartment": "c",
+   "formula": "C4H9NO3",
+   "charge": 0
+  },
+  {
+   "id": "trp-L[c_Ec]",
+   "name": "L-Tryptophan",
+   "compartment": "c",
+   "formula": "C11H12N2O2",
+   "charge": 0
+  },
+  {
+   "id": "tyr-L[c_Ec]",
+   "name": "L-Tyrosine",
+   "compartment": "c",
+   "formula": "C9H11NO3",
+   "charge": 0
+  },
+  {
+   "id": "udcpdp[c_Ec]",
+   "name": "Undecaprenyl diphosphate",
+   "compartment": "c",
+   "formula": "C55H89O7P2",
+   "charge": 0
+  },
+  {
+   "id": "utp[c_Ec]",
+   "name": "UTP",
+   "compartment": "c",
+   "formula": "C9H11N2O15P3",
+   "charge": 0
+  },
+  {
+   "id": "val-L[c_Ec]",
+   "name": "L-Valine",
+   "compartment": "c",
+   "formula": "C5H11NO2",
+   "charge": 0
+  },
+  {
+   "id": "zn2[c_Ec]",
+   "name": "Zinc",
+   "compartment": "c",
+   "formula": "Zn",
+   "charge": 0
+  },
+  {
+   "id": "colipa[e_Ec]",
+   "name": "core oligosaccharide lipid A",
+   "compartment": "e",
+   "formula": "C176H303N2O100P4",
+   "charge": 0
+  },
+  {
+   "id": "clpn160[p_Ec]",
+   "name": "cardiolipin (tetrahexadecanoyl, n-C16:0)",
+   "compartment": "p",
+   "formula": "C73H140O17P2",
+   "charge": 0
+  },
+  {
+   "id": "clpn161[p_Ec]",
+   "name": "cardiolipin (tetrahexadec-9-enoyl, n-C16:1)",
+   "compartment": "p",
+   "formula": "C73H132O17P2",
+   "charge": 0
+  },
+  {
+   "id": "clpn181[p_Ec]",
+   "name": "cardiolipin (tetraoctadec-11-enoyl, n-C18:1)",
+   "compartment": "p",
+   "formula": "C81H148O17P2",
+   "charge": 0
+  },
+  {
+   "id": "murein3p3p[p_Ec]",
+   "name": "two linked disacharide tripeptide murein units (uncrosslinked, middle of chain)",
+   "compartment": "p",
+   "formula": "C68H104N12O38",
+   "charge": 0
+  },
+  {
+   "id": "murein3px4p[p_Ec]",
+   "name": "two disacharide linked murein units, tripeptide crosslinked tetrapeptide (A2pm->D-ala) (middle of chain)",
+   "compartment": "p",
+   "formula": "C71H107N13O38",
+   "charge": 0
+  },
+  {
+   "id": "murein4p4p[p_Ec]",
+   "name": "two linked disacharide tetrapeptide murein units (uncrosslinked, middle of chain)",
+   "compartment": "p",
+   "formula": "C74H114N14O40",
+   "charge": 0
+  },
+  {
+   "id": "murein4px4p[p_Ec]",
+   "name": "two disacharide linked murein units, tetrapeptide corsslinked tetrapeptide (A2pm->D-ala) (middle of chain)",
+   "compartment": "p",
+   "formula": "C74H112N14O39",
+   "charge": 0
+  },
+  {
+   "id": "murein4px4px4p[p_Ec]",
+   "name": "three disacharide linked murein units (tetrapeptide crosslinked tetrapeptide (A2pm->D-ala) & tetrapeptide corsslinked tetrapeptide (A2pm->D-ala)) (middle of chain)",
+   "compartment": "p",
+   "formula": "C111H167N21O58",
+   "charge": 0
+  },
+  {
+   "id": "pe160[p_Ec]",
+   "name": "phosphatidylethanolamine (dihexadecanoyl, n-C16:0)",
+   "compartment": "p",
+   "formula": "C37H74N1O8P1",
+   "charge": 0
+  },
+  {
+   "id": "pe161[p_Ec]",
+   "name": "phosphatidylethanolamine (dihexadec-9enoyl, n-C16:1)",
+   "compartment": "p",
+   "formula": "C37H70N1O8P1",
+   "charge": 0
+  },
+  {
+   "id": "pe181[p_Ec]",
+   "name": "phosphatidylethanolamine (dioctadec-11-enoyl, n-C18:1)",
+   "compartment": "p",
+   "formula": "C41H78N1O8P1",
+   "charge": 0
+  },
+  {
+   "id": "pg160[p_Ec]",
+   "name": "Phosphatidylglycerol (dihexadecanoyl, n-C16:0)",
+   "compartment": "p",
+   "formula": "C38H74O10P1",
+   "charge": 0
+  },
+  {
+   "id": "pg161[p_Ec]",
+   "name": "Phosphatidylglycerol (dihexadec-9-enoyl, n-C16:1)",
+   "compartment": "p",
+   "formula": "C38H70O10P1",
+   "charge": 0
+  },
+  {
+   "id": "pg181[p_Ec]",
+   "name": "Phosphatidylglycerol (dioctadec-11-enoyl, n-C18:1)",
+   "compartment": "p",
+   "formula": "C42H78O10P1",
+   "charge": 0
+  },
+  {
+   "id": "biomassEc[e_Ec]",
+   "name": "Biomass of Escherichia coli",
+   "compartment": "e",
+   "formula": "C40.871873006078694H64.23615080461988O15.728304291466067N10.512629782828661P0.927674480898195S0.24531778253536Co0.000247081363278Ca0.004953631218434Fe0.015532114686717K0.185751167397216Mg0.008255718587588Mn0.000658216749138Zn0.000324106727539Cu0.000674222019633Cl0.004953631218434Ni0.000307101127637Mo0.00013704512862",
+   "charge": 0
+  },
+  {
+   "id": "12ppd-R[e_Ec]",
+   "name": "(R)-Propane-1,2-diol",
+   "compartment": "e",
+   "formula": "C3H8O2",
+   "charge": 0
+  },
+  {
+   "id": "12ppd-S[e_Ec]",
+   "name": "(S)-Propane-1,2-diol",
+   "compartment": "e",
+   "formula": "C3H8O2",
+   "charge": 0
+  },
+  {
+   "id": "14glucan[e_Ec]",
+   "name": "1,4-alpha-D-glucan",
+   "compartment": "e",
+   "formula": "C36H62O31",
+   "charge": 0
+  },
+  {
+   "id": "15dap[e_Ec]",
+   "name": "1,5-Diaminopentane",
+   "compartment": "e",
+   "formula": "C5H16N2",
+   "charge": 0
+  },
+  {
+   "id": "23camp[e_Ec]",
+   "name": "2',3'-Cyclic AMP",
+   "compartment": "e",
+   "formula": "C10H11N5O6P",
+   "charge": 0
+  },
+  {
+   "id": "23ccmp[e_Ec]",
+   "name": "2',3'-Cyclic CMP",
+   "compartment": "e",
+   "formula": "C9H11N3O7P",
+   "charge": 0
+  },
+  {
+   "id": "23cgmp[e_Ec]",
+   "name": "2',3'-Cyclic GMP",
+   "compartment": "e",
+   "formula": "C10H11N5O7P",
+   "charge": 0
+  },
+  {
+   "id": "23cump[e_Ec]",
+   "name": "2',3'-Cyclic UMP",
+   "compartment": "e",
+   "formula": "C9H10N2O8P",
+   "charge": 0
+  },
+  {
+   "id": "12ppd-R[p_Ec]",
+   "name": "(R)-Propane-1,2-diol",
+   "compartment": "p",
+   "formula": "C3H8O2",
+   "charge": 0
+  },
+  {
+   "id": "12ppd-S[p_Ec]",
+   "name": "(S)-Propane-1,2-diol",
+   "compartment": "p",
+   "formula": "C3H8O2",
+   "charge": 0
+  },
+  {
+   "id": "14glucan[p_Ec]",
+   "name": "1,4-alpha-D-glucan",
+   "compartment": "p",
+   "formula": "C36H62O31",
+   "charge": 0
+  },
+  {
+   "id": "23camp[p_Ec]",
+   "name": "2',3'-Cyclic AMP",
+   "compartment": "p",
+   "formula": "C10H11N5O6P",
+   "charge": 0
+  },
+  {
+   "id": "23ccmp[p_Ec]",
+   "name": "2',3'-Cyclic CMP",
+   "compartment": "p",
+   "formula": "C9H11N3O7P",
+   "charge": 0
+  },
+  {
+   "id": "23cgmp[p_Ec]",
+   "name": "2',3'-Cyclic GMP",
+   "compartment": "p",
+   "formula": "C10H11N5O7P",
+   "charge": 0
+  },
+  {
+   "id": "23cump[p_Ec]",
+   "name": "2',3'-Cyclic UMP",
+   "compartment": "p",
+   "formula": "C9H10N2O8P",
+   "charge": 0
+  },
+  {
+   "id": "ala-D[c_Ec]",
+   "name": "D-Alanine",
+   "compartment": "c",
+   "formula": "C3H7NO2",
+   "charge": 0
+  },
+  {
+   "id": "pphn[c_Ec]",
+   "name": "Prephenate",
+   "compartment": "c",
+   "formula": "C10H8O6",
+   "charge": 0
+  },
+  {
+   "id": "cobalt2[p_Ec]",
+   "name": "Co2+",
+   "compartment": "p",
+   "formula": "Co",
+   "charge": 0
+  }
+ ],
+ "reactions": [
+  {
+   "id": "Ec_biomass_iJO1366_WT_53p95M_Ec",
+   "name": "E. coli biomass objective function (iJO1366) - WT - with 53.95 GAM estimate",
+   "metabolites": {
+    "10fthf[c_Ec]": -0.000223073458,
+    "2dmmql8[c_Ec]": -0.000223073458,
+    "2fe2s[c_Ec]": -0.000025008235,
+    "4fe4s[c_Ec]": -0.000248081693,
+    "5mthf[c_Ec]": -0.000223073458,
+    "accoa[c_Ec]": -0.000279091904,
+    "adocbl[c_Ec]": -0.000223073458,
+    "adp[c_Ec]": 53.95,
+    "ala-L[c_Ec]": -0.499313422668,
+    "amet[c_Ec]": -0.000223073458,
+    "arg-L[c_Ec]": -0.287514677868,
+    "asn-L[c_Ec]": -0.234309157423,
+    "asp-L[c_Ec]": -0.234309157423,
+    "atp[c_Ec]": -54.120030990782,
+    "bmocogdp[c_Ec]": -0.000116038211,
+    "btn[c_Ec]": -0.000002000659,
+    "ca2[c_Ec]": -0.004953631218,
+    "chor[c_Ec]": -0.000223073458,
+    "cl[c_Ec]": -0.004953631218,
+    "coa[c_Ec]": -0.00016805534,
+    "cobalt2[c_Ec]": -0.000024007906,
+    "ctp[c_Ec]": -0.129841756567,
+    "cu2[c_Ec]": -0.00067422202,
+    "cys-L[c_Ec]": -0.08901731318,
+    "datp[c_Ec]": -0.024813170915,
+    "dctp[c_Ec]": -0.025620436746,
+    "dgtp[c_Ec]": -0.025620436746,
+    "dttp[c_Ec]": -0.024813170915,
+    "enter[c_Ec]": -0.000223073458,
+    "fad[c_Ec]": -0.000223073458,
+    "fe2[c_Ec]": -0.006390104245,
+    "fe3[c_Ec]": -0.0074304468280000004,
+    "gln-L[c_Ec]": -0.255796233063,
+    "glu-L[c_Ec]": -0.255796233063,
+    "gly[c_Ec]": -0.595493094394,
+    "glycogen[c_Ec]": -0.15423779012,
+    "gthrd[c_Ec]": -0.000223073458,
+    "gtp[c_Ec]": -0.209189885709,
+    "h[c_Ec]": 53.95,
+    "h2o[c_Ec]": -48.75120404943,
+    "hemeO[c_Ec]": -0.000223073458,
+    "his-L[c_Ec]": -0.092086323797,
+    "ile-L[c_Ec]": -0.282398993286,
+    "k[c_Ec]": -0.185751167397,
+    "leu-L[c_Ec]": -0.437922206693,
+    "lipopb[c_Ec]": -0.000003000988,
+    "lys-L[c_Ec]": -0.333557839767,
+    "malcoa[c_Ec]": -0.000031010212,
+    "met-L[c_Ec]": -0.149385192172,
+    "mg2[c_Ec]": -0.008255718588,
+    "mlthf[c_Ec]": -0.000223073458,
+    "mn2[c_Ec]": -0.000658216749,
+    "mobd[c_Ec]": -0.000007002306,
+    "mococdp[c_Ec]": -0.000007002306,
+    "mocogdp[c_Ec]": -0.000007002306,
+    "mql8[c_Ec]": -0.000223073458,
+    "nad[c_Ec]": -0.001787588648,
+    "nadh[c_Ec]": -0.000045014823,
+    "nadp[c_Ec]": -0.000112036893,
+    "nadph[c_Ec]": -0.000335110351,
+    "nh4[c_Ec]": -0.012383077717,
+    "ni2[c_Ec]": -0.000307101128,
+    "pe160[c_Ec]": -0.012370073434,
+    "pe161[c_Ec]": -0.009621168227,
+    "pe181[c_Ec]": -0.004958632865,
+    "pg160[c_Ec]": -0.00570887992,
+    "pg161[c_Ec]": -0.004440462233,
+    "pg181[c_Ec]": -0.002288753681,
+    "phe-L[c_Ec]": -0.180080299995,
+    "pheme[c_Ec]": -0.000223073458,
+    "pi[c_Ec]": 53.945872640871,
+    "ppi[c_Ec]": 0.750077998819,
+    "pro-L[c_Ec]": -0.214868755747,
+    "ptrc[c_Ec]": -0.033280959337,
+    "pydx5p[c_Ec]": -0.000223073458,
+    "q8h2[c_Ec]": -0.000223073458,
+    "ribflv[c_Ec]": -0.000223073458,
+    "ser-L[c_Ec]": -0.209753071164,
+    "sheme[c_Ec]": -0.000223073458,
+    "so4[c_Ec]": -0.004127359129,
+    "spmd[c_Ec]": -0.006746221514,
+    "succoa[c_Ec]": -0.000098032282,
+    "thf[c_Ec]": -0.000223073458,
+    "thmpp[c_Ec]": -0.000223073458,
+    "thr-L[c_Ec]": -0.246587200552,
+    "trp-L[c_Ec]": -0.05525219441,
+    "tyr-L[c_Ec]": -0.134037138096,
+    "udcpdp[c_Ec]": -0.000055018117,
+    "utp[c_Ec]": -0.140147150108,
+    "val-L[c_Ec]": -0.41131944647,
+    "zn2[c_Ec]": -0.000324106728,
+    "colipa[e_Ec]": -0.008153684988,
+    "clpn160[p_Ec]": -0.002944969771,
+    "clpn161[p_Ec]": -0.00229075434,
+    "clpn181[p_Ec]": -0.001180388699,
+    "murein3p3p[p_Ec]": -0.001345443051,
+    "murein3px4p[p_Ec]": -0.000605199291,
+    "murein4p4p[p_Ec]": -0.005382772534,
+    "murein4px4p[p_Ec]": -0.005449794604,
+    "murein4px4px4p[p_Ec]": -0.00067322169,
+    "pe160[p_Ec]": -0.031808474451,
+    "pe161[p_Ec]": -0.024740146869,
+    "pe181[p_Ec]": -0.012751198938,
+    "pg160[p_Ec]": -0.004893611454,
+    "pg161[p_Ec]": -0.00380625339,
+    "pg181[p_Ec]": -0.001961645965,
+    "biomassEc[e_Ec]": 1
+   },
+   "lower_bound": 0,
+   "upper_bound": 1000,
+   "subsystem": ""
+  },
+  {
+   "id": "EX_12ppd-R(e)_Ec",
+   "name": "(R)-Propane-1,2-diol exchange",
+   "metabolites": {
+    "12ppd-R[e_Ec]": -1
+   },
+   "lower_bound": -1000,
+   "upper_bound": 1000,
+   "subsystem": ""
+  },
+  {
+   "id": "EX_12ppd-S(e)_Ec",
+   "name": "(S)-Propane-1,2-diol exchange",
+   "metabolites": {
+    "12ppd-S[e_Ec]": -1
+   },
+   "lower_bound": -1000,
+   "upper_bound": 1000,
+   "subsystem": ""
+  },
+  {
+   "id": "EX_14glucan(e)_Ec",
+   "name": "1,4-alpha-D-glucan exchange",
+   "metabolites": {
+    "14glucan[e_Ec]": -1
+   },
+   "lower_bound": -1000,
+   "upper_bound": 1000,
+   "subsystem": ""
+  },
+  {
+   "id": "EX_15dap(e)_Ec",
+   "name": "1,5-Diaminopentane exchange",
+   "metabolites": {
+    "15dap[e_Ec]": -1
+   },
+   "lower_bound": -1000,
+   "upper_bound": 1000,
+   "subsystem": ""
+  },
+  {
+   "id": "EX_23camp(e)_Ec",
+   "name": "2',3'-Cyclic AMP exchange",
+   "metabolites": {
+    "23camp[e_Ec]": -1
+   },
+   "lower_bound": -1000,
+   "upper_bound": 1000,
+   "subsystem": ""
+  },
+  {
+   "id": "EX_23ccmp(e)_Ec",
+   "name": "2',3'-Cyclic CMP exchange",
+   "metabolites": {
+    "23ccmp[e_Ec]": -1
+   },
+   "lower_bound": -1000,
+   "upper_bound": 1000,
+   "subsystem": ""
+  },
+  {
+   "id": "EX_23cgmp(e)_Ec",
+   "name": "2',3'-Cyclic GMP exchange",
+   "metabolites": {
+    "23cgmp[e_Ec]": -1
+   },
+   "lower_bound": -1000,
+   "upper_bound": 1000,
+   "subsystem": ""
+  },
+  {
+   "id": "EX_23cump(e)_Ec",
+   "name": "2',3'-Cyclic UMP exchange",
+   "metabolites": {
+    "23cump[e_Ec]": -1
+   },
+   "lower_bound": -1000,
+   "upper_bound": 1000,
+   "subsystem": ""
+  },
+  {
+   "id": "EX_colipa(e)_Ec",
+   "name": "core oligosaccharide lipid A exchange",
+   "metabolites": {
+    "colipa[e_Ec]": -1
+   },
+   "lower_bound": -1000,
+   "upper_bound": 1000,
+   "subsystem": ""
+  },
+  {
+   "id": "12PPDRtex_Ec",
+   "name": "(R)-Propane-1,2-diol transport via diffusion (extracellular to periplasm)",
+   "metabolites": {
+    "12ppd-R[e_Ec]": -1,
+    "12ppd-R[p_Ec]": 1
+   },
+   "lower_bound": -1000,
+   "upper_bound": 1000,
+   "subsystem": ""
+  },
+  {
+   "id": "12PPDStex_Ec",
+   "name": "(S)-Propane-1,2-diol transport via diffusion (extracellular to periplasm)",
+   "metabolites": {
+    "12ppd-S[e_Ec]": -1,
+    "12ppd-S[p_Ec]": 1
+   },
+   "lower_bound": -1000,
+   "upper_bound": 1000,
+   "subsystem": ""
+  },
+  {
+   "id": "14GLUCANtexi_Ec",
+   "name": "1,4-alpha-D-glucan transport via diffusion (extracellular to periplasm) irreversible",
+   "metabolites": {
+    "14glucan[e_Ec]": -1,
+    "14glucan[p_Ec]": 1
+   },
+   "lower_bound": 0,
+   "upper_bound": 1000,
+   "subsystem": ""
+  },
+  {
+   "id": "23CAMPtex_Ec",
+   "name": "23cAMP transport via diffusion (extracellular to periplasm)",
+   "metabolites": {
+    "23camp[e_Ec]": -1,
+    "23camp[p_Ec]": 1
+   },
+   "lower_bound": -1000,
+   "upper_bound": 1000,
+   "subsystem": ""
+  },
+  {
+   "id": "23CCMPtex_Ec",
+   "name": "23cCMP transport via diffusion (extracellular to periplasm)",
+   "metabolites": {
+    "23ccmp[e_Ec]": -1,
+    "23ccmp[p_Ec]": 1
+   },
+   "lower_bound": -1000,
+   "upper_bound": 1000,
+   "subsystem": ""
+  },
+  {
+   "id": "23CGMPtex_Ec",
+   "name": "23cGMP transport via diffusion (extracellular to periplasm)",
+   "metabolites": {
+    "23cgmp[e_Ec]": -1,
+    "23cgmp[p_Ec]": 1
+   },
+   "lower_bound": -1000,
+   "upper_bound": 1000,
+   "subsystem": ""
+  },
+  {
+   "id": "23CUMPtex_Ec",
+   "name": "23cUMP transport via diffusion (extracellular to periplasm)",
+   "metabolites": {
+    "23cump[e_Ec]": -1,
+    "23cump[p_Ec]": 1
+   },
+   "lower_bound": -1000,
+   "upper_bound": 1000,
+   "subsystem": ""
+  },
+  {
+   "id": "ALAR_Ec",
+   "name": "alanine racemase",
+   "metabolites": {
+    "ala-D[c_Ec]": 1,
+    "ala-L[c_Ec]": -1
+   },
+   "lower_bound": -1000,
+   "upper_bound": 1000,
+   "subsystem": ""
+  },
+  {
+   "id": "CHORM_Ec",
+   "name": "chorismate mutase",
+   "metabolites": {
+    "chor[c_Ec]": -1,
+    "pphn[c_Ec]": 1
+   },
+   "lower_bound": 0,
+   "upper_bound": 1000,
+   "subsystem": ""
+  },
+  {
+   "id": "COBALT2tpp_Ec",
+   "name": "cobalt transport in via permease (no H+)",
+   "metabolites": {
+    "cobalt2[c_Ec]": 1,
+    "cobalt2[p_Ec]": -1
+   },
+   "lower_bound": 0,
+   "upper_bound": 1000,
+   "subsystem": ""
+  }
+ ],
+ "genes": [],
+ "objective": {
+  "Ec_biomass_iJO1366_WT_53p95M_Ec": 1
+ }
+}

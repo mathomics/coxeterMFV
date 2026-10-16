@@ -1,0 +1,2704 @@
+{
+  "format": "EscherMCMCMap",
+  "version": 3,
+  "metadata": {
+    "createdAt": "2026-10-09T01:17:22.340Z",
+    "scenario": "published:steadycom-gut-nine",
+    "species": [
+      {
+        "id": "Ba",
+        "model": "published/steadycom-gut-nine/model-Ba"
+      },
+      {
+        "id": "Bt",
+        "model": "published/steadycom-gut-nine/model-Bt"
+      },
+      {
+        "id": "Ec",
+        "model": "published/steadycom-gut-nine/model-Ec"
+      },
+      {
+        "id": "Ef",
+        "model": "published/steadycom-gut-nine/model-Ef"
+      },
+      {
+        "id": "Er",
+        "model": "published/steadycom-gut-nine/model-Er"
+      },
+      {
+        "id": "Fp",
+        "model": "published/steadycom-gut-nine/model-Fp"
+      },
+      {
+        "id": "Kp",
+        "model": "published/steadycom-gut-nine/model-Kp"
+      },
+      {
+        "id": "Lc",
+        "model": "published/steadycom-gut-nine/model-Lc"
+      },
+      {
+        "id": "St",
+        "model": "published/steadycom-gut-nine/model-St"
+      }
+    ],
+    "reactionCount": 10,
+    "nodeCount": 31,
+    "segmentCount": 48,
+    "textCount": 0
+  },
+  "pathwayManager": {
+    "manual": [],
+    "settings": []
+  },
+  "fluxColorStops": [
+    {
+      "value": -106.911503098446,
+      "color": "#2563eb"
+    },
+    {
+      "value": -0.0001,
+      "color": "#80ff80"
+    },
+    {
+      "value": 0,
+      "color": "#ffffff"
+    },
+    {
+      "value": 0.0001,
+      "color": "#ff00ff"
+    },
+    {
+      "value": 320.734509295338,
+      "color": "#dc2626"
+    }
+  ],
+  "map": {
+    "version": 1,
+    "canvas": {
+      "width": 21322.117590566508,
+      "height": 15622.445446981586
+    },
+    "environment": {
+      "rect": {
+        "x": 418.5953976072308,
+        "y": 8.019999999999982,
+        "w": 20879.522192959277,
+        "h": 15590.425446981586
+      },
+      "id": "s",
+      "label": "Shared medium"
+    },
+    "cells": [
+      {
+        "id": "Bt",
+        "name": "Bt",
+        "organism": "Bacteroides thetaiotamicron",
+        "note": "1443 reactions in the full model",
+        "color": "#0284c7",
+        "abundance": 0.1111111111111111,
+        "rect": {
+          "x": 436.5953976072308,
+          "y": 261.82385685677514,
+          "w": 4433.042563440874,
+          "h": 3554.829862753759
+        },
+        "compartments": [
+          {
+            "id": "e",
+            "rect": {
+              "x": 436.5953976072308,
+              "y": 261.82385685677514,
+              "w": 4433.042563440874,
+              "h": 3554.829862753759
+            },
+            "depth": 0,
+            "parentId": null,
+            "label": "Extracellular",
+            "membrane": "open",
+            "visualId": "e"
+          },
+          {
+            "id": "c",
+            "rect": {
+              "x": 686.993928161755,
+              "y": 599.1819775426568,
+              "w": 3807.684707576222,
+              "h": 2807.6021741457457
+            },
+            "depth": 1,
+            "parentId": "e",
+            "label": "Cytosol",
+            "membrane": "bilayer",
+            "visualId": "c"
+          }
+        ],
+        "outerCompartment": "e"
+      },
+      {
+        "id": "Fp",
+        "name": "Fp",
+        "organism": "Faecalibacterium prausnitzii",
+        "note": "804 reactions in the full model",
+        "color": "#d97706",
+        "abundance": 0.1111111111111111,
+        "rect": {
+          "x": 6066.459110504298,
+          "y": 412.32644716875495,
+          "w": 4257.912017252334,
+          "h": 3439.7156556720947
+        },
+        "compartments": [
+          {
+            "id": "e",
+            "rect": {
+              "x": 6066.459110504298,
+              "y": 412.32644716875495,
+              "w": 4257.912017252334,
+              "h": 3439.7156556720947
+            },
+            "depth": 0,
+            "parentId": null,
+            "label": "Extracellular",
+            "membrane": "open",
+            "visualId": "e"
+          },
+          {
+            "id": "c",
+            "rect": {
+              "x": 6376.459110504297,
+              "y": 502.32644716875495,
+              "w": 3777.9120172523344,
+              "h": 3039.7156556720947
+            },
+            "depth": 1,
+            "parentId": "e",
+            "label": "Cytosol",
+            "membrane": "bilayer",
+            "visualId": "c"
+          }
+        ],
+        "outerCompartment": "e"
+      },
+      {
+        "id": "Kp",
+        "name": "Kp",
+        "organism": "Klebsiella pneumonia",
+        "note": "1960 reactions in the full model",
+        "color": "#16a34a",
+        "abundance": 0.1111111111111111,
+        "rect": {
+          "x": 7974.565179829145,
+          "y": 4619.337280955684,
+          "w": 5667.333333333331,
+          "h": 4837.4
+        },
+        "compartments": [
+          {
+            "id": "e",
+            "rect": {
+              "x": 7974.565179829145,
+              "y": 4619.337280955684,
+              "w": 5667.333333333331,
+              "h": 4837.4
+            },
+            "depth": 0,
+            "parentId": null,
+            "label": "Extracellular",
+            "membrane": "open",
+            "visualId": "e"
+          },
+          {
+            "id": "p",
+            "rect": {
+              "x": 8304.933919825131,
+              "y": 4849.337280955684,
+              "w": 4906.964593337345,
+              "h": 4357.4
+            },
+            "depth": 1,
+            "parentId": "e",
+            "label": "Periplasm",
+            "membrane": "bilayer",
+            "visualId": "p"
+          },
+          {
+            "id": "c",
+            "rect": {
+              "x": 8831.712701725495,
+              "y": 5059.337280955684,
+              "w": 4013.407029536622,
+              "h": 3876.5428597190985
+            },
+            "depth": 2,
+            "parentId": "p",
+            "label": "Cytosol",
+            "membrane": "bilayer",
+            "visualId": "c"
+          }
+        ],
+        "outerCompartment": "e"
+      },
+      {
+        "id": "St",
+        "name": "St",
+        "organism": "Streptococcus thermophilus",
+        "note": "467 reactions in the full model",
+        "color": "#7c3aed",
+        "abundance": 0.1111111111111111,
+        "rect": {
+          "x": 1672.8000000000002,
+          "y": 4548.8,
+          "w": 4607.333333333332,
+          "h": 3937.4000000000005
+        },
+        "compartments": [
+          {
+            "id": "e",
+            "rect": {
+              "x": 1672.8000000000002,
+              "y": 4548.8,
+              "w": 4607.333333333332,
+              "h": 3937.4000000000005
+            },
+            "depth": 0,
+            "parentId": null,
+            "label": "Extracellular",
+            "membrane": "open",
+            "visualId": "e"
+          },
+          {
+            "id": "c",
+            "rect": {
+              "x": 2097.103022105684,
+              "y": 4825.0073012409575,
+              "w": 3738.727289121965,
+              "h": 3364.985397518085
+            },
+            "depth": 1,
+            "parentId": "e",
+            "label": "Cytosol",
+            "membrane": "bilayer",
+            "visualId": "c"
+          }
+        ],
+        "outerCompartment": "e"
+      },
+      {
+        "id": "Ba",
+        "name": "Ba",
+        "organism": "Bifidobacterium adolescentis",
+        "note": "718 reactions in the full model",
+        "color": "#db2777",
+        "abundance": 0.1111111111111111,
+        "rect": {
+          "x": 18812.784257233176,
+          "y": 1168.8000000000002,
+          "w": 2467.333333333333,
+          "h": 1877.4000000000005
+        },
+        "compartments": [
+          {
+            "id": "e",
+            "rect": {
+              "x": 18812.784257233176,
+              "y": 1168.8000000000002,
+              "w": 2467.333333333333,
+              "h": 1877.4000000000005
+            },
+            "depth": 0,
+            "parentId": null,
+            "label": "Extracellular",
+            "membrane": "open",
+            "visualId": "e"
+          },
+          {
+            "id": "c",
+            "rect": {
+              "x": 19185.698384490654,
+              "y": 1468.8000000000002,
+              "w": 1701.5050788183803,
+              "h": 1357.4000000000003
+            },
+            "depth": 1,
+            "parentId": "e",
+            "label": "Cytosol",
+            "membrane": "bilayer",
+            "visualId": "c"
+          }
+        ],
+        "outerCompartment": "e"
+      },
+      {
+        "id": "Ec",
+        "name": "Ec",
+        "organism": "Escherichia coli",
+        "note": "2404 reactions in the full model",
+        "color": "#0891b2",
+        "abundance": 0.1111111111111111,
+        "rect": {
+          "x": 14352.040677549123,
+          "y": 3987.1192794018116,
+          "w": 6728.0769130173885,
+          "h": 5618.247706452294
+        },
+        "compartments": [
+          {
+            "id": "e",
+            "rect": {
+              "x": 14352.040677549123,
+              "y": 3987.1192794018116,
+              "w": 6728.0769130173885,
+              "h": 5618.247706452294
+            },
+            "depth": 0,
+            "parentId": null,
+            "label": "Extracellular",
+            "membrane": "open",
+            "visualId": "e"
+          },
+          {
+            "id": "p",
+            "rect": {
+              "x": 15062.040677549123,
+              "y": 4467.119279401812,
+              "w": 5167.333333333334,
+              "h": 4617.4
+            },
+            "depth": 1,
+            "parentId": "e",
+            "label": "Periplasm",
+            "membrane": "bilayer",
+            "visualId": "p"
+          },
+          {
+            "id": "c",
+            "rect": {
+              "x": 15725.840921754772,
+              "y": 4974.01161522815,
+              "w": 3814.338696464549,
+              "h": 3406.312402576068
+            },
+            "depth": 2,
+            "parentId": "p",
+            "label": "Cytosol",
+            "membrane": "bilayer",
+            "visualId": "c"
+          }
+        ],
+        "outerCompartment": "e"
+      },
+      {
+        "id": "Ef",
+        "name": "Ef",
+        "organism": "Enterococcus faecalis",
+        "note": "539 reactions in the full model",
+        "color": "#ca8a04",
+        "abundance": 0.1111111111111111,
+        "rect": {
+          "x": 720.0566216440175,
+          "y": 9553.045446981585,
+          "w": 5983.276711689315,
+          "h": 5727.4000000000015
+        },
+        "compartments": [
+          {
+            "id": "e",
+            "rect": {
+              "x": 720.0566216440175,
+              "y": 9553.045446981585,
+              "w": 5983.276711689315,
+              "h": 5727.4000000000015
+            },
+            "depth": 0,
+            "parentId": null,
+            "label": "Extracellular",
+            "membrane": "open",
+            "visualId": "e"
+          },
+          {
+            "id": "c",
+            "rect": {
+              "x": 1010.0566216440175,
+              "y": 9863.045446981585,
+              "w": 5403.276711689315,
+              "h": 5107.4000000000015
+            },
+            "depth": 1,
+            "parentId": "e",
+            "label": "Cytosol",
+            "membrane": "bilayer",
+            "visualId": "c"
+          }
+        ],
+        "outerCompartment": "e"
+      },
+      {
+        "id": "Er",
+        "name": "Er",
+        "organism": "Eubacterium rectale",
+        "note": "457 reactions in the full model",
+        "color": "#dc2626",
+        "abundance": 0.1111111111111111,
+        "rect": {
+          "x": 8223.333333333332,
+          "y": 10183.045446981587,
+          "w": 5187.333333333332,
+          "h": 5297.4
+        },
+        "compartments": [
+          {
+            "id": "e",
+            "rect": {
+              "x": 8223.333333333332,
+              "y": 10183.045446981587,
+              "w": 5187.333333333332,
+              "h": 5297.4
+            },
+            "depth": 0,
+            "parentId": null,
+            "label": "Extracellular",
+            "membrane": "open",
+            "visualId": "e"
+          },
+          {
+            "id": "c",
+            "rect": {
+              "x": 8760.669445827218,
+              "y": 10563.38783673017,
+              "w": 4212.661108345563,
+              "h": 4616.715220502836
+            },
+            "depth": 1,
+            "parentId": "e",
+            "label": "Cytosol",
+            "membrane": "bilayer",
+            "visualId": "c"
+          }
+        ],
+        "outerCompartment": "e"
+      },
+      {
+        "id": "Lc",
+        "name": "Lc",
+        "organism": "Lactobacillus casei",
+        "note": "1101 reactions in the full model",
+        "color": "#4f46e5",
+        "abundance": 0.1111111111111111,
+        "rect": {
+          "x": 14571.40218752336,
+          "y": 10542.977034008265,
+          "w": 6170.374679286942,
+          "h": 4800.886943541154
+        },
+        "compartments": [
+          {
+            "id": "e",
+            "rect": {
+              "x": 14571.40218752336,
+              "y": 10542.977034008265,
+              "w": 6170.374679286942,
+              "h": 4800.886943541154
+            },
+            "depth": 0,
+            "parentId": null,
+            "label": "Extracellular",
+            "membrane": "open",
+            "visualId": "e"
+          },
+          {
+            "id": "c",
+            "rect": {
+              "x": 15275.71678725534,
+              "y": 11132.662938252157,
+              "w": 4906.123618539226,
+              "h": 3785.00207859452
+            },
+            "depth": 1,
+            "parentId": "e",
+            "label": "Cytosol",
+            "membrane": "bilayer",
+            "visualId": "c"
+          }
+        ],
+        "outerCompartment": "e"
+      }
+    ],
+    "medium": {
+      "nodes": [
+        "met:Bt@EX_pect[u]tr_Bt:M@pect_s",
+        "met:Bt@EX_starch1200[u]tr_Bt:M@starch1200_s"
+      ],
+      "exchanges": []
+    },
+    "nodes": [
+      {
+        "id": "met:Bt@PGI_Bt:Bt@f6p[c_Bt]",
+        "kind": "metabolite",
+        "mergedId": "Bt@f6p[c_Bt]",
+        "localId": "f6p[c_Bt]",
+        "base": "f6p[c_Bt]",
+        "name": "f6p[c_Bt]",
+        "formula": "C6H11O9P",
+        "compartment": "c",
+        "cellId": "Bt",
+        "reactionLocalFor": "Bt@PGI_Bt",
+        "reactionLocal": true,
+        "x": 1547.2333548664099,
+        "y": 835.5043012823257,
+        "r": 13,
+        "primary": true,
+        "visualRole": "primary",
+        "sharedInstance": true
+      },
+      {
+        "id": "met:Bt@PGI_Bt:Bt@g6p[c_Bt]",
+        "kind": "metabolite",
+        "mergedId": "Bt@g6p[c_Bt]",
+        "localId": "g6p[c_Bt]",
+        "base": "g6p[c_Bt]",
+        "name": "g6p[c_Bt]",
+        "formula": "C6H11O9P",
+        "compartment": "c",
+        "cellId": "Bt",
+        "reactionLocalFor": "Bt@PGI_Bt",
+        "reactionLocal": true,
+        "x": 1547.2333548664099,
+        "y": 691.5043012823257,
+        "r": 13,
+        "primary": true,
+        "visualRole": "primary"
+      },
+      {
+        "id": "met:Bt@PFK_Bt:Bt@h[c_Bt]",
+        "kind": "metabolite",
+        "mergedId": "Bt@h[c_Bt]",
+        "localId": "h[c_Bt]",
+        "base": "h[c_Bt]",
+        "name": "h[c_Bt]",
+        "formula": "H",
+        "compartment": "c",
+        "cellId": "Bt",
+        "reactionLocalFor": "Bt@PFK_Bt",
+        "reactionLocal": true,
+        "x": 1619.8227222290684,
+        "y": 1003.0347319087184,
+        "r": 13,
+        "primary": true,
+        "visualRole": "primary"
+      },
+      {
+        "id": "met:Bt@PFK_Bt:Bt@atp[c_Bt]",
+        "kind": "metabolite",
+        "mergedId": "Bt@atp[c_Bt]",
+        "localId": "atp[c_Bt]",
+        "base": "atp[c_Bt]",
+        "name": "atp[c_Bt]",
+        "formula": "C10H12N5O13P3",
+        "compartment": "c",
+        "cellId": "Bt",
+        "reactionLocalFor": "Bt@PFK_Bt",
+        "reactionLocal": true,
+        "x": 1605.4748753610318,
+        "y": 860.5632380185917,
+        "r": 13,
+        "primary": true,
+        "visualRole": "primary",
+        "labelAngle": -0.317267609761143
+      },
+      {
+        "id": "met:Bt@PFK_Bt:Bt@adp[c_Bt]",
+        "kind": "metabolite",
+        "mergedId": "Bt@adp[c_Bt]",
+        "localId": "adp[c_Bt]",
+        "base": "adp[c_Bt]",
+        "name": "adp[c_Bt]",
+        "formula": "C10H12N5O10P2",
+        "compartment": "c",
+        "cellId": "Bt",
+        "reactionLocalFor": "Bt@PFK_Bt",
+        "reactionLocal": true,
+        "x": 1472.0488465915344,
+        "y": 1001.3864278097942,
+        "r": 13,
+        "primary": true,
+        "visualRole": "primary"
+      },
+      {
+        "id": "met:Bt@PFK_Bt:Bt@fdp[c_Bt]",
+        "kind": "metabolite",
+        "mergedId": "Bt@fdp[c_Bt]",
+        "localId": "fdp[c_Bt]",
+        "base": "fdp[c_Bt]",
+        "name": "fdp[c_Bt]",
+        "formula": "C6H10O12P2",
+        "compartment": "c",
+        "cellId": "Bt",
+        "reactionLocalFor": "Bt@PFK_Bt",
+        "reactionLocal": true,
+        "x": 1547.2333548664099,
+        "y": 1034.0106564571797,
+        "r": 13,
+        "primary": true,
+        "visualRole": "primary",
+        "sharedInstance": true,
+        "labelAngle": 0.01949501200619541
+      },
+      {
+        "id": "met:Bt@FBA_Bt:Bt@dhap[c_Bt]",
+        "kind": "metabolite",
+        "mergedId": "Bt@dhap[c_Bt]",
+        "localId": "dhap[c_Bt]",
+        "base": "dhap[c_Bt]",
+        "name": "dhap[c_Bt]",
+        "formula": "C3H5O6P",
+        "compartment": "c",
+        "cellId": "Bt",
+        "reactionLocalFor": "Bt@FBA_Bt",
+        "reactionLocal": true,
+        "x": 1421.2198832507738,
+        "y": 1199.8927829846482,
+        "r": 13,
+        "primary": true,
+        "visualRole": "primary"
+      },
+      {
+        "id": "met:Bt@FBA_Bt:Bt@g3p[c_Bt]",
+        "kind": "metabolite",
+        "mergedId": "Bt@g3p[c_Bt]",
+        "localId": "g3p[c_Bt]",
+        "base": "g3p[c_Bt]",
+        "name": "g3p[c_Bt]",
+        "formula": "C3H5O6P",
+        "compartment": "c",
+        "cellId": "Bt",
+        "reactionLocalFor": "Bt@FBA_Bt",
+        "reactionLocal": true,
+        "x": 1554.9816201047245,
+        "y": 1222.6897554030595,
+        "r": 13,
+        "primary": true,
+        "visualRole": "primary",
+        "sharedInstance": true
+      },
+      {
+        "id": "met:Bt@GAPD_Bt:Bt@h[c_Bt]",
+        "kind": "metabolite",
+        "mergedId": "Bt@h[c_Bt]",
+        "localId": "h[c_Bt]",
+        "base": "h[c_Bt]",
+        "name": "h[c_Bt]",
+        "formula": "H",
+        "compartment": "c",
+        "cellId": "Bt",
+        "reactionLocalFor": "Bt@GAPD_Bt",
+        "reactionLocal": true,
+        "x": 1482.638213954193,
+        "y": 1380.3972136429823,
+        "r": 13,
+        "primary": true,
+        "visualRole": "primary",
+        "labelAngle": -2.390359628557847
+      },
+      {
+        "id": "met:Bt@GAPD_Bt:Bt@nad[c_Bt]",
+        "kind": "metabolite",
+        "mergedId": "Bt@nad[c_Bt]",
+        "localId": "nad[c_Bt]",
+        "base": "nad[c_Bt]",
+        "name": "nad[c_Bt]",
+        "formula": "C21H26N7O14P2",
+        "compartment": "c",
+        "cellId": "Bt",
+        "reactionLocalFor": "Bt@GAPD_Bt",
+        "reactionLocal": true,
+        "x": 1485.8150241629905,
+        "y": 1245.9276442693752,
+        "r": 13,
+        "primary": true,
+        "visualRole": "primary",
+        "labelAngle": 3.1204737691551383
+      },
+      {
+        "id": "met:Bt@GAPD_Bt:Bt@nadh[c_Bt]",
+        "kind": "metabolite",
+        "mergedId": "Bt@nadh[c_Bt]",
+        "localId": "nadh[c_Bt]",
+        "base": "nadh[c_Bt]",
+        "name": "nadh[c_Bt]",
+        "formula": "C21H27N7O14P2",
+        "compartment": "c",
+        "cellId": "Bt",
+        "reactionLocalFor": "Bt@GAPD_Bt",
+        "reactionLocal": true,
+        "x": 1609.2333548664099,
+        "y": 1380.986581005641,
+        "r": 13,
+        "primary": true,
+        "visualRole": "primary",
+        "labelAngle": -0.9883865387083552
+      },
+      {
+        "id": "met:Bt@GAPD_Bt:Bt@pi[c_Bt]",
+        "kind": "metabolite",
+        "mergedId": "Bt@pi[c_Bt]",
+        "localId": "pi[c_Bt]",
+        "base": "pi[c_Bt]",
+        "name": "pi[c_Bt]",
+        "formula": "HO4P",
+        "compartment": "c",
+        "cellId": "Bt",
+        "reactionLocalFor": "Bt@GAPD_Bt",
+        "reactionLocal": true,
+        "x": 1609.2333548664099,
+        "y": 1256.986581005641,
+        "r": 13,
+        "primary": true,
+        "visualRole": "primary",
+        "labelAngle": -0.08974772616566096
+      },
+      {
+        "id": "met:Bt@GAPD_Bt:Bt@13dpg[c_Bt]",
+        "kind": "metabolite",
+        "mergedId": "Bt@13dpg[c_Bt]",
+        "localId": "13dpg[c_Bt]",
+        "base": "13dpg[c_Bt]",
+        "name": "13dpg[c_Bt]",
+        "formula": "C3H4O10P2",
+        "compartment": "c",
+        "cellId": "Bt",
+        "reactionLocalFor": "Bt@GAPD_Bt",
+        "reactionLocal": true,
+        "x": 1554.9816201047245,
+        "y": 1416.4693570528682,
+        "r": 13,
+        "primary": true,
+        "visualRole": "primary",
+        "labelAngle": 0.5606564201397592,
+        "sharedInstance": true
+      },
+      {
+        "id": "met:Bt@PGK_Bt:Bt@atp[c_Bt]",
+        "kind": "metabolite",
+        "mergedId": "Bt@atp[c_Bt]",
+        "localId": "atp[c_Bt]",
+        "base": "atp[c_Bt]",
+        "name": "atp[c_Bt]",
+        "formula": "C10H12N5O13P3",
+        "compartment": "c",
+        "cellId": "Bt",
+        "reactionLocalFor": "Bt@PGK_Bt",
+        "reactionLocal": true,
+        "x": 1453.3236934232027,
+        "y": 1577.0567998990075,
+        "r": 13,
+        "primary": true,
+        "visualRole": "primary",
+        "labelAngle": -0.2874401709181045
+      },
+      {
+        "id": "met:Bt@PGK_Bt:Bt@adp[c_Bt]",
+        "kind": "metabolite",
+        "mergedId": "Bt@adp[c_Bt]",
+        "localId": "adp[c_Bt]",
+        "base": "adp[c_Bt]",
+        "name": "adp[c_Bt]",
+        "formula": "C10H12N5O10P2",
+        "compartment": "c",
+        "cellId": "Bt",
+        "reactionLocalFor": "Bt@PGK_Bt",
+        "reactionLocal": true,
+        "x": 1479.7971118298492,
+        "y": 1446.8229774704635,
+        "r": 13,
+        "primary": true,
+        "visualRole": "primary",
+        "labelAngle": -1.9203003902630549
+      },
+      {
+        "id": "met:Bt@PGK_Bt:Bt@3pg[c_Bt]",
+        "kind": "metabolite",
+        "mergedId": "Bt@3pg[c_Bt]",
+        "localId": "3pg[c_Bt]",
+        "base": "3pg[c_Bt]",
+        "name": "3pg[c_Bt]",
+        "formula": "C3H4O7P",
+        "compartment": "c",
+        "cellId": "Bt",
+        "reactionLocalFor": "Bt@PGK_Bt",
+        "reactionLocal": true,
+        "x": 1554.3999508081438,
+        "y": 1630.5930040749583,
+        "r": 13,
+        "primary": true,
+        "visualRole": "primary"
+      },
+      {
+        "id": "met:Bt@PECTIN_DEGe_Bt:Bt@h2o[e_Bt]",
+        "kind": "metabolite",
+        "mergedId": "Bt@h2o[e_Bt]",
+        "localId": "h2o[e_Bt]",
+        "base": "h2o[e_Bt]",
+        "name": "H2O",
+        "formula": "H2O",
+        "compartment": "e",
+        "cellId": "Bt",
+        "reactionLocalFor": "Bt@PECTIN_DEGe_Bt",
+        "reactionLocal": true,
+        "x": 1619.7336561494253,
+        "y": 380.96552247191306,
+        "r": 13,
+        "primary": true,
+        "visualRole": "primary"
+      },
+      {
+        "id": "met:Bt@PECTIN_DEGe_Bt:Bt@h[e_Bt]",
+        "kind": "metabolite",
+        "mergedId": "Bt@h[e_Bt]",
+        "localId": "h[e_Bt]",
+        "base": "h[e_Bt]",
+        "name": "H+",
+        "formula": "H",
+        "compartment": "e",
+        "cellId": "Bt",
+        "reactionLocalFor": "Bt@PECTIN_DEGe_Bt",
+        "reactionLocal": true,
+        "x": 1558.286759651959,
+        "y": 359.8610408426435,
+        "r": 13,
+        "primary": true,
+        "visualRole": "primary"
+      },
+      {
+        "id": "met:Bt@PECTIN_DEGe_Bt:Bt@galur[e_Bt]",
+        "kind": "metabolite",
+        "mergedId": "Bt@galur[e_Bt]",
+        "localId": "galur[e_Bt]",
+        "base": "galur[e_Bt]",
+        "name": "D-Galacturonate",
+        "formula": "C6H9O7",
+        "compartment": "e",
+        "cellId": "Bt",
+        "reactionLocalFor": "Bt@PECTIN_DEGe_Bt",
+        "reactionLocal": true,
+        "x": 1192.7405564592718,
+        "y": 502.3162918402133,
+        "r": 13,
+        "primary": true,
+        "visualRole": "primary"
+      },
+      {
+        "id": "met:Bt@PECTIN_DEGe_Bt:Bt@meoh[e_Bt]",
+        "kind": "metabolite",
+        "mergedId": "Bt@meoh[e_Bt]",
+        "localId": "meoh[e_Bt]",
+        "base": "meoh[e_Bt]",
+        "name": "Methanol",
+        "formula": "CH4O",
+        "compartment": "e",
+        "cellId": "Bt",
+        "reactionLocalFor": "Bt@PECTIN_DEGe_Bt",
+        "reactionLocal": true,
+        "x": 1147.341292182439,
+        "y": 383.6035826755718,
+        "r": 13,
+        "primary": true,
+        "visualRole": "primary"
+      },
+      {
+        "id": "met:Bt@PECTIN_DEG2e_Bt:Bt@h[e_Bt]",
+        "kind": "metabolite",
+        "mergedId": "Bt@h[e_Bt]",
+        "localId": "h[e_Bt]",
+        "base": "h[e_Bt]",
+        "name": "H+",
+        "formula": "H",
+        "compartment": "e",
+        "cellId": "Bt",
+        "reactionLocalFor": "Bt@PECTIN_DEG2e_Bt",
+        "reactionLocal": true,
+        "x": 1973.0331237854086,
+        "y": 522.0171499588475,
+        "r": 13,
+        "primary": true,
+        "visualRole": "primary"
+      },
+      {
+        "id": "met:Bt@PECTIN_DEG2e_Bt:Bt@meoh[e_Bt]",
+        "kind": "metabolite",
+        "mergedId": "Bt@meoh[e_Bt]",
+        "localId": "meoh[e_Bt]",
+        "base": "meoh[e_Bt]",
+        "name": "Methanol",
+        "formula": "CH4O",
+        "compartment": "e",
+        "cellId": "Bt",
+        "reactionLocalFor": "Bt@PECTIN_DEG2e_Bt",
+        "reactionLocal": true,
+        "x": 2240.9919267505115,
+        "y": 519.4873784697637,
+        "r": 13,
+        "primary": true,
+        "visualRole": "primary"
+      },
+      {
+        "id": "met:Bt@PECTIN_DEG2e_Bt:Bt@pect[e_Bt]",
+        "kind": "metabolite",
+        "mergedId": "Bt@pect[e_Bt]",
+        "localId": "pect[e_Bt]",
+        "base": "pect[e_Bt]",
+        "name": "pectins",
+        "formula": "C2535H3509O2535",
+        "compartment": "e",
+        "cellId": "Bt",
+        "reactionLocalFor": "Bt@PECTIN_DEG2e_Bt",
+        "reactionLocal": true,
+        "x": 1967.962783565481,
+        "y": 394.24309124267035,
+        "r": 13,
+        "primary": true,
+        "visualRole": "primary",
+        "sharedInstance": true,
+        "hidden": false
+      },
+      {
+        "id": "met:Bt@PECTIN_DEG2e_Bt:Bt@unsdigalur[e_Bt]",
+        "kind": "metabolite",
+        "mergedId": "Bt@unsdigalur[e_Bt]",
+        "localId": "unsdigalur[e_Bt]",
+        "base": "unsdigalur[e_Bt]",
+        "name": "4-(4-Deoxy-alpha-D-gluc-4-enuronosyl)-D-galacturonate, Unsaturated digalacturonate",
+        "formula": "C12H14O12",
+        "compartment": "e",
+        "cellId": "Bt",
+        "reactionLocalFor": "Bt@PECTIN_DEG2e_Bt",
+        "reactionLocal": true,
+        "x": 2291.706442488521,
+        "y": 391.7133197535866,
+        "r": 13,
+        "primary": true,
+        "visualRole": "primary"
+      },
+      {
+        "id": "met:Bt@EX_pect[u]tr_Bt:M@pect_s",
+        "kind": "medium",
+        "mergedId": "M@pect_s",
+        "localId": "pect",
+        "base": "pect",
+        "name": "pectins",
+        "formula": "C2535H3509O2535",
+        "compartment": "s",
+        "cellId": null,
+        "reactionLocalFor": "Bt@EX_pect[u]tr_Bt",
+        "reactionLocal": true,
+        "x": 1967.1460944273201,
+        "y": 136.3413977170119,
+        "r": 13,
+        "primary": true,
+        "visualRole": "primary"
+      },
+      {
+        "id": "met:Bt@AMYe_Bt:Bt@h2o[e_Bt]",
+        "kind": "metabolite",
+        "mergedId": "Bt@h2o[e_Bt]",
+        "localId": "h2o[e_Bt]",
+        "base": "h2o[e_Bt]",
+        "name": "H2O",
+        "formula": "H2O",
+        "compartment": "e",
+        "cellId": "Bt",
+        "reactionLocalFor": "Bt@AMYe_Bt",
+        "reactionLocal": true,
+        "x": 2944.1526911653264,
+        "y": 519.7476422331699,
+        "r": 13,
+        "primary": true,
+        "visualRole": "primary"
+      },
+      {
+        "id": "met:Bt@AMYe_Bt:Bt@glc-D[e_Bt]",
+        "kind": "metabolite",
+        "mergedId": "Bt@glc-D[e_Bt]",
+        "localId": "glc-D[e_Bt]",
+        "base": "glc-D[e_Bt]",
+        "name": "D-Glucose",
+        "formula": "C6H12O6",
+        "compartment": "e",
+        "cellId": "Bt",
+        "reactionLocalFor": "Bt@AMYe_Bt",
+        "reactionLocal": true,
+        "x": 3325.578109494609,
+        "y": 414.225234086822,
+        "r": 13,
+        "primary": true,
+        "visualRole": "primary"
+      },
+      {
+        "id": "met:Bt@AMYe_Bt:Bt@malt[e_Bt]",
+        "kind": "metabolite",
+        "mergedId": "Bt@malt[e_Bt]",
+        "localId": "malt[e_Bt]",
+        "base": "malt[e_Bt]",
+        "name": "Maltose",
+        "formula": "C12H22O11",
+        "compartment": "e",
+        "cellId": "Bt",
+        "reactionLocalFor": "Bt@AMYe_Bt",
+        "reactionLocal": true,
+        "x": 3175.760918700698,
+        "y": 310.01627082828287,
+        "r": 13,
+        "primary": true,
+        "visualRole": "primary"
+      },
+      {
+        "id": "met:Bt@AMYe_Bt:Bt@starch1200[e_Bt]",
+        "kind": "metabolite",
+        "mergedId": "Bt@starch1200[e_Bt]",
+        "localId": "starch1200[e_Bt]",
+        "base": "starch1200[e_Bt]",
+        "name": "starch n=1200 repeat units (300 repeat units amylose, 900 repeat units amylopectin, corresponds to potatoe starch)",
+        "formula": "C7200H12002O6001",
+        "compartment": "e",
+        "cellId": "Bt",
+        "reactionLocalFor": "Bt@AMYe_Bt",
+        "reactionLocal": true,
+        "x": 2845.9922228153196,
+        "y": 352.22523408682207,
+        "r": 13,
+        "primary": true,
+        "visualRole": "primary",
+        "sharedInstance": true
+      },
+      {
+        "id": "met:Bt@AMYe_Bt:Bt@malttr[e_Bt]",
+        "kind": "metabolite",
+        "mergedId": "Bt@malttr[e_Bt]",
+        "localId": "malttr[e_Bt]",
+        "base": "malttr[e_Bt]",
+        "name": "Maltotriose",
+        "formula": "C18H32O16",
+        "compartment": "e",
+        "cellId": "Bt",
+        "reactionLocalFor": "Bt@AMYe_Bt",
+        "reactionLocal": true,
+        "x": 3196.865400329968,
+        "y": 531.6244983636548,
+        "r": 13,
+        "primary": true,
+        "visualRole": "primary"
+      },
+      {
+        "id": "met:Bt@EX_starch1200[u]tr_Bt:M@starch1200_s",
+        "kind": "medium",
+        "mergedId": "M@starch1200_s",
+        "localId": "starch1200",
+        "base": "starch1200",
+        "name": "starch n=1200 repeat units (300 repeat units amylose, 900 repeat units amylopectin, corresponds to potatoe starch)",
+        "formula": "C7200H12002O6001",
+        "compartment": "s",
+        "cellId": null,
+        "reactionLocalFor": "Bt@EX_starch1200[u]tr_Bt",
+        "reactionLocal": true,
+        "x": 2847.163861593367,
+        "y": 148.59623135799026,
+        "r": 13,
+        "primary": true,
+        "visualRole": "primary"
+      }
+    ],
+    "reactions": [
+      {
+        "id": "Bt@PGI_Bt",
+        "localId": "PGI_Bt",
+        "name": "glucose-6-phosphate isomerase",
+        "subsystem": "Glycolysis/Gluconeogenesis",
+        "cellId": "Bt",
+        "kind": "metabolic",
+        "compartments": [
+          "c"
+        ],
+        "membrane": null,
+        "boundaryId": null,
+        "onMembrane": false,
+        "normal": null,
+        "placementDirection": {
+          "x": 0,
+          "y": 1
+        },
+        "axisDirectionHint": {
+          "x": 0,
+          "y": 1
+        },
+        "x": 1547.2333548664099,
+        "y": 763.5043012823257,
+        "equation": "Bt@g6p[c_Bt] <=> Bt@f6p[c_Bt]",
+        "terminalMetaboliteId": null,
+        "bounds": {
+          "lower": -1000,
+          "upper": 1000
+        },
+        "axis": {
+          "a1": {
+            "x": 1547.2333548664099,
+            "y": 746.5043012823257
+          },
+          "a2": {
+            "x": 1547.2333548664099,
+            "y": 780.5043012823257
+          },
+          "dir": {
+            "x": 0,
+            "y": 1
+          }
+        },
+        "transportMode": null,
+        "transportLanes": null
+      },
+      {
+        "id": "Bt@PFK_Bt",
+        "localId": "PFK_Bt",
+        "name": "phosphofructokinase",
+        "subsystem": "Glycolysis/Gluconeogenesis",
+        "cellId": "Bt",
+        "kind": "metabolic",
+        "compartments": [
+          "c"
+        ],
+        "membrane": null,
+        "boundaryId": null,
+        "onMembrane": false,
+        "normal": null,
+        "placementDirection": {
+          "x": 0,
+          "y": 1
+        },
+        "axisDirectionHint": {
+          "x": 0,
+          "y": 1
+        },
+        "x": 1547.2333548664099,
+        "y": 939.2525665206406,
+        "equation": "Bt@atp[c_Bt] + Bt@f6p[c_Bt] --> Bt@h[c_Bt] + Bt@adp[c_Bt] + Bt@fdp[c_Bt]",
+        "terminalMetaboliteId": null,
+        "bounds": {
+          "lower": 0,
+          "upper": 1000
+        },
+        "axis": {
+          "a1": {
+            "x": 1547.2333548664099,
+            "y": 922.2525665206406
+          },
+          "a2": {
+            "x": 1547.2333548664099,
+            "y": 956.2525665206406
+          },
+          "dir": {
+            "x": 0,
+            "y": 1
+          }
+        },
+        "transportMode": null,
+        "transportLanes": null,
+        "lineEnds": {
+          "from": "met:Bt@PGI_Bt:Bt@f6p[c_Bt]",
+          "to": "met:Bt@PFK_Bt:Bt@fdp[c_Bt]"
+        },
+        "linear": {
+          "from": "met:Bt@PGI_Bt:Bt@f6p[c_Bt]",
+          "to": "met:Bt@PFK_Bt:Bt@fdp[c_Bt]",
+          "t": 0.5226445528503526
+        }
+      },
+      {
+        "id": "Bt@FBA_Bt",
+        "localId": "FBA_Bt",
+        "name": "fructose-bisphosphate aldolase",
+        "subsystem": "Glycolysis/Gluconeogenesis",
+        "cellId": "Bt",
+        "kind": "metabolic",
+        "compartments": [
+          "c"
+        ],
+        "membrane": null,
+        "boundaryId": null,
+        "onMembrane": false,
+        "normal": null,
+        "placementDirection": {
+          "x": 0,
+          "y": 1
+        },
+        "axisDirectionHint": {
+          "x": 0,
+          "y": 1
+        },
+        "x": 1551.2829434872547,
+        "y": 1132.6227597579564,
+        "equation": "Bt@fdp[c_Bt] <=> Bt@dhap[c_Bt] + Bt@g3p[c_Bt]",
+        "terminalMetaboliteId": null,
+        "bounds": {
+          "lower": -1000,
+          "upper": 1000
+        },
+        "axis": {
+          "a1": {
+            "x": 1550.5854121595391,
+            "y": 1115.637076078844
+          },
+          "a2": {
+            "x": 1551.9804748149702,
+            "y": 1149.6084434370682
+          },
+          "dir": {
+            "x": 0.04103125457149644,
+            "y": 0.999157863477183
+          }
+        },
+        "transportMode": null,
+        "transportLanes": null,
+        "lineEnds": {
+          "from": "met:Bt@PFK_Bt:Bt@fdp[c_Bt]",
+          "to": "met:Bt@FBA_Bt:Bt@g3p[c_Bt]"
+        },
+        "linear": {
+          "from": "met:Bt@PFK_Bt:Bt@fdp[c_Bt]",
+          "to": "met:Bt@FBA_Bt:Bt@g3p[c_Bt]",
+          "t": 0.5226445528503522
+        }
+      },
+      {
+        "id": "Bt@GAPD_Bt",
+        "localId": "GAPD_Bt",
+        "name": "glyceraldehyde-3-phosphate dehydrogenase",
+        "subsystem": "Glycolysis/Gluconeogenesis",
+        "cellId": "Bt",
+        "kind": "metabolic",
+        "compartments": [
+          "c"
+        ],
+        "membrane": null,
+        "boundaryId": null,
+        "onMembrane": false,
+        "normal": null,
+        "placementDirection": {
+          "x": 0,
+          "y": 1
+        },
+        "axisDirectionHint": {
+          "x": 0,
+          "y": 1
+        },
+        "x": 1554.9816201047245,
+        "y": 1323.9676086588431,
+        "equation": "Bt@nad[c_Bt] + Bt@pi[c_Bt] + Bt@g3p[c_Bt] <=> Bt@h[c_Bt] + Bt@nadh[c_Bt] + Bt@13dpg[c_Bt]",
+        "terminalMetaboliteId": null,
+        "bounds": {
+          "lower": -1000,
+          "upper": 1000
+        },
+        "axis": {
+          "a1": {
+            "x": 1554.9816201047245,
+            "y": 1306.9676086588436
+          },
+          "a2": {
+            "x": 1554.9816201047245,
+            "y": 1340.9676086588431
+          },
+          "dir": {
+            "x": 0,
+            "y": 1
+          }
+        },
+        "transportMode": null,
+        "transportLanes": null,
+        "lineEnds": {
+          "from": "met:Bt@FBA_Bt:Bt@g3p[c_Bt]",
+          "to": "met:Bt@GAPD_Bt:Bt@13dpg[c_Bt]"
+        },
+        "linear": {
+          "from": "met:Bt@FBA_Bt:Bt@g3p[c_Bt]",
+          "to": "met:Bt@GAPD_Bt:Bt@13dpg[c_Bt]",
+          "t": 0.5226445528503523
+        }
+      },
+      {
+        "id": "Bt@PGK_Bt",
+        "localId": "PGK_Bt",
+        "name": "phosphoglycerate kinase",
+        "subsystem": "Glycolysis/Gluconeogenesis",
+        "cellId": "Bt",
+        "kind": "metabolic",
+        "compartments": [
+          "c"
+        ],
+        "membrane": null,
+        "boundaryId": null,
+        "onMembrane": false,
+        "normal": null,
+        "placementDirection": {
+          "x": 0,
+          "y": 1
+        },
+        "axisDirectionHint": {
+          "x": 0,
+          "y": -1
+        },
+        "x": 1554.9816201047245,
+        "y": 1512.4693570528682,
+        "equation": "Bt@atp[c_Bt] + Bt@3pg[c_Bt] <=> Bt@adp[c_Bt] + Bt@13dpg[c_Bt]",
+        "terminalMetaboliteId": null,
+        "bounds": {
+          "lower": -1000,
+          "upper": 1000
+        },
+        "axis": {
+          "a1": {
+            "x": 1554.9816201047245,
+            "y": 1529.4693570528682
+          },
+          "a2": {
+            "x": 1554.9816201047245,
+            "y": 1495.4693570528682
+          },
+          "dir": {
+            "x": 0,
+            "y": -1
+          }
+        },
+        "transportMode": null,
+        "transportLanes": null,
+        "lineEnds": {
+          "to": "met:Bt@GAPD_Bt:Bt@13dpg[c_Bt]"
+        }
+      },
+      {
+        "id": "Bt@PECTIN_DEGe_Bt",
+        "localId": "PECTIN_DEGe_Bt",
+        "name": "Pectin degradation by extracellular endopolygalacturonase and pectinesterase, gut microbiota specific",
+        "subsystem": "Plant Polysaccharide Degradation",
+        "cellId": "Bt",
+        "kind": "metabolic",
+        "compartments": [
+          "e"
+        ],
+        "membrane": null,
+        "boundaryId": null,
+        "onMembrane": false,
+        "normal": null,
+        "placementDirection": {
+          "x": -1,
+          "y": 0
+        },
+        "axisDirectionHint": {
+          "x": -1,
+          "y": 0
+        },
+        "x": 1354.024437477645,
+        "y": 420.89836532313484,
+        "equation": "390 Bt@h2o[e_Bt] + Bt@h[e_Bt] + Bt@pect[e_Bt] --> 390 Bt@galur[e_Bt] + 195 Bt@meoh[e_Bt]",
+        "terminalMetaboliteId": null,
+        "bounds": {
+          "lower": 0,
+          "upper": 1000
+        },
+        "axis": {
+          "a1": {
+            "x": 1371.024437477645,
+            "y": 420.89836532313484
+          },
+          "a2": {
+            "x": 1337.024437477645,
+            "y": 420.89836532313484
+          },
+          "dir": {
+            "x": -1,
+            "y": 0
+          }
+        },
+        "transportMode": null,
+        "transportLanes": null
+      },
+      {
+        "id": "Bt@PECTIN_DEG2e_Bt",
+        "localId": "PECTIN_DEG2e_Bt",
+        "name": "Pectin degradation by extracellular pectate lyase and pectinesterase, gut microbiota specific",
+        "subsystem": "Plant Polysaccharide Degradation",
+        "cellId": "Bt",
+        "kind": "metabolic",
+        "compartments": [
+          "e"
+        ],
+        "membrane": null,
+        "boundaryId": null,
+        "onMembrane": false,
+        "normal": null,
+        "placementDirection": {
+          "x": 1,
+          "y": 0
+        },
+        "axisDirectionHint": {
+          "x": 1,
+          "y": 0
+        },
+        "x": 2143.6942118596744,
+        "y": 461.30263422083783,
+        "equation": "Bt@h[e_Bt] + Bt@pect[e_Bt] --> 195 Bt@meoh[e_Bt] + 195 Bt@unsdigalur[e_Bt]",
+        "terminalMetaboliteId": null,
+        "bounds": {
+          "lower": 0,
+          "upper": 1000
+        },
+        "axis": {
+          "a1": {
+            "x": 2126.6942118596744,
+            "y": 461.30263422083783
+          },
+          "a2": {
+            "x": 2160.6942118596744,
+            "y": 461.30263422083783
+          },
+          "dir": {
+            "x": 1,
+            "y": 0
+          }
+        },
+        "transportMode": null,
+        "transportLanes": null
+      },
+      {
+        "id": "Bt@EX_pect[u]tr_Bt",
+        "localId": "EX_pect[u]tr_Bt",
+        "name": "pectins exchange",
+        "subsystem": "Transport, intercellular",
+        "cellId": "Bt",
+        "kind": "transfer",
+        "compartments": [
+          "e",
+          "s"
+        ],
+        "membrane": "e",
+        "boundaryId": "Bt/e",
+        "onMembrane": true,
+        "normal": {
+          "x": 0,
+          "y": -1
+        },
+        "placementDirection": {
+          "x": 0,
+          "y": -1
+        },
+        "axisDirectionHint": {
+          "x": 0,
+          "y": -1
+        },
+        "x": 1965.3247233618224,
+        "y": 261.82385685677514,
+        "equation": "Bt@pect[e_Bt] <=> 0.055172 M@pect_s",
+        "terminalMetaboliteId": null,
+        "bounds": {
+          "lower": -1000,
+          "upper": 1000
+        },
+        "axis": {
+          "a1": {
+            "x": 1965.3247233618224,
+            "y": 278.82385685677514
+          },
+          "a2": {
+            "x": 1965.3247233618224,
+            "y": 244.82385685677514
+          },
+          "dir": {
+            "x": 0,
+            "y": -1
+          }
+        },
+        "transportMode": "uniport",
+        "transportLanes": null
+      },
+      {
+        "id": "Bt@AMYe_Bt",
+        "localId": "AMYe_Bt",
+        "name": "starch hydrolysis by alpha-1,4-amylase and alpha-1,6 pullulanase",
+        "subsystem": "Plant Polysaccharide Degradation",
+        "cellId": "Bt",
+        "kind": "metabolic",
+        "compartments": [
+          "e"
+        ],
+        "membrane": null,
+        "boundaryId": null,
+        "onMembrane": false,
+        "normal": null,
+        "placementDirection": {
+          "x": 1,
+          "y": 0
+        },
+        "axisDirectionHint": {
+          "x": 1,
+          "y": 0
+        },
+        "x": 3042.5332932019132,
+        "y": 403.6729932721872,
+        "equation": "499 Bt@h2o[e_Bt] + Bt@starch1200[e_Bt] --> 100 Bt@glc-D[e_Bt] + 100 Bt@malt[e_Bt] + 300 Bt@malttr[e_Bt]",
+        "terminalMetaboliteId": null,
+        "bounds": {
+          "lower": 0,
+          "upper": 1000
+        },
+        "axis": {
+          "a1": {
+            "x": 3025.5332932019132,
+            "y": 403.6729932721872
+          },
+          "a2": {
+            "x": 3059.5332932019132,
+            "y": 403.6729932721872
+          },
+          "dir": {
+            "x": 1,
+            "y": 0
+          }
+        },
+        "transportMode": null,
+        "transportLanes": null
+      },
+      {
+        "id": "Bt@EX_starch1200[u]tr_Bt",
+        "localId": "EX_starch1200[u]tr_Bt",
+        "name": "starch n=1200 repeat units (300 repeat units amylose, 900 repeat units amylopectin, corresponds to potatoe starch) exchange",
+        "subsystem": "Transport, intercellular",
+        "cellId": "Bt",
+        "kind": "transfer",
+        "compartments": [
+          "e",
+          "s"
+        ],
+        "membrane": "e",
+        "boundaryId": "Bt/e",
+        "onMembrane": true,
+        "normal": {
+          "x": 0,
+          "y": -1
+        },
+        "placementDirection": {
+          "x": 0,
+          "y": -1
+        },
+        "axisDirectionHint": {
+          "x": 0,
+          "y": -1
+        },
+        "x": 2845.9922228153196,
+        "y": 261.82385685677514,
+        "equation": "Bt@starch1200[e_Bt] <=> 0.055172 M@starch1200_s",
+        "terminalMetaboliteId": null,
+        "bounds": {
+          "lower": -1000,
+          "upper": 1000
+        },
+        "axis": {
+          "a1": {
+            "x": 2845.9922228153196,
+            "y": 278.82385685677514
+          },
+          "a2": {
+            "x": 2845.9922228153196,
+            "y": 244.82385685677514
+          },
+          "dir": {
+            "x": 0,
+            "y": -1
+          }
+        },
+        "transportMode": "uniport",
+        "transportLanes": null
+      }
+    ],
+    "segments": [
+      {
+        "reactionId": "Bt@PGI_Bt",
+        "kind": "axis",
+        "from": {
+          "x": 1547.2333548664099,
+          "y": 746.5043012823257
+        },
+        "to": {
+          "x": 1547.2333548664099,
+          "y": 780.5043012823257
+        },
+        "arrow": false
+      },
+      {
+        "reactionId": "Bt@PGI_Bt",
+        "kind": "primary",
+        "from": {
+          "x": 1547.2333548664099,
+          "y": 691.5043012823257
+        },
+        "to": {
+          "x": 1547.2333548664099,
+          "y": 746.5043012823257
+        },
+        "nodeId": "met:Bt@PGI_Bt:Bt@g6p[c_Bt]",
+        "coefficient": -1,
+        "arrow": false,
+        "side": "substrate",
+        "backboneAnchor": true,
+        "b1": {
+          "x": 1547.2333548664099,
+          "y": 711.8227012823257
+        },
+        "b2": {
+          "x": 1547.2333548664099,
+          "y": 734.5315012823257
+        }
+      },
+      {
+        "reactionId": "Bt@PGI_Bt",
+        "kind": "primary",
+        "from": {
+          "x": 1547.2333548664099,
+          "y": 780.5043012823257
+        },
+        "to": {
+          "x": 1547.2333548664099,
+          "y": 835.5043012823257
+        },
+        "nodeId": "met:Bt@PGI_Bt:Bt@f6p[c_Bt]",
+        "coefficient": 1,
+        "arrow": true,
+        "side": "product",
+        "backboneAnchor": true,
+        "b1": {
+          "x": 1547.2333548664099,
+          "y": 815.1859012823257
+        },
+        "b2": {
+          "x": 1547.2333548664099,
+          "y": 792.4771012823257
+        }
+      },
+      {
+        "reactionId": "Bt@PFK_Bt",
+        "kind": "axis",
+        "from": {
+          "x": 1547.2333548664099,
+          "y": 922.2525665206406
+        },
+        "to": {
+          "x": 1547.2333548664099,
+          "y": 956.2525665206406
+        },
+        "arrow": false
+      },
+      {
+        "reactionId": "Bt@PFK_Bt",
+        "kind": "primary",
+        "from": {
+          "x": 1605.4748753610318,
+          "y": 860.5632380185917
+        },
+        "to": {
+          "x": 1547.2333548664099,
+          "y": 922.2525665206406
+        },
+        "nodeId": "met:Bt@PFK_Bt:Bt@atp[c_Bt]",
+        "coefficient": -1,
+        "arrow": false,
+        "side": "substrate",
+        "backboneAnchor": true,
+        "b1": {
+          "x": 1573.4420390889898,
+          "y": 860.5632380185917
+        },
+        "b2": {
+          "x": 1547.2333548664099,
+          "y": 881.5477159096532
+        }
+      },
+      {
+        "reactionId": "Bt@PFK_Bt",
+        "kind": "primary",
+        "from": {
+          "x": 1547.2333548664099,
+          "y": 835.5043012823257
+        },
+        "to": {
+          "x": 1547.2333548664099,
+          "y": 922.2525665206406
+        },
+        "nodeId": "met:Bt@PGI_Bt:Bt@f6p[c_Bt]",
+        "coefficient": -1,
+        "arrow": false,
+        "side": "substrate",
+        "backboneAnchor": true,
+        "b1": {
+          "x": 1547.2333548664099,
+          "y": 864.4203896950974
+        },
+        "b2": {
+          "x": 1547.2333548664099,
+          "y": 893.336478107869
+        }
+      },
+      {
+        "reactionId": "Bt@PFK_Bt",
+        "kind": "primary",
+        "from": {
+          "x": 1547.2333548664099,
+          "y": 956.2525665206406
+        },
+        "to": {
+          "x": 1619.8227222290684,
+          "y": 1003.0347319087184
+        },
+        "nodeId": "met:Bt@PFK_Bt:Bt@h[c_Bt]",
+        "coefficient": 1,
+        "arrow": true,
+        "side": "product",
+        "backboneAnchor": true,
+        "b1": {
+          "x": 1585.7227222290685,
+          "y": 1003.0347319087184
+        },
+        "b2": {
+          "x": 1547.2333548664099,
+          "y": 989.8045665206407
+        }
+      },
+      {
+        "reactionId": "Bt@PFK_Bt",
+        "kind": "primary",
+        "from": {
+          "x": 1547.2333548664099,
+          "y": 956.2525665206406
+        },
+        "to": {
+          "x": 1472.0488465915344,
+          "y": 1001.3864278097942
+        },
+        "nodeId": "met:Bt@PFK_Bt:Bt@adp[c_Bt]",
+        "coefficient": 1,
+        "arrow": true,
+        "side": "product",
+        "backboneAnchor": true,
+        "b1": {
+          "x": 1513.4003261427158,
+          "y": 1001.3864278097942
+        },
+        "b2": {
+          "x": 1547.2333548664099,
+          "y": 997.0962677426153
+        }
+      },
+      {
+        "reactionId": "Bt@PFK_Bt",
+        "kind": "primary",
+        "from": {
+          "x": 1547.2333548664099,
+          "y": 956.2525665206406
+        },
+        "to": {
+          "x": 1547.2333548664099,
+          "y": 1034.0106564571797
+        },
+        "nodeId": "met:Bt@PFK_Bt:Bt@fdp[c_Bt]",
+        "coefficient": 1,
+        "arrow": true,
+        "side": "product",
+        "backboneAnchor": true,
+        "b1": {
+          "x": 1547.2333548664099,
+          "y": 1008.091293145
+        },
+        "b2": {
+          "x": 1547.2333548664099,
+          "y": 982.1719298328203
+        }
+      },
+      {
+        "reactionId": "Bt@FBA_Bt",
+        "kind": "axis",
+        "from": {
+          "x": 1550.5854121595391,
+          "y": 1115.637076078844
+        },
+        "to": {
+          "x": 1551.9804748149702,
+          "y": 1149.6084434370682
+        },
+        "arrow": false
+      },
+      {
+        "reactionId": "Bt@FBA_Bt",
+        "kind": "primary",
+        "from": {
+          "x": 1547.2333548664099,
+          "y": 1034.0106564571797
+        },
+        "to": {
+          "x": 1550.5854121595391,
+          "y": 1115.637076078844
+        },
+        "nodeId": "met:Bt@PFK_Bt:Bt@fdp[c_Bt]",
+        "coefficient": -1,
+        "arrow": false,
+        "side": "substrate",
+        "backboneAnchor": true,
+        "b1": {
+          "x": 1548.350707297453,
+          "y": 1061.2194629977346
+        },
+        "b2": {
+          "x": 1549.468059728496,
+          "y": 1088.4282695382892
+        }
+      },
+      {
+        "reactionId": "Bt@FBA_Bt",
+        "kind": "primary",
+        "from": {
+          "x": 1551.9804748149702,
+          "y": 1149.6084434370682
+        },
+        "to": {
+          "x": 1421.2198832507738,
+          "y": 1199.8927829846482
+        },
+        "nodeId": "met:Bt@FBA_Bt:Bt@dhap[c_Bt]",
+        "coefficient": 1,
+        "arrow": true,
+        "side": "product",
+        "backboneAnchor": true,
+        "b1": {
+          "x": 1490.5272926393736,
+          "y": 1199.8927829846482
+        },
+        "b2": {
+          "x": 1553.6158863004084,
+          "y": 1189.4325790331286
+        }
+      },
+      {
+        "reactionId": "Bt@FBA_Bt",
+        "kind": "primary",
+        "from": {
+          "x": 1551.9804748149702,
+          "y": 1149.6084434370682
+        },
+        "to": {
+          "x": 1554.9816201047245,
+          "y": 1222.6897554030595
+        },
+        "nodeId": "met:Bt@FBA_Bt:Bt@g3p[c_Bt]",
+        "coefficient": 1,
+        "arrow": true,
+        "side": "product",
+        "backboneAnchor": true,
+        "b1": {
+          "x": 1553.981238341473,
+          "y": 1198.3293180810624
+        },
+        "b2": {
+          "x": 1552.9808565782216,
+          "y": 1173.9688807590653
+        }
+      },
+      {
+        "reactionId": "Bt@GAPD_Bt",
+        "kind": "axis",
+        "from": {
+          "x": 1554.9816201047245,
+          "y": 1306.9676086588436
+        },
+        "to": {
+          "x": 1554.9816201047245,
+          "y": 1340.9676086588431
+        },
+        "arrow": false
+      },
+      {
+        "reactionId": "Bt@GAPD_Bt",
+        "kind": "primary",
+        "from": {
+          "x": 1485.8150241629905,
+          "y": 1245.9276442693752
+        },
+        "to": {
+          "x": 1554.9816201047245,
+          "y": 1306.9676086588436
+        },
+        "nodeId": "met:Bt@GAPD_Bt:Bt@nad[c_Bt]",
+        "coefficient": -1,
+        "arrow": false,
+        "side": "substrate",
+        "backboneAnchor": true,
+        "b1": {
+          "x": 1523.8566519309443,
+          "y": 1245.9276442693752
+        },
+        "b2": {
+          "x": 1554.9816201047245,
+          "y": 1260.5836371472685
+        }
+      },
+      {
+        "reactionId": "Bt@GAPD_Bt",
+        "kind": "primary",
+        "from": {
+          "x": 1609.2333548664099,
+          "y": 1256.986581005641
+        },
+        "to": {
+          "x": 1554.9816201047245,
+          "y": 1306.9676086588436
+        },
+        "nodeId": "met:Bt@GAPD_Bt:Bt@pi[c_Bt]",
+        "coefficient": -1,
+        "arrow": false,
+        "side": "substrate",
+        "backboneAnchor": true,
+        "b1": {
+          "x": 1579.3949007474828,
+          "y": 1256.986581005641
+        },
+        "b2": {
+          "x": 1554.9816201047245,
+          "y": 1268.4447865362815
+        }
+      },
+      {
+        "reactionId": "Bt@GAPD_Bt",
+        "kind": "primary",
+        "from": {
+          "x": 1554.9816201047245,
+          "y": 1222.6897554030595
+        },
+        "to": {
+          "x": 1554.9816201047245,
+          "y": 1306.9676086588436
+        },
+        "nodeId": "met:Bt@FBA_Bt:Bt@g3p[c_Bt]",
+        "coefficient": -1,
+        "arrow": false,
+        "side": "substrate",
+        "backboneAnchor": true,
+        "b1": {
+          "x": 1554.9816201047245,
+          "y": 1250.7823731549875
+        },
+        "b2": {
+          "x": 1554.9816201047245,
+          "y": 1278.8749909069156
+        }
+      },
+      {
+        "reactionId": "Bt@GAPD_Bt",
+        "kind": "primary",
+        "from": {
+          "x": 1554.9816201047245,
+          "y": 1340.9676086588431
+        },
+        "to": {
+          "x": 1482.638213954193,
+          "y": 1380.3972136429823
+        },
+        "nodeId": "met:Bt@GAPD_Bt:Bt@h[c_Bt]",
+        "coefficient": 1,
+        "arrow": true,
+        "side": "product",
+        "backboneAnchor": true,
+        "b1": {
+          "x": 1522.4270873369853,
+          "y": 1380.3972136429823
+        },
+        "b2": {
+          "x": 1554.9816201047245,
+          "y": 1370.0632926461547
+        }
+      },
+      {
+        "reactionId": "Bt@GAPD_Bt",
+        "kind": "primary",
+        "from": {
+          "x": 1554.9816201047245,
+          "y": 1340.9676086588431
+        },
+        "to": {
+          "x": 1609.2333548664099,
+          "y": 1380.986581005641
+        },
+        "nodeId": "met:Bt@GAPD_Bt:Bt@nadh[c_Bt]",
+        "coefficient": 1,
+        "arrow": true,
+        "side": "product",
+        "backboneAnchor": true,
+        "b1": {
+          "x": 1579.3949007474828,
+          "y": 1380.986581005641
+        },
+        "b2": {
+          "x": 1554.9816201047245,
+          "y": 1371.520786536281
+        }
+      },
+      {
+        "reactionId": "Bt@GAPD_Bt",
+        "kind": "primary",
+        "from": {
+          "x": 1554.9816201047245,
+          "y": 1340.9676086588431
+        },
+        "to": {
+          "x": 1554.9816201047245,
+          "y": 1416.4693570528682
+        },
+        "nodeId": "met:Bt@GAPD_Bt:Bt@13dpg[c_Bt]",
+        "coefficient": 1,
+        "arrow": true,
+        "side": "product",
+        "backboneAnchor": true,
+        "b1": {
+          "x": 1554.9816201047245,
+          "y": 1391.3021075881932
+        },
+        "b2": {
+          "x": 1554.9816201047245,
+          "y": 1366.1348581235181
+        }
+      },
+      {
+        "reactionId": "Bt@PGK_Bt",
+        "kind": "axis",
+        "from": {
+          "x": 1554.9816201047245,
+          "y": 1529.4693570528682
+        },
+        "to": {
+          "x": 1554.9816201047245,
+          "y": 1495.4693570528682
+        },
+        "arrow": false
+      },
+      {
+        "reactionId": "Bt@PGK_Bt",
+        "kind": "primary",
+        "from": {
+          "x": 1453.3236934232027,
+          "y": 1577.0567998990075
+        },
+        "to": {
+          "x": 1554.9816201047245,
+          "y": 1529.4693570528682
+        },
+        "nodeId": "met:Bt@PGK_Bt:Bt@atp[c_Bt]",
+        "coefficient": -1,
+        "arrow": false,
+        "side": "substrate",
+        "backboneAnchor": true,
+        "b1": {
+          "x": 1493.618028044223,
+          "y": 1587.7457540566709
+        },
+        "b2": {
+          "x": 1555.0363587476422,
+          "y": 1570.8027662764173
+        }
+      },
+      {
+        "reactionId": "Bt@PGK_Bt",
+        "kind": "primary",
+        "from": {
+          "x": 1554.3999508081438,
+          "y": 1630.5930040749583
+        },
+        "to": {
+          "x": 1554.9816201047245,
+          "y": 1529.4693570528682
+        },
+        "nodeId": "met:Bt@PGK_Bt:Bt@3pg[c_Bt]",
+        "coefficient": -1,
+        "arrow": false,
+        "side": "substrate",
+        "backboneAnchor": true,
+        "b1": {
+          "x": 1555.0363587476422,
+          "y": 1587.7457540566709
+        },
+        "b2": {
+          "x": 1554.9816201047245,
+          "y": 1564.993357052868
+        }
+      },
+      {
+        "reactionId": "Bt@PGK_Bt",
+        "kind": "primary",
+        "from": {
+          "x": 1554.9816201047245,
+          "y": 1495.4693570528682
+        },
+        "to": {
+          "x": 1479.7971118298492,
+          "y": 1446.8229774704635
+        },
+        "nodeId": "met:Bt@PGK_Bt:Bt@adp[c_Bt]",
+        "coefficient": 1,
+        "arrow": true,
+        "side": "product",
+        "backboneAnchor": true,
+        "b1": {
+          "x": 1520.0914464508692,
+          "y": 1446.9071681333128
+        },
+        "b2": {
+          "x": 1552.9184852751105,
+          "y": 1467.026966122364
+        }
+      },
+      {
+        "reactionId": "Bt@PGK_Bt",
+        "kind": "primary",
+        "from": {
+          "x": 1554.9816201047245,
+          "y": 1495.4693570528682
+        },
+        "to": {
+          "x": 1554.9816201047245,
+          "y": 1416.4693570528682
+        },
+        "nodeId": "met:Bt@GAPD_Bt:Bt@13dpg[c_Bt]",
+        "coefficient": 1,
+        "arrow": true,
+        "side": "product",
+        "backboneAnchor": true,
+        "b1": {
+          "x": 1554.9816201047245,
+          "y": 1444.138557052868
+        },
+        "b2": {
+          "x": 1554.9816201047245,
+          "y": 1475.0629570528683
+        }
+      },
+      {
+        "reactionId": "Bt@PECTIN_DEGe_Bt",
+        "kind": "axis",
+        "from": {
+          "x": 1371.024437477645,
+          "y": 420.89836532313484
+        },
+        "to": {
+          "x": 1337.024437477645,
+          "y": 420.89836532313484
+        },
+        "arrow": false
+      },
+      {
+        "reactionId": "Bt@PECTIN_DEGe_Bt",
+        "kind": "primary",
+        "from": {
+          "x": 1619.7336561494253,
+          "y": 380.96552247191306
+        },
+        "to": {
+          "x": 1366.2012909310074,
+          "y": 419.29064980758903
+        },
+        "nodeId": "met:Bt@PECTIN_DEGe_Bt:Bt@h2o[e_Bt]",
+        "coefficient": -390,
+        "arrow": false,
+        "side": "substrate",
+        "backboneAnchor": true,
+        "b1": {
+          "x": 1596.8720561494251,
+          "y": 380.96552247191306
+        },
+        "b2": {
+          "x": 1377.611637477645,
+          "y": 420.89836532313484
+        }
+      },
+      {
+        "reactionId": "Bt@PECTIN_DEGe_Bt",
+        "kind": "primary",
+        "from": {
+          "x": 1558.286759651959,
+          "y": 359.8610408426435
+        },
+        "to": {
+          "x": 1366.2012909310074,
+          "y": 419.29064980758903
+        },
+        "nodeId": "met:Bt@PECTIN_DEGe_Bt:Bt@h[e_Bt]",
+        "coefficient": -1,
+        "arrow": false,
+        "side": "substrate",
+        "backboneAnchor": true,
+        "b1": {
+          "x": 1558.286759651959,
+          "y": 347.7616263264137
+        },
+        "b2": {
+          "x": 1405.562437477645,
+          "y": 420.89836532313484
+        }
+      },
+      {
+        "reactionId": "Bt@PECTIN_DEGe_Bt",
+        "kind": "primary",
+        "from": {
+          "x": 1967.962783565481,
+          "y": 394.24309124267035
+        },
+        "to": {
+          "x": 1366.2012909310074,
+          "y": 419.29064980758903
+        },
+        "nodeId": "met:Bt@PECTIN_DEG2e_Bt:Bt@pect[e_Bt]",
+        "coefficient": -1,
+        "arrow": false,
+        "side": "substrate",
+        "backboneAnchor": true,
+        "b1": {
+          "x": 1967.962783565481,
+          "y": 428.3430912426704
+        },
+        "b2": {
+          "x": 1406.548437477645,
+          "y": 420.89836532313484
+        }
+      },
+      {
+        "reactionId": "Bt@PECTIN_DEGe_Bt",
+        "kind": "primary",
+        "from": {
+          "x": 1332.2012909310076,
+          "y": 419.29064980758903
+        },
+        "to": {
+          "x": 1192.7405564592718,
+          "y": 502.3162918402133
+        },
+        "nodeId": "met:Bt@PECTIN_DEGe_Bt:Bt@galur[e_Bt]",
+        "coefficient": 390,
+        "arrow": true,
+        "side": "product",
+        "backboneAnchor": true,
+        "b1": {
+          "x": 1215.6021564592718,
+          "y": 502.3162918402133
+        },
+        "b2": {
+          "x": 1330.437237477645,
+          "y": 420.89836532313484
+        }
+      },
+      {
+        "reactionId": "Bt@PECTIN_DEGe_Bt",
+        "kind": "primary",
+        "from": {
+          "x": 1332.2012909310076,
+          "y": 419.29064980758903
+        },
+        "to": {
+          "x": 1147.341292182439,
+          "y": 383.6035826755718
+        },
+        "nodeId": "met:Bt@PECTIN_DEGe_Bt:Bt@meoh[e_Bt]",
+        "coefficient": 195,
+        "arrow": true,
+        "side": "product",
+        "backboneAnchor": true,
+        "b1": {
+          "x": 1147.341292182439,
+          "y": 371.5041681593421
+        },
+        "b2": {
+          "x": 1301.5004374776452,
+          "y": 420.89836532313484
+        }
+      },
+      {
+        "reactionId": "Bt@PECTIN_DEG2e_Bt",
+        "kind": "axis",
+        "from": {
+          "x": 2126.6942118596744,
+          "y": 461.30263422083783
+        },
+        "to": {
+          "x": 2160.6942118596744,
+          "y": 461.30263422083783
+        },
+        "arrow": false
+      },
+      {
+        "reactionId": "Bt@PECTIN_DEG2e_Bt",
+        "kind": "primary",
+        "from": {
+          "x": 1973.0331237854086,
+          "y": 522.0171499588475
+        },
+        "to": {
+          "x": 2138.934211859674,
+          "y": 461.30263422083783
+        },
+        "nodeId": "met:Bt@PECTIN_DEG2e_Bt:Bt@h[e_Bt]",
+        "coefficient": -1,
+        "arrow": false,
+        "side": "substrate",
+        "backboneAnchor": true,
+        "b1": {
+          "x": 1995.8947237854088,
+          "y": 522.0171499588475
+        },
+        "b2": {
+          "x": 2120.1070118596745,
+          "y": 461.30263422083783
+        }
+      },
+      {
+        "reactionId": "Bt@PECTIN_DEG2e_Bt",
+        "kind": "primary",
+        "from": {
+          "x": 1967.962783565481,
+          "y": 394.24309124267035
+        },
+        "to": {
+          "x": 2129.0742118596745,
+          "y": 461.30263422083783
+        },
+        "nodeId": "met:Bt@PECTIN_DEG2e_Bt:Bt@pect[e_Bt]",
+        "coefficient": -1,
+        "arrow": false,
+        "side": "substrate",
+        "backboneAnchor": true,
+        "b1": {
+          "x": 1967.962783565481,
+          "y": 428.34309124267037
+        },
+        "b2": {
+          "x": 2091.1702118596745,
+          "y": 461.30263422083783
+        }
+      },
+      {
+        "reactionId": "Bt@PECTIN_DEG2e_Bt",
+        "kind": "primary",
+        "from": {
+          "x": 2148.4542118596746,
+          "y": 461.30263422083783
+        },
+        "to": {
+          "x": 2240.9919267505115,
+          "y": 519.4873784697637
+        },
+        "nodeId": "met:Bt@PECTIN_DEG2e_Bt:Bt@meoh[e_Bt]",
+        "coefficient": 195,
+        "arrow": true,
+        "side": "product",
+        "backboneAnchor": true,
+        "b1": {
+          "x": 2218.130326750512,
+          "y": 519.4873784697637
+        },
+        "b2": {
+          "x": 2167.2814118596743,
+          "y": 461.30263422083783
+        }
+      },
+      {
+        "reactionId": "Bt@PECTIN_DEG2e_Bt",
+        "kind": "primary",
+        "from": {
+          "x": 2158.3142118596743,
+          "y": 461.30263422083783
+        },
+        "to": {
+          "x": 2291.706442488521,
+          "y": 391.7133197535866
+        },
+        "nodeId": "met:Bt@PECTIN_DEG2e_Bt:Bt@unsdigalur[e_Bt]",
+        "coefficient": 195,
+        "arrow": true,
+        "side": "product",
+        "backboneAnchor": true,
+        "b1": {
+          "x": 2291.706442488521,
+          "y": 425.8133197535866
+        },
+        "b2": {
+          "x": 2196.2182118596743,
+          "y": 461.30263422083783
+        }
+      },
+      {
+        "reactionId": "Bt@EX_pect[u]tr_Bt",
+        "kind": "axis",
+        "from": {
+          "x": 1965.3247233618224,
+          "y": 278.82385685677514
+        },
+        "to": {
+          "x": 1965.3247233618224,
+          "y": 244.82385685677514
+        },
+        "arrow": false
+      },
+      {
+        "reactionId": "Bt@EX_pect[u]tr_Bt",
+        "kind": "primary",
+        "from": {
+          "x": 1967.962783565481,
+          "y": 394.24309124267035
+        },
+        "to": {
+          "x": 1965.3247233618224,
+          "y": 274.06385685677515
+        },
+        "nodeId": "met:Bt@PECTIN_DEG2e_Bt:Bt@pect[e_Bt]",
+        "coefficient": -1,
+        "arrow": false,
+        "side": "substrate",
+        "backboneAnchor": true,
+        "b1": {
+          "x": 1967.962783565481,
+          "y": 353.382151551466
+        },
+        "b2": {
+          "x": 1965.3247233618224,
+          "y": 307.7140424848258
+        }
+      },
+      {
+        "reactionId": "Bt@EX_pect[u]tr_Bt",
+        "kind": "primary",
+        "from": {
+          "x": 1965.3247233618224,
+          "y": 249.58385685677513
+        },
+        "to": {
+          "x": 1967.1460944273201,
+          "y": 136.3413977170119
+        },
+        "nodeId": "met:Bt@EX_pect[u]tr_Bt:M@pect_s",
+        "coefficient": 0.05517200098095345,
+        "arrow": true,
+        "side": "product",
+        "backboneAnchor": true,
+        "b1": {
+          "x": 1957.7960944273202,
+          "y": 136.3413977170119
+        },
+        "b2": {
+          "x": 1965.3247233618224,
+          "y": 225.77585685677514
+        }
+      },
+      {
+        "reactionId": "Bt@AMYe_Bt",
+        "kind": "axis",
+        "from": {
+          "x": 3025.5332932019132,
+          "y": 403.6729932721872
+        },
+        "to": {
+          "x": 3059.5332932019132,
+          "y": 403.6729932721872
+        },
+        "arrow": false
+      },
+      {
+        "reactionId": "Bt@AMYe_Bt",
+        "kind": "primary",
+        "from": {
+          "x": 2944.1526911653264,
+          "y": 519.7476422331699
+        },
+        "to": {
+          "x": 3037.773293201913,
+          "y": 403.6729932721872
+        },
+        "nodeId": "met:Bt@AMYe_Bt:Bt@h2o[e_Bt]",
+        "coefficient": -499,
+        "arrow": false,
+        "side": "substrate",
+        "backboneAnchor": true,
+        "b1": {
+          "x": 2967.014291165326,
+          "y": 519.7476422331699
+        },
+        "b2": {
+          "x": 3018.9460932019133,
+          "y": 403.6729932721872
+        }
+      },
+      {
+        "reactionId": "Bt@AMYe_Bt",
+        "kind": "primary",
+        "from": {
+          "x": 2845.9922228153196,
+          "y": 352.22523408682207
+        },
+        "to": {
+          "x": 3027.9132932019133,
+          "y": 403.6729932721872
+        },
+        "nodeId": "met:Bt@AMYe_Bt:Bt@starch1200[e_Bt]",
+        "coefficient": -1,
+        "arrow": false,
+        "side": "substrate",
+        "backboneAnchor": true,
+        "b1": {
+          "x": 2845.9922228153196,
+          "y": 386.3252340868221
+        },
+        "b2": {
+          "x": 2990.0092932019134,
+          "y": 403.6729932721872
+        }
+      },
+      {
+        "reactionId": "Bt@AMYe_Bt",
+        "kind": "primary",
+        "from": {
+          "x": 3047.2932932019135,
+          "y": 403.6729932721872
+        },
+        "to": {
+          "x": 3325.578109494609,
+          "y": 414.225234086822
+        },
+        "nodeId": "met:Bt@AMYe_Bt:Bt@glc-D[e_Bt]",
+        "coefficient": 100,
+        "arrow": true,
+        "side": "product",
+        "backboneAnchor": true,
+        "b1": {
+          "x": 3302.7165094946095,
+          "y": 414.225234086822
+        },
+        "b2": {
+          "x": 3066.120493201913,
+          "y": 403.6729932721872
+        }
+      },
+      {
+        "reactionId": "Bt@AMYe_Bt",
+        "kind": "primary",
+        "from": {
+          "x": 3052.2232932019133,
+          "y": 403.6729932721872
+        },
+        "to": {
+          "x": 3175.760918700698,
+          "y": 310.01627082828287
+        },
+        "nodeId": "met:Bt@AMYe_Bt:Bt@malt[e_Bt]",
+        "coefficient": 100,
+        "arrow": true,
+        "side": "product",
+        "backboneAnchor": true,
+        "b1": {
+          "x": 3175.760918700698,
+          "y": 344.1162708282829
+        },
+        "b2": {
+          "x": 3094.0712932019132,
+          "y": 403.6729932721872
+        }
+      },
+      {
+        "reactionId": "Bt@AMYe_Bt",
+        "kind": "primary",
+        "from": {
+          "x": 3057.153293201913,
+          "y": 403.6729932721872
+        },
+        "to": {
+          "x": 3196.865400329968,
+          "y": 531.6244983636548
+        },
+        "nodeId": "met:Bt@AMYe_Bt:Bt@malttr[e_Bt]",
+        "coefficient": 300,
+        "arrow": true,
+        "side": "product",
+        "backboneAnchor": true,
+        "b1": {
+          "x": 3196.865400329968,
+          "y": 497.52449836365474
+        },
+        "b2": {
+          "x": 3095.057293201913,
+          "y": 403.6729932721872
+        }
+      },
+      {
+        "reactionId": "Bt@EX_starch1200[u]tr_Bt",
+        "kind": "axis",
+        "from": {
+          "x": 2845.9922228153196,
+          "y": 278.82385685677514
+        },
+        "to": {
+          "x": 2845.9922228153196,
+          "y": 244.82385685677514
+        },
+        "arrow": false
+      },
+      {
+        "reactionId": "Bt@EX_starch1200[u]tr_Bt",
+        "kind": "primary",
+        "from": {
+          "x": 2845.9922228153196,
+          "y": 352.22523408682207
+        },
+        "to": {
+          "x": 2845.9922228153196,
+          "y": 274.06385685677515
+        },
+        "nodeId": "met:Bt@AMYe_Bt:Bt@starch1200[e_Bt]",
+        "coefficient": -1,
+        "arrow": false,
+        "side": "substrate",
+        "backboneAnchor": true,
+        "b1": {
+          "x": 2845.9922228153196,
+          "y": 325.65036582860614
+        },
+        "b2": {
+          "x": 2845.9922228153196,
+          "y": 295.94904248118826
+        }
+      },
+      {
+        "reactionId": "Bt@EX_starch1200[u]tr_Bt",
+        "kind": "primary",
+        "from": {
+          "x": 2845.9922228153196,
+          "y": 249.58385685677513
+        },
+        "to": {
+          "x": 2847.163861593367,
+          "y": 148.59623135799026
+        },
+        "nodeId": "met:Bt@EX_starch1200[u]tr_Bt:M@starch1200_s",
+        "coefficient": 0.05517200098095345,
+        "arrow": true,
+        "side": "product",
+        "backboneAnchor": true,
+        "b1": {
+          "x": 2837.813861593367,
+          "y": 148.59623135799026
+        },
+        "b2": {
+          "x": 2845.9922228153196,
+          "y": 225.77585685677514
+        }
+      }
+    ],
+    "texts": []
+  }
+}

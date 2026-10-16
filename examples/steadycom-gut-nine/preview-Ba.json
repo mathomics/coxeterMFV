@@ -1,0 +1,697 @@
+{
+ "id": "Ba_preview",
+ "name": "Bifidobacterium adolescentis — map excerpt, 20 of 718 reactions",
+ "cell": {
+  "name": "Ba",
+  "organism": "Bifidobacterium adolescentis",
+  "shape": "rounded",
+  "color": "#db2777",
+  "note": "718 reactions in the full model"
+ },
+ "compartments": {
+  "e": "Extracellular",
+  "c": "Cytosol"
+ },
+ "metabolites": [
+  {
+   "id": "m4[e_Ba]",
+   "name": "Biomass",
+   "compartment": "e",
+   "formula": "C37.024041172583H67.803828393317O20.609573521004N9.862665867432P0.370692783956S0.236876863845",
+   "charge": 0
+  },
+  {
+   "id": "adp[c_Ba]",
+   "name": "ADP",
+   "compartment": "c",
+   "formula": "C10H12N5O10P2",
+   "charge": 0
+  },
+  {
+   "id": "atp[c_Ba]",
+   "name": "ATP",
+   "compartment": "c",
+   "formula": "C10H12N5O13P3",
+   "charge": 0
+  },
+  {
+   "id": "h[c_Ba]",
+   "name": "H+",
+   "compartment": "c",
+   "formula": "H",
+   "charge": 0
+  },
+  {
+   "id": "h2o[c_Ba]",
+   "name": "H2O",
+   "compartment": "c",
+   "formula": "H2O",
+   "charge": 0
+  },
+  {
+   "id": "pi[c_Ba]",
+   "name": "Phosphate",
+   "compartment": "c",
+   "formula": "HO4P",
+   "charge": 0
+  },
+  {
+   "id": "nh4[c_Ba]",
+   "name": "Ammonium",
+   "compartment": "c",
+   "formula": "H4N",
+   "charge": 0
+  },
+  {
+   "id": "met-L[c_Ba]",
+   "name": "L-Methionine",
+   "compartment": "c",
+   "formula": "C5H11O2NS",
+   "charge": 0
+  },
+  {
+   "id": "val-L[c_Ba]",
+   "name": "L-Valine",
+   "compartment": "c",
+   "formula": "C5H11O2N",
+   "charge": 0
+  },
+  {
+   "id": "ile-L[c_Ba]",
+   "name": "L-Isoleucine",
+   "compartment": "c",
+   "formula": "C6H13O2N",
+   "charge": 0
+  },
+  {
+   "id": "leu-L[c_Ba]",
+   "name": "L-Leucine",
+   "compartment": "c",
+   "formula": "C6H13O2N",
+   "charge": 0
+  },
+  {
+   "id": "lys-L[c_Ba]",
+   "name": "L-Lysine",
+   "compartment": "c",
+   "formula": "C6H15O2N2",
+   "charge": 0
+  },
+  {
+   "id": "arg-L[c_Ba]",
+   "name": "L-Arginine",
+   "compartment": "c",
+   "formula": "C6H15O2N4",
+   "charge": 0
+  },
+  {
+   "id": "thr-L[c_Ba]",
+   "name": "L-Threonine",
+   "compartment": "c",
+   "formula": "C4H9O3N",
+   "charge": 0
+  },
+  {
+   "id": "pro-L[c_Ba]",
+   "name": "L-Proline",
+   "compartment": "c",
+   "formula": "C5H9O2N",
+   "charge": 0
+  },
+  {
+   "id": "ser-L[c_Ba]",
+   "name": "L-Serine",
+   "compartment": "c",
+   "formula": "C3H7O3N",
+   "charge": 0
+  },
+  {
+   "id": "asn-L[c_Ba]",
+   "name": "L-Asparagine",
+   "compartment": "c",
+   "formula": "C4H8O3N2",
+   "charge": 0
+  },
+  {
+   "id": "nad[c_Ba]",
+   "name": "NAD+",
+   "compartment": "c",
+   "formula": "C21H26N7O14P2",
+   "charge": 0
+  },
+  {
+   "id": "ppi[c_Ba]",
+   "name": "Diphosphate",
+   "compartment": "c",
+   "formula": "HO7P2",
+   "charge": 0
+  },
+  {
+   "id": "nadp[c_Ba]",
+   "name": "NADP+",
+   "compartment": "c",
+   "formula": "C21H25N7O17P3",
+   "charge": 0
+  },
+  {
+   "id": "ala-L[c_Ba]",
+   "name": "L-Alanine",
+   "compartment": "c",
+   "formula": "C3H7O2N",
+   "charge": 0
+  },
+  {
+   "id": "glu-L[c_Ba]",
+   "name": "L-Glutamate",
+   "compartment": "c",
+   "formula": "C5H8O4N",
+   "charge": 0
+  },
+  {
+   "id": "asp-L[c_Ba]",
+   "name": "L-Aspartate",
+   "compartment": "c",
+   "formula": "C4H6O4N",
+   "charge": 0
+  },
+  {
+   "id": "gln-L[c_Ba]",
+   "name": "L-Glutamine",
+   "compartment": "c",
+   "formula": "C5H10O3N2",
+   "charge": 0
+  },
+  {
+   "id": "mlthf[c_Ba]",
+   "name": "5,10-Methylenetetrahydrofolate",
+   "compartment": "c",
+   "formula": "C20H21O6N7",
+   "charge": 0
+  },
+  {
+   "id": "gly[c_Ba]",
+   "name": "Glycine",
+   "compartment": "c",
+   "formula": "C2H5O2N",
+   "charge": 0
+  },
+  {
+   "id": "trp-L[c_Ba]",
+   "name": "L-Tryptophan",
+   "compartment": "c",
+   "formula": "C11H12O2N2",
+   "charge": 0
+  },
+  {
+   "id": "his-L[c_Ba]",
+   "name": "L-Histidine",
+   "compartment": "c",
+   "formula": "C6H9O2N3",
+   "charge": 0
+  },
+  {
+   "id": "phe-L[c_Ba]",
+   "name": "L-Phenylalanine",
+   "compartment": "c",
+   "formula": "C9H11O2N",
+   "charge": 0
+  },
+  {
+   "id": "tyr-L[c_Ba]",
+   "name": "L-Tyrosine",
+   "compartment": "c",
+   "formula": "C9H11O3N",
+   "charge": 0
+  },
+  {
+   "id": "cys-L[c_Ba]",
+   "name": "L-Cysteine",
+   "compartment": "c",
+   "formula": "C3H7O2NS",
+   "charge": 0
+  },
+  {
+   "id": "10fthf[c_Ba]",
+   "name": "10-Formyltetrahydrofolate",
+   "compartment": "c",
+   "formula": "C20H21O7N7",
+   "charge": 0
+  },
+  {
+   "id": "utp[c_Ba]",
+   "name": "UTP",
+   "compartment": "c",
+   "formula": "C9H11O15N2P3",
+   "charge": 0
+  },
+  {
+   "id": "ctp[c_Ba]",
+   "name": "CTP",
+   "compartment": "c",
+   "formula": "C9H12O14N3P3",
+   "charge": 0
+  },
+  {
+   "id": "dctp[c_Ba]",
+   "name": "dCTP",
+   "compartment": "c",
+   "formula": "C9H12O13N3P3",
+   "charge": 0
+  },
+  {
+   "id": "gtp[c_Ba]",
+   "name": "GTP",
+   "compartment": "c",
+   "formula": "C10H12O14N5P3",
+   "charge": 0
+  },
+  {
+   "id": "dgtp[c_Ba]",
+   "name": "dGTP",
+   "compartment": "c",
+   "formula": "C10H12O13N5P3",
+   "charge": 0
+  },
+  {
+   "id": "datp[c_Ba]",
+   "name": "dATP",
+   "compartment": "c",
+   "formula": "C10H12O12N5P3",
+   "charge": 0
+  },
+  {
+   "id": "m350[c_Ba]",
+   "name": "Crosslinked peptideglycan",
+   "compartment": "c",
+   "formula": "C34H53O19N6",
+   "charge": 0
+  },
+  {
+   "id": "dttp[c_Ba]",
+   "name": "dTTP",
+   "compartment": "c",
+   "formula": "C10H13O14N2P3",
+   "charge": 0
+  },
+  {
+   "id": "m788[c_Ba]",
+   "name": "capsular polysaccharide linkage unit, LPL specific",
+   "compartment": "c",
+   "formula": "C24H47O25P",
+   "charge": 0
+  },
+  {
+   "id": "glc-D[e_Ba]",
+   "name": "D-Glucose",
+   "compartment": "e",
+   "formula": "C6H12O6",
+   "charge": 0
+  },
+  {
+   "id": "nh4[e_Ba]",
+   "name": "Ammonium",
+   "compartment": "e",
+   "formula": "H4N",
+   "charge": 0
+  },
+  {
+   "id": "pi[e_Ba]",
+   "name": "Phosphate",
+   "compartment": "e",
+   "formula": "HO4P",
+   "charge": 0
+  },
+  {
+   "id": "h2o[e_Ba]",
+   "name": "H2O",
+   "compartment": "e",
+   "formula": "H2O",
+   "charge": 0
+  },
+  {
+   "id": "h[e_Ba]",
+   "name": "H+",
+   "compartment": "e",
+   "formula": "H",
+   "charge": 0
+  },
+  {
+   "id": "ac[e_Ba]",
+   "name": "Acetate",
+   "compartment": "e",
+   "formula": "C2H3O2",
+   "charge": 0
+  },
+  {
+   "id": "co2[e_Ba]",
+   "name": "CO2",
+   "compartment": "e",
+   "formula": "CO2",
+   "charge": 0
+  },
+  {
+   "id": "lac-L[e_Ba]",
+   "name": "L-Lactate",
+   "compartment": "e",
+   "formula": "C3H5O3",
+   "charge": 0
+  },
+  {
+   "id": "co2[c_Ba]",
+   "name": "CO2",
+   "compartment": "c",
+   "formula": "CO2",
+   "charge": 0
+  },
+  {
+   "id": "asp-D[c_Ba]",
+   "name": "D-Aspartate",
+   "compartment": "c",
+   "formula": "C4H6O4N",
+   "charge": 0
+  },
+  {
+   "id": "ala-D[c_Ba]",
+   "name": "D-Alanine",
+   "compartment": "c",
+   "formula": "C3H7O2N",
+   "charge": 0
+  },
+  {
+   "id": "glu-D[c_Ba]",
+   "name": "D-Glutamate",
+   "compartment": "c",
+   "formula": "C5H8O4N",
+   "charge": 0
+  },
+  {
+   "id": "2pg[c_Ba]",
+   "name": "D-Glycerate 2-phosphate",
+   "compartment": "c",
+   "formula": "C3H4O7P",
+   "charge": 0
+  },
+  {
+   "id": "pep[c_Ba]",
+   "name": "Phosphoenolpyruvate",
+   "compartment": "c",
+   "formula": "C3H2O6P",
+   "charge": 0
+  },
+  {
+   "id": "g1p[c_Ba]",
+   "name": "D-Glucose 1-phosphate",
+   "compartment": "c",
+   "formula": "C6H11O9P",
+   "charge": 0
+  },
+  {
+   "id": "glycogen[c_Ba]",
+   "name": "glycogen",
+   "compartment": "c",
+   "formula": "C6H10O5",
+   "charge": 0
+  },
+  {
+   "id": "bglycogen[c_Ba]",
+   "name": "branching glycogen",
+   "compartment": "c",
+   "formula": "C6H10O5",
+   "charge": 0
+  },
+  {
+   "id": "cit[c_Ba]",
+   "name": "Citrate",
+   "compartment": "c",
+   "formula": "C6H5O7",
+   "charge": 0
+  },
+  {
+   "id": "acon-C[c_Ba]",
+   "name": "cis-Aconitate",
+   "compartment": "c",
+   "formula": "C6H3O6",
+   "charge": 0
+  }
+ ],
+ "reactions": [
+  {
+   "id": "Biomass_Ba",
+   "name": "Biomass Ba",
+   "metabolites": {
+    "m4[e_Ba]": 1,
+    "adp[c_Ba]": 45,
+    "atp[c_Ba]": -45,
+    "h[c_Ba]": 45,
+    "h2o[c_Ba]": -45,
+    "pi[c_Ba]": 45,
+    "nh4[c_Ba]": -0.011437266383,
+    "met-L[c_Ba]": -0.148434336158,
+    "val-L[c_Ba]": -0.408701438271,
+    "ile-L[c_Ba]": -0.280547655524,
+    "leu-L[c_Ba]": -0.390159218009,
+    "lys-L[c_Ba]": -0.33144218718,
+    "arg-L[c_Ba]": -0.285666080908,
+    "thr-L[c_Ba]": -0.245008400022,
+    "pro-L[c_Ba]": -0.213525255202,
+    "ser-L[c_Ba]": -0.208406829818,
+    "asn-L[c_Ba]": -0.232840067975,
+    "nad[c_Ba]": -0.001768271109,
+    "ppi[c_Ba]": 0.74738668024,
+    "nadp[c_Ba]": -0.000431686065,
+    "ala-L[c_Ba]": -0.496100966067,
+    "glu-L[c_Ba]": -0.254182936089,
+    "asp-L[c_Ba]": -0.232840067975,
+    "gln-L[c_Ba]": -0.254182936089,
+    "mlthf[c_Ba]": -0.000215360162,
+    "gly[c_Ba]": -0.591612715228,
+    "trp-L[c_Ba]": -0.0548926979,
+    "his-L[c_Ba]": -0.091494268104,
+    "phe-L[c_Ba]": -0.169873778336,
+    "tyr-L[c_Ba]": -0.133175634068,
+    "cys-L[c_Ba]": -0.088442527686,
+    "10fthf[c_Ba]": -0.000215360162,
+    "utp[c_Ba]": -0.139163226027,
+    "ctp[c_Ba]": -0.128926375258,
+    "dctp[c_Ba]": -0.026094312056,
+    "gtp[c_Ba]": -0.207730811371,
+    "dgtp[c_Ba]": -0.026094312056,
+    "datp[c_Ba]": -0.025273432513,
+    "m350[c_Ba]": -0.119751839191,
+    "dttp[c_Ba]": -0.025273432513,
+    "m788[c_Ba]": -0.124966838639
+   },
+   "lower_bound": 0,
+   "upper_bound": 1000,
+   "subsystem": "Biomass"
+  },
+  {
+   "id": "EX_glc-D(e)_Ba",
+   "name": "D-glucoseMaltotriose transport via diffusion (extracellular to periplasm) irreversible",
+   "metabolites": {
+    "glc-D[e_Ba]": -1
+   },
+   "lower_bound": -1000,
+   "upper_bound": 1000,
+   "subsystem": "Glucose Transporter/Exchange"
+  },
+  {
+   "id": "EX_nh4(e)_Ba",
+   "name": "ammonia transport via diffusion (extracellular to periplasm)",
+   "metabolites": {
+    "nh4[e_Ba]": -1
+   },
+   "lower_bound": -1000,
+   "upper_bound": 1000,
+   "subsystem": "Exchange"
+  },
+  {
+   "id": "EX_pi(e)_Ba",
+   "name": "Exchange Phosphate",
+   "metabolites": {
+    "pi[e_Ba]": -1
+   },
+   "lower_bound": -1000,
+   "upper_bound": 1000,
+   "subsystem": "Exchange"
+  },
+  {
+   "id": "EX_h2o(e)_Ba",
+   "name": "H2O transport via diffusion (extracellular to periplasm)",
+   "metabolites": {
+    "h2o[e_Ba]": -1
+   },
+   "lower_bound": -1000,
+   "upper_bound": 1000,
+   "subsystem": "Exchange"
+  },
+  {
+   "id": "EX_h(e)_Ba",
+   "name": "proton transport via diffusion (extracellular to periplasm)",
+   "metabolites": {
+    "h[e_Ba]": -1
+   },
+   "lower_bound": -1000,
+   "upper_bound": 1000,
+   "subsystem": "Transporter"
+  },
+  {
+   "id": "EX_ac(e)_Ba",
+   "name": "Acetate transport via diffusion (extracellular to periplasm)",
+   "metabolites": {
+    "ac[e_Ba]": -1
+   },
+   "lower_bound": -1000,
+   "upper_bound": 1000,
+   "subsystem": "Exchnge"
+  },
+  {
+   "id": "EX_co2(e)_Ba",
+   "name": "CO2 transport via diffusion (extracellular to periplasm)",
+   "metabolites": {
+    "co2[e_Ba]": -1
+   },
+   "lower_bound": -1000,
+   "upper_bound": 1000,
+   "subsystem": "Exchange"
+  },
+  {
+   "id": "EX_lac-L(e)_Ba",
+   "name": "L-lactate transport via diffusion (extracellular to periplasm)",
+   "metabolites": {
+    "lac-L[e_Ba]": -1
+   },
+   "lower_bound": -1000,
+   "upper_bound": 1000,
+   "subsystem": "Exchange"
+  },
+  {
+   "id": "NH4tpp_Ba",
+   "name": "ammonia reversible transport (periplasm)",
+   "metabolites": {
+    "nh4[e_Ba]": -1,
+    "nh4[c_Ba]": 1
+   },
+   "lower_bound": -1000,
+   "upper_bound": 1000,
+   "subsystem": "Transporter"
+  },
+  {
+   "id": "H2Otpp_Ba",
+   "name": "H2O transport via diffusion (periplasm)",
+   "metabolites": {
+    "h2o[c_Ba]": -1,
+    "h2o[e_Ba]": 1
+   },
+   "lower_bound": -1000,
+   "upper_bound": 1000,
+   "subsystem": "Transporter"
+  },
+  {
+   "id": "CO2tpp_Ba",
+   "name": "CO2 transporter via diffusion (periplasm)",
+   "metabolites": {
+    "co2[c_Ba]": -1,
+    "co2[e_Ba]": 1
+   },
+   "lower_bound": 0,
+   "upper_bound": 0,
+   "subsystem": "Transporter"
+  },
+  {
+   "id": "RHEA_14976_Ba",
+   "name": "aspartate racemase",
+   "metabolites": {
+    "asp-L[c_Ba]": -1,
+    "asp-D[c_Ba]": 1
+   },
+   "lower_bound": -1000,
+   "upper_bound": 1000,
+   "subsystem": "Alanine and Aspartate and Glutamate"
+  },
+  {
+   "id": "ALAR_Ba",
+   "name": "alanine racemase",
+   "metabolites": {
+    "ala-L[c_Ba]": -1,
+    "ala-D[c_Ba]": 1
+   },
+   "lower_bound": -1000,
+   "upper_bound": 1000,
+   "subsystem": "CELL WALL"
+  },
+  {
+   "id": "GLUR_Ba",
+   "name": "glutamate racemase",
+   "metabolites": {
+    "glu-L[c_Ba]": 1,
+    "glu-D[c_Ba]": -1
+   },
+   "lower_bound": -1000,
+   "upper_bound": 1000,
+   "subsystem": "CELL WALL"
+  },
+  {
+   "id": "EX_m4(e)_Ba",
+   "name": "Biomass exchange",
+   "metabolites": {
+    "m4[e_Ba]": -1
+   },
+   "lower_bound": -1000,
+   "upper_bound": 1000,
+   "subsystem": ""
+  },
+  {
+   "id": "ENO_Ba",
+   "name": "enolase",
+   "metabolites": {
+    "h2o[c_Ba]": 1,
+    "2pg[c_Ba]": -1,
+    "pep[c_Ba]": 1
+   },
+   "lower_bound": -1000,
+   "upper_bound": 1000,
+   "subsystem": "Glycolysis"
+  },
+  {
+   "id": "GLCP_Ba",
+   "name": "glycogen phosphorylase",
+   "metabolites": {
+    "pi[c_Ba]": -1,
+    "g1p[c_Ba]": 1,
+    "glycogen[c_Ba]": -1
+   },
+   "lower_bound": -1000,
+   "upper_bound": 1000,
+   "subsystem": "Glycolysis"
+  },
+  {
+   "id": "GLCP2_Ba",
+   "name": "glycogen phosphorylase",
+   "metabolites": {
+    "pi[c_Ba]": -1,
+    "g1p[c_Ba]": 1,
+    "bglycogen[c_Ba]": -1
+   },
+   "lower_bound": 0,
+   "upper_bound": 0,
+   "subsystem": "Glycolysis"
+  },
+  {
+   "id": "ACONTa_Ba",
+   "name": "aconitase (half-reaction A, Citrate hydro-lyase)",
+   "metabolites": {
+    "h2o[c_Ba]": 1,
+    "cit[c_Ba]": -1,
+    "acon-C[c_Ba]": 1
+   },
+   "lower_bound": -1000,
+   "upper_bound": 1000,
+   "subsystem": "TCA"
+  }
+ ],
+ "genes": [],
+ "objective": {
+  "Biomass_Ba": 1
+ }
+}

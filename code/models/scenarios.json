@@ -1,0 +1,1374 @@
+{
+  "scenarios": [
+    {
+      "id": "consorcio-anaerobio",
+      "name": "Anaerobic consortium (4 species)",
+      "description": "Glucose feeds the lactic acid bacterium; its fermentation products pass to E. coli, which releases H2 and CO2 that the methanogen turns into methane. The yeast competes for the glucose and ferments it to ethanol.",
+      "objective": "equal-growth",
+      "species": [
+        {
+          "id": "lla",
+          "model": "lactobacillus_core_mc",
+          "abundance": 0.3
+        },
+        {
+          "id": "eco",
+          "model": "ecoli_core_mc",
+          "abundance": 0.3
+        },
+        {
+          "id": "sce",
+          "model": "yeast_core_mc",
+          "abundance": 0.2
+        },
+        {
+          "id": "mba",
+          "model": "methanogen_core_mc",
+          "abundance": 0.2
+        }
+      ],
+      "medium": {
+        "glc__D": 10,
+        "nh4": 1000,
+        "pi": 1000,
+        "h2o": 1000,
+        "h": 1000,
+        "co2": 1000,
+        "o2": 0
+      }
+    },
+    {
+      "id": "aerobio-mixto",
+      "name": "Aerobic co-culture (E. coli + yeast)",
+      "description": "Two heterotrophs with limited oxygen compete for glucose. As O2 falls, acetate and ethanol appear: both switch to fermentation rather than give up growth.",
+      "objective": "equal-growth",
+      "species": [
+        {
+          "id": "eco",
+          "model": "ecoli_core_mc",
+          "abundance": 0.5
+        },
+        {
+          "id": "sce",
+          "model": "yeast_core_mc",
+          "abundance": 0.5
+        }
+      ],
+      "medium": {
+        "glc__D": 10,
+        "o2": 18,
+        "nh4": 1000,
+        "pi": 1000,
+        "h2o": 1000,
+        "h": 1000,
+        "co2": 1000
+      }
+    },
+    {
+      "id": "fototrofo-heterotrofo",
+      "name": "Phototroph-heterotroph mutualism",
+      "description": "The cyanobacterium fixes CO2 in the light and releases O2; the heterotrophs consume that O2 and give back CO2. The only oxygen in the system is the one the light produces.",
+      "objective": "equal-growth",
+      "species": [
+        {
+          "id": "syn",
+          "model": "cyano_core_mc",
+          "abundance": 0.5
+        },
+        {
+          "id": "eco",
+          "model": "ecoli_core_mc",
+          "abundance": 0.3
+        },
+        {
+          "id": "sce",
+          "model": "yeast_core_mc",
+          "abundance": 0.2
+        }
+      ],
+      "medium": {
+        "photon": 80,
+        "co2": 1000,
+        "hco3": 1000,
+        "glc__D": 4,
+        "o2": 0,
+        "nh4": 1000,
+        "pi": 1000,
+        "h2o": 1000,
+        "h": 1000
+      }
+    },
+    {
+      "id": "metanogenesis",
+      "name": "Digester: E. coli + methanogen",
+      "description": "A minimal syntrophic pair. E. coli ferments glucose to formate, which formate hydrogen lyase converts into H2 and CO2; the methanogen consumes both and releases methane.",
+      "objective": "equal-growth",
+      "species": [
+        {
+          "id": "eco",
+          "model": "ecoli_core_mc",
+          "abundance": 0.6
+        },
+        {
+          "id": "mba",
+          "model": "methanogen_core_mc",
+          "abundance": 0.4
+        }
+      ],
+      "medium": {
+        "glc__D": 10,
+        "nh4": 1000,
+        "pi": 1000,
+        "h2o": 1000,
+        "h": 1000,
+        "co2": 1000,
+        "o2": 0
+      }
+    },
+    {
+      "id": "todas",
+      "name": "All five species",
+      "description": "Every organism in the catalogue in one medium, with light and no external oxygen: the only O2 available is what the cyanobacterium produces.",
+      "objective": "equal-growth",
+      "species": [
+        {
+          "id": "lla",
+          "model": "lactobacillus_core_mc",
+          "abundance": 0.2
+        },
+        {
+          "id": "eco",
+          "model": "ecoli_core_mc",
+          "abundance": 0.2
+        },
+        {
+          "id": "sce",
+          "model": "yeast_core_mc",
+          "abundance": 0.2
+        },
+        {
+          "id": "syn",
+          "model": "cyano_core_mc",
+          "abundance": 0.2
+        },
+        {
+          "id": "mba",
+          "model": "methanogen_core_mc",
+          "abundance": 0.2
+        }
+      ],
+      "medium": {
+        "photon": 80,
+        "glc__D": 10,
+        "co2": 1000,
+        "hco3": 1000,
+        "nh4": 1000,
+        "pi": 1000,
+        "h2o": 1000,
+        "h": 1000,
+        "o2": 0
+      }
+    },
+    {
+      "id": "solo-ecoli",
+      "name": "A single cell: E. coli",
+      "description": "One organism on its own, to see the three boundaries of a Gram-negative bacterium clearly: outer membrane, periplasm and plasma membrane.",
+      "objective": "sum-biomass",
+      "species": [
+        {
+          "id": "eco",
+          "model": "ecoli_core_mc",
+          "abundance": 1
+        }
+      ],
+      "medium": {
+        "glc__D": 10,
+        "o2": 1000,
+        "nh4": 1000,
+        "pi": 1000,
+        "h2o": 1000,
+        "h": 1000,
+        "co2": 1000
+      }
+    },
+    {
+      "id": "solo-levadura",
+      "name": "A single cell: yeast",
+      "description": "A eukaryote with a mitochondrion: cytosol, intermembrane space and matrix, each with its own boundary and its own transporters.",
+      "objective": "sum-biomass",
+      "species": [
+        {
+          "id": "sce",
+          "model": "yeast_core_mc",
+          "abundance": 1
+        }
+      ],
+      "medium": {
+        "glc__D": 10,
+        "o2": 1000,
+        "nh4": 1000,
+        "pi": 1000,
+        "h2o": 1000,
+        "h": 1000,
+        "co2": 1000
+      }
+    },
+    {
+      "id": "yeast9-9-1-1",
+      "name": "Yeast9 9.1.1 — S. cerevisiae genome-scale",
+      "description": "Official yeast-GEM 9.1.1 model of Saccharomyces cerevisiae. Coxeter loads the pinned upstream SBML, preserves all 14 compartments, and opens a curated representative map spanning glycolysis, cell wall, ER/Golgi, lipid particles, mitochondria, nucleus, peroxisome and vacuole.",
+      "loader": "yeast9",
+      "objective": "sum-biomass",
+      "parsimonious": false,
+      "fvaEnabled": false,
+      "species": [
+        {
+          "id": "sce",
+          "model": "yeast9-9-1-1",
+          "abundance": 1
+        }
+      ]
+    }
+  ],
+  "publishedCommunities": [
+    {
+      "id": "stolyar-2007-syntrophy",
+      "name": "Desulfovibrio vulgaris + Methanococcus maripaludis",
+      "paper": {
+        "title": "Metabolic modeling of a mutualistic microbial community",
+        "authors": "Stolyar S, Van Dien S, Hillesland KL, Pinel N, Lie TJ, Leigh JA, Stahl DA",
+        "year": 2007,
+        "journal": "Molecular Systems Biology",
+        "citation": "Mol Syst Biol 3:92",
+        "doi": "10.1038/msb4100131",
+        "doiVerifiedFrom": null,
+        "framework": "Joint-FBA"
+      },
+      "description": "The first stoichiometric model of a microbial mutualism. D. vulgaris oxidises lactate to acetate and hydrogen, which is only thermodynamically favourable while something keeps the hydrogen low; M. maripaludis does that by consuming it to make methane. Neither partner grows on lactate alone without sulfate, and the pair does. The two organisms share one stoichiometric matrix with a joint biomass objective.",
+      "models": [
+        {
+          "id": "stolyar-supplement",
+          "organism": "Desulfovibrio vulgaris Hildenborough and Methanococcus maripaludis S2",
+          "reference": "Stolyar S et al. (2007) Mol Syst Biol 3:92. doi:10.1038/msb4100131",
+          "file": "reactions.txt, metabolites.txt, macromolecules.txt, macromolecule_synthesis.txt",
+          "source": "The paper's supplementary material, in CellNetAnalyzer project format, supplied to this project by hand.",
+          "note": "Not retrieved here: the supplement is served from embopress.org, which this environment cannot reach, and the four files arrived from the user instead. They were checked for internal consistency — every metabolite a reaction names is declared and every declared metabolite is used, the layer column agrees with the ZM_ prefix on all 180 reactions, and the macromolecule fractions sum to 1 — but not against the publisher's own copy, which is why the DOI stays unverified."
+        }
+      ],
+      "species": [
+        {
+          "id": "Dv",
+          "name": "D. vulgaris",
+          "organism": "Desulfovibrio vulgaris Hildenborough",
+          "role": "Oxidises lactate to acetate, carbon dioxide and hydrogen. A sulfate reducer, which is why withholding sulfate is what forces the partnership. 96 reactions in the joint model, biomass assembled from seven macromolecules.",
+          "model": {
+            "ref": "stolyar-supplement"
+          },
+          "abundance": null
+        },
+        {
+          "id": "Mm",
+          "name": "M. maripaludis",
+          "organism": "Methanococcus maripaludis S2",
+          "role": "Hydrogenotrophic methanogen. Takes the hydrogen and formate its partner releases and makes methane, which keeps the hydrogen low enough for lactate oxidation to stay favourable. 89 reactions, five macromolecules.",
+          "model": {
+            "ref": "stolyar-supplement"
+          },
+          "abundance": null
+        }
+      ],
+      "conditions": {
+        "medium": "Lactate is the only carbon and energy source, fixed at 10 by the reaction file's own measured-rate column (D86); ammonium is free; sulfate is withheld, which is the syntrophic condition. Fifteen reactions carry a measured rate in that column and it is a constraint, not a note — thirteen of them are held at zero, and one of those is the hydrogen leaving the pair, so every electron D. vulgaris sheds has to reach the methanogen.",
+        "objective": "The file's own: growth of D. vulgaris at weight 1, growth of M. maripaludis at 0.1, against ATP maintenance at 1. The weighting is the authors', and it is what sets the ratio between the two organisms."
+      },
+      "exchanges": [
+        {
+          "metabolite": "H2(exch)",
+          "from": "Dv",
+          "to": "Mm",
+          "verified": true
+        },
+        {
+          "metabolite": "Form(exch)",
+          "from": "Dv",
+          "to": "Mm",
+          "verified": true
+        },
+        {
+          "metabolite": "AcOH(exch)",
+          "from": "Dv",
+          "to": "Mm",
+          "verified": true
+        },
+        {
+          "metabolite": "NH3(ext)",
+          "from": "Dv",
+          "to": null,
+          "verified": true
+        }
+      ],
+      "figure": {
+        "x": {
+          "key": "sulfate",
+          "label": "Sulfate available to D. vulgaris (mmol/gDW/h)"
+        },
+        "panels": [
+          {
+            "title": "Growth of both partners",
+            "yLabel": "flux through biomass",
+            "series": [
+              {
+                "key": "dv",
+                "label": "D. vulgaris"
+              },
+              {
+                "key": "mm",
+                "label": "M. maripaludis"
+              }
+            ]
+          },
+          {
+            "title": "What crosses between them",
+            "yLabel": "mmol/gDW/h",
+            "series": [
+              {
+                "key": "h2",
+                "label": "H₂ to the methanogen"
+              },
+              {
+                "key": "ch4",
+                "label": "Methane"
+              }
+            ]
+          }
+        ],
+        "caption": "Sulfate withheld at the left edge, which is the syntrophic condition. Giving D. vulgaris an electron acceptor of its own lets it stop feeding its partner: its growth rises, the methanogen's falls to nothing, and the hydrogen and methane go with it. Computed here from the authors' model; the paper is not quoted for these numbers."
+      },
+      "reproduction": {
+        "status": "reproduced",
+        "reproduces": [
+          "The joint model as the supplement states it: 180 reactions and 163 metabolites read from the four CellNetAnalyzer files, every metabolite a reaction names declared in metabolites.txt and every declared metabolite used, with the bounds, the objective coefficients and the fifteen measured rates as written.",
+          "The D. vulgaris biomass, which the reaction file leaves empty: seven macromolecules whose mass fractions sum to 1, each with the synthesis cost macromolecule_synthesis.txt gives. The sign convention there — consumed positive, produced negative — is confirmed against the methanogen's own synthesis reactions, which the reaction file writes out the ordinary way.",
+          "The split between the two organisms, taken from the file's layer column and cross-checked against the ZM_ prefix on every reaction, which agree everywhere: 96 reactions for D. vulgaris, 89 for M. maripaludis, 2 that belong to the pair's boundary rather than to either.",
+          "The mutualism itself, derived rather than asserted: the four metabolites both organisms touch are hydrogen, formate, acetate and ammonium, found by asking which side of the model uses each one.",
+          "The paper's central claim, as model behaviour: with sulfate withheld both organisms grow and every electron moves as hydrogen or formate; as sulfate is restored D. vulgaris takes it, and the methanogen's growth, the transfer and the methane all fall away together."
+        ],
+        "adaptations": [
+          "CellNetAnalyzer leaves external metabolites unbalanced, which a COBRA model has no notion of, so each of the eight gets one unconstrained exchange reaction. That is the faithful reading of \"free to enter or leave\" and it is the only reaction the import adds beyond the macromolecule synthesis.",
+          "The sulfate condition is set here, not in the files. The supplement marks sulfate external, which leaves it free, and solved that way D. vulgaris simply respires it (4.30) and the methanogen does not grow at all. The syntrophic condition the paper is about is sulfate withheld, so the sweep sets it explicitly and shows the whole range rather than picking one point quietly.",
+          "The objective is minimised in CellNetAnalyzer and maximised here, so the coefficients change sign. Their magnitudes are untouched.",
+          "The model carries no compartments, no formulas and no charges, so none are invented: everything internal is drawn in the cytosol, the shared and external metabolites outside it, and no mass or charge balance can be checked — unlike every other model in this repository.",
+          "Splitting the joint matrix into two drawable members gives each organism its own copy of the shared metabolites plus one exchange reaction each, so the app can draw one medium between the cells. The joint model offered for download keeps the single shared pool the authors wrote.",
+          "On the map the app maximises one growth rate shared by both cells, which is not the paper's objective and does not behave like it: raising sulfate there leaves the partnership intact, because the optimum has to keep feeding the methanogen to raise the rate they share. The recorded result and the sweep use the file's own weighted objective, where sulfate does break it. The two are different questions and the card keeps them apart."
+        ],
+        "expected": {
+          "growthRates": {
+            "Dv": 0.0532,
+            "Mm": 0.0261
+          },
+          "tolerance": 0.0001,
+          "methane": 4.511,
+          "hydrogenTransfer": [
+            9.407,
+            18.746
+          ],
+          "formateTransfer": [
+            0,
+            9.339
+          ],
+          "note": "Computed here from the authors' model with sulfate withheld, not figures quoted from the paper, whose text could not be retrieved in this environment. Both growth rates and the methane are unique at the optimum; the split between hydrogen and formate is not — flux variability at the optimum gives the ranges above, so which carrier moves the electrons is the model's choice to make and not a prediction."
+        },
+        "builder": "src/communities/stolyar.js",
+        "runner": "tools/build-stolyar.mjs",
+        "needs": []
+      },
+      "computed": {
+        "growthRates": {
+          "Dv": 0.05317,
+          "Mm": 0.02608
+        },
+        "methane": 4.5115,
+        "sweepPoints": 15,
+        "sweep": [
+          {
+            "sulfate": 0,
+            "dv": 0.05317,
+            "mm": 0.02608,
+            "h2": 9.4068,
+            "formate": 9.3394,
+            "ch4": 4.5115,
+            "sulfateReduced": 0
+          },
+          {
+            "sulfate": 0.4,
+            "dv": 0.0596,
+            "mm": 0.0237,
+            "h2": 8.5476,
+            "formate": 8.4864,
+            "ch4": 4.0994,
+            "sulfateReduced": 0.4
+          },
+          {
+            "sulfate": 0.8,
+            "dv": 0.06599,
+            "mm": 0.02127,
+            "h2": 7.6713,
+            "formate": 7.6163,
+            "ch4": 3.6791,
+            "sulfateReduced": 0.8
+          },
+          {
+            "sulfate": 1.2,
+            "dv": 0.07238,
+            "mm": 0.01884,
+            "h2": 6.795,
+            "formate": 6.7463,
+            "ch4": 3.2588,
+            "sulfateReduced": 1.2
+          },
+          {
+            "sulfate": 1.6,
+            "dv": 0.07876,
+            "mm": 0.01641,
+            "h2": 5.9186,
+            "formate": 5.8762,
+            "ch4": 2.8386,
+            "sulfateReduced": 1.6
+          },
+          {
+            "sulfate": 2,
+            "dv": 0.08515,
+            "mm": 0.01398,
+            "h2": 5.0423,
+            "formate": 5.0062,
+            "ch4": 2.4183,
+            "sulfateReduced": 2
+          },
+          {
+            "sulfate": 2.4,
+            "dv": 0.09153,
+            "mm": 0.01155,
+            "h2": 4.166,
+            "formate": 4.1362,
+            "ch4": 1.998,
+            "sulfateReduced": 2.4
+          },
+          {
+            "sulfate": 2.8,
+            "dv": 0.09792,
+            "mm": 0.00912,
+            "h2": 3.2897,
+            "formate": 3.2661,
+            "ch4": 1.5777,
+            "sulfateReduced": 2.8
+          },
+          {
+            "sulfate": 3.2,
+            "dv": 0.10431,
+            "mm": 0.00669,
+            "h2": 2.4134,
+            "formate": 2.3961,
+            "ch4": 1.1574,
+            "sulfateReduced": 3.2
+          },
+          {
+            "sulfate": 3.6,
+            "dv": 0.11069,
+            "mm": 0.00426,
+            "h2": 1.537,
+            "formate": 1.526,
+            "ch4": 0.7372,
+            "sulfateReduced": 3.6
+          },
+          {
+            "sulfate": 4,
+            "dv": 0.11708,
+            "mm": 0.00183,
+            "h2": 0.6607,
+            "formate": 0.656,
+            "ch4": 0.3169,
+            "sulfateReduced": 4
+          },
+          {
+            "sulfate": 4.4,
+            "dv": 0.12189,
+            "mm": 0,
+            "h2": 0,
+            "formate": 0,
+            "ch4": 0,
+            "sulfateReduced": 4.3016
+          },
+          {
+            "sulfate": 4.8,
+            "dv": 0.12189,
+            "mm": 0,
+            "h2": 0,
+            "formate": 0,
+            "ch4": 0,
+            "sulfateReduced": 4.3016
+          },
+          {
+            "sulfate": 5.2,
+            "dv": 0.12189,
+            "mm": 0,
+            "h2": 0,
+            "formate": 0,
+            "ch4": 0,
+            "sulfateReduced": 4.3016
+          },
+          {
+            "sulfate": 5.6,
+            "dv": 0.12189,
+            "mm": 0,
+            "h2": 0,
+            "formate": 0,
+            "ch4": 0,
+            "sulfateReduced": 4.3016
+          }
+        ],
+        "lpCount": 15,
+        "seconds": 0.1,
+        "at": "2026-10-04"
+      }
+    },
+    {
+      "id": "cfba-ecoli-ecotypes",
+      "name": "Two E. coli ecotypes (glucose and acetate specialists)",
+      "paper": {
+        "title": "Community flux balance analysis for microbial consortia at balanced growth",
+        "authors": "Khandelwal RA, Olivier BG, Röling WFM, Teusink B, Bruggeman FJ",
+        "year": 2013,
+        "journal": "PLoS ONE",
+        "citation": "PLoS ONE 8(5): e64567",
+        "doi": "10.1371/journal.pone.0064567",
+        "doiVerifiedFrom": "cobra-tutorials/analysis/steadyCom/tutorial_steadyCom.m, which cites it",
+        "framework": "cFBA"
+      },
+      "description": "cFBA asks what a consortium looks like at balanced growth, where every member grows at one common rate and the population composition is therefore fixed. The demonstration splits E. coli into two ecotypes that have specialised: one lives on glucose and secretes acetate, the other lives on the acetate. The composition is not assumed, it comes out of the optimisation.",
+      "species": [
+        {
+          "id": "glu",
+          "name": "Glucose specialist",
+          "organism": "Escherichia coli (ecotype)",
+          "role": "Takes up glucose, secretes acetate.",
+          "model": null,
+          "abundance": null
+        },
+        {
+          "id": "ace",
+          "name": "Acetate specialist",
+          "organism": "Escherichia coli (ecotype)",
+          "role": "Lives on the acetate its partner secretes.",
+          "model": null,
+          "abundance": null
+        }
+      ],
+      "conditions": null,
+      "exchanges": [
+        {
+          "metabolite": "ac",
+          "from": "glu",
+          "to": "ace",
+          "verified": false
+        }
+      ],
+      "reproduction": {
+        "status": "blocked",
+        "reproduces": [],
+        "adaptations": [],
+        "expected": null,
+        "needs": [
+          "The paper's supporting information, which defines the two ecotypes: which reactions each one keeps and the medium. Served from journals.plos.org, unreachable here.",
+          "Without that file the split is guesswork — \"a glucose specialist\" is a description, not a set of bounds, and there are many ways to build one."
+        ]
+      }
+    },
+    {
+      "id": "optcom-cellulose-triculture",
+      "name": "Cellulolytic tri-culture (OptCom)",
+      "paper": {
+        "title": "OptCom: a multi-level optimization framework for the metabolic modeling and analysis of microbial communities",
+        "authors": "Zomorrodi AR, Maranas CD",
+        "year": 2012,
+        "journal": "PLoS Computational Biology",
+        "citation": "PLoS Comput Biol 8(2): e1002363",
+        "doi": "10.1371/journal.pcbi.1002363",
+        "doiVerifiedFrom": null,
+        "framework": "OptCom"
+      },
+      "description": "OptCom gives each member its own objective and the community another, nesting the two so that individual fitness and community function are optimised together rather than one standing in for the other. The tri-culture degrades cellulose: a fermenter opens the polymer, and two respirers consume its products.",
+      "species": [
+        {
+          "id": "ccel",
+          "name": "C. cellulolyticum",
+          "organism": "Clostridium cellulolyticum",
+          "role": "Degrades cellulose and ferments it, releasing organic acids and H2.",
+          "model": null,
+          "abundance": null
+        },
+        {
+          "id": "dvh",
+          "name": "D. vulgaris",
+          "organism": "Desulfovibrio vulgaris",
+          "role": "Consumes fermentation products.",
+          "model": null,
+          "abundance": null
+        },
+        {
+          "id": "gsu",
+          "name": "G. sulfurreducens",
+          "organism": "Geobacter sulfurreducens",
+          "role": "Respires with an external electron acceptor.",
+          "model": {
+            "id": "iRM588",
+            "reference": "Mahadevan R et al. (2006) Appl Environ Microbiol 72(2):1558-1568. doi:10.1128/AEM.72.2.1558-1568.2006",
+            "file": "iRM588.xml",
+            "source": "opencobra/m_model_collection, sbml/iRM588.xml",
+            "note": "On disk. Whether this is the reconstruction OptCom used is not established here — the paper would have to say so."
+          },
+          "abundance": null
+        }
+      ],
+      "conditions": null,
+      "exchanges": [],
+      "reproduction": {
+        "status": "blocked",
+        "reproduces": [],
+        "adaptations": [],
+        "expected": null,
+        "needs": [
+          "The paper's supporting information: which reconstruction stands for each organism, the medium, and the per-member objectives. Served from journals.plos.org, unreachable.",
+          "Reconstructions for C. cellulolyticum and D. vulgaris. Neither is in the m_model_collection on disk. Note that iSR432 there is Clostridium thermocellum, a different organism, and iMB745 is Methanosarcina acetivorans — both were checked against model_key.md rather than guessed from the identifier.",
+          "OptCom itself: a bilevel program, which Coxeter does not implement. SteadyCom and OptCom answer different questions and one is not a substitute for the other."
+        ]
+      }
+    },
+    {
+      "id": "steadycom-ecoli-auxotrophs",
+      "name": "Four auxotrophic E. coli strains (SteadyCom)",
+      "paper": {
+        "title": "SteadyCom: Predicting microbial abundances while ensuring community stability",
+        "authors": "Chan SHJ, Simons MN, Maranas CD",
+        "year": 2017,
+        "journal": "PLoS Computational Biology",
+        "citation": "PLoS Comput Biol 13(5): e1005539",
+        "doi": "10.1371/journal.pcbi.1005539",
+        "doiVerifiedFrom": "cobra-tutorials/analysis/steadyCom/tutorial_steadyCom.m",
+        "framework": "SteadyCom"
+      },
+      "description": "Four E. coli, each missing two amino acids it cannot make and one it can make but cannot export. Only two auxotrophy pairs exist and each is used twice, so what distinguishes a strain is the amino acid it cannot release. No member grows alone. SteadyCom finds the fastest growth rate the four can share and the relative abundances that sustain it.",
+      "species": [
+        {
+          "id": "Ec1",
+          "name": "Ec1",
+          "organism": "Escherichia coli K-12 MG1655",
+          "role": "Auxotroph for Lys and Met (DAPDC, HSST blocked); cannot export Phe (PHEt2rpp blocked), so it supplies Arg.",
+          "model": {
+            "ref": "iAF1260"
+          },
+          "abundance": null
+        },
+        {
+          "id": "Ec2",
+          "name": "Ec2",
+          "organism": "Escherichia coli K-12 MG1655",
+          "role": "Auxotroph for Arg and Phe (ARGSL, PPNDH blocked); cannot export Met (METt3pp blocked), so it supplies Lys.",
+          "model": {
+            "ref": "iAF1260"
+          },
+          "abundance": null
+        },
+        {
+          "id": "Ec3",
+          "name": "Ec3",
+          "organism": "Escherichia coli K-12 MG1655",
+          "role": "Auxotroph for Arg and Phe (ARGSL, PPNDH blocked); cannot export Lys (LYSt3pp blocked), so it supplies Met.",
+          "model": {
+            "ref": "iAF1260"
+          },
+          "abundance": null
+        },
+        {
+          "id": "Ec4",
+          "name": "Ec4",
+          "organism": "Escherichia coli K-12 MG1655",
+          "role": "Auxotroph for Lys and Met (DAPDC, HSST blocked); cannot export Arg (ARGt3pp blocked), so it supplies Phe.",
+          "model": {
+            "ref": "iAF1260"
+          },
+          "abundance": null
+        }
+      ],
+      "models": [
+        {
+          "id": "iAF1260",
+          "organism": "Escherichia coli K-12 MG1655",
+          "reference": "Feist AM et al. (2007) Mol Syst Biol 3:121. doi:10.1038/msb4100155",
+          "file": "iAF1260.xml",
+          "source": "opencobra/m_model_collection, sbml/iAF1260.xml",
+          "note": "The tutorial reads cobratoolbox/test/models/iAF1260.mat. This is the same reconstruction distributed as SBML; that they agree is evidenced by the growth rate coming out identical to the tutorial's to five decimals."
+        }
+      ],
+      "conditions": {
+        "medium": "iAF1260's own exchange bounds, applied to the community as a whole — glucose 8 and oxygen 18.5 mmol/h per gDW of community, 22 metabolites in all. Nothing here was chosen by Coxeter; the tutorial assigns the model's own bounds (EcCom.lb(EXcom) = lbEx).",
+        "crossFeedingUptake": "Each strain may take up only the two amino acids it lacks, at most 1 mmol/h per gDW (exRate = 1).",
+        "secretion": "Any member may secrete anything, up to 1000 (EcCom.ub(EXsp) = 1000).",
+        "addedReaction": "METt3pp, methionine export by proton antiport, added by the tutorial because iAF1260 has no way to release methionine at all.",
+        "totalBiomass": "1 gDW, so the abundances are relative and sum to one."
+      },
+      "exchanges": [
+        {
+          "metabolite": "arg-L",
+          "from": "Ec1",
+          "to": [
+            "Ec2",
+            "Ec3"
+          ],
+          "verified": true
+        },
+        {
+          "metabolite": "lys-L",
+          "from": "Ec2",
+          "to": [
+            "Ec1",
+            "Ec4"
+          ],
+          "verified": true
+        },
+        {
+          "metabolite": "met-L",
+          "from": "Ec3",
+          "to": [
+            "Ec1",
+            "Ec4"
+          ],
+          "verified": true
+        },
+        {
+          "metabolite": "phe-L",
+          "from": "Ec4",
+          "to": [
+            "Ec2",
+            "Ec3"
+          ],
+          "verified": true
+        }
+      ],
+      "reproduction": {
+        "status": "reproduced",
+        "reproduces": [
+          "The maximum community growth rate, 0.73599 /h, to five decimal places.",
+          "The cross-feeding structure: each strain secretes the one amino acid it was left able to export, and the reaction it cannot export through carries exactly zero.",
+          "The constraints, transcribed reaction by reaction from the authors' tutorial: the eight blocked biosynthetic reactions, the four blocked exporters, the added METt3pp, exRate = 1, secretion capped at 1000, and the medium taken from iAF1260's own bounds.",
+          "The SteadyCom formulation itself: mass balance per member, bound coupling LB*X <= V <= UB*X, a community exchange space, V_biomass = X*mu, and the abundances summing to the total biomass."
+        ],
+        "adaptations": [
+          "Bisection on mu rather than the tutorial's default of guessing a bracket and then calling MATLAB's fzero. The tutorial offers bisection as its algorithm 3 and reports the same answer from all three, so this is a choice among the paper's own options, not a departure from it. It costs iterations: 22 LPs where fzero needs about 8.",
+          "Bounds of 999999 in iAF1260.xml are read as the infinity they stand for and rewritten to COBRA's default of 1000. SteadyCom turns every bound into a matrix coefficient, and 1e6 beside biomass stoichiometry of 1e-5 is enough to stop GLPK solving. Verified non-binding: a strain grows at the same rate either way, and the only fluxes that reached 999999 were futile cycles carrying no net mass.",
+          "Rows are scaled by their largest coefficient before reaching the solver. Exact here, since every bound involved is zero.",
+          "GLPK rather than the CPLEX the tutorial uses.",
+          "The community exchange space is one row per metabolite summing the members' own exchange fluxes, where the tutorial adds explicit [u] metabolites and per-member transfer reactions. The two formulations are the same constraint; Coxeter's has fewer columns.",
+          "Secretion out of the community is unbounded where the tutorial caps it at 1e5. Non-binding at these fluxes."
+        ],
+        "expected": {
+          "growthRate": 0.73599,
+          "tolerance": 0.0001,
+          "abundances": {
+            "Ec1": 0.2533,
+            "Ec2": 0.3246,
+            "Ec3": 0.185,
+            "Ec4": 0.2371
+          },
+          "abundanceNote": "Computed by Coxeter. The tutorial reports the growth rate in its text; these abundances are what this formulation gives at that rate and are recorded so a regression shows up, not as a figure quoted from the paper."
+        },
+        "needs": [],
+        "builder": "src/communities/steadycom-ecoli.js",
+        "runner": "tools/build-steadycom-ecoli.mjs",
+        "modelFile": "iAF1260.xml"
+      },
+      "computed": {
+        "growthRate": 0.73599,
+        "abundances": {
+          "Ec1": 0.253297,
+          "Ec2": 0.3246,
+          "Ec3": 0.185009,
+          "Ec4": 0.237093
+        },
+        "exchanges": {
+          "Ec1": {
+            "arg": 0.110945,
+            "lys": -0.063981,
+            "met": -0.028695,
+            "phe": 0
+          },
+          "Ec2": {
+            "arg": -0.070668,
+            "lys": 0.123869,
+            "met": 0,
+            "phe": -0.042023
+          },
+          "Ec3": {
+            "arg": -0.040278,
+            "lys": 0,
+            "met": 0.055554,
+            "phe": -0.023951
+          },
+          "Ec4": {
+            "arg": 0,
+            "lys": -0.059888,
+            "met": -0.026859,
+            "phe": 0.065975
+          }
+        },
+        "lpCount": 22,
+        "seconds": 168,
+        "at": "2026-10-04"
+      }
+    },
+    {
+      "id": "steadycom-gut-nine",
+      "name": "Nine-species gut community (SteadyCom)",
+      "paper": {
+        "title": "SteadyCom: Predicting microbial abundances while ensuring community stability",
+        "authors": "Chan SHJ, Simons MN, Maranas CD",
+        "year": 2017,
+        "journal": "PLoS Computational Biology",
+        "citation": "PLoS Comput Biol 13(5): e1005539",
+        "doi": "10.1371/journal.pcbi.1005539",
+        "doiVerifiedFrom": "cobra-tutorials/analysis/steadyCom/tutorial_steadyCom.m",
+        "framework": "SteadyCom"
+      },
+      "description": "Nine species of the human gut microbiota on the estimated average American diet, after the host has absorbed most of the amino acids, carbohydrates and fatty acids.",
+      "species": [
+        {
+          "id": "Bt",
+          "name": "B. thetaiotaomicron",
+          "organism": "Bacteroides thetaiotaomicron",
+          "role": "Degrades dietary fiber and releases the sugars that feed the rest. The subject of the Figure 4 sweep. 1443 reactions, 1071 metabolites.",
+          "model": {
+            "ref": "model9"
+          },
+          "abundance": null
+        },
+        {
+          "id": "Fp",
+          "name": "F. prausnitzii",
+          "organism": "Faecalibacterium prausnitzii",
+          "role": "Butyrate producer; also takes up fiber, held at 5 C-mmol/gDW/h in the sweep. 804 reactions, 596 metabolites.",
+          "model": {
+            "ref": "model9"
+          },
+          "abundance": null
+        },
+        {
+          "id": "Kp",
+          "name": "K. pneumoniae",
+          "organism": "Klebsiella pneumonia",
+          "role": "1960 reactions, 1349 metabolites.",
+          "model": {
+            "ref": "model9"
+          },
+          "abundance": null
+        },
+        {
+          "id": "St",
+          "name": "S. thermophilus",
+          "organism": "Streptococcus thermophilus",
+          "role": "467 reactions, 408 metabolites.",
+          "model": {
+            "ref": "model9"
+          },
+          "abundance": null
+        },
+        {
+          "id": "Ba",
+          "name": "B. adolescentis",
+          "organism": "Bifidobacterium adolescentis",
+          "role": "718 reactions, 695 metabolites.",
+          "model": {
+            "ref": "model9"
+          },
+          "abundance": null
+        },
+        {
+          "id": "Ec",
+          "name": "E. coli",
+          "organism": "Escherichia coli",
+          "role": "The largest member of the nine. 2404 reactions, 1624 metabolites.",
+          "model": {
+            "ref": "model9"
+          },
+          "abundance": null
+        },
+        {
+          "id": "Ef",
+          "name": "E. faecalis",
+          "organism": "Enterococcus faecalis",
+          "role": "539 reactions, 449 metabolites.",
+          "model": {
+            "ref": "model9"
+          },
+          "abundance": null
+        },
+        {
+          "id": "Er",
+          "name": "E. rectale",
+          "organism": "Eubacterium rectale",
+          "role": "Butyrate producer. 457 reactions, 409 metabolites.",
+          "model": {
+            "ref": "model9"
+          },
+          "abundance": null
+        },
+        {
+          "id": "Lc",
+          "name": "L. casei",
+          "organism": "Lactobacillus casei",
+          "role": "1101 reactions, 1001 metabolites.",
+          "model": {
+            "ref": "model9"
+          },
+          "abundance": null
+        }
+      ],
+      "models": [
+        {
+          "id": "model9",
+          "organism": "Nine-species human gut microbiota community",
+          "reference": "Chan SHJ, Simons MN, Maranas CD (2017) PLoS Comput Biol 13(5): e1005539, supplementary model9",
+          "file": "model9.xlsx",
+          "source": "the paper's own distribution: model9.xlsx, model9_readme.txt, model9_rxns_params.txt, model9_stoich.txt and simFigure4.m",
+          "note": "11009 reactions, 8160 metabolites, 42420 stoichiometric entries, 558 community metabolites. The workbook is the primary source for structure; the two TXT exports validate it, and the bounds come from model9_rxns_params.txt because the workbook carries no diet."
+        }
+      ],
+      "conditions": {
+        "medium": "The authors' diet: the estimated average American diet after the host absorbs 90 % of the amino acids, 97 % of the carbohydrates and 90 % of the fatty acids. It reaches the community as upper bounds on 88 of the 558 community uptake reactions, and nothing about it was chosen here.",
+        "maintenance": "Every species is held to 1 mmol ATP per gDW per hour, growing or not (ATPM lower bound 1, upper bound 1000, identical across all nine).",
+        "secretion": "Community export is open to 10000 on all 558 community metabolites; species-to-medium exchange runs within the model's own per-reaction bounds.",
+        "totalBiomass": "1 gDW, so the abundances are relative and sum to one.",
+        "figure4": "The Figure 4 experiment sweeps the maximum specific fiber uptake rate of B. thetaiotaomicron from 1 to 30 C-mmol/gDW/h while holding F. prausnitzii at 5, constraining only the uptake side of 12 and 5 fiber exchange reactions respectively."
+      },
+      "exchanges": [
+        {
+          "metabolite": "fiber-derived sugars",
+          "from": "Bt",
+          "to": [
+            "Fp",
+            "Er",
+            "St",
+            "Ef"
+          ],
+          "verified": true
+        }
+      ],
+      "figure": {
+        "x": {
+          "key": "fiberUptakeMax",
+          "label": "Maximum specific fiber uptake of B. thetaiotaomicron (C-mmol/gDW/h)"
+        },
+        "panels": [
+          {
+            "title": "Community growth rate",
+            "yLabel": "µ (h⁻¹)",
+            "series": [
+              {
+                "key": "growthRate",
+                "label": "µ"
+              }
+            ]
+          },
+          {
+            "title": "Aggregate exchange",
+            "yLabel": "C-mmol h⁻¹",
+            "series": [
+              {
+                "key": "fiberUptake",
+                "label": "Fiber uptake"
+              },
+              {
+                "key": "fdsExport",
+                "label": "FDS export"
+              }
+            ]
+          }
+        ],
+        "caption": "Maximum specific fiber uptake of B. thetaiotaomicron on the x axis, with F. prausnitzii held at 5. FDS = fiber-derived substrates."
+      },
+      "reproduction": {
+        "status": "reproduced",
+        "reproduces": [
+          "The model itself, imported from the authors' workbook and checked against their own two TXT exports: 11009 reactions, 8160 metabolites, 9 species, 558 community metabolites, 1116 community exchange reactions, 1355 species-to-medium exchange reactions, and all 42420 stoichiometric coefficients identical in both directions.",
+          "Every bound and objective coefficient, matching model9_rxns_params.txt on all 11009 reactions, the nine biomass reactions and the nine ATP maintenance reactions among them.",
+          "The community exchange space as the model builds it, not as Coxeter would: community metabolites with their own mass balance, species-to-medium exchange reactions scaled by abundance, and community uptake and export reactions carrying absolute community rates.",
+          "The community grows on the authors' diet, at a rate inside the range the paper's own Figure 4 axis spans.",
+          "The Figure 4 experiment: the 1-to-30 sweep, the twelve B. thetaiotaomicron and five F. prausnitzii fiber reactions, the 31 carbon numbers, the uptake-only constraint sum(C_i V_i) <= C_max X, and flux variability over the eleven targets the script asks for, all transcribed from simFigure4.m."
+        ],
+        "adaptations": [
+          "The diet comes from model9_rxns_params.txt, not from model9.xlsx. In the workbook all 558 community uptake reactions are bounded [0, 0], so the community has no food and cannot grow; the TXT export of the same model carries the diet on 88 of them and agrees with the workbook on all 10921 other reactions. This is the authors' own export of their own bounds, not a medium built here, and the import reports every bound it changes rather than moving any silently.",
+          "Bisection on mu, where simFigure4.m leaves options.algorithm unset and so uses the default: guess a bracket, then MATLAB fzero. Both find the same largest mu; bisection costs more LPs. options.GRguess = 0.05 is a starting point for that default algorithm and has no equivalent here.",
+          "GLPK rather than the CPLEX that SteadyComFVACplex requires.",
+          "Not reproduced from SteadyComFVACplex: options.feasCrit (the choice of feasibility criterion), options.minNorm (minimum-norm solutions, set to 0 in the script and so inactive), and the parametric optimisation SteadyComPOA performs, which Figure 4 does not use. Coxeter has no equivalent of any of them and does not approximate them.",
+          "The published Figure 4 values are not available offline, so the sweep is not checked number against number with the paper. What is checked is that it runs on the authors' model, constraints and sweep, and lands inside the ranges the plotting code itself sets: growth rate within [0, 0.082] /h and aggregate exchange within [-0.2, 7] C-mmol/h."
+        ],
+        "expected": {
+          "growthRateRange": [
+            0,
+            0.082
+          ],
+          "exchangeRange": [
+            -0.2,
+            7
+          ],
+          "tolerance": 0.0001,
+          "abundanceNote": "The abundances are predicted, not prescribed: SteadyCom computes them, and Figure 4B plots how they shift across the sweep."
+        },
+        "needs": [],
+        "builder": "src/communities/gut9.js",
+        "runner": "tools/run-gut9-figure4.mjs",
+        "validator": "tools/build-gut9.mjs",
+        "modelFile": "model9.xlsx"
+      },
+      "computed": {
+        "growthRateRange": [
+          0.05095,
+          0.07668
+        ],
+        "sweepPoints": 18,
+        "sweep": [
+          {
+            "fiberUptakeMax": 1,
+            "growthRate": 0.05095,
+            "fiberUptake": 0.159,
+            "fdsExport": -0.1321
+          },
+          {
+            "fiberUptakeMax": 2,
+            "growthRate": 0.05269,
+            "fiberUptake": 0.4549,
+            "fdsExport": 0.2293
+          },
+          {
+            "fiberUptakeMax": 3,
+            "growthRate": 0.0548,
+            "fiberUptake": 0.7984,
+            "fdsExport": 0.5865
+          },
+          {
+            "fiberUptakeMax": 4,
+            "growthRate": 0.05749,
+            "fiberUptake": 1.5212,
+            "fdsExport": 0.6924
+          },
+          {
+            "fiberUptakeMax": 5,
+            "growthRate": 0.06389,
+            "fiberUptake": 4.4708,
+            "fdsExport": 2.1566
+          },
+          {
+            "fiberUptakeMax": 6,
+            "growthRate": 0.06743,
+            "fiberUptake": 5.5426,
+            "fdsExport": 2.9788
+          },
+          {
+            "fiberUptakeMax": 9,
+            "growthRate": 0.0712,
+            "fiberUptake": 5.7759,
+            "fdsExport": 3.1207
+          },
+          {
+            "fiberUptakeMax": 13,
+            "growthRate": 0.07389,
+            "fiberUptake": 5.9682,
+            "fdsExport": 3.1412
+          },
+          {
+            "fiberUptakeMax": 15,
+            "growthRate": 0.07469,
+            "fiberUptake": 6.0714,
+            "fdsExport": 3.0609
+          },
+          {
+            "fiberUptakeMax": 17,
+            "growthRate": 0.07531,
+            "fiberUptake": 6.164,
+            "fdsExport": 3.0111
+          },
+          {
+            "fiberUptakeMax": 18,
+            "growthRate": 0.07558,
+            "fiberUptake": 6.2058,
+            "fdsExport": 3.1219
+          },
+          {
+            "fiberUptakeMax": 19,
+            "growthRate": 0.07578,
+            "fiberUptake": 6.2368,
+            "fdsExport": 3.0976
+          },
+          {
+            "fiberUptakeMax": 20,
+            "growthRate": 0.07597,
+            "fiberUptake": 6.2726,
+            "fdsExport": 3.5797
+          },
+          {
+            "fiberUptakeMax": 21,
+            "growthRate": 0.07614,
+            "fiberUptake": 6.3017,
+            "fdsExport": 4.0852
+          },
+          {
+            "fiberUptakeMax": 22,
+            "growthRate": 0.07629,
+            "fiberUptake": 6.3228,
+            "fdsExport": 4.043
+          },
+          {
+            "fiberUptakeMax": 23,
+            "growthRate": 0.07643,
+            "fiberUptake": 6.3428,
+            "fdsExport": 4.167
+          },
+          {
+            "fiberUptakeMax": 24,
+            "growthRate": 0.07657,
+            "fiberUptake": 6.3696,
+            "fdsExport": 4.7947
+          },
+          {
+            "fiberUptakeMax": 25,
+            "growthRate": 0.07668,
+            "fiberUptake": 6.3833,
+            "fdsExport": 4.799
+          }
+        ],
+        "abundances": {
+          "Bt": 0.362851,
+          "Fp": 0.000091,
+          "Kp": 0.00026,
+          "St": 0.173655,
+          "Ba": 0,
+          "Ec": 0.000034,
+          "Ef": 0.461996,
+          "Er": 0.000965,
+          "Lc": 0.000147
+        },
+        "seconds": 8764,
+        "at": "2026-10-04"
+      }
+    },
+    {
+      "id": "harcombe-2014-ecoli-salmonella",
+      "name": "E. coli + S. enterica (COMETS)",
+      "paper": {
+        "title": "Metabolic resource allocation in individual microbes determines ecosystem interactions and spatial dynamics",
+        "authors": "Harcombe WR, Riehl WJ, Dukovski I, Granger BR, Betts A, Lang AH, Bonilla G, Kar A, Leiby N, Mehta P, Marx CJ, Segrè D",
+        "year": 2014,
+        "journal": "Cell Reports",
+        "citation": "Cell Rep 7(4):1104-1115",
+        "doi": "10.1016/j.celrep.2014.03.070",
+        "doiVerifiedFrom": null,
+        "framework": "COMETS"
+      },
+      "description": "The paper that introduced COMETS, which runs FBA on a lattice over time so that colonies grow, metabolites diffuse and spatial structure emerges. Its core pair is an obligate mutualism: a methionine-auxotrophic E. coli ferments its sugar to acetate, S. enterica lives on that acetate and releases methionine the E. coli needs. A three-member variant adds Methylobacterium extorquens.",
+      "species": [
+        {
+          "id": "eco",
+          "name": "E. coli",
+          "organism": "Escherichia coli K-12 MG1655, methionine auxotroph",
+          "role": "Ferments sugar to acetate; needs methionine from its partner.",
+          "model": {
+            "id": "iJO1366",
+            "reference": "Orth JD et al. (2011) Mol Syst Biol 7:535. doi:10.1038/msb.2011.65",
+            "file": "iJO1366.xml",
+            "source": "opencobra/m_model_collection, sbml/iJO1366.xml",
+            "note": "On disk."
+          },
+          "abundance": null
+        },
+        {
+          "id": "sen",
+          "name": "S. enterica",
+          "organism": "Salmonella enterica serovar Typhimurium LT2",
+          "role": "Consumes acetate; releases methionine.",
+          "model": {
+            "id": "STM_v1_0",
+            "reference": "Thiele I et al. (2011) BMC Syst Biol 5:8. doi:10.1186/1752-0509-5-8",
+            "file": "STM_v1.0.xml",
+            "source": "opencobra/m_model_collection, sbml/STM_v1.0.xml",
+            "note": "On disk."
+          },
+          "abundance": null
+        }
+      ],
+      "conditions": null,
+      "exchanges": [
+        {
+          "metabolite": "ac",
+          "from": "eco",
+          "to": "sen",
+          "verified": false
+        },
+        {
+          "metabolite": "met-L",
+          "from": "sen",
+          "to": "eco",
+          "verified": false
+        }
+      ],
+      "reproduction": {
+        "status": "blocked",
+        "reproduces": [],
+        "adaptations": [],
+        "expected": null,
+        "needs": [
+          "Both reconstructions are on disk, so this one is blocked on the specification rather than the models — which is why it is not attempted. What is missing is the paper's supplementary: which reactions are knocked out to make the E. coli a methionine auxotroph and the S. enterica a methionine releaser, and what the medium supplies. Served from www.cell.com, unreachable here.",
+          "Guessing the knockouts would be exactly the invention this registry forbids. \"Methionine auxotroph\" names a phenotype; a reproduction needs the reaction ids.",
+          "A model of Methylobacterium extorquens AM1 for the three-member variant. Not in the m_model_collection on disk.",
+          "COMETS is dynamic and spatial: biomass grows over time across a lattice, with diffusion. Coxeter solves community steady state. Even with the constraints in hand the paper's spatial results are out of reach; what would be reproducible is the interaction structure and whether the mutualism is viable at all."
+        ]
+      }
+    },
+    {
+      "id": "zuniga-2020-phea-rescue",
+      "name": "Zuñiga (2020): S. elongatus + E. coli ΔpheA rescue",
+      "paper": {
+        "title": "Synthetic microbial communities of heterotrophs and phototrophs facilitate sustainable growth",
+        "authors": "Zuñiga C, Li T, Guarnieri MT, Jenkins JP, Li CT, Bingol K, Kim YM, Betenbaugh MJ, Zengler K",
+        "year": 2020,
+        "journal": "Nature Communications",
+        "citation": "Nat Commun 11:3803",
+        "doi": "10.1038/s41467-020-17612-8",
+        "framework": "OptCom",
+        "doiVerifiedFrom": "Nature Communications article and Supplementary Data 9 at https://www.nature.com/articles/s41467-020-17612-8"
+      },
+      "description": "The phototroph supplies phenylalanine to an E. coli K-12 pheA deletion mutant. Coxeter reproduces the stationary ΔpheA predictions in Supplementary Data 9 from the complete public source matrices, and compares WT monoculture, mutant monoculture and mutant coculture on one editable map. The WT reference is a source-model calculation; it is not presented as an experimental measurement.",
+      "models": [
+        {
+          "id": "zuniga-ijb785",
+          "organism": "Synechococcus elongatus PCC7942 cscB+",
+          "file": "M-models.mat:SingleM{2}",
+          "reference": "Zuñiga et al. (2020), doi:10.1038/s41467-020-17612-8; source description iJB785",
+          "source": "https://github.com/CZLaboratory/SyntheticMicrobialCommunities/tree/5c53e44d56118e9ce2f197aa6c2a5ee25d63ee75",
+          "note": "899 reactions/793 metabolites. The artifact identifies iJB785 although the article names iJB792. No explicit repository license; downloaded privately."
+        },
+        {
+          "id": "zuniga-ijo1366",
+          "organism": "Escherichia coli K-12 MG1655",
+          "file": "M-models.mat:SingleM{4}",
+          "reference": "Zuñiga et al. (2020), doi:10.1038/s41467-020-17612-8; source description iJO1366",
+          "source": "https://github.com/CZLaboratory/SyntheticMicrobialCommunities/tree/5c53e44d56118e9ce2f197aa6c2a5ee25d63ee75",
+          "note": "2583 reactions/1805 metabolites/1367 genes. The artifact identifies iJO1366 although the article names iML1515. Kept complete."
+        },
+        {
+          "id": "zuniga-original-community",
+          "organism": "S. elongatus + E. coli K-12",
+          "file": "CM-modelsKO.mat:modelCo2{2}",
+          "reference": "Zuñiga et al. (2020), Supplementary Data 9",
+          "source": "https://github.com/CZLaboratory/SyntheticMicrobialCommunities/tree/5c53e44d56118e9ce2f197aa6c2a5ee25d63ee75",
+          "note": "3162 reactions/2547 metabolites; original knockout-analysis network. The archive is not a pre-deleted pheA mutant: b2599 is applied explicitly."
+        }
+      ],
+      "species": [
+        {
+          "id": "Se",
+          "name": "S. elongatus cscB+",
+          "organism": "Synechococcus elongatus PCC7942 cscB+",
+          "role": "Phototrophic complementary partner; secretes phenylalanine at the original community optimum.",
+          "model": {
+            "ref": "zuniga-ijb785"
+          },
+          "abundance": null
+        },
+        {
+          "id": "Ec",
+          "name": "E. coli K-12 ΔpheA",
+          "organism": "Escherichia coli K-12 MG1655",
+          "role": "Heterotroph: b2599 deletion blocks PPNDH while the CHORM b2600 isozyme remains functional.",
+          "model": {
+            "ref": "zuniga-ijo1366"
+          },
+          "abundance": null
+        }
+      ],
+      "conditions": {
+        "medium": "Exactly the bounds stored in SingleM{4} for monocultures and modelCo2{2} in CM-modelsKO.mat for coculture. The community permits low glucose and citrate uptake; no phenylalanine is supplied externally. S. elongatus SUCRtex_A has bounds [0,0.182], E. coli SUCRtex_D and the sucrose boundary are closed.",
+        "objective": "Maximize the saved source c vector: E. coli biomass alone in monoculture; the sum of E. coli and S. elongatus biomass in coculture. No equal-growth coupling or abundance rescaling."
+      },
+      "exchanges": [
+        {
+          "metabolite": "phe__L",
+          "from": "Se",
+          "to": "Ec",
+          "verified": true
+        }
+      ],
+      "reproduction": {
+        "status": "reproduced",
+        "reproduces": [
+          "Supplementary Data 9 ΔpheA monoculture growth 0, coculture E. coli growth 0.077574047954866 h⁻¹ and S. elongatus growth 0.0348484100758386 h⁻¹, within 1e-8.",
+          "Published phenylalanine transport PHEtex_D +0.0143717559943752 and PHELtex_A −0.0143717559943752, within 1e-8, with external phenylalanine uptake closed.",
+          "Independent MATLAB/COBRA/GLPK, Python/COBRApy/GLPK and SciPy/HiGHS calculations agree within 5e-13; full source matrices, bounds, objectives and gene associations are retained."
+        ],
+        "adaptations": [
+          "The third-party MAT models have no explicit redistribution license. Coxeter downloads pinned, SHA-256 verified originals into the user’s private browser cache; the repository contains its own adapter, map and calculated results.",
+          "The WT monoculture baseline is newly calculated from the supplied reference model, not a published experimental rate. Monoculture and coculture use their respective original media, whose differences are retained.",
+          "The source artifacts identify iJO1366/iJB785 rather than the article’s iML1515/iJB792. They are not silently substituted or renamed.",
+          "The public script uses ordinary source-objective FBA while Methods mentions OptCom. The implemented stationary prediction is not a new OptCom, dynamic or spatial engine.",
+          "A malformed PFL grRules string is read from the original valid indexed rules expression, with identical gene associations. The only biological perturbation is the documented b2599 deletion.",
+          "Supplementary Data 9 and the article text support the rescue; Source Data Fig.4b conflicts with them and is not used as an exact numerical reference.",
+          "Coxeter namespaces identifiers bijectively for drawing and preserves the original IDs in provenance. It does not change stoichiometry or normalize abundances. The map is a subset of a complete calculation."
+        ],
+        "expected": {
+          "growthRates": {
+            "Ec": 0.077574047954866,
+            "Se": 0.0348484100758386
+          },
+          "mutantMonoculture": 0,
+          "phenylalanineTransfer": 0.0143717559943752,
+          "scenarioCount": 3,
+          "tolerance": 1e-8,
+          "note": "Published stationary ΔpheA predictions from Supplementary Data 9. Experimental trajectories and conflicting Source Data Fig.4b values are not claimed to be reproduced."
+        },
+        "builder": "src/communities/zuniga.js",
+        "runner": "tools/zuniga/reproduce.py",
+        "needs": []
+      },
+      "computed": {
+        "growthRates": {
+          "Ec": 0.07757404795471114,
+          "Se": 0.034848410076886396
+        },
+        "phenylalanineTransfer": 0.014371755994375235,
+        "status": "optimal",
+        "source": "Calculated from complete pinned source matrices; Supplementary Data 9 matched within 1e-8",
+        "scenarios": [
+          {
+            "id": "wt-monoculture",
+            "growth": {
+              "Ec": 0.08797173802589708
+            },
+            "objectiveValue": 0.08797173802589708
+          },
+          {
+            "id": "mutant-monoculture",
+            "growth": {
+              "Ec": 0
+            },
+            "objectiveValue": 0
+          },
+          {
+            "id": "mutant-coculture",
+            "growth": {
+              "Ec": 0.07757404795471114,
+              "Se": 0.034848410076886396
+            },
+            "objectiveValue": 0.11242245803159753
+          }
+        ]
+      }
+    }
+  ]
+}

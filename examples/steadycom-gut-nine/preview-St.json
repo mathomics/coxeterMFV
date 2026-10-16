@@ -1,0 +1,593 @@
+{
+ "id": "St_preview",
+ "name": "Streptococcus thermophilus — map excerpt, 20 of 467 reactions",
+ "cell": {
+  "name": "St",
+  "organism": "Streptococcus thermophilus",
+  "shape": "rounded",
+  "color": "#7c3aed",
+  "note": "467 reactions in the full model"
+ },
+ "compartments": {
+  "c": "Cytosol",
+  "e": "Extracellular"
+ },
+ "metabolites": [
+  {
+   "id": "h[c_St]",
+   "name": "h[c_St]",
+   "compartment": "c",
+   "formula": "H",
+   "charge": 0
+  },
+  {
+   "id": "nad[c_St]",
+   "name": "nad[c_St]",
+   "compartment": "c",
+   "formula": "C21H26N7O14P2",
+   "charge": 0
+  },
+  {
+   "id": "coa[c_St]",
+   "name": "coa[c_St]",
+   "compartment": "c",
+   "formula": "C21H32O16N7P3S",
+   "charge": 0
+  },
+  {
+   "id": "atp[c_St]",
+   "name": "atp[c_St]",
+   "compartment": "c",
+   "formula": "C10H12N5O13P3",
+   "charge": 0
+  },
+  {
+   "id": "adp[c_St]",
+   "name": "adp[c_St]",
+   "compartment": "c",
+   "formula": "C10H12N5O10P2",
+   "charge": 0
+  },
+  {
+   "id": "pi[c_St]",
+   "name": "pi[c_St]",
+   "compartment": "c",
+   "formula": "HO4P",
+   "charge": 0
+  },
+  {
+   "id": "h2o[c_St]",
+   "name": "h2o[c_St]",
+   "compartment": "c",
+   "formula": "H2O",
+   "charge": 0
+  },
+  {
+   "id": "thf[c_St]",
+   "name": "thf[c_St]",
+   "compartment": "c",
+   "formula": "C19H21O6N7",
+   "charge": 0
+  },
+  {
+   "id": "pg_LLA[c_St]",
+   "name": "pg_LLA[c_St]",
+   "compartment": "c",
+   "formula": "C4020H7598O1000P100",
+   "charge": 0
+  },
+  {
+   "id": "clpn_LLA[c_St]",
+   "name": "clpn_LLA[c_St]",
+   "compartment": "c",
+   "formula": "C7740H14396O1700P200",
+   "charge": 0
+  },
+  {
+   "id": "CPS_LLA[c_St]",
+   "name": "CPS_LLA[c_St]",
+   "compartment": "c",
+   "formula": "C24H47O26P",
+   "charge": 0
+  },
+  {
+   "id": "d12dg_LLA[c_St]",
+   "name": "d12dg_LLA[c_St]",
+   "compartment": "c",
+   "formula": "C4920H8998O1500",
+   "charge": 0
+  },
+  {
+   "id": "DNA_STU[c_St]",
+   "name": "DNA_STU[c_St]",
+   "compartment": "c",
+   "formula": "C9805H11305O6000N3695P1000",
+   "charge": 0
+  },
+  {
+   "id": "fad[c_St]",
+   "name": "fad[c_St]",
+   "compartment": "c",
+   "formula": "C27H31O15N9P2",
+   "charge": 0
+  },
+  {
+   "id": "LTAAlaGal_LLA[c_St]",
+   "name": "LTAAlaGal_LLA[c_St]",
+   "compartment": "c",
+   "formula": "C17400H31998O15000N600P1600",
+   "charge": 0
+  },
+  {
+   "id": "lyspg_LLA[c_St]",
+   "name": "lyspg_LLA[c_St]",
+   "compartment": "c",
+   "formula": "C4620H8898O1100N200P100",
+   "charge": 0
+  },
+  {
+   "id": "PG[c_St]",
+   "name": "PG[c_St]",
+   "compartment": "c",
+   "formula": "C39H64O19N8",
+   "charge": 0
+  },
+  {
+   "id": "udcpdp[c_St]",
+   "name": "udcpdp[c_St]",
+   "compartment": "c",
+   "formula": "C55H89O7P2",
+   "charge": 0
+  },
+  {
+   "id": "PROT_STR[c_St]",
+   "name": "PROT_STR[c_St]",
+   "compartment": "c",
+   "formula": "C5101H7595O1465N1374S21",
+   "charge": 0
+  },
+  {
+   "id": "RNA_LLA[c_St]",
+   "name": "RNA_LLA[c_St]",
+   "compartment": "c",
+   "formula": "C958H1078O696N394P100",
+   "charge": 0
+  },
+  {
+   "id": "thmpp[c_St]",
+   "name": "thmpp[c_St]",
+   "compartment": "c",
+   "formula": "C12H16O7N4P2S",
+   "charge": 0
+  },
+  {
+   "id": "m12dg_LLA[c_St]",
+   "name": "m12dg_LLA[c_St]",
+   "compartment": "c",
+   "formula": "C4320H7998O1000",
+   "charge": 0
+  },
+  {
+   "id": "biomassSt[e_St]",
+   "name": "Biomass of Streptococcus thermophilus",
+   "compartment": "e",
+   "formula": "C38.79232083523874H63.445151653984105O21.341086880768923N6.737482167423865P1.044864878362501S0.060449878729962",
+   "charge": 0
+  },
+  {
+   "id": "acgam[e_St]",
+   "name": "N-Acetyl-D-glucosamine",
+   "compartment": "e",
+   "formula": "C8H15O6N",
+   "charge": 0
+  },
+  {
+   "id": "ac[e_St]",
+   "name": "Acetate",
+   "compartment": "e",
+   "formula": "C2H3O2",
+   "charge": 0
+  },
+  {
+   "id": "h[e_St]",
+   "name": "H+",
+   "compartment": "e",
+   "formula": "H",
+   "charge": 0
+  },
+  {
+   "id": "ala-L[e_St]",
+   "name": "L-Alanine",
+   "compartment": "e",
+   "formula": "C3H7O2N",
+   "charge": 0
+  },
+  {
+   "id": "arg-L[e_St]",
+   "name": "L-Arginine",
+   "compartment": "e",
+   "formula": "C6H15O2N4",
+   "charge": 0
+  },
+  {
+   "id": "asp-L[e_St]",
+   "name": "L-Aspartate",
+   "compartment": "e",
+   "formula": "C4H6O4N",
+   "charge": 0
+  },
+  {
+   "id": "cellb[e_St]",
+   "name": "cellobiose",
+   "compartment": "e",
+   "formula": "C12H22O11",
+   "charge": 0
+  },
+  {
+   "id": "cit[e_St]",
+   "name": "Citrate",
+   "compartment": "e",
+   "formula": "C6H5O7",
+   "charge": 0
+  },
+  {
+   "id": "h2o[e_St]",
+   "name": "H2O",
+   "compartment": "e",
+   "formula": "H2O",
+   "charge": 0
+  },
+  {
+   "id": "accoa[c_St]",
+   "name": "accoa[c_St]",
+   "compartment": "c",
+   "formula": "C23H34O17N7P3S",
+   "charge": 0
+  },
+  {
+   "id": "aacoa[c_St]",
+   "name": "aacoa[c_St]",
+   "compartment": "c",
+   "formula": "C25H36O18N7P3S",
+   "charge": 0
+  },
+  {
+   "id": "amp[c_St]",
+   "name": "amp[c_St]",
+   "compartment": "c",
+   "formula": "C10H12N5O7P",
+   "charge": 0
+  },
+  {
+   "id": "chor[c_St]",
+   "name": "chor[c_St]",
+   "compartment": "c",
+   "formula": "C10H8O6",
+   "charge": 0
+  },
+  {
+   "id": "3psme[c_St]",
+   "name": "3psme[c_St]",
+   "compartment": "c",
+   "formula": "C10H9O10P",
+   "charge": 0
+  },
+  {
+   "id": "glyc[c_St]",
+   "name": "glyc[c_St]",
+   "compartment": "c",
+   "formula": "C3H8O3",
+   "charge": 0
+  },
+  {
+   "id": "23dhmb[c_St]",
+   "name": "23dhmb[c_St]",
+   "compartment": "c",
+   "formula": "C5H9O4",
+   "charge": 0
+  },
+  {
+   "id": "3mob[c_St]",
+   "name": "3mob[c_St]",
+   "compartment": "c",
+   "formula": "C5H7O3",
+   "charge": 0
+  },
+  {
+   "id": "23dhmp[c_St]",
+   "name": "23dhmp[c_St]",
+   "compartment": "c",
+   "formula": "C6H11O4",
+   "charge": 0
+  },
+  {
+   "id": "3mop[c_St]",
+   "name": "3mop[c_St]",
+   "compartment": "c",
+   "formula": "C6H9O3",
+   "charge": 0
+  },
+  {
+   "id": "3dhq[c_St]",
+   "name": "3dhq[c_St]",
+   "compartment": "c",
+   "formula": "C7H9O6",
+   "charge": 0
+  },
+  {
+   "id": "3dhsk[c_St]",
+   "name": "3dhsk[c_St]",
+   "compartment": "c",
+   "formula": "C7H7O5",
+   "charge": 0
+  },
+  {
+   "id": "2dda7p[c_St]",
+   "name": "2dda7p[c_St]",
+   "compartment": "c",
+   "formula": "C7H10O10P",
+   "charge": 0
+  },
+  {
+   "id": "pep[c_St]",
+   "name": "pep[c_St]",
+   "compartment": "c",
+   "formula": "C3H2O6P",
+   "charge": 0
+  },
+  {
+   "id": "2pg[c_St]",
+   "name": "2pg[c_St]",
+   "compartment": "c",
+   "formula": "C3H4O7P",
+   "charge": 0
+  }
+ ],
+ "reactions": [
+  {
+   "id": "biomass_STR_St",
+   "name": "biomass equation STU specific",
+   "metabolites": {
+    "h[c_St]": 18.15,
+    "nad[c_St]": -0.002213290381,
+    "coa[c_St]": -0.000221329038,
+    "atp[c_St]": -18.15,
+    "adp[c_St]": 18.15,
+    "pi[c_St]": 18.15,
+    "h2o[c_St]": -18.15,
+    "thf[c_St]": -0.000012296058,
+    "pg_LLA[c_St]": -0.000131567817,
+    "clpn_LLA[c_St]": -0.00029633499,
+    "CPS_LLA[c_St]": -0.304991414511,
+    "d12dg_LLA[c_St]": -0.000211492192,
+    "DNA_STU[c_St]": -0.000039347385,
+    "fad[c_St]": -0.000012296058,
+    "LTAAlaGal_LLA[c_St]": -0.000181981654,
+    "lyspg_LLA[c_St]": -0.000029510538,
+    "PG[c_St]": -0.153049029851,
+    "udcpdp[c_St]": -0.000022132904,
+    "PROT_STR[c_St]": -0.002867440649,
+    "RNA_LLA[c_St]": -0.003287965822,
+    "thmpp[c_St]": -0.000012296058,
+    "m12dg_LLA[c_St]": -0.000028280933,
+    "biomassSt[e_St]": 1
+   },
+   "lower_bound": 0,
+   "upper_bound": 1000,
+   "subsystem": "Exchange"
+  },
+  {
+   "id": "EX_acgam[u]tr_St",
+   "name": "N-Acetyl-D-glucosamine exchange",
+   "metabolites": {
+    "acgam[e_St]": -1
+   },
+   "lower_bound": -1000,
+   "upper_bound": 1000,
+   "subsystem": "Transport, intercellular"
+  },
+  {
+   "id": "EX_ac[u]tr_St",
+   "name": "Acetate exchange",
+   "metabolites": {
+    "ac[e_St]": -1
+   },
+   "lower_bound": -1000,
+   "upper_bound": 1000,
+   "subsystem": "Transport, intercellular"
+  },
+  {
+   "id": "EX_h[u]tr_St",
+   "name": "H+ exchange",
+   "metabolites": {
+    "h[e_St]": -1
+   },
+   "lower_bound": -1000,
+   "upper_bound": 1000,
+   "subsystem": "Transport, intercellular"
+  },
+  {
+   "id": "EX_ala-L[u]tr_St",
+   "name": "L-Alanine exchange",
+   "metabolites": {
+    "ala-L[e_St]": -1
+   },
+   "lower_bound": -1000,
+   "upper_bound": 1000,
+   "subsystem": "Transport, intercellular"
+  },
+  {
+   "id": "EX_arg-L[u]tr_St",
+   "name": "L-Arginine exchange",
+   "metabolites": {
+    "arg-L[e_St]": -1
+   },
+   "lower_bound": -1000,
+   "upper_bound": 1000,
+   "subsystem": "Transport, intercellular"
+  },
+  {
+   "id": "EX_asp-L[u]tr_St",
+   "name": "L-Aspartate exchange",
+   "metabolites": {
+    "asp-L[e_St]": -1
+   },
+   "lower_bound": -1000,
+   "upper_bound": 1000,
+   "subsystem": "Transport, intercellular"
+  },
+  {
+   "id": "EX_cellb[u]tr_St",
+   "name": "cellobiose exchange",
+   "metabolites": {
+    "cellb[e_St]": -1
+   },
+   "lower_bound": -1000,
+   "upper_bound": 1000,
+   "subsystem": "Transport, intercellular"
+  },
+  {
+   "id": "EX_cit[u]tr_St",
+   "name": "Citrate exchange",
+   "metabolites": {
+    "cit[e_St]": -1
+   },
+   "lower_bound": -1000,
+   "upper_bound": 1000,
+   "subsystem": "Transport, intercellular"
+  },
+  {
+   "id": "H2Ot_St",
+   "name": "H2O transport via diffusion",
+   "metabolites": {
+    "h2o[c_St]": 1,
+    "h2o[e_St]": -1
+   },
+   "lower_bound": -1000,
+   "upper_bound": 1000,
+   "subsystem": ""
+  },
+  {
+   "id": "EX_biomassSt(e)_St",
+   "name": "Biomass export",
+   "metabolites": {
+    "biomassSt[e_St]": -1
+   },
+   "lower_bound": -1000,
+   "upper_bound": 1000,
+   "subsystem": ""
+  },
+  {
+   "id": "ACACT1_St",
+   "name": "acetyl CoA C acetyltransferase",
+   "metabolites": {
+    "accoa[c_St]": -2,
+    "aacoa[c_St]": 1,
+    "coa[c_St]": 1
+   },
+   "lower_bound": 0,
+   "upper_bound": 1000,
+   "subsystem": "Exchange"
+  },
+  {
+   "id": "ADK1_St",
+   "name": "adenylate kinase",
+   "metabolites": {
+    "atp[c_St]": -1,
+    "adp[c_St]": 2,
+    "amp[c_St]": -1
+   },
+   "lower_bound": -1000,
+   "upper_bound": 1000,
+   "subsystem": "Exchange"
+  },
+  {
+   "id": "CHORS_St",
+   "name": "chorismate synthase",
+   "metabolites": {
+    "pi[c_St]": 1,
+    "chor[c_St]": 1,
+    "3psme[c_St]": -1
+   },
+   "lower_bound": 0,
+   "upper_bound": 1000,
+   "subsystem": "Exchange"
+  },
+  {
+   "id": "CLPNS_LLA_St",
+   "name": "Cardiolipin Synthase lactis specific ",
+   "metabolites": {
+    "glyc[c_St]": 1,
+    "pg_LLA[c_St]": -0.02,
+    "clpn_LLA[c_St]": 0.01
+   },
+   "lower_bound": -1000,
+   "upper_bound": 1000,
+   "subsystem": "Exchange"
+  },
+  {
+   "id": "DHAD1_St",
+   "name": "dihydroxy acid dehydratase 2 3 dihydroxy 3 methylbutanoate ",
+   "metabolites": {
+    "h2o[c_St]": 1,
+    "23dhmb[c_St]": -1,
+    "3mob[c_St]": 1
+   },
+   "lower_bound": 0,
+   "upper_bound": 1000,
+   "subsystem": "Exchange"
+  },
+  {
+   "id": "DHAD2_St",
+   "name": "Dihydroxy acid dehydratase 2 3 dihydroxy 3 methylpentanoate ",
+   "metabolites": {
+    "h2o[c_St]": 1,
+    "23dhmp[c_St]": -1,
+    "3mop[c_St]": 1
+   },
+   "lower_bound": 0,
+   "upper_bound": 1000,
+   "subsystem": "Exchange"
+  },
+  {
+   "id": "DHQD_St",
+   "name": "3 dehydroquinate dehydratase",
+   "metabolites": {
+    "h2o[c_St]": 1,
+    "3dhq[c_St]": -1,
+    "3dhsk[c_St]": 1
+   },
+   "lower_bound": -1000,
+   "upper_bound": 1000,
+   "subsystem": "Exchange"
+  },
+  {
+   "id": "DHQS_St",
+   "name": "3 dehydroquinate synthase",
+   "metabolites": {
+    "pi[c_St]": 1,
+    "2dda7p[c_St]": -1,
+    "3dhq[c_St]": 1
+   },
+   "lower_bound": 0,
+   "upper_bound": 1000,
+   "subsystem": "Exchange"
+  },
+  {
+   "id": "ENO_St",
+   "name": "enolase",
+   "metabolites": {
+    "pep[c_St]": 1,
+    "h2o[c_St]": 1,
+    "2pg[c_St]": -1
+   },
+   "lower_bound": -1000,
+   "upper_bound": 1000,
+   "subsystem": "Exchange"
+  }
+ ],
+ "genes": [],
+ "objective": {
+  "biomass_STR_St": 1
+ }
+}

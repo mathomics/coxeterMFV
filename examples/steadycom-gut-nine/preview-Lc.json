@@ -1,0 +1,878 @@
+{
+ "id": "Lc_preview",
+ "name": "Lactobacillus casei — map excerpt, 20 of 1101 reactions",
+ "cell": {
+  "name": "Lc",
+  "organism": "Lactobacillus casei",
+  "shape": "rounded",
+  "color": "#4f46e5",
+  "note": "1101 reactions in the full model"
+ },
+ "compartments": {
+  "c": "Cytosol",
+  "e": "Extracellular"
+ },
+ "metabolites": [
+  {
+   "id": "cpd15666[c_Lc]",
+   "name": "Peptidoglycan polymer (n-1 subunits)",
+   "compartment": "c",
+   "formula": "C40H63N8O21R",
+   "charge": 0
+  },
+  {
+   "id": "cpd15665[c_Lc]",
+   "name": "Peptidoglycan polymer (n subunits)",
+   "compartment": "c",
+   "formula": "C80H125N16O42R",
+   "charge": 0
+  },
+  {
+   "id": "cpd12370[c_Lc]",
+   "name": "apo-ACP",
+   "compartment": "c",
+   "formula": "HOR",
+   "charge": 0
+  },
+  {
+   "id": "cpd11493[c_Lc]",
+   "name": "ACP",
+   "compartment": "c",
+   "formula": "C11H21N2O7PRS",
+   "charge": 0
+  },
+  {
+   "id": "cpd11416[e_Lc]",
+   "name": "Biomass",
+   "compartment": "e",
+   "formula": "C40.7899867417147H61.9545431561685O15.653103931724168N10.78808136939034P1.129783219591005S0.260953739713368Co0.005507320278523Ca0.005507320278523Fe0.011014640557046K0.005507320278523Mg0.005507320278523Mn0.005507320278523Zn0.005507320278523Cu0.005507320278523Cl0.005507320278523",
+   "charge": 0
+  },
+  {
+   "id": "cpd10516[c_Lc]",
+   "name": "fe3",
+   "compartment": "c",
+   "formula": "Fe",
+   "charge": 0
+  },
+  {
+   "id": "cpd10515[c_Lc]",
+   "name": "Fe2+",
+   "compartment": "c",
+   "formula": "Fe",
+   "charge": 0
+  },
+  {
+   "id": "cpd02229[c_Lc]",
+   "name": "Bactoprenyl diphosphate",
+   "compartment": "c",
+   "formula": "C55H90O7P2",
+   "charge": 0
+  },
+  {
+   "id": "cpd00357[c_Lc]",
+   "name": "TTP",
+   "compartment": "c",
+   "formula": "C10H14N2O14P3",
+   "charge": 0
+  },
+  {
+   "id": "cpd00356[c_Lc]",
+   "name": "dCTP",
+   "compartment": "c",
+   "formula": "C9H13N3O13P3",
+   "charge": 0
+  },
+  {
+   "id": "cpd00345[c_Lc]",
+   "name": "5-Methyltetrahydrofolate",
+   "compartment": "c",
+   "formula": "C20H23N7O6",
+   "charge": 0
+  },
+  {
+   "id": "cpd00322[c_Lc]",
+   "name": "L-Isoleucine",
+   "compartment": "c",
+   "formula": "C6H13NO2",
+   "charge": 0
+  },
+  {
+   "id": "cpd00264[c_Lc]",
+   "name": "Spermidine",
+   "compartment": "c",
+   "formula": "C7H22N3",
+   "charge": 0
+  },
+  {
+   "id": "cpd00254[c_Lc]",
+   "name": "Mg",
+   "compartment": "c",
+   "formula": "Mg",
+   "charge": 0
+  },
+  {
+   "id": "cpd00241[c_Lc]",
+   "name": "dGTP",
+   "compartment": "c",
+   "formula": "C10H13N5O13P3",
+   "charge": 0
+  },
+  {
+   "id": "cpd00220[c_Lc]",
+   "name": "Riboflavin",
+   "compartment": "c",
+   "formula": "C17H20N4O6",
+   "charge": 0
+  },
+  {
+   "id": "cpd00205[c_Lc]",
+   "name": "K+",
+   "compartment": "c",
+   "formula": "K",
+   "charge": 0
+  },
+  {
+   "id": "cpd00201[c_Lc]",
+   "name": "10-Formyltetrahydrofolate",
+   "compartment": "c",
+   "formula": "C20H21N7O7",
+   "charge": 0
+  },
+  {
+   "id": "cpd00161[c_Lc]",
+   "name": "L-Threonine",
+   "compartment": "c",
+   "formula": "C4H9NO3",
+   "charge": 0
+  },
+  {
+   "id": "cpd00156[c_Lc]",
+   "name": "L-Valine",
+   "compartment": "c",
+   "formula": "C5H11NO2",
+   "charge": 0
+  },
+  {
+   "id": "cpd00149[c_Lc]",
+   "name": "Co2+",
+   "compartment": "c",
+   "formula": "Co",
+   "charge": 0
+  },
+  {
+   "id": "cpd00132[c_Lc]",
+   "name": "L-Asparagine",
+   "compartment": "c",
+   "formula": "C4H8N2O3",
+   "charge": 0
+  },
+  {
+   "id": "cpd00129[c_Lc]",
+   "name": "L-Proline",
+   "compartment": "c",
+   "formula": "C5H8NO2",
+   "charge": 0
+  },
+  {
+   "id": "cpd00119[c_Lc]",
+   "name": "L-Histidine",
+   "compartment": "c",
+   "formula": "C6H9N3O2",
+   "charge": 0
+  },
+  {
+   "id": "cpd00115[c_Lc]",
+   "name": "dATP",
+   "compartment": "c",
+   "formula": "C10H13N5O12P3",
+   "charge": 0
+  },
+  {
+   "id": "cpd00107[c_Lc]",
+   "name": "L-Leucine",
+   "compartment": "c",
+   "formula": "C6H13NO2",
+   "charge": 0
+  },
+  {
+   "id": "cpd00099[c_Lc]",
+   "name": "Cl",
+   "compartment": "c",
+   "formula": "Cl",
+   "charge": 0
+  },
+  {
+   "id": "cpd00087[c_Lc]",
+   "name": "Tetrahydrofolate",
+   "compartment": "c",
+   "formula": "C19H21N7O6",
+   "charge": 0
+  },
+  {
+   "id": "cpd00084[c_Lc]",
+   "name": "L-Cysteine",
+   "compartment": "c",
+   "formula": "C3H7NO2S",
+   "charge": 0
+  },
+  {
+   "id": "cpd00069[c_Lc]",
+   "name": "L-Tyrosine",
+   "compartment": "c",
+   "formula": "C9H11NO3",
+   "charge": 0
+  },
+  {
+   "id": "cpd00067[c_Lc]",
+   "name": "H+",
+   "compartment": "c",
+   "formula": "H",
+   "charge": 0
+  },
+  {
+   "id": "cpd00066[c_Lc]",
+   "name": "L-Phenylalanine",
+   "compartment": "c",
+   "formula": "C9H11NO2",
+   "charge": 0
+  },
+  {
+   "id": "cpd00065[c_Lc]",
+   "name": "L-Tryptophan",
+   "compartment": "c",
+   "formula": "C11H12N2O2",
+   "charge": 0
+  },
+  {
+   "id": "cpd00063[c_Lc]",
+   "name": "Ca2+",
+   "compartment": "c",
+   "formula": "Ca",
+   "charge": 0
+  },
+  {
+   "id": "cpd00062[c_Lc]",
+   "name": "UTP",
+   "compartment": "c",
+   "formula": "C9H12N2O15P3",
+   "charge": 0
+  },
+  {
+   "id": "cpd00060[c_Lc]",
+   "name": "L-Methionine",
+   "compartment": "c",
+   "formula": "C5H11NO2S",
+   "charge": 0
+  },
+  {
+   "id": "cpd00058[c_Lc]",
+   "name": "Cu2+",
+   "compartment": "c",
+   "formula": "Cu",
+   "charge": 0
+  },
+  {
+   "id": "cpd00056[c_Lc]",
+   "name": "TPP",
+   "compartment": "c",
+   "formula": "C12H17N4O7P2S",
+   "charge": 0
+  },
+  {
+   "id": "cpd00054[c_Lc]",
+   "name": "L-Serine",
+   "compartment": "c",
+   "formula": "C3H7NO3",
+   "charge": 0
+  },
+  {
+   "id": "cpd00053[c_Lc]",
+   "name": "L-Glutamine",
+   "compartment": "c",
+   "formula": "C5H10N2O3",
+   "charge": 0
+  },
+  {
+   "id": "cpd00052[c_Lc]",
+   "name": "CTP",
+   "compartment": "c",
+   "formula": "C9H13N3O14P3",
+   "charge": 0
+  },
+  {
+   "id": "cpd00051[c_Lc]",
+   "name": "L-Arginine",
+   "compartment": "c",
+   "formula": "C6H15N4O2",
+   "charge": 0
+  },
+  {
+   "id": "cpd00048[c_Lc]",
+   "name": "Sulfate",
+   "compartment": "c",
+   "formula": "O4S",
+   "charge": 0
+  },
+  {
+   "id": "cpd00041[c_Lc]",
+   "name": "L-Aspartate",
+   "compartment": "c",
+   "formula": "C4H6NO4",
+   "charge": 0
+  },
+  {
+   "id": "cpd00039[c_Lc]",
+   "name": "L-Lysine",
+   "compartment": "c",
+   "formula": "C6H15N2O2",
+   "charge": 0
+  },
+  {
+   "id": "cpd00038[c_Lc]",
+   "name": "GTP",
+   "compartment": "c",
+   "formula": "C10H13N5O14P3",
+   "charge": 0
+  },
+  {
+   "id": "cpd00035[c_Lc]",
+   "name": "L-Alanine",
+   "compartment": "c",
+   "formula": "C3H7NO2",
+   "charge": 0
+  },
+  {
+   "id": "cpd00034[c_Lc]",
+   "name": "Zn2+",
+   "compartment": "c",
+   "formula": "Zn",
+   "charge": 0
+  },
+  {
+   "id": "cpd00033[c_Lc]",
+   "name": "Glycine",
+   "compartment": "c",
+   "formula": "C2H5NO2",
+   "charge": 0
+  },
+  {
+   "id": "cpd00030[c_Lc]",
+   "name": "Mn2+",
+   "compartment": "c",
+   "formula": "Mn",
+   "charge": 0
+  },
+  {
+   "id": "cpd00023[c_Lc]",
+   "name": "L-Glutamate",
+   "compartment": "c",
+   "formula": "C5H8NO4",
+   "charge": 0
+  },
+  {
+   "id": "cpd00017[c_Lc]",
+   "name": "S-Adenosyl-L-methionine",
+   "compartment": "c",
+   "formula": "C15H23N6O5S",
+   "charge": 0
+  },
+  {
+   "id": "cpd00016[c_Lc]",
+   "name": "Pyridoxal phosphate",
+   "compartment": "c",
+   "formula": "C8H9NO6P",
+   "charge": 0
+  },
+  {
+   "id": "cpd00015[c_Lc]",
+   "name": "FAD",
+   "compartment": "c",
+   "formula": "C27H31N9O15P2",
+   "charge": 0
+  },
+  {
+   "id": "cpd00012[c_Lc]",
+   "name": "PPi",
+   "compartment": "c",
+   "formula": "H2O7P2",
+   "charge": 0
+  },
+  {
+   "id": "cpd00010[c_Lc]",
+   "name": "CoA",
+   "compartment": "c",
+   "formula": "C21H33N7O16P3S",
+   "charge": 0
+  },
+  {
+   "id": "cpd00009[c_Lc]",
+   "name": "Phosphate",
+   "compartment": "c",
+   "formula": "HO4P",
+   "charge": 0
+  },
+  {
+   "id": "cpd00008[c_Lc]",
+   "name": "ADP",
+   "compartment": "c",
+   "formula": "C10H13N5O10P2",
+   "charge": 0
+  },
+  {
+   "id": "cpd00006[c_Lc]",
+   "name": "NADP",
+   "compartment": "c",
+   "formula": "C21H26N7O17P3",
+   "charge": 0
+  },
+  {
+   "id": "cpd00003[c_Lc]",
+   "name": "NAD",
+   "compartment": "c",
+   "formula": "C21H26N7O14P2",
+   "charge": 0
+  },
+  {
+   "id": "cpd00002[c_Lc]",
+   "name": "ATP",
+   "compartment": "c",
+   "formula": "C10H13N5O13P3",
+   "charge": 0
+  },
+  {
+   "id": "cpd00001[c_Lc]",
+   "name": "H2O",
+   "compartment": "c",
+   "formula": "H2O",
+   "charge": 0
+  },
+  {
+   "id": "cpdturan[e_Lc]",
+   "name": "Turanose",
+   "compartment": "e",
+   "formula": "C12H22O11",
+   "charge": 0
+  },
+  {
+   "id": "cpdlacti[e_Lc]",
+   "name": "Lactitol",
+   "compartment": "e",
+   "formula": "C12H24O11",
+   "charge": 0
+  },
+  {
+   "id": "cpd15606[e_Lc]",
+   "name": "Gly-Tyr",
+   "compartment": "e",
+   "formula": "C11H14N2O4",
+   "charge": 0
+  },
+  {
+   "id": "cpd15605[e_Lc]",
+   "name": "Gly-Phe",
+   "compartment": "e",
+   "formula": "C11H14N2O3",
+   "charge": 0
+  },
+  {
+   "id": "cpd15604[e_Lc]",
+   "name": "Gly-Leu",
+   "compartment": "e",
+   "formula": "C8H16N2O3",
+   "charge": 0
+  },
+  {
+   "id": "cpd15603[e_Lc]",
+   "name": "Gly-Cys",
+   "compartment": "e",
+   "formula": "C5H10N2O3S",
+   "charge": 0
+  },
+  {
+   "id": "cpd11602[e_Lc]",
+   "name": "Inulin1",
+   "compartment": "e",
+   "formula": "C12H22O11",
+   "charge": 0
+  },
+  {
+   "id": "cpd11597[e_Lc]",
+   "name": "ARSENOBETAINE",
+   "compartment": "e",
+   "formula": "C5H11O2As",
+   "charge": 0
+  },
+  {
+   "id": "cpd00186[c_Lc]",
+   "name": "D-Glutamate",
+   "compartment": "c",
+   "formula": "C5H8NO4",
+   "charge": 0
+  },
+  {
+   "id": "cpd00117[c_Lc]",
+   "name": "D-Alanine",
+   "compartment": "c",
+   "formula": "C3H7NO2",
+   "charge": 0
+  },
+  {
+   "id": "cpd00205[e_Lc]",
+   "name": "K+",
+   "compartment": "e",
+   "formula": "K",
+   "charge": 0
+  },
+  {
+   "id": "cpd00001[e_Lc]",
+   "name": "H2O",
+   "compartment": "e",
+   "formula": "H2O",
+   "charge": 0
+  },
+  {
+   "id": "cpd00254[e_Lc]",
+   "name": "Mg",
+   "compartment": "e",
+   "formula": "Mg",
+   "charge": 0
+  },
+  {
+   "id": "cpd00099[e_Lc]",
+   "name": "Cl",
+   "compartment": "e",
+   "formula": "Cl",
+   "charge": 0
+  },
+  {
+   "id": "cpd00149[e_Lc]",
+   "name": "Co2+",
+   "compartment": "e",
+   "formula": "Co",
+   "charge": 0
+  },
+  {
+   "id": "cpd01157[c_Lc]",
+   "name": "Chitobiose",
+   "compartment": "c",
+   "formula": "C16H28N2O11",
+   "charge": 0
+  },
+  {
+   "id": "cpd00122[c_Lc]",
+   "name": "N-Acetyl-D-glucosamine",
+   "compartment": "c",
+   "formula": "C8H15NO6",
+   "charge": 0
+  },
+  {
+   "id": "cpd00190[c_Lc]",
+   "name": "beta-D-Glucose",
+   "compartment": "c",
+   "formula": "C6H12O6",
+   "charge": 0
+  },
+  {
+   "id": "cpd00158[c_Lc]",
+   "name": "CELB",
+   "compartment": "c",
+   "formula": "C12H22O11",
+   "charge": 0
+  },
+  {
+   "id": "cpd00179[c_Lc]",
+   "name": "Maltose",
+   "compartment": "c",
+   "formula": "C12H22O11",
+   "charge": 0
+  },
+  {
+   "id": "cpd00027[c_Lc]",
+   "name": "D-Glucose",
+   "compartment": "c",
+   "formula": "C6H12O6",
+   "charge": 0
+  }
+ ],
+ "reactions": [
+  {
+   "id": "bio06001_Lc",
+   "name": "bio06001 Lc",
+   "metabolites": {
+    "cpd15666[c_Lc]": 0.090573528379,
+    "cpd15665[c_Lc]": -0.090573528379,
+    "cpd12370[c_Lc]": 0.005507320279,
+    "cpd11493[c_Lc]": -0.005507320279,
+    "cpd11416[e_Lc]": 1,
+    "cpd10516[c_Lc]": -0.005507320279,
+    "cpd10515[c_Lc]": -0.005507320279,
+    "cpd02229[c_Lc]": -0.090573528379,
+    "cpd00357[c_Lc]": -0.012293772743,
+    "cpd00356[c_Lc]": -0.010717874054,
+    "cpd00345[c_Lc]": -0.005507320279,
+    "cpd00322[c_Lc]": -0.276737212288,
+    "cpd00264[c_Lc]": -0.005507320279,
+    "cpd00254[c_Lc]": -0.005507320279,
+    "cpd00241[c_Lc]": -0.010717874054,
+    "cpd00220[c_Lc]": -0.005507320279,
+    "cpd00205[c_Lc]": -0.005507320279,
+    "cpd00201[c_Lc]": -0.005507320279,
+    "cpd00161[c_Lc]": -0.241575768575,
+    "cpd00156[c_Lc]": -0.403132318449,
+    "cpd00149[c_Lc]": -0.005507320279,
+    "cpd00132[c_Lc]": -0.229852022579,
+    "cpd00129[c_Lc]": -0.210998045101,
+    "cpd00119[c_Lc]": -0.090717504207,
+    "cpd00115[c_Lc]": -0.012293772743,
+    "cpd00107[c_Lc]": -0.429635623933,
+    "cpd00099[c_Lc]": -0.005507320279,
+    "cpd00087[c_Lc]": -0.005507320279,
+    "cpd00084[c_Lc]": -0.087149450184,
+    "cpd00069[c_Lc]": -0.131488128649,
+    "cpd00067[c_Lc]": 40,
+    "cpd00066[c_Lc]": -0.176845411611,
+    "cpd00065[c_Lc]": -0.054022277183,
+    "cpd00063[c_Lc]": -0.005507320279,
+    "cpd00062[c_Lc]": -0.137384281606,
+    "cpd00060[c_Lc]": -0.146267688137,
+    "cpd00058[c_Lc]": -0.005507320279,
+    "cpd00056[c_Lc]": -0.005507320279,
+    "cpd00054[c_Lc]": -0.20538592609,
+    "cpd00053[c_Lc]": -0.250743209053,
+    "cpd00052[c_Lc]": -0.127208030904,
+    "cpd00051[c_Lc]": -0.282349331299,
+    "cpd00048[c_Lc]": -0.005507320279,
+    "cpd00041[c_Lc]": -0.229852022579,
+    "cpd00039[c_Lc]": -0.326688009764,
+    "cpd00038[c_Lc]": -0.20479826965,
+    "cpd00035[c_Lc]": -0.489772466384,
+    "cpd00034[c_Lc]": -0.005507320279,
+    "cpd00033[c_Lc]": -0.583542845802,
+    "cpd00030[c_Lc]": -0.005507320279,
+    "cpd00023[c_Lc]": -0.250743209053,
+    "cpd00017[c_Lc]": -0.005507320279,
+    "cpd00016[c_Lc]": -0.005507320279,
+    "cpd00015[c_Lc]": -0.005507320279,
+    "cpd00012[c_Lc]": 0.589997272378,
+    "cpd00010[c_Lc]": -0.005507320279,
+    "cpd00009[c_Lc]": 39.994515206552,
+    "cpd00008[c_Lc]": 40,
+    "cpd00006[c_Lc]": -0.005507320279,
+    "cpd00003[c_Lc]": -0.005507320279,
+    "cpd00002[c_Lc]": -40.166600600992,
+    "cpd00001[c_Lc]": -34.903549516398
+   },
+   "lower_bound": 0,
+   "upper_bound": 1000,
+   "subsystem": ""
+  },
+  {
+   "id": "EX_cpdturan(e)_Lc",
+   "name": "Turanose exchange",
+   "metabolites": {
+    "cpdturan[e_Lc]": -1
+   },
+   "lower_bound": -1000,
+   "upper_bound": 1000,
+   "subsystem": ""
+  },
+  {
+   "id": "EX_cpdlacti(e)_Lc",
+   "name": "Lactitol exchange",
+   "metabolites": {
+    "cpdlacti[e_Lc]": -1
+   },
+   "lower_bound": -1000,
+   "upper_bound": 1000,
+   "subsystem": ""
+  },
+  {
+   "id": "EX_cpd15606(e)_Lc",
+   "name": "Gly-Tyr exchange",
+   "metabolites": {
+    "cpd15606[e_Lc]": -1
+   },
+   "lower_bound": -1000,
+   "upper_bound": 1000,
+   "subsystem": ""
+  },
+  {
+   "id": "EX_cpd15605(e)_Lc",
+   "name": "Gly-Phe exchange",
+   "metabolites": {
+    "cpd15605[e_Lc]": -1
+   },
+   "lower_bound": -1000,
+   "upper_bound": 1000,
+   "subsystem": ""
+  },
+  {
+   "id": "EX_cpd15604(e)_Lc",
+   "name": "Gly-Leu exchange",
+   "metabolites": {
+    "cpd15604[e_Lc]": -1
+   },
+   "lower_bound": -1000,
+   "upper_bound": 1000,
+   "subsystem": ""
+  },
+  {
+   "id": "EX_cpd15603(e)_Lc",
+   "name": "Gly-Cys exchange",
+   "metabolites": {
+    "cpd15603[e_Lc]": -1
+   },
+   "lower_bound": -1000,
+   "upper_bound": 1000,
+   "subsystem": ""
+  },
+  {
+   "id": "EX_cpd11602(e)_Lc",
+   "name": "Inulin exchange",
+   "metabolites": {
+    "cpd11602[e_Lc]": -1
+   },
+   "lower_bound": -1000,
+   "upper_bound": 1000,
+   "subsystem": ""
+  },
+  {
+   "id": "EX_cpd11597(e)_Lc",
+   "name": "ARSENOBETAINE exchange",
+   "metabolites": {
+    "cpd11597[e_Lc]": -1
+   },
+   "lower_bound": -1000,
+   "upper_bound": 1000,
+   "subsystem": ""
+  },
+  {
+   "id": "Bio_lca_Lc",
+   "name": "Biomass exchange",
+   "metabolites": {
+    "cpd11416[e_Lc]": -1
+   },
+   "lower_bound": -1000,
+   "upper_bound": 1000,
+   "subsystem": ""
+  },
+  {
+   "id": "rxn00193_Lc",
+   "name": "rxn00193 Lc",
+   "metabolites": {
+    "cpd00186[c_Lc]": 1,
+    "cpd00023[c_Lc]": -1
+   },
+   "lower_bound": -1000,
+   "upper_bound": 1000,
+   "subsystem": ""
+  },
+  {
+   "id": "rxn00283_Lc",
+   "name": "rxn00283 Lc",
+   "metabolites": {
+    "cpd00117[c_Lc]": 1,
+    "cpd00035[c_Lc]": -1
+   },
+   "lower_bound": -1000,
+   "upper_bound": 1000,
+   "subsystem": ""
+  },
+  {
+   "id": "rxn05206_Lc",
+   "name": "rxn05206 Lc",
+   "metabolites": {
+    "cpd00205[c_Lc]": 1,
+    "cpd00205[e_Lc]": -1
+   },
+   "lower_bound": -1000,
+   "upper_bound": 1000,
+   "subsystem": "LPS Metabolism"
+  },
+  {
+   "id": "rxn05319_Lc",
+   "name": "rxn05319 Lc",
+   "metabolites": {
+    "cpd00001[c_Lc]": -1,
+    "cpd00001[e_Lc]": 1
+   },
+   "lower_bound": 0,
+   "upper_bound": 1000,
+   "subsystem": "Transport, Extracellular"
+  },
+  {
+   "id": "rxn05616_Lc",
+   "name": "rxn05616 Lc",
+   "metabolites": {
+    "cpd00254[c_Lc]": 1,
+    "cpd00254[e_Lc]": -1
+   },
+   "lower_bound": 0,
+   "upper_bound": 1000,
+   "subsystem": "Alanine and Aspartate Metabolism"
+  },
+  {
+   "id": "rxn10473_Lc",
+   "name": "rxn10473 Lc",
+   "metabolites": {
+    "cpd00099[c_Lc]": 1,
+    "cpd00099[e_Lc]": -1
+   },
+   "lower_bound": -1000,
+   "upper_bound": 1000,
+   "subsystem": "Transport, ExtracellularTransport, ABC system"
+  },
+  {
+   "id": "rxn10474_Lc",
+   "name": "rxn10474 Lc",
+   "metabolites": {
+    "cpd00149[c_Lc]": 1,
+    "cpd00149[e_Lc]": -1
+   },
+   "lower_bound": 0,
+   "upper_bound": 1000,
+   "subsystem": "Transport, ExtracellularTransport, ABC system"
+  },
+  {
+   "id": "rxn00016_Lc",
+   "name": "rxn00016 Lc",
+   "metabolites": {
+    "cpd01157[c_Lc]": -1,
+    "cpd00122[c_Lc]": 2,
+    "cpd00001[c_Lc]": -1
+   },
+   "lower_bound": -1000,
+   "upper_bound": 1000,
+   "subsystem": ""
+  },
+  {
+   "id": "rxn00020_Lc",
+   "name": "rxn00020 Lc",
+   "metabolites": {
+    "cpd00190[c_Lc]": 2,
+    "cpd00158[c_Lc]": -1,
+    "cpd00001[c_Lc]": -1
+   },
+   "lower_bound": 0,
+   "upper_bound": 0,
+   "subsystem": ""
+  },
+  {
+   "id": "rxn00022_Lc",
+   "name": "rxn00022 Lc",
+   "metabolites": {
+    "cpd00179[c_Lc]": -1,
+    "cpd00027[c_Lc]": 2,
+    "cpd00001[c_Lc]": -1
+   },
+   "lower_bound": 0,
+   "upper_bound": 1000,
+   "subsystem": ""
+  }
+ ],
+ "genes": [],
+ "objective": {
+  "bio06001_Lc": 1
+ }
+}

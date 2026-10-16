@@ -1,0 +1,13 @@
+metabolite,name,kind,exchange_reaction
+SO4,SO4(-2),external,EX_SO4
+H2S,H2S,external,EX_H2S
+EtOH,Ethanol,external,EX_EtOH
+glycerol,glycerol,external,EX_glycerol
+ZM_CH4,MM_Methane,external,EX_ZM_CH4
+ZM_N2,MM_Nitrogen,external,EX_ZM_N2
+ZM_BIOMASS,Methanococcus_biomass,external,EX_ZM_BIOMASS
+NH3(ext),Ammonia(external),external,EX_NH3(ext)
+AcOH(exch),acetic,shared between the two organisms,EX_AcOH(exch)_Dv EX_AcOH(exch)_Mm
+Form(exch),Formate(external),shared between the two organisms,EX_Form(exch)_Dv EX_Form(exch)_Mm
+H2(exch),Hydrogen(external),shared between the two organisms,EX_H2(exch)_Dv EX_H2(exch)_Mm
+NH3(ext),Ammonia(external),shared between the two organisms,EX_NH3(ext)_Dv EX_NH3(ext)_Mm

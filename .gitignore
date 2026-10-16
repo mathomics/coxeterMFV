@@ -1,0 +1,11 @@
+node_modules/
+.DS_Store
+*.log
+.cache/
+
+# Rust build output
+code/rust/target/
+code/rust/fixtures/large/
+
+# Standalone build written by `npm run build:standalone` inside code/
+code/coxeter_mfv.html

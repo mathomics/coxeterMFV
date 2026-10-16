@@ -1,0 +1,28 @@
+[package]
+name = "coxeter-state"
+description = "The application's state and every action it can take (the Store of src/ui/store.js), without a GUI."
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[features]
+default = []
+# `HttpsFetcher` of coxeter-analysis as a store `Fetcher`, for the application.
+download = ["coxeter-analysis/download"]
+
+[dependencies]
+coxeter-core.workspace = true
+coxeter-io = { path = "../coxeter-io" }
+coxeter-solver = { path = "../coxeter-solver" }
+coxeter-map = { path = "../coxeter-map" }
+coxeter-render = { path = "../coxeter-render" }
+# Without its HTTPS downloader: this crate has no HTTP client of its own, and
+# downloads go through the store's injectable `Fetcher` (see `assets.rs`).
+coxeter-analysis = { path = "../coxeter-analysis", default-features = false }
+serde.workspace = true
+serde_json.workspace = true
+indexmap.workspace = true
+regex.workspace = true
+thiserror.workspace = true
+# String.prototype.normalize('NFD'/'NFKD') for reaction search and pathway ids.
+unicode-normalization = "0.1.25"

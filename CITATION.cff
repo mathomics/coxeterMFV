@@ -1,0 +1,17 @@
+cff-version: 1.2.0
+message: "If you use Coxeter-MFV, please cite the article describing it. The reference and DOI will be added on publication."
+title: "Coxeter-MFV: Coxeter Multicell Flux Visualizer"
+abstract: "Metabolic maps with explicit cells and subcellular compartments, and flux balance analysis of single organisms and microbial communities, as a single-file web application and a native desktop application."
+type: software
+authors:
+  - name: "The Coxeter-MFV authors"
+version: 0.1.0
+license: MIT
+repository-code: "https://github.com/mathomics/coxeterMFV"
+keywords:
+  - metabolic maps
+  - flux balance analysis
+  - genome-scale metabolic models
+  - microbial communities
+  - subcellular compartments
+  - visualization

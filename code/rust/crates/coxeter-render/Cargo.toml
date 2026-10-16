@@ -1,0 +1,18 @@
+[package]
+name = "coxeter-render"
+description = "Drawing a map: the SVG the JavaScript renderer draws, its styles, flux colours and cross-feeding routes; SVG and PNG export."
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[dependencies]
+coxeter-core.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+indexmap.workspace = true
+regex.workspace = true
+thiserror.workspace = true
+# fdlibm's log1p/expm1, the ones V8 uses (coxeter-core uses the same crate).
+libm = "0.2.16"
+# PNG export. No raster-image decoders: the map embeds none.
+resvg = { version = "0.48.1", default-features = false, features = ["text", "system-fonts", "memmap-fonts"] }

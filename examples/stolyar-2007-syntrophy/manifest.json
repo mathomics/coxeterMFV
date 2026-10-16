@@ -1,0 +1,33 @@
+{
+  "community": "stolyar-2007-syntrophy",
+  "medium": {
+    "NH3(ext)": 1000
+  },
+  "source": "Stolyar et al. 2007 supplementary material, four CellNetAnalyzer files",
+  "generatedBy": "tools/build-published-assets.mjs",
+  "media": "media.csv",
+  "bounds": "bounds.csv",
+  "joint": "joint-model.json",
+  "members": [
+    {
+      "id": "Dv",
+      "name": "Desulfovibrio vulgaris Hildenborough",
+      "reactions": 104,
+      "metabolites": 89,
+      "model": "model-Dv.json",
+      "preview": "preview-Dv.json",
+      "previewReactions": 104,
+      "wholeModel": true
+    },
+    {
+      "id": "Mm",
+      "name": "Methanococcus maripaludis S2",
+      "reactions": 96,
+      "metabolites": 85,
+      "model": "model-Mm.json",
+      "preview": "preview-Mm.json",
+      "previewReactions": 96,
+      "wholeModel": true
+    }
+  ]
+}

@@ -1,0 +1,616 @@
+{
+  "id": "methanogen_core_mc",
+  "name": "Methanosarcina sp. — methanogenic core",
+  "version": "1",
+  "compartments": {
+    "e": "Extracellular",
+    "c": "Cytoplasm"
+  },
+  "compartment_tree": {
+    "e": null,
+    "c": "e"
+  },
+  "cell": {
+    "name": "Methanosarcina",
+    "organism": "Methanosarcina barkeri",
+    "color": "#7c3aed",
+    "shape": "round",
+    "gram": null,
+    "note": "Strictly anaerobic archaeon. Consumes the acetate and H2/CO2 the bacteria ferment, and releases methane."
+  },
+  "metabolites": [
+    {
+      "id": "ac_c",
+      "name": "Acetate [Cytoplasm]",
+      "compartment": "c",
+      "formula": "C2H3O2",
+      "charge": -1,
+      "primary": true
+    },
+    {
+      "id": "ac_e",
+      "name": "Acetate [Extracellular]",
+      "compartment": "e",
+      "formula": "C2H3O2",
+      "charge": -1,
+      "primary": true
+    },
+    {
+      "id": "accoa_c",
+      "name": "Acetyl-CoA [Cytoplasm]",
+      "compartment": "c",
+      "formula": "C23H34N7O17P3S",
+      "charge": -4,
+      "primary": true
+    },
+    {
+      "id": "actp_c",
+      "name": "Acetyl phosphate [Cytoplasm]",
+      "compartment": "c",
+      "formula": "C2H3O5P",
+      "charge": -2
+    },
+    {
+      "id": "adp_c",
+      "name": "ADP [Cytoplasm]",
+      "compartment": "c",
+      "formula": "C10H12N5O10P2",
+      "charge": -3,
+      "primary": false
+    },
+    {
+      "id": "atp_c",
+      "name": "ATP [Cytoplasm]",
+      "compartment": "c",
+      "formula": "C10H12N5O13P3",
+      "charge": -4,
+      "primary": false
+    },
+    {
+      "id": "ch4_c",
+      "name": "Methane [Cytoplasm]",
+      "compartment": "c",
+      "formula": "CH4",
+      "charge": 0,
+      "primary": true
+    },
+    {
+      "id": "ch4_e",
+      "name": "Methane [Extracellular]",
+      "compartment": "e",
+      "formula": "CH4",
+      "charge": 0,
+      "primary": true
+    },
+    {
+      "id": "co2_c",
+      "name": "CO2 [Cytoplasm]",
+      "compartment": "c",
+      "formula": "CO2",
+      "charge": 0,
+      "primary": false
+    },
+    {
+      "id": "co2_e",
+      "name": "CO2 [Extracellular]",
+      "compartment": "e",
+      "formula": "CO2",
+      "charge": 0,
+      "primary": false
+    },
+    {
+      "id": "coa_c",
+      "name": "Coenzyme A [Cytoplasm]",
+      "compartment": "c",
+      "formula": "C21H32N7O16P3S",
+      "charge": -4,
+      "primary": true
+    },
+    {
+      "id": "h_c",
+      "name": "H+ [Cytoplasm]",
+      "compartment": "c",
+      "formula": "H",
+      "charge": 1,
+      "primary": false
+    },
+    {
+      "id": "h_e",
+      "name": "H+ [Extracellular]",
+      "compartment": "e",
+      "formula": "H",
+      "charge": 1,
+      "primary": false
+    },
+    {
+      "id": "h2_c",
+      "name": "H2 [Cytoplasm]",
+      "compartment": "c",
+      "formula": "H2",
+      "charge": 0
+    },
+    {
+      "id": "h2_e",
+      "name": "H2 [Extracellular]",
+      "compartment": "e",
+      "formula": "H2",
+      "charge": 0
+    },
+    {
+      "id": "h2o_c",
+      "name": "H2O [Cytoplasm]",
+      "compartment": "c",
+      "formula": "H2O",
+      "charge": 0,
+      "primary": false
+    },
+    {
+      "id": "h2o_e",
+      "name": "H2O [Extracellular]",
+      "compartment": "e",
+      "formula": "H2O",
+      "charge": 0,
+      "primary": false
+    },
+    {
+      "id": "hco3_c",
+      "name": "Bicarbonate [Cytoplasm]",
+      "compartment": "c",
+      "formula": "CHO3",
+      "charge": -1,
+      "primary": true
+    },
+    {
+      "id": "nh4_c",
+      "name": "Ammonium [Cytoplasm]",
+      "compartment": "c",
+      "formula": "H4N",
+      "charge": 1,
+      "primary": false
+    },
+    {
+      "id": "nh4_e",
+      "name": "Ammonium [Extracellular]",
+      "compartment": "e",
+      "formula": "H4N",
+      "charge": 1,
+      "primary": false
+    },
+    {
+      "id": "pi_c",
+      "name": "Phosphate [Cytoplasm]",
+      "compartment": "c",
+      "formula": "HO4P",
+      "charge": -2,
+      "primary": false
+    },
+    {
+      "id": "pi_e",
+      "name": "Phosphate [Extracellular]",
+      "compartment": "e",
+      "formula": "HO4P",
+      "charge": -2,
+      "primary": false
+    }
+  ],
+  "reactions": [
+    {
+      "id": "ACKr",
+      "name": "Acetate kinase",
+      "metabolites": {
+        "ac_c": -1,
+        "atp_c": -1,
+        "actp_c": 1,
+        "adp_c": 1
+      },
+      "lower_bound": -1000,
+      "upper_bound": 1000,
+      "gene_reaction_rule": "",
+      "subsystem": "Carbon assimilation",
+      "layout": {
+        "rank": 1,
+        "lane": 0
+      }
+    },
+    {
+      "id": "PTAr",
+      "name": "Fosfotransacetilasa",
+      "metabolites": {
+        "accoa_c": -1,
+        "pi_c": -1,
+        "actp_c": 1,
+        "coa_c": 1
+      },
+      "lower_bound": -1000,
+      "upper_bound": 1000,
+      "gene_reaction_rule": "",
+      "subsystem": "Carbon assimilation",
+      "layout": {
+        "rank": 2,
+        "lane": 0
+      }
+    },
+    {
+      "id": "MCRac",
+      "name": "Acetoclastic methanogenesis (CODH/ACS + MCR, lumped energetics)",
+      "metabolites": {
+        "accoa_c": -1,
+        "h2o_c": -0.5,
+        "adp_c": -1.5,
+        "pi_c": -1.5,
+        "h_c": -0.5,
+        "ch4_c": 1,
+        "hco3_c": 1,
+        "coa_c": 1,
+        "atp_c": 1.5
+      },
+      "lower_bound": 0,
+      "upper_bound": 1000,
+      "gene_reaction_rule": "",
+      "subsystem": "Methanogenesis",
+      "layout": {
+        "rank": 3,
+        "lane": 0
+      }
+    },
+    {
+      "id": "MCRh2",
+      "name": "Hydrogenotrophic methanogenesis (lumped energetics)",
+      "metabolites": {
+        "h2_c": -4,
+        "hco3_c": -1,
+        "h_c": -2,
+        "adp_c": -1,
+        "pi_c": -1,
+        "ch4_c": 1,
+        "h2o_c": 4,
+        "atp_c": 1
+      },
+      "lower_bound": 0,
+      "upper_bound": 1000,
+      "gene_reaction_rule": "",
+      "subsystem": "Methanogenesis",
+      "layout": {
+        "rank": 3,
+        "lane": 2
+      }
+    },
+    {
+      "id": "CODH_ACS",
+      "name": "Wood-Ljungdahl pathway (CODH/ACS): fixes CO2 into acetyl-CoA",
+      "metabolites": {
+        "hco3_c": -2,
+        "h2_c": -4,
+        "coa_c": -1,
+        "atp_c": -1,
+        "h_c": -1,
+        "accoa_c": 1,
+        "adp_c": 1,
+        "pi_c": 1,
+        "h2o_c": 4
+      },
+      "lower_bound": 0,
+      "upper_bound": 1000,
+      "gene_reaction_rule": "",
+      "subsystem": "Carbon assimilation",
+      "layout": {
+        "rank": 2,
+        "lane": 3
+      }
+    },
+    {
+      "id": "HCO3E",
+      "name": "Carbonic anhydrase",
+      "metabolites": {
+        "co2_c": -1,
+        "h2o_c": -1,
+        "h_c": 1,
+        "hco3_c": 1
+      },
+      "lower_bound": -1000,
+      "upper_bound": 1000,
+      "gene_reaction_rule": "",
+      "subsystem": "Carbon assimilation",
+      "layout": {
+        "rank": 4,
+        "lane": 2
+      }
+    },
+    {
+      "id": "ATPM",
+      "name": "Non-growth-associated maintenance",
+      "metabolites": {
+        "atp_c": -1,
+        "h2o_c": -1,
+        "adp_c": 1,
+        "h_c": 1,
+        "pi_c": 1
+      },
+      "lower_bound": 1,
+      "upper_bound": 1000,
+      "gene_reaction_rule": "",
+      "subsystem": "Methanogenesis",
+      "layout": {
+        "rank": 5,
+        "lane": 4
+      }
+    },
+    {
+      "id": "ACt",
+      "name": "Simporte acetato/H+",
+      "metabolites": {
+        "ac_e": -1,
+        "h_e": -1,
+        "ac_c": 1,
+        "h_c": 1
+      },
+      "lower_bound": -1000,
+      "upper_bound": 1000,
+      "gene_reaction_rule": "",
+      "subsystem": "Membrane transport",
+      "layout": {
+        "rank": 0,
+        "lane": 0
+      }
+    },
+    {
+      "id": "CH4t",
+      "name": "Methane diffusion",
+      "metabolites": {
+        "ch4_c": -1,
+        "ch4_e": 1
+      },
+      "lower_bound": -1000,
+      "upper_bound": 1000,
+      "gene_reaction_rule": "",
+      "subsystem": "Membrane transport",
+      "layout": {
+        "rank": 4,
+        "lane": 0
+      }
+    },
+    {
+      "id": "H2t",
+      "name": "H2 diffusion",
+      "metabolites": {
+        "h2_e": -1,
+        "h2_c": 1
+      },
+      "lower_bound": -1000,
+      "upper_bound": 1000,
+      "gene_reaction_rule": "",
+      "subsystem": "Membrane transport",
+      "layout": {
+        "rank": 2,
+        "lane": 2
+      }
+    },
+    {
+      "id": "CO2t",
+      "name": "CO2 diffusion",
+      "metabolites": {
+        "co2_e": -1,
+        "co2_c": 1
+      },
+      "lower_bound": -1000,
+      "upper_bound": 1000,
+      "gene_reaction_rule": "",
+      "subsystem": "Membrane transport",
+      "layout": {
+        "rank": 5,
+        "lane": 2
+      }
+    },
+    {
+      "id": "H2Ot",
+      "name": "Agua",
+      "metabolites": {
+        "h2o_e": -1,
+        "h2o_c": 1
+      },
+      "lower_bound": -1000,
+      "upper_bound": 1000,
+      "gene_reaction_rule": "",
+      "subsystem": "Membrane transport",
+      "layout": {
+        "rank": 6,
+        "lane": 4
+      }
+    },
+    {
+      "id": "NH4t",
+      "name": "Amonio",
+      "metabolites": {
+        "nh4_e": -1,
+        "nh4_c": 1
+      },
+      "lower_bound": -1000,
+      "upper_bound": 1000,
+      "gene_reaction_rule": "",
+      "subsystem": "Membrane transport",
+      "layout": {
+        "rank": 6,
+        "lane": -1
+      }
+    },
+    {
+      "id": "PIt",
+      "name": "Fosfato",
+      "metabolites": {
+        "pi_e": -1,
+        "pi_c": 1
+      },
+      "lower_bound": -1000,
+      "upper_bound": 1000,
+      "gene_reaction_rule": "",
+      "subsystem": "Membrane transport",
+      "layout": {
+        "rank": 6,
+        "lane": 5
+      }
+    },
+    {
+      "id": "Ht",
+      "name": "Proton",
+      "metabolites": {
+        "h_e": -1,
+        "h_c": 1
+      },
+      "lower_bound": -1000,
+      "upper_bound": 1000,
+      "gene_reaction_rule": "",
+      "subsystem": "Membrane transport",
+      "layout": {
+        "rank": 7,
+        "lane": 5
+      }
+    },
+    {
+      "id": "EX_ac_e",
+      "name": "Acetate exchange",
+      "metabolites": {
+        "ac_e": -1
+      },
+      "lower_bound": -10,
+      "upper_bound": 1000,
+      "gene_reaction_rule": "",
+      "subsystem": "Exchange",
+      "layout": {
+        "rank": 0,
+        "lane": 0
+      }
+    },
+    {
+      "id": "EX_h2_e",
+      "name": "H2 exchange",
+      "metabolites": {
+        "h2_e": -1
+      },
+      "lower_bound": -20,
+      "upper_bound": 1000,
+      "gene_reaction_rule": "",
+      "subsystem": "Exchange",
+      "layout": {
+        "rank": 2,
+        "lane": 2
+      }
+    },
+    {
+      "id": "EX_co2_e",
+      "name": "CO2 exchange",
+      "metabolites": {
+        "co2_e": -1
+      },
+      "lower_bound": -1000,
+      "upper_bound": 1000,
+      "gene_reaction_rule": "",
+      "subsystem": "Exchange",
+      "layout": {
+        "rank": 5,
+        "lane": 2
+      }
+    },
+    {
+      "id": "EX_ch4_e",
+      "name": "Methane exchange",
+      "metabolites": {
+        "ch4_e": -1
+      },
+      "lower_bound": 0,
+      "upper_bound": 1000,
+      "gene_reaction_rule": "",
+      "subsystem": "Exchange",
+      "layout": {
+        "rank": 4,
+        "lane": 0
+      }
+    },
+    {
+      "id": "EX_h2o_e",
+      "name": "H2O exchange",
+      "metabolites": {
+        "h2o_e": -1
+      },
+      "lower_bound": -1000,
+      "upper_bound": 1000,
+      "gene_reaction_rule": "",
+      "subsystem": "Exchange",
+      "layout": {
+        "rank": 6,
+        "lane": 4
+      }
+    },
+    {
+      "id": "EX_nh4_e",
+      "name": "Ammonium exchange",
+      "metabolites": {
+        "nh4_e": -1
+      },
+      "lower_bound": -1000,
+      "upper_bound": 1000,
+      "gene_reaction_rule": "",
+      "subsystem": "Exchange",
+      "layout": {
+        "rank": 6,
+        "lane": -1
+      }
+    },
+    {
+      "id": "EX_pi_e",
+      "name": "Phosphate exchange",
+      "metabolites": {
+        "pi_e": -1
+      },
+      "lower_bound": -1000,
+      "upper_bound": 1000,
+      "gene_reaction_rule": "",
+      "subsystem": "Exchange",
+      "layout": {
+        "rank": 6,
+        "lane": 5
+      }
+    },
+    {
+      "id": "EX_h_e",
+      "name": "H+ exchange",
+      "metabolites": {
+        "h_e": -1
+      },
+      "lower_bound": -1000,
+      "upper_bound": 1000,
+      "gene_reaction_rule": "",
+      "subsystem": "Exchange",
+      "layout": {
+        "rank": 7,
+        "lane": 5
+      }
+    },
+    {
+      "id": "BIOMASS_Mb_core",
+      "name": "Biomass (methanogen core, lumped)",
+      "metabolites": {
+        "accoa_c": -3,
+        "atp_c": -30,
+        "nh4_c": -2,
+        "h2o_c": -30,
+        "adp_c": 30,
+        "coa_c": 3,
+        "pi_c": 30,
+        "h_c": 32
+      },
+      "lower_bound": 0,
+      "upper_bound": 1000,
+      "gene_reaction_rule": "",
+      "subsystem": "Biomass",
+      "layout": {
+        "rank": 8,
+        "lane": 0
+      },
+      "objective_coefficient": 1
+    }
+  ],
+  "genes": [],
+  "objective": {
+    "BIOMASS_Mb_core": 1
+  }
+}

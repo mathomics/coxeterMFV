@@ -1,0 +1,23 @@
+[package]
+name = "coxeter-analysis"
+description = "Published communities (Stolyar, SteadyCom E. coli and gut nine, Zuñiga), omics overlays, GIMME and the cross-feeding explorer."
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[features]
+default = ["download"]
+# The default downloader of the Zuñiga source files (HTTPS through ureq).
+# Without it `load_zuniga_study` still works with a fetcher the caller gives.
+download = ["dep:ureq"]
+
+[dependencies]
+coxeter-core.workspace = true
+coxeter-io = { path = "../coxeter-io" }
+coxeter-solver = { path = "../coxeter-solver" }
+serde.workspace = true
+serde_json.workspace = true
+indexmap.workspace = true
+regex.workspace = true
+thiserror.workspace = true
+ureq = { version = "3.4.2", optional = true }

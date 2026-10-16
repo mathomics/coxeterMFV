@@ -1,0 +1,101 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1800" height="1440" viewBox="0 0 1800 1440" role="img" aria-labelledby="title description">
+<title id="title">Coxeter reproduces the stationary ΔpheA rescue prediction</title>
+<desc id="description">Three calculated growth scenarios and the selected phenylalanine rescue pathway for S. elongatus and E. coli. Mutant predictions match Supplementary Data 9 of Zuñiga et al. 2020. Wild-type monoculture is a newly calculated reference. Monoculture and coculture retain different source media.</desc>
+<metadata>{&quot;study&quot;:&quot;zuniga-2020-phea-rescue&quot;,&quot;doi&quot;:&quot;10.1038/s41467-020-17612-8&quot;,&quot;sourceHashes&quot;:{&quot;M-models.mat&quot;:&quot;73ea4b815d6473152867a609cf9820c2d4f3d360d3d0994b957c09b8e2a7e25b&quot;,&quot;CM-modelsKO.mat&quot;:&quot;6befdb155af023af1072f2f70c671a5b4d1de6ce768c6c0f0796ccfc3b7f43a3&quot;},&quot;method&quot;:&quot;Stationary FBA, maximize the original c vector&quot;,&quot;growth&quot;:[{&quot;id&quot;:&quot;wt-monoculture&quot;,&quot;growth&quot;:{&quot;Ec&quot;:0.08797173802589708}},{&quot;id&quot;:&quot;mutant-monoculture&quot;,&quot;growth&quot;:{&quot;Ec&quot;:0}},{&quot;id&quot;:&quot;mutant-coculture&quot;,&quot;growth&quot;:{&quot;Ec&quot;:0.07757404795471114,&quot;Se&quot;:0.034848410076886396}}],&quot;phenylalanineTransfer&quot;:0.014371755994375235,&quot;fluxUnits&quot;:&quot;mmol gDW⁻¹ h⁻¹ (original model flux basis)&quot;,&quot;reference&quot;:&quot;Supplementary Data 9, row pheA/b2599&quot;,&quot;tolerance&quot;:1e-8,&quot;schematic&quot;:true}</metadata>
+<defs><marker id="arrow-Ec" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path d="M 0 0 L 10 5 L 0 10 z" fill="#2469ad"/></marker><marker id="arrow-Se" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path d="M 0 0 L 10 5 L 0 10 z" fill="#159477"/></marker><marker id="arrow-inactive" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path d="M 0 0 L 10 5 L 0 10 z" fill="#aab4c0"/></marker></defs>
+<g font-family="Arial, Helvetica, sans-serif">
+<rect x="0" y="0" width="1800" height="1440" rx="0" fill="#fff" stroke="none" stroke-width="2"/>
+<text x="70" y="65" font-size="38" fill="#19283a" font-weight="700" text-anchor="start">Coxeter reproduces the stationary ΔpheA rescue prediction</text>
+<text x="70" y="108" font-size="25" fill="#596579" font-weight="400" text-anchor="start">Zuñiga et al. (2020) · Complete source models · Supplementary Data 9</text>
+<text x="70" y="177" font-size="32" fill="#19283a" font-weight="700" text-anchor="start">A</text>
+<text x="115" y="177" font-size="29" fill="#19283a" font-weight="600" text-anchor="start">Calculated growth rates</text>
+<rect x="1210" y="153" width="24" height="24" rx="3" fill="#2469ad" stroke="#2469ad" stroke-width="2"/>
+<text x="1245" y="176" font-size="25" fill="#19283a" font-weight="400" text-anchor="start">E. coli (Ec)</text>
+<rect x="1450" y="153" width="24" height="24" rx="3" fill="#159477" stroke="#159477" stroke-width="2"/>
+<text x="1485" y="176" font-size="25" fill="#19283a" font-weight="400" text-anchor="start">S. elongatus (Se)</text>
+<line x1="225" y1="515" x2="1670" y2="515" stroke="#758292" stroke-width="2.5"/>
+<text x="207" y="524" font-size="25" fill="#596579" font-weight="400" text-anchor="end">0.00</text>
+<line x1="225" y1="457" x2="1670" y2="457" stroke="#e0e5eb" stroke-width="1.5"/>
+<text x="207" y="466" font-size="25" fill="#596579" font-weight="400" text-anchor="end">0.02</text>
+<line x1="225" y1="399" x2="1670" y2="399" stroke="#e0e5eb" stroke-width="1.5"/>
+<text x="207" y="408" font-size="25" fill="#596579" font-weight="400" text-anchor="end">0.04</text>
+<line x1="225" y1="341" x2="1670" y2="341" stroke="#e0e5eb" stroke-width="1.5"/>
+<text x="207" y="350" font-size="25" fill="#596579" font-weight="400" text-anchor="end">0.06</text>
+<line x1="225" y1="283" x2="1670" y2="283" stroke="#e0e5eb" stroke-width="1.5"/>
+<text x="207" y="292" font-size="25" fill="#596579" font-weight="400" text-anchor="end">0.08</text>
+<line x1="225" y1="225" x2="1670" y2="225" stroke="#e0e5eb" stroke-width="1.5"/>
+<text x="207" y="234" font-size="25" fill="#596579" font-weight="400" text-anchor="end">0.10</text>
+<text x="84" y="203" font-size="27" fill="#19283a" font-weight="600" text-anchor="start">μ (h⁻¹)</text>
+<rect x="336" y="259.8819597248985" width="94" height="255.11804027510155" rx="3" fill="#2469ad" stroke="#2469ad" stroke-width="2"/>
+<text x="383" y="243.88195972489848" font-size="27" fill="#2469ad" font-weight="600" text-anchor="middle">0.087972</text>
+<line x1="477" y1="515" x2="557" y2="515" stroke="#aab4c0" stroke-width="3" stroke-dasharray="7 6"/>
+<text x="517" y="499" font-size="22" fill="#596579" font-weight="400" text-anchor="middle">absent</text>
+<line x1="811" y1="515" x2="905" y2="515" stroke="#2469ad" stroke-width="5"/>
+<text x="858" y="499" font-size="27" fill="#2469ad" font-weight="600" text-anchor="middle">0</text>
+<line x1="952" y1="515" x2="1032" y2="515" stroke="#aab4c0" stroke-width="3" stroke-dasharray="7 6"/>
+<text x="992" y="499" font-size="22" fill="#596579" font-weight="400" text-anchor="middle">absent</text>
+<rect x="1316" y="290.0352609313377" width="94" height="224.96473906866228" rx="3" fill="#2469ad" stroke="#2469ad" stroke-width="2"/>
+<text x="1363" y="274.0352609313377" font-size="27" fill="#2469ad" font-weight="600" text-anchor="middle">0.077574</text>
+<rect x="1450" y="413.93961077702943" width="94" height="101.06038922297054" rx="3" fill="#159477" stroke="#159477" stroke-width="2"/>
+<text x="1497" y="397.93961077702943" font-size="27" fill="#159477" font-weight="600" text-anchor="middle">0.034848</text>
+<text x="450" y="568" font-size="27" fill="#19283a" font-weight="600" text-anchor="middle">WT monoculture</text>
+<text x="450" y="602" font-size="23" fill="#596579" font-weight="400" text-anchor="middle">new reference calculation</text>
+<text x="925" y="568" font-size="27" fill="#19283a" font-weight="600" text-anchor="middle">ΔpheA monoculture</text>
+<text x="925" y="602" font-size="23" fill="#596579" font-weight="400" text-anchor="middle">Data 9 prediction matched</text>
+<text x="1430" y="568" font-size="27" fill="#19283a" font-weight="600" text-anchor="middle">ΔpheA coculture</text>
+<text x="1430" y="602" font-size="23" fill="#596579" font-weight="400" text-anchor="middle">Data 9 prediction matched</text>
+<text x="70" y="675" font-size="32" fill="#19283a" font-weight="700" text-anchor="start">B</text>
+<text x="115" y="675" font-size="29" fill="#19283a" font-weight="600" text-anchor="start">Selected rescue pathway in mutant coculture</text>
+<text x="115" y="708" font-size="23" fill="#596579" font-weight="400" text-anchor="start">Qualitative schematic: arrow width is constant; cofactors and other routes are omitted.</text>
+<rect x="70" y="741" width="720" height="485" rx="24" fill="#f0faf6" stroke="#bddccf" stroke-width="2"/>
+<rect x="1010" y="741" width="720" height="485" rx="24" fill="#f1f6fc" stroke="#c4d4e5" stroke-width="2"/>
+<text x="105" y="789" font-size="28" fill="#159477" font-weight="600" text-anchor="start">S. elongatus PCC7942 cscB⁺</text>
+<text x="1045" y="789" font-size="28" fill="#2469ad" font-weight="600" text-anchor="start">E. coli K-12 MG1655 ΔpheA</text>
+<rect x="180" y="813" width="340" height="46" rx="14" fill="#fff" stroke="#a9b8c6" stroke-width="2"/>
+<text x="350" y="845" font-size="25" fill="#19283a" font-weight="400" text-anchor="middle">Chorismate</text>
+<rect x="180" y="913" width="340" height="46" rx="14" fill="#fff" stroke="#a9b8c6" stroke-width="2"/>
+<text x="350" y="945" font-size="25" fill="#19283a" font-weight="400" text-anchor="middle">Prephenate</text>
+<rect x="180" y="1013" width="340" height="46" rx="14" fill="#fff" stroke="#a9b8c6" stroke-width="2"/>
+<text x="350" y="1045" font-size="25" fill="#19283a" font-weight="400" text-anchor="middle">Phenylpyruvate</text>
+<rect x="180" y="1113" width="340" height="46" rx="14" fill="#fff" stroke="#a9b8c6" stroke-width="2"/>
+<text x="350" y="1145" font-size="25" fill="#19283a" font-weight="400" text-anchor="middle">L-Phenylalanine</text>
+<line x1="350" y1="862" x2="350" y2="908" stroke="#159477" stroke-width="5" marker-end="url(#arrow-Se)"/>
+<text x="600" y="884" font-size="25" fill="#159477" font-weight="600" text-anchor="middle">CHORM_A</text>
+<line x1="350" y1="962" x2="350" y2="1008" stroke="#159477" stroke-width="5" marker-end="url(#arrow-Se)"/>
+<text x="600" y="984" font-size="25" fill="#159477" font-weight="600" text-anchor="middle">PPNDH_A</text>
+<line x1="350" y1="1062" x2="350" y2="1108" stroke="#159477" stroke-width="5" marker-end="url(#arrow-Se)"/>
+<text x="140" y="1091" font-size="22" fill="#159477" font-weight="400" text-anchor="middle">PHETA1_A</text>
+<text x="350" y="1202" font-size="26" fill="#159477" font-weight="600" text-anchor="middle">μ = 0.034848 h⁻¹</text>
+<rect x="1280" y="813" width="340" height="46" rx="14" fill="#fff" stroke="#a9b8c6" stroke-width="2"/>
+<text x="1450" y="845" font-size="25" fill="#19283a" font-weight="400" text-anchor="middle">Chorismate</text>
+<rect x="1280" y="913" width="340" height="46" rx="14" fill="#fff" stroke="#a9b8c6" stroke-width="2"/>
+<text x="1450" y="945" font-size="25" fill="#19283a" font-weight="400" text-anchor="middle">Prephenate</text>
+<rect x="1280" y="1013" width="340" height="46" rx="14" fill="#f4f5f7" stroke="#c9d0d9" stroke-width="2"/>
+<text x="1450" y="1045" font-size="25" fill="#596579" font-weight="400" text-anchor="middle">Phenylpyruvate</text>
+<rect x="1280" y="1113" width="340" height="46" rx="14" fill="#fff" stroke="#a9b8c6" stroke-width="2"/>
+<text x="1450" y="1145" font-size="25" fill="#19283a" font-weight="400" text-anchor="middle">L-Phenylalanine</text>
+<line x1="1450" y1="862" x2="1450" y2="908" stroke="#2469ad" stroke-width="5" marker-end="url(#arrow-Ec)"/>
+<text x="1140" y="884" font-size="25" fill="#2469ad" font-weight="600" text-anchor="middle">CHORM_D</text>
+<text x="1140" y="913" font-size="22" fill="#596579" font-weight="400" text-anchor="middle">b2599 or b2600</text>
+<line x1="1450" y1="962" x2="1450" y2="1008" stroke="#b12662" stroke-width="5" stroke-dasharray="7 5"/>
+<line x1="1437" y1="972" x2="1463" y2="998" stroke="#b12662" stroke-width="6"/>
+<line x1="1437" y1="998" x2="1463" y2="972" stroke="#b12662" stroke-width="6"/>
+<text x="1140" y="979" font-size="25" fill="#b12662" font-weight="600" text-anchor="middle">PPNDH_D = 0</text>
+<text x="1140" y="1007" font-size="22" fill="#b12662" font-weight="400" text-anchor="middle">ΔpheA / b2599</text>
+<line x1="1450" y1="1062" x2="1450" y2="1108" stroke="#aab4c0" stroke-width="3" stroke-dasharray="7 5"/>
+<text x="1637" y="1091" font-size="22" fill="#596579" font-weight="400" text-anchor="middle">PHETA1_D</text>
+<text x="1450" y="1202" font-size="26" fill="#2469ad" font-weight="600" text-anchor="middle">μ = 0.077574 h⁻¹</text>
+<circle cx="900" cy="1136" r="64" fill="#fff" stroke="#8798aa" stroke-width="2.5"/>
+<text x="900" y="1146" font-size="29" fill="#19283a" font-weight="600" text-anchor="middle">Phe</text>
+<text x="900" y="1044" font-size="25" fill="#19283a" font-weight="600" text-anchor="middle">Shared pool</text>
+<line x1="524" y1="1136" x2="828" y2="1136" stroke="#159477" stroke-width="6" marker-end="url(#arrow-Se)"/>
+<line x1="972" y1="1136" x2="1272" y2="1136" stroke="#2469ad" stroke-width="6" marker-end="url(#arrow-Ec)"/>
+<text x="678" y="1080" font-size="25" fill="#159477" font-weight="600" text-anchor="middle">PHELtex_A</text>
+<text x="678" y="1110" font-size="22" fill="#596579" font-weight="400" text-anchor="middle">v = −0.014372</text>
+<text x="1122" y="1080" font-size="25" fill="#2469ad" font-weight="600" text-anchor="middle">PHEtex_D</text>
+<text x="1122" y="1110" font-size="22" fill="#596579" font-weight="400" text-anchor="middle">v = +0.014372</text>
+<text x="900" y="1274" font-size="26" fill="#19283a" font-weight="600" text-anchor="middle">Net Phe transfer: Se → Ec = 0.014371756 mmol gDW⁻¹ h⁻¹ (original model basis)</text>
+<text x="70" y="1330" font-size="23" fill="#596579" font-weight="400" text-anchor="start">Saved source bounds: glucose uptake −1 (mono), −0.1 (co); citrate uptake −0.02 in both.</text>
+<text x="70" y="1366" font-size="23" fill="#596579" font-weight="400" text-anchor="start">WT is a new calculation. Mutant growth and Phe exchange match Supplementary Data 9 within 10⁻⁸.</text>
+<text x="70" y="1404" font-size="22" fill="#596579" font-weight="400" text-anchor="start">Reference: Zuñiga et al., Nature Communications 11, 3803 (2020). DOI: 10.1038/s41467-020-17612-8.</text>
+</g></svg>

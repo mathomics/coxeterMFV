@@ -1,0 +1,71 @@
+<svg xmlns="http://www.w3.org/2000/svg" class="emc-map" viewBox="0 0 1713 1278" width="1713" height="1278" role="img" aria-label="Multicell community metabolic map"><defs>
+    <pattern id="emc-wall" width="9" height="9" patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
+      <line x1="0" y1="0" x2="0" y2="9" stroke="#a8a29e" stroke-width="3" opacity="0.5"/>
+    </pattern>
+    <filter id="emc-cell-shadow" x="-12%" y="-12%" width="124%" height="124%">
+      <feDropShadow dx="0" dy="6" stdDeviation="12" flood-opacity="0.16"/>
+    </filter>
+    <filter id="emc-glow" x="-40%" y="-40%" width="180%" height="180%">
+      <feGaussianBlur stdDeviation="4" result="b"/>
+      <feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+    <filter id="emc-ribbon-soft" x="-30%" y="-30%" width="160%" height="160%">
+      <feGaussianBlur stdDeviation="5.5"/>
+    </filter>
+  </defs><g class="emc-layer emc-layer-canvas">
+    <rect class="emc-canvas-frame" data-canvas-bg
+      x="0.75" y="0.75" width="1711.5" height="1276.5"
+      fill="#ffffff" stroke="#cbd5e1" stroke-width="1.5"/>
+  </g><g class="emc-layer emc-layer-env">
+    <rect x="26" y="26" width="1661" height="1226" rx="26" fill="#f8fafc" stroke="#cbd5e1" stroke-width="2" stroke-dasharray="10 7"/>
+    <rect class="emc-boundary-hit emc-environment-boundary" data-boundary="*/s"
+      x="26" y="26" width="1661" height="1226" rx="26" fill="none" stroke="transparent" stroke-width="18"
+      pointer-events="stroke"/>
+    <rect class="emc-boundary-glow" x="26" y="26" width="1661" height="1226" rx="26" fill="none" stroke="transparent" stroke-width="5"
+      pointer-events="none"/>
+  </g><g class="emc-layer emc-layer-cells"><g class="emc-cell" data-cell="demo"><g class="emc-compartment emc-comp-e" data-compartment="e"><rect class="emc-compartment-space" data-cell-space="demo" data-compartment-space="e" x="120.22" y="84.41" width="1472.57" height="1109.17" rx="40" fill="#f1f5f9" filter="url(#emc-cell-shadow)"/><rect x="120.22" y="84.41" width="1472.57" height="1109.17" rx="40" fill="none" stroke="#94a3b8" stroke-width="1.8" stroke-dasharray="7 5"/><rect class="emc-boundary-hit" data-boundary="demo/e" x="120.22" y="84.41" width="1472.57" height="1109.17" rx="40" fill="none" stroke="transparent" stroke-width="18" pointer-events="stroke"/><rect class="emc-boundary-glow" x="120.22" y="84.41" width="1472.57" height="1109.17" rx="40" fill="none" stroke="transparent" stroke-width="5" pointer-events="none"/></g><g class="emc-compartment emc-comp-c" data-compartment="c"><rect class="emc-compartment-space" data-cell-space="demo" data-compartment-space="c" x="280.67" y="205.27" width="1151.67" height="867.46" rx="40" fill="#e0f2fe"/><rect x="280.67" y="205.27" width="1151.67" height="867.46" rx="40" fill="none" stroke="#0284c7" stroke-width="4.5"/><rect x="285.67" y="210.27" width="1141.67" height="857.46" rx="35" fill="none" stroke="#0284c7" stroke-width="1.4" opacity="0.55"/><rect class="emc-boundary-hit" data-boundary="demo/c" x="280.67" y="205.27" width="1151.67" height="867.46" rx="40" fill="none" stroke="transparent" stroke-width="18" pointer-events="stroke"/><rect class="emc-boundary-glow" x="280.67" y="205.27" width="1151.67" height="867.46" rx="40" fill="none" stroke="transparent" stroke-width="5" pointer-events="none"/></g><rect class="emc-cell-boundary" data-cell-boundary="demo"
+    data-boundary="demo/e"
+    x="120.22" y="84.41" width="1472.57" height="1109.17" rx="40"
+    fill="none" stroke="#334155" stroke-width="3" opacity="0.72"
+    pointer-events="stroke"/><g class="emc-cell-plate" data-cell-plate="demo" transform="translate(120.22 74.41)">
+      <g class="emc-frame-label" style="--fit:1.513">
+        <rect x="0" y="-30" width="138" height="30" rx="15"
+          fill="#334155" opacity="0.14"/>
+        <circle cx="17" cy="-15" r="6" fill="#334155"/>
+        <text class="emc-cell-name" x="30" y="-10" textLength="94" lengthAdjust="spacingAndGlyphs"
+          fill="#334155">audit-demo</text>
+      </g>
+    </g></g></g><g class="emc-layer emc-layer-segments"><path class="emc-seg emc-seg-axis is-active" d="M 853.92 61.02 L 853.92 27.02" fill="none" stroke="#be123c" stroke-width="7.5" stroke-linecap="round" opacity="1" data-rxn="EX_a_s"/><path class="emc-seg emc-seg-boundary is-active" d="M 853.92 27.02 L 853.92 26" fill="none" stroke="#be123c" stroke-width="7.5" stroke-linecap="round" opacity="1" data-rxn="EX_a_s"/><path class="emc-seg emc-seg-axis is-active" d="M 855.77 362.14 L 859.05 395.98" fill="none" stroke="#be123c" stroke-width="7.5" stroke-linecap="round" opacity="1" data-rxn="demo@BIOMASS"/><path class="emc-seg emc-seg-primary is-active" d="M 855.77 362.14 C 854.19 345.92, 852.15 325.19, 850.16 304.87" fill="none" stroke="#be123c" stroke-width="7.5" stroke-linecap="butt" opacity="1" data-rxn="demo@BIOMASS" data-node="met:demo@a_c"/><path class="emc-seg emc-seg-axis is-active" d="M 854.13 100.95 L 854.13 66.95" fill="none" stroke="#be123c" stroke-width="7.5" stroke-linecap="round" opacity="1" data-rxn="demo@EX_a_e"/><path class="emc-seg emc-seg-primary is-active" d="M 854.13 100.95 C 860.22 107.79, 867.38 115.84, 874.88 124.26" fill="none" stroke="#be123c" stroke-width="7.5" stroke-linecap="butt" opacity="1" data-rxn="demo@EX_a_e" data-node="met:demo@a_e"/><path class="emc-seg emc-seg-axis is-active" d="M 840.38 222.04 L 840.38 188.04" fill="none" stroke="#be123c" stroke-width="7.5" stroke-linecap="round" opacity="1" data-rxn="demo@At"/><path class="emc-seg emc-seg-primary is-active" d="M 840.38 222.04 C 853.64 205.52, 870.8 184.15, 887.38 163.51" fill="none" stroke="#be123c" stroke-width="7.5" stroke-linecap="butt" opacity="1" data-rxn="demo@At" data-node="met:demo@a_e"/><path class="emc-seg emc-seg-primary is-active" d="M 840.38 188.04 C 841.9 206.71, 843.78 229.84, 845.68 253.26" fill="none" stroke="#be123c" stroke-width="7.5" stroke-linecap="butt" opacity="1" data-rxn="demo@At" data-node="met:demo@a_c"/><polygon class="emc-arrow" points="886.72,137.56 868.28,130.13 881.48,118.38" fill="#be123c" opacity="1" data-rxn="demo@EX_a_e" data-node="met:demo@a_e"/><polygon class="emc-arrow" points="847.13,271.01 836.88,253.97 854.49,252.54" fill="#be123c" opacity="1" data-rxn="demo@At" data-node="met:demo@a_c"/></g><g class="emc-layer emc-layer-markers"><g class="emc-marker is-active" data-rxn="EX_a_s" transform="translate(853.92 44.02) rotate(0)">
+        <rect x="-9" y="-3" width="18" height="6" rx="3" fill="#be123c"/>
+        <rect x="-9" y="-3" width="18" height="6" rx="3" fill="none" stroke="#ffffff" stroke-width="1.1" opacity="0.8"/>
+      </g><g class="emc-marker is-active" data-rxn="demo@BIOMASS" transform="translate(857.41 379.06) rotate(174.48)">
+        <rect x="-9" y="-3" width="18" height="6" rx="3" fill="#be123c"/>
+        <rect x="-9" y="-3" width="18" height="6" rx="3" fill="none" stroke="#ffffff" stroke-width="1.1" opacity="0.8"/>
+      </g><g class="emc-marker is-active emc-transporter" data-rxn="demo@EX_a_e" transform="translate(854.13 83.95) rotate(-90)">
+          <rect x="-13" y="-11" width="26" height="22" rx="7" fill="#f1f5f9" stroke="#94a3b8" stroke-width="2.4"/>
+          <rect x="-4.5" y="-11" width="9" height="22" rx="4" fill="#be123c" opacity="0.85"/>
+        </g><g class="emc-marker is-active emc-transporter" data-rxn="demo@At" transform="translate(840.38 205.04) rotate(-90)">
+          <rect x="-13" y="-11" width="26" height="22" rx="7" fill="#e0f2fe" stroke="#0284c7" stroke-width="2.4"/>
+          <rect x="-4.5" y="-11" width="9" height="22" rx="4" fill="#be123c" opacity="0.85"/>
+        </g></g><g class="emc-layer emc-layer-nodes"><circle class="emc-node emc-node-medium emc-node-primary" data-node="met:M@a" data-met="M@a" cx="853.92" cy="62.04" r="13" fill="#e67e4c" stroke="#a64613" stroke-width="1.8"/><circle class="emc-node emc-node-metabolite emc-node-primary" data-node="met:demo@a_c" data-met="demo@a_c" cx="848.5" cy="287.96" r="13" fill="#e67e4c" stroke="#a64613" stroke-width="1.8"/><circle class="emc-node emc-node-metabolite emc-node-primary" data-node="met:demo@a_e" data-met="demo@a_e" cx="898.02" cy="150.26" r="13" fill="#e67e4c" stroke="#a64613" stroke-width="1.8"/></g><g class="emc-layer emc-layer-text"><text class="emc-label emc-label-medium emc-label-primary emc-label-draggable" x="853.92" y="44.04" text-anchor="middle" stroke="#ffffff" stroke-width="3.2" stroke-linejoin="round" paint-order="stroke" fill="#1e293b" data-metabolite-label="met:M@a" dominant-baseline="auto">a</text><text class="emc-label emc-label-met emc-label-primary emc-label-draggable" x="848.5" y="269.96" text-anchor="middle" stroke="#ffffff" stroke-width="3.2" stroke-linejoin="round" paint-order="stroke" fill="#1e293b" data-metabolite-label="met:demo@a_c" dominant-baseline="auto">a</text><text class="emc-label emc-label-met emc-label-primary emc-label-draggable" x="898.02" y="132.26" text-anchor="middle" stroke="#ffffff" stroke-width="3.2" stroke-linejoin="round" paint-order="stroke" fill="#1e293b" data-metabolite-label="met:demo@a_e" dominant-baseline="auto">a</text><text class="emc-label emc-label-rxn emc-label-rxn-adjacent" x="870.92" y="44.02" text-anchor="start" stroke="#ffffff" stroke-width="3.2" stroke-linejoin="round" paint-order="stroke" fill="#1e293b" data-rxn="EX_a_s">EX_a_s  -10</text><text class="emc-label emc-label-rxn emc-label-rxn-adjacent" x="874.66" y="379.06" text-anchor="start" stroke="#ffffff" stroke-width="3.2" stroke-linejoin="round" paint-order="stroke" fill="#1e293b" data-rxn="demo@BIOMASS">BIOMASS  10</text><text class="emc-label emc-label-rxn emc-label-rxn-adjacent" x="873.13" y="83.95" text-anchor="start" stroke="#ffffff" stroke-width="3.2" stroke-linejoin="round" paint-order="stroke" fill="#1e293b" data-rxn="demo@EX_a_e">EX_a_e  -10</text><text class="emc-label emc-label-rxn emc-label-rxn-adjacent" x="859.38" y="205.04" text-anchor="start" stroke="#ffffff" stroke-width="3.2" stroke-linejoin="round" paint-order="stroke" fill="#1e293b" data-rxn="demo@At">At  10</text></g><g class="emc-layer emc-layer-compartment-labels"><g class="emc-comp-label emc-env-label" data-compartment-label="s" transform="translate(48 1237)">
+    <g class="emc-frame-label" style="--fit:2.284">
+      <rect x="0" y="-19" width="129.8" height="19" rx="9.5"
+        fill="#f8fafc" stroke="#cbd5e1" stroke-width="0" opacity="0.18"/>
+      <text x="64.9" y="-5.5" text-anchor="middle" textLength="111.8"
+        lengthAdjust="spacingAndGlyphs" fill="#64748b" class="emc-comp-text">Shared medium</text>
+    </g>
+  </g><g data-cell="demo"><g class="emc-comp-label" data-compartment-label="e" transform="translate(138.22 99.41)">
+    <g class="emc-frame-label" style="--fit:5.571">
+      <rect x="0" y="0" width="129.8" height="19" rx="9.5"
+        fill="#f1f5f9" stroke="#94a3b8" stroke-width="0" opacity="0.18"/>
+      <text x="64.9" y="13.5" text-anchor="middle" textLength="111.8"
+        lengthAdjust="spacingAndGlyphs" fill="#475569" class="emc-comp-text">Extracellular</text>
+    </g>
+  </g><g class="emc-comp-label" data-compartment-label="c" transform="translate(298.67 220.27)">
+    <g class="emc-frame-label" style="--fit:14.267">
+      <rect x="0" y="0" width="78.2" height="19" rx="9.5"
+        fill="#e0f2fe" stroke="#0284c7" stroke-width="0" opacity="0.18"/>
+      <text x="39.1" y="13.5" text-anchor="middle" textLength="60.2"
+        lengthAdjust="spacingAndGlyphs" fill="#075985" class="emc-comp-text">Cytosol</text>
+    </g>
+  </g></g></g></svg>

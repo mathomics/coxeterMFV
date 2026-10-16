@@ -1,0 +1,34 @@
+[
+ {
+  "scenario": "solo-ecoli",
+  "settings": {},
+  "file": "map/overview-solo-ecoli.json"
+ },
+ {
+  "scenario": "aerobio-mixto",
+  "settings": {
+   "preset": "compact",
+   "cellSpacing": 120,
+   "minimumCompartmentSize": 38,
+   "nodeSpacing": 0.82,
+   "cellAreaMultiplier": 1
+  },
+  "file": "large/map/overview-aerobio-mixto.json"
+ },
+ {
+  "scenario": "todas",
+  "settings": {
+   "preset": "spacious",
+   "cellSpacing": 240,
+   "minimumCompartmentSize": 60,
+   "nodeSpacing": 1.42,
+   "cellAreaMultiplier": 6
+  },
+  "file": "large/map/overview-todas.json"
+ },
+ {
+  "scenario": "metanogenesis",
+  "settings": {},
+  "file": "large/map/overview-metanogenesis.json"
+ }
+]

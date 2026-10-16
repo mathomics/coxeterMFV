@@ -1,0 +1,46 @@
+[
+ {
+  "name": "hand-drawn",
+  "scenario": "solo-ecoli",
+  "start": "empty",
+  "file": "map/edits-hand-drawn.json"
+ },
+ {
+  "name": "layout",
+  "scenario": "aerobio-mixto",
+  "start": "layout",
+  "file": "map/edits-layout.json"
+ },
+ {
+  "name": "saved-12-phase7-Ba-Bt-envelope",
+  "start": "file",
+  "slow": true,
+  "input": "docs/gut9-map/maps/12-phase7-Ba-Bt-envelope.json",
+  "home": false,
+  "file": "large/map/edits-saved-12-phase7-Ba-Bt-envelope.json"
+ },
+ {
+  "name": "saved-uploaded-models-coxeter-map_5_1_",
+  "start": "file",
+  "slow": false,
+  "input": "Downloads/uploaded-models-coxeter-map(5) (1).json",
+  "home": true,
+  "file": "large/map/edits-saved-uploaded-models-coxeter-map_5_1_.json"
+ },
+ {
+  "name": "saved-yeast-GEM-cytosol-mito-coxeter-map-v2",
+  "start": "file",
+  "slow": false,
+  "input": "Downloads/yeast-GEM-cytosol-mito-coxeter-map-v2.json",
+  "home": true,
+  "file": "large/map/edits-saved-yeast-GEM-cytosol-mito-coxeter-map-v2.json"
+ },
+ {
+  "name": "saved-yeast-GEM-cytosol-mito-coxeter-map",
+  "start": "file",
+  "slow": false,
+  "input": "Downloads/yeast-GEM-cytosol-mito-coxeter-map.json",
+  "home": true,
+  "file": "large/map/edits-saved-yeast-GEM-cytosol-mito-coxeter-map.json"
+ }
+]

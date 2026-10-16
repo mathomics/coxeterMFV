@@ -1,0 +1,673 @@
+{
+ "id": "Ef_preview",
+ "name": "Enterococcus faecalis — map excerpt, 20 of 539 reactions",
+ "cell": {
+  "name": "Ef",
+  "organism": "Enterococcus faecalis",
+  "shape": "rounded",
+  "color": "#ca8a04",
+  "note": "539 reactions in the full model"
+ },
+ "compartments": {
+  "c": "Cytosol",
+  "e": "Extracellular"
+ },
+ "metabolites": [
+  {
+   "id": "M_h2o_c[c_Ef]",
+   "name": "h2o_c[c]",
+   "compartment": "c",
+   "formula": "H2O",
+   "charge": 0
+  },
+  {
+   "id": "M_pi_c[c_Ef]",
+   "name": "pi_c[c]",
+   "compartment": "c",
+   "formula": "HO4P",
+   "charge": 0
+  },
+  {
+   "id": "M_coa_c[c_Ef]",
+   "name": "coa_c[c]",
+   "compartment": "c",
+   "formula": "C21H32O16N7P3S",
+   "charge": 0
+  },
+  {
+   "id": "M_nad_c[c_Ef]",
+   "name": "nad_c[c]",
+   "compartment": "c",
+   "formula": "C21H26N7O14P2",
+   "charge": 0
+  },
+  {
+   "id": "M_h_c[c_Ef]",
+   "name": "h_c[c]",
+   "compartment": "c",
+   "formula": "H",
+   "charge": 0
+  },
+  {
+   "id": "M_atp_c[c_Ef]",
+   "name": "atp_c[c]",
+   "compartment": "c",
+   "formula": "C10H12N5O13P3",
+   "charge": 0
+  },
+  {
+   "id": "M_adp_c[c_Ef]",
+   "name": "adp_c[c]",
+   "compartment": "c",
+   "formula": "C10H12N5O10P2",
+   "charge": 0
+  },
+  {
+   "id": "M_thf_c[c_Ef]",
+   "name": "thf_c[c]",
+   "compartment": "c",
+   "formula": "C19H21O6N7",
+   "charge": 0
+  },
+  {
+   "id": "M_CPS_EFA_c[c_Ef]",
+   "name": "CPS_EFA_c[c]",
+   "compartment": "c",
+   "formula": "C33.679802955665H56.916256157635O31.559113300493N0.266009852217P",
+   "charge": 0
+  },
+  {
+   "id": "M_DNA_LPL_c[c_Ef]",
+   "name": "DNA_LPL_c[c]",
+   "compartment": "c",
+   "formula": "C978H1128O600N372P100",
+   "charge": 0
+  },
+  {
+   "id": "M_LTA_EFA_c[c_Ef]",
+   "name": "LTA_EFA_c[c]",
+   "compartment": "c",
+   "formula": "C13920.160000000002H27040.399999999998O13366.799999999997N792P2200",
+   "charge": 0
+  },
+  {
+   "id": "M_PreZ_c[c_Ef]",
+   "name": "PreZ_c[c]",
+   "compartment": "c",
+   "formula": "C10H11O7N5P",
+   "charge": 0
+  },
+  {
+   "id": "M_PG_EFA_c[c_Ef]",
+   "name": "PG_EFA_c[c]",
+   "compartment": "c",
+   "formula": "C75.72H125.2O37.24N15.24",
+   "charge": 0
+  },
+  {
+   "id": "M_PROT_LPL_v6_0_c[c_Ef]",
+   "name": "PROT_LPL_v6_0_c[c]",
+   "compartment": "c",
+   "formula": "C4707.999999999999H7526.000000000002O1457.000000000001N1369S33",
+   "charge": 0
+  },
+  {
+   "id": "M_RNA_LPL_c[c_Ef]",
+   "name": "RNA_LPL_c[c]",
+   "compartment": "c",
+   "formula": "C958H1078O696N394P100",
+   "charge": 0
+  },
+  {
+   "id": "M_WTA_EFA_c[c_Ef]",
+   "name": "WTA_EFA_c[c]",
+   "compartment": "c",
+   "formula": "C463H811O394N27P20",
+   "charge": 0
+  },
+  {
+   "id": "M_btn_c[c_Ef]",
+   "name": "btn_c[c]",
+   "compartment": "c",
+   "formula": "C10H15O3N2S",
+   "charge": 0
+  },
+  {
+   "id": "M_clpn_LPL_c[c_Ef]",
+   "name": "clpn_LPL_c[c]",
+   "compartment": "c",
+   "formula": "C7608.800000000001H14277.6O1700P200",
+   "charge": 0
+  },
+  {
+   "id": "M_alapg_LPL_c[c_Ef]",
+   "name": "alapg_LPL_c[c]",
+   "compartment": "c",
+   "formula": "C4254.400000000001H8038.8O1100N100P100",
+   "charge": 0
+  },
+  {
+   "id": "M_pg_LPL_c[c_Ef]",
+   "name": "pg_LPL_c[c]",
+   "compartment": "c",
+   "formula": "C3954.400000000001H7538.8O1000P100",
+   "charge": 0
+  },
+  {
+   "id": "M_pydx5p_c[c_Ef]",
+   "name": "pydx5p_c[c]",
+   "compartment": "c",
+   "formula": "C8H8O6NP",
+   "charge": 0
+  },
+  {
+   "id": "M_thmpp_c[c_Ef]",
+   "name": "thmpp_c[c]",
+   "compartment": "c",
+   "formula": "C12H16O7N4P2S",
+   "charge": 0
+  },
+  {
+   "id": "M_udcpdp_c[c_Ef]",
+   "name": "udcpdp_c[c]",
+   "compartment": "c",
+   "formula": "C55H89O7P2",
+   "charge": 0
+  },
+  {
+   "id": "biomassEf[e_Ef]",
+   "name": "Biomass of Enterococcus faecalis",
+   "compartment": "e",
+   "formula": "C38.405518279901045H63.3058260634716O21.56270806787987N6.831913658918757P1.02804248653384S0.074136859282106",
+   "charge": 0
+  },
+  {
+   "id": "h2o[e_Ef]",
+   "name": "H2O",
+   "compartment": "e",
+   "formula": "H2O",
+   "charge": 0
+  },
+  {
+   "id": "M_accoa_c[c_Ef]",
+   "name": "accoa_c[c]",
+   "compartment": "c",
+   "formula": "C23H34O17N7P3S",
+   "charge": 0
+  },
+  {
+   "id": "M_aacoa_c[c_Ef]",
+   "name": "aacoa_c[c]",
+   "compartment": "c",
+   "formula": "C25H36O18N7P3S",
+   "charge": 0
+  },
+  {
+   "id": "M_amp_c[c_Ef]",
+   "name": "amp_c[c]",
+   "compartment": "c",
+   "formula": "C10H12N5O7P",
+   "charge": 0
+  },
+  {
+   "id": "M_o2_c[c_Ef]",
+   "name": "o2_c[c]",
+   "compartment": "c",
+   "formula": "O2",
+   "charge": 0
+  },
+  {
+   "id": "M_h2o2_c[c_Ef]",
+   "name": "h2o2_c[c]",
+   "compartment": "c",
+   "formula": "H2O2",
+   "charge": 0
+  },
+  {
+   "id": "M_chor_c[c_Ef]",
+   "name": "chor_c[c]",
+   "compartment": "c",
+   "formula": "C10H8O6",
+   "charge": 0
+  },
+  {
+   "id": "M_3psme_c[c_Ef]",
+   "name": "3psme_c[c]",
+   "compartment": "c",
+   "formula": "C10H9O10P",
+   "charge": 0
+  },
+  {
+   "id": "M_glyc_c[c_Ef]",
+   "name": "glyc_c[c]",
+   "compartment": "c",
+   "formula": "C3H8O3",
+   "charge": 0
+  },
+  {
+   "id": "M_3dhq_c[c_Ef]",
+   "name": "3dhq_c[c]",
+   "compartment": "c",
+   "formula": "C7H9O6",
+   "charge": 0
+  },
+  {
+   "id": "M_3dhsk_c[c_Ef]",
+   "name": "3dhsk_c[c]",
+   "compartment": "c",
+   "formula": "C7H7O5",
+   "charge": 0
+  },
+  {
+   "id": "M_2dda7p_c[c_Ef]",
+   "name": "2dda7p_c[c]",
+   "compartment": "c",
+   "formula": "C7H10O10P",
+   "charge": 0
+  },
+  {
+   "id": "M_pep_c[c_Ef]",
+   "name": "pep_c[c]",
+   "compartment": "c",
+   "formula": "C3H2O6P",
+   "charge": 0
+  },
+  {
+   "id": "M_2pg_c[c_Ef]",
+   "name": "2pg_c[c]",
+   "compartment": "c",
+   "formula": "C3H4O7P",
+   "charge": 0
+  },
+  {
+   "id": "M_2beacp_c[c_Ef]",
+   "name": "2beacp_c[c]",
+   "compartment": "c",
+   "formula": "C15H24O7N2PSApo_acp",
+   "charge": 0
+  },
+  {
+   "id": "M_3hbacp_c[c_Ef]",
+   "name": "3hbacp_c[c]",
+   "compartment": "c",
+   "formula": "C15H26O8N2PSApo_acp",
+   "charge": 0
+  },
+  {
+   "id": "M_2tddacp_c[c_Ef]",
+   "name": "2tddacp_c[c]",
+   "compartment": "c",
+   "formula": "C23H40O7N2PSApo_acp",
+   "charge": 0
+  },
+  {
+   "id": "M_3hddacp_c[c_Ef]",
+   "name": "3hddacp_c[c]",
+   "compartment": "c",
+   "formula": "C23H42O8N2PSApo_acp",
+   "charge": 0
+  },
+  {
+   "id": "M_2tdeacp_c[c_Ef]",
+   "name": "2tdeacp_c[c]",
+   "compartment": "c",
+   "formula": "C21H36O7N2PSApo_acp",
+   "charge": 0
+  },
+  {
+   "id": "M_3hdeacp_c[c_Ef]",
+   "name": "3hdeacp_c[c]",
+   "compartment": "c",
+   "formula": "C21H38O8N2PSApo_acp",
+   "charge": 0
+  },
+  {
+   "id": "M_2thdeacp_c[c_Ef]",
+   "name": "2thdeacp_c[c]",
+   "compartment": "c",
+   "formula": "C27H48O7N2PSApo_acp",
+   "charge": 0
+  },
+  {
+   "id": "M_3hpaacp_c[c_Ef]",
+   "name": "3hpaacp_c[c]",
+   "compartment": "c",
+   "formula": "C27H50O8N2PSApo_acp",
+   "charge": 0
+  },
+  {
+   "id": "M_2theacp_c[c_Ef]",
+   "name": "2theacp_c[c]",
+   "compartment": "c",
+   "formula": "C17H28O7N2PSApo_acp",
+   "charge": 0
+  },
+  {
+   "id": "M_3hhacp_c[c_Ef]",
+   "name": "3hhacp_c[c]",
+   "compartment": "c",
+   "formula": "C17H30O8N2PSApo_acp",
+   "charge": 0
+  },
+  {
+   "id": "M_3hocacp_c[c_Ef]",
+   "name": "3hocacp_c[c]",
+   "compartment": "c",
+   "formula": "C19H34O8N2PSApo_acp",
+   "charge": 0
+  },
+  {
+   "id": "M_2toceacp_c[c_Ef]",
+   "name": "2toceacp_c[c]",
+   "compartment": "c",
+   "formula": "C19H32O7N2PSApo_acp",
+   "charge": 0
+  },
+  {
+   "id": "M_2tocdacp_c[c_Ef]",
+   "name": "2tocdacp_c[c]",
+   "compartment": "c",
+   "formula": "C29H52O7N2PSApo_acp",
+   "charge": 0
+  },
+  {
+   "id": "M_3hocdacp_c[c_Ef]",
+   "name": "3hocdacp_c[c]",
+   "compartment": "c",
+   "formula": "C29H54O8N2PSApo_acp",
+   "charge": 0
+  },
+  {
+   "id": "M_3htdacp_c[c_Ef]",
+   "name": "3htdacp_c[c]",
+   "compartment": "c",
+   "formula": "C25H46O8N2PSApo_acp",
+   "charge": 0
+  },
+  {
+   "id": "M_2ttdeacp_c[c_Ef]",
+   "name": "2ttdeacp_c[c]",
+   "compartment": "c",
+   "formula": "C25H44O7N2PSApo_acp",
+   "charge": 0
+  },
+  {
+   "id": "M_imp_c[c_Ef]",
+   "name": "imp_c[c]",
+   "compartment": "c",
+   "formula": "C10H11O8N4P",
+   "charge": 0
+  },
+  {
+   "id": "M_fprica_c[c_Ef]",
+   "name": "fprica_c[c]",
+   "compartment": "c",
+   "formula": "C10H13O9N4P",
+   "charge": 0
+  }
+ ],
+ "reactions": [
+  {
+   "id": "R_BIOMASS_Ef",
+   "name": "biomass equation LPL specific",
+   "metabolites": {
+    "M_h2o_c[c_Ef]": -27.2,
+    "M_pi_c[c_Ef]": 27.2,
+    "M_coa_c[c_Ef]": -0.000184397113,
+    "M_nad_c[c_Ef]": -0.000184397113,
+    "M_h_c[c_Ef]": 27.2,
+    "M_atp_c[c_Ef]": -27.2,
+    "M_adp_c[c_Ef]": 27.2,
+    "M_thf_c[c_Ef]": -0.000009219856,
+    "M_CPS_EFA_c[c_Ef]": -0.119304932112,
+    "M_DNA_LPL_c[c_Ef]": -0.000568865094,
+    "M_LTA_EFA_c[c_Ef]": -0.000119858123,
+    "M_PreZ_c[c_Ef]": -0.000009219856,
+    "M_PG_EFA_c[c_Ef]": -0.134794289604,
+    "M_PROT_LPL_v6_0_c[c_Ef]": -0.002240424923,
+    "M_RNA_LPL_c[c_Ef]": -0.002566807813,
+    "M_WTA_EFA_c[c_Ef]": -0.012704961086,
+    "M_btn_c[c_Ef]": -0.000009219856,
+    "M_clpn_LPL_c[c_Ef]": -0.00001659574,
+    "M_alapg_LPL_c[c_Ef]": -0.000151205633,
+    "M_pg_LPL_c[c_Ef]": -0.000576240978,
+    "M_pydx5p_c[c_Ef]": -9.21986e-7,
+    "M_thmpp_c[c_Ef]": -0.000009219856,
+    "M_udcpdp_c[c_Ef]": -0.000184397113,
+    "biomassEf[e_Ef]": 1
+   },
+   "lower_bound": 0,
+   "upper_bound": 1000,
+   "subsystem": ""
+  },
+  {
+   "id": "EX_biomassEf(e)_Ef",
+   "name": "Biomass export",
+   "metabolites": {
+    "biomassEf[e_Ef]": -1
+   },
+   "lower_bound": -1000,
+   "upper_bound": 1000,
+   "subsystem": ""
+  },
+  {
+   "id": "R_H2Ot5_Ef",
+   "name": "H2O transport via diffusion",
+   "metabolites": {
+    "M_h2o_c[c_Ef]": 1,
+    "h2o[e_Ef]": -1
+   },
+   "lower_bound": -1000,
+   "upper_bound": 1000,
+   "subsystem": ""
+  },
+  {
+   "id": "R_ACACT1_Ef",
+   "name": "acetyl-CoA C-acetyltransferase",
+   "metabolites": {
+    "M_accoa_c[c_Ef]": -2,
+    "M_aacoa_c[c_Ef]": 1,
+    "M_coa_c[c_Ef]": 1
+   },
+   "lower_bound": 0,
+   "upper_bound": 1000,
+   "subsystem": ""
+  },
+  {
+   "id": "R_ADK1_Ef",
+   "name": "adenylate kinase",
+   "metabolites": {
+    "M_atp_c[c_Ef]": -1,
+    "M_adp_c[c_Ef]": 2,
+    "M_amp_c[c_Ef]": -1
+   },
+   "lower_bound": -1000,
+   "upper_bound": 1000,
+   "subsystem": ""
+  },
+  {
+   "id": "R_CAT_Ef",
+   "name": "catalase",
+   "metabolites": {
+    "M_h2o_c[c_Ef]": 2,
+    "M_o2_c[c_Ef]": 1,
+    "M_h2o2_c[c_Ef]": -2
+   },
+   "lower_bound": 0,
+   "upper_bound": 1000,
+   "subsystem": ""
+  },
+  {
+   "id": "R_CHORS_Ef",
+   "name": "chorismate synthase",
+   "metabolites": {
+    "M_pi_c[c_Ef]": 1,
+    "M_chor_c[c_Ef]": 1,
+    "M_3psme_c[c_Ef]": -1
+   },
+   "lower_bound": 0,
+   "upper_bound": 1000,
+   "subsystem": ""
+  },
+  {
+   "id": "R_CLPNS_LPL_Ef",
+   "name": "Cardiolipin Synthase (LPL specific)",
+   "metabolites": {
+    "M_glyc_c[c_Ef]": 1,
+    "M_clpn_LPL_c[c_Ef]": 0.01,
+    "M_pg_LPL_c[c_Ef]": -0.02
+   },
+   "lower_bound": -1000,
+   "upper_bound": 1000,
+   "subsystem": ""
+  },
+  {
+   "id": "R_DHQD_Ef",
+   "name": "3-dehydroquinate dehydratase",
+   "metabolites": {
+    "M_h2o_c[c_Ef]": 1,
+    "M_3dhq_c[c_Ef]": -1,
+    "M_3dhsk_c[c_Ef]": 1
+   },
+   "lower_bound": -1000,
+   "upper_bound": 1000,
+   "subsystem": ""
+  },
+  {
+   "id": "R_DHQS_Ef",
+   "name": "3-dehydroquinate synthase",
+   "metabolites": {
+    "M_pi_c[c_Ef]": 1,
+    "M_2dda7p_c[c_Ef]": -1,
+    "M_3dhq_c[c_Ef]": 1
+   },
+   "lower_bound": 0,
+   "upper_bound": 1000,
+   "subsystem": ""
+  },
+  {
+   "id": "R_ENO_Ef",
+   "name": "enolase",
+   "metabolites": {
+    "M_h2o_c[c_Ef]": 1,
+    "M_pep_c[c_Ef]": 1,
+    "M_2pg_c[c_Ef]": -1
+   },
+   "lower_bound": -1000,
+   "upper_bound": 1000,
+   "subsystem": ""
+  },
+  {
+   "id": "R_HBUHL1_Ef",
+   "name": "(3R)-3-Hydroxybutanoyl-[acyl-carrier-protein] hydro-lyase",
+   "metabolites": {
+    "M_h2o_c[c_Ef]": 1,
+    "M_2beacp_c[c_Ef]": 1,
+    "M_3hbacp_c[c_Ef]": -1
+   },
+   "lower_bound": 0,
+   "upper_bound": 1000,
+   "subsystem": ""
+  },
+  {
+   "id": "R_HDDHL5_Ef",
+   "name": "(3R)-3-Hydroxybutanoyl-[acyl-carrier-protein] hydro-lyase",
+   "metabolites": {
+    "M_h2o_c[c_Ef]": 1,
+    "M_2tddacp_c[c_Ef]": 1,
+    "M_3hddacp_c[c_Ef]": -1
+   },
+   "lower_bound": 0,
+   "upper_bound": 1000,
+   "subsystem": ""
+  },
+  {
+   "id": "R_HDEHL4_Ef",
+   "name": "(3R)-3-Hydroxybutanoyl-[acyl-carrier-protein] hydro-lyase",
+   "metabolites": {
+    "M_h2o_c[c_Ef]": 1,
+    "M_2tdeacp_c[c_Ef]": 1,
+    "M_3hdeacp_c[c_Ef]": -1
+   },
+   "lower_bound": 0,
+   "upper_bound": 1000,
+   "subsystem": ""
+  },
+  {
+   "id": "R_HHDHL7_Ef",
+   "name": "(3R)-3-Hydroxypalmitoyl-[acyl-carrier-protein] hydro-lyase",
+   "metabolites": {
+    "M_h2o_c[c_Ef]": 1,
+    "M_2thdeacp_c[c_Ef]": 1,
+    "M_3hpaacp_c[c_Ef]": -1
+   },
+   "lower_bound": 0,
+   "upper_bound": 1000,
+   "subsystem": ""
+  },
+  {
+   "id": "R_HHYHL2_Ef",
+   "name": "(3R)-3-Hydroxybutanoyl-[acyl-carrier-protein] hydro-lyase",
+   "metabolites": {
+    "M_h2o_c[c_Ef]": 1,
+    "M_2theacp_c[c_Ef]": 1,
+    "M_3hhacp_c[c_Ef]": -1
+   },
+   "lower_bound": 0,
+   "upper_bound": 1000,
+   "subsystem": ""
+  },
+  {
+   "id": "R_HOCHL3_Ef",
+   "name": "((3R)-3-Hydroxybutanoyl-[acyl-carrier-protein] hydro-lyase",
+   "metabolites": {
+    "M_h2o_c[c_Ef]": 1,
+    "M_3hocacp_c[c_Ef]": -1,
+    "M_2toceacp_c[c_Ef]": 1
+   },
+   "lower_bound": 0,
+   "upper_bound": 1000,
+   "subsystem": ""
+  },
+  {
+   "id": "R_HODHL8_Ef",
+   "name": "(3R)-3-Hydroxyoctadecanoyl-[acyl-carrier-protein] hydro-lyase",
+   "metabolites": {
+    "M_h2o_c[c_Ef]": 1,
+    "M_2tocdacp_c[c_Ef]": 1,
+    "M_3hocdacp_c[c_Ef]": -1
+   },
+   "lower_bound": 0,
+   "upper_bound": 1000,
+   "subsystem": ""
+  },
+  {
+   "id": "R_HTDHL6_Ef",
+   "name": "(3R)-3-Hydroxypalmitoyl-[acyl-carrier-protein] hydro-lyase",
+   "metabolites": {
+    "M_h2o_c[c_Ef]": 1,
+    "M_3htdacp_c[c_Ef]": -1,
+    "M_2ttdeacp_c[c_Ef]": 1
+   },
+   "lower_bound": 0,
+   "upper_bound": 1000,
+   "subsystem": ""
+  },
+  {
+   "id": "R_IMPC_Ef",
+   "name": "IMP cyclohydrolase",
+   "metabolites": {
+    "M_h2o_c[c_Ef]": -1,
+    "M_imp_c[c_Ef]": -1,
+    "M_fprica_c[c_Ef]": 1
+   },
+   "lower_bound": -1000,
+   "upper_bound": 1000,
+   "subsystem": ""
+  }
+ ],
+ "genes": [],
+ "objective": {
+  "R_BIOMASS_Ef": 1
+ }
+}

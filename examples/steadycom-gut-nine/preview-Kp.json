@@ -1,0 +1,847 @@
+{
+ "id": "Kp_preview",
+ "name": "Klebsiella pneumonia — map excerpt, 20 of 1960 reactions",
+ "cell": {
+  "name": "Kp",
+  "organism": "Klebsiella pneumonia",
+  "shape": "rounded",
+  "color": "#16a34a",
+  "note": "1960 reactions in the full model"
+ },
+ "compartments": {
+  "c": "Cytosol",
+  "p": "Periplasm",
+  "e": "Extracellular"
+ },
+ "metabolites": [
+  {
+   "id": "h2o[c_Kp]",
+   "name": "h2o[c_Kp]",
+   "compartment": "c",
+   "formula": "H2O",
+   "charge": 0
+  },
+  {
+   "id": "h[c_Kp]",
+   "name": "h[c_Kp]",
+   "compartment": "c",
+   "formula": "H",
+   "charge": 0
+  },
+  {
+   "id": "atp[c_Kp]",
+   "name": "atp[c_Kp]",
+   "compartment": "c",
+   "formula": "C10H12N5O13P3",
+   "charge": 0
+  },
+  {
+   "id": "adp[c_Kp]",
+   "name": "adp[c_Kp]",
+   "compartment": "c",
+   "formula": "C10H12N5O10P2",
+   "charge": 0
+  },
+  {
+   "id": "pi[c_Kp]",
+   "name": "pi[c_Kp]",
+   "compartment": "c",
+   "formula": "HO4P",
+   "charge": 0
+  },
+  {
+   "id": "ppi[c_Kp]",
+   "name": "ppi[c_Kp]",
+   "compartment": "c",
+   "formula": "HO7P2",
+   "charge": 0
+  },
+  {
+   "id": "ttdca[c_Kp]",
+   "name": "ttdca[c_Kp]",
+   "compartment": "c",
+   "formula": "H27O2C14",
+   "charge": 0
+  },
+  {
+   "id": "pe160[c_Kp]",
+   "name": "pe160[c_Kp]",
+   "compartment": "c",
+   "formula": "C37H74O8NP",
+   "charge": 0
+  },
+  {
+   "id": "pe161[c_Kp]",
+   "name": "pe161[c_Kp]",
+   "compartment": "c",
+   "formula": "C37H70O8NP",
+   "charge": 0
+  },
+  {
+   "id": "pe181[c_Kp]",
+   "name": "pe181[c_Kp]",
+   "compartment": "c",
+   "formula": "C41H78O8NP",
+   "charge": 0
+  },
+  {
+   "id": "pg160[c_Kp]",
+   "name": "pg160[c_Kp]",
+   "compartment": "c",
+   "formula": "C38H74O10P",
+   "charge": 0
+  },
+  {
+   "id": "pg161[c_Kp]",
+   "name": "pg161[c_Kp]",
+   "compartment": "c",
+   "formula": "C38H70O10P",
+   "charge": 0
+  },
+  {
+   "id": "pg181[c_Kp]",
+   "name": "pg181[c_Kp]",
+   "compartment": "c",
+   "formula": "C42H78O10P",
+   "charge": 0
+  },
+  {
+   "id": "glu-L[c_Kp]",
+   "name": "glu-L[c_Kp]",
+   "compartment": "c",
+   "formula": "C5H8O4N",
+   "charge": 0
+  },
+  {
+   "id": "gtp[c_Kp]",
+   "name": "gtp[c_Kp]",
+   "compartment": "c",
+   "formula": "H12O14C10N5P3",
+   "charge": 0
+  },
+  {
+   "id": "gln-L[c_Kp]",
+   "name": "gln-L[c_Kp]",
+   "compartment": "c",
+   "formula": "C5H10O3N2",
+   "charge": 0
+  },
+  {
+   "id": "asp-L[c_Kp]",
+   "name": "asp-L[c_Kp]",
+   "compartment": "c",
+   "formula": "C4H6O4N",
+   "charge": 0
+  },
+  {
+   "id": "gam6p[c_Kp]",
+   "name": "gam6p[c_Kp]",
+   "compartment": "c",
+   "formula": "C6H13O8NP",
+   "charge": 0
+  },
+  {
+   "id": "adphep-LD[c_Kp]",
+   "name": "adphep-LD[c_Kp]",
+   "compartment": "c",
+   "formula": "H25O16C17N5P2",
+   "charge": 0
+  },
+  {
+   "id": "ala-L[c_Kp]",
+   "name": "ala-L[c_Kp]",
+   "compartment": "c",
+   "formula": "C3H7O2N",
+   "charge": 0
+  },
+  {
+   "id": "pe160[p_Kp]",
+   "name": "pe160[p_Kp]",
+   "compartment": "p",
+   "formula": "C37H74O8NP",
+   "charge": 0
+  },
+  {
+   "id": "pg160[p_Kp]",
+   "name": "pg160[p_Kp]",
+   "compartment": "p",
+   "formula": "C38H74O10P",
+   "charge": 0
+  },
+  {
+   "id": "cys-L[c_Kp]",
+   "name": "cys-L[c_Kp]",
+   "compartment": "c",
+   "formula": "C3H7O2NS",
+   "charge": 0
+  },
+  {
+   "id": "gly[c_Kp]",
+   "name": "gly[c_Kp]",
+   "compartment": "c",
+   "formula": "C2H5O2N",
+   "charge": 0
+  },
+  {
+   "id": "pro-L[c_Kp]",
+   "name": "pro-L[c_Kp]",
+   "compartment": "c",
+   "formula": "C5H9NO2",
+   "charge": 0
+  },
+  {
+   "id": "met-L[c_Kp]",
+   "name": "met-L[c_Kp]",
+   "compartment": "c",
+   "formula": "C5H11O2NS",
+   "charge": 0
+  },
+  {
+   "id": "arg-L[c_Kp]",
+   "name": "arg-L[c_Kp]",
+   "compartment": "c",
+   "formula": "C6H15O2N4",
+   "charge": 0
+  },
+  {
+   "id": "asn-L[c_Kp]",
+   "name": "asn-L[c_Kp]",
+   "compartment": "c",
+   "formula": "C4H8O3N2",
+   "charge": 0
+  },
+  {
+   "id": "clpn160[p_Kp]",
+   "name": "clpn160[p_Kp]",
+   "compartment": "p",
+   "formula": "C73H140O17P2",
+   "charge": 0
+  },
+  {
+   "id": "clpn161[p_Kp]",
+   "name": "clpn161[p_Kp]",
+   "compartment": "p",
+   "formula": "C73H132O17P2",
+   "charge": 0
+  },
+  {
+   "id": "clpn181[p_Kp]",
+   "name": "clpn181[p_Kp]",
+   "compartment": "p",
+   "formula": "C81H148O17P2",
+   "charge": 0
+  },
+  {
+   "id": "ctp[c_Kp]",
+   "name": "ctp[c_Kp]",
+   "compartment": "c",
+   "formula": "H12O14C9N3P3",
+   "charge": 0
+  },
+  {
+   "id": "datp[c_Kp]",
+   "name": "datp[c_Kp]",
+   "compartment": "c",
+   "formula": "H12O12C10N5P3",
+   "charge": 0
+  },
+  {
+   "id": "dctp[c_Kp]",
+   "name": "dctp[c_Kp]",
+   "compartment": "c",
+   "formula": "H12O13C9N3P3",
+   "charge": 0
+  },
+  {
+   "id": "dgtp[c_Kp]",
+   "name": "dgtp[c_Kp]",
+   "compartment": "c",
+   "formula": "H12O13C10N5P3",
+   "charge": 0
+  },
+  {
+   "id": "dtdprmn[c_Kp]",
+   "name": "dtdprmn[c_Kp]",
+   "compartment": "c",
+   "formula": "H24O15C16N2P2",
+   "charge": 0
+  },
+  {
+   "id": "dttp[c_Kp]",
+   "name": "dttp[c_Kp]",
+   "compartment": "c",
+   "formula": "H13O14C10N2P3",
+   "charge": 0
+  },
+  {
+   "id": "his-L[c_Kp]",
+   "name": "his-L[c_Kp]",
+   "compartment": "c",
+   "formula": "C6H9O2N3",
+   "charge": 0
+  },
+  {
+   "id": "ile-L[c_Kp]",
+   "name": "ile-L[c_Kp]",
+   "compartment": "c",
+   "formula": "C6H13O2N",
+   "charge": 0
+  },
+  {
+   "id": "kdo[c_Kp]",
+   "name": "kdo[c_Kp]",
+   "compartment": "c",
+   "formula": "H13O8C8",
+   "charge": 0
+  },
+  {
+   "id": "leu-L[c_Kp]",
+   "name": "leu-L[c_Kp]",
+   "compartment": "c",
+   "formula": "C6H13O2N",
+   "charge": 0
+  },
+  {
+   "id": "lipidA[c_Kp]",
+   "name": "lipidA[c_Kp]",
+   "compartment": "c",
+   "formula": "H126O23C68N2P2",
+   "charge": 0
+  },
+  {
+   "id": "lys-L[c_Kp]",
+   "name": "lys-L[c_Kp]",
+   "compartment": "c",
+   "formula": "C6H15O2N2",
+   "charge": 0
+  },
+  {
+   "id": "man1p[c_Kp]",
+   "name": "man1p[c_Kp]",
+   "compartment": "c",
+   "formula": "H11O9C6P",
+   "charge": 0
+  },
+  {
+   "id": "murein5px4p[p_Kp]",
+   "name": "murein5px4p[p_Kp]",
+   "compartment": "p",
+   "formula": "C77H117O40N15",
+   "charge": 0
+  },
+  {
+   "id": "pe161[p_Kp]",
+   "name": "pe161[p_Kp]",
+   "compartment": "p",
+   "formula": "C37H70O8NP",
+   "charge": 0
+  },
+  {
+   "id": "pe181[p_Kp]",
+   "name": "pe181[p_Kp]",
+   "compartment": "p",
+   "formula": "C41H78O8NP",
+   "charge": 0
+  },
+  {
+   "id": "pg161[p_Kp]",
+   "name": "pg161[p_Kp]",
+   "compartment": "p",
+   "formula": "C38H70O10P",
+   "charge": 0
+  },
+  {
+   "id": "pg181[p_Kp]",
+   "name": "pg181[p_Kp]",
+   "compartment": "p",
+   "formula": "C42H78O10P",
+   "charge": 0
+  },
+  {
+   "id": "phe-L[c_Kp]",
+   "name": "phe-L[c_Kp]",
+   "compartment": "c",
+   "formula": "C9H11O2N",
+   "charge": 0
+  },
+  {
+   "id": "ser-L[c_Kp]",
+   "name": "ser-L[c_Kp]",
+   "compartment": "c",
+   "formula": "C3H7O3N",
+   "charge": 0
+  },
+  {
+   "id": "thr-L[c_Kp]",
+   "name": "thr-L[c_Kp]",
+   "compartment": "c",
+   "formula": "C4H9O3N",
+   "charge": 0
+  },
+  {
+   "id": "trp-L[c_Kp]",
+   "name": "trp-L[c_Kp]",
+   "compartment": "c",
+   "formula": "C11H12O2N2",
+   "charge": 0
+  },
+  {
+   "id": "tyr-L[c_Kp]",
+   "name": "tyr-L[c_Kp]",
+   "compartment": "c",
+   "formula": "C9H11O3N",
+   "charge": 0
+  },
+  {
+   "id": "udpg[c_Kp]",
+   "name": "udpg[c_Kp]",
+   "compartment": "c",
+   "formula": "H22O17C15N2P2",
+   "charge": 0
+  },
+  {
+   "id": "udpgal[c_Kp]",
+   "name": "udpgal[c_Kp]",
+   "compartment": "c",
+   "formula": "H22O17C15N2P2",
+   "charge": 0
+  },
+  {
+   "id": "udpgalur[c_Kp]",
+   "name": "udpgalur[c_Kp]",
+   "compartment": "c",
+   "formula": "H22O18C15N2P2",
+   "charge": 0
+  },
+  {
+   "id": "utp[c_Kp]",
+   "name": "utp[c_Kp]",
+   "compartment": "c",
+   "formula": "H11O15C9N2P3",
+   "charge": 0
+  },
+  {
+   "id": "val-L[c_Kp]",
+   "name": "val-L[c_Kp]",
+   "compartment": "c",
+   "formula": "C5H11O2N",
+   "charge": 0
+  },
+  {
+   "id": "biomassKp[e_Kp]",
+   "name": "Biomass of Klebsiella pneumoniae subsp. pneumoniae MGH 78578",
+   "compartment": "e",
+   "formula": "C39.546679554577565H61.578386746115676O17.502430246678824N10.03659060710484P1.181276952800582S0.17902525828238",
+   "charge": 0
+  },
+  {
+   "id": "12ppd-S[e_Kp]",
+   "name": "(S)-Propane-1,2-diol",
+   "compartment": "e",
+   "formula": "C3H8O2",
+   "charge": 0
+  },
+  {
+   "id": "13ppd[e_Kp]",
+   "name": "1,3-Propanediol",
+   "compartment": "e",
+   "formula": "C3H8O2",
+   "charge": 0
+  },
+  {
+   "id": "14glucan[e_Kp]",
+   "name": "1,4-alpha-D-glucan",
+   "compartment": "e",
+   "formula": "C36H62O31",
+   "charge": 0
+  },
+  {
+   "id": "23camp[e_Kp]",
+   "name": "2',3'-Cyclic AMP",
+   "compartment": "e",
+   "formula": "C10H11O6N5P",
+   "charge": 0
+  },
+  {
+   "id": "23ccmp[e_Kp]",
+   "name": "2',3'-Cyclic CMP",
+   "compartment": "e",
+   "formula": "C9H11O7N3P",
+   "charge": 0
+  },
+  {
+   "id": "23cgmp[e_Kp]",
+   "name": "2',3'-Cyclic GMP",
+   "compartment": "e",
+   "formula": "C10H11O7N5P",
+   "charge": 0
+  },
+  {
+   "id": "23cump[e_Kp]",
+   "name": "2',3'-Cyclic UMP",
+   "compartment": "e",
+   "formula": "C9H10O8N2P",
+   "charge": 0
+  },
+  {
+   "id": "23dappa[e_Kp]",
+   "name": "2,3-diaminopropionate",
+   "compartment": "e",
+   "formula": "C3H9O2N2",
+   "charge": 0
+  },
+  {
+   "id": "12ppd-S[c_Kp]",
+   "name": "12ppd-S[c_Kp]",
+   "compartment": "c",
+   "formula": "C3H8O2",
+   "charge": 0
+  },
+  {
+   "id": "13ppd[p_Kp]",
+   "name": "13ppd[p_Kp]",
+   "compartment": "p",
+   "formula": "C3H8O2",
+   "charge": 0
+  },
+  {
+   "id": "14glucan[p_Kp]",
+   "name": "14glucan[p_Kp]",
+   "compartment": "p",
+   "formula": "C36H62O31",
+   "charge": 0
+  },
+  {
+   "id": "23camp[p_Kp]",
+   "name": "23camp[p_Kp]",
+   "compartment": "p",
+   "formula": "C10H11O6N5P",
+   "charge": 0
+  },
+  {
+   "id": "23ccmp[p_Kp]",
+   "name": "23ccmp[p_Kp]",
+   "compartment": "p",
+   "formula": "C9H11O7N3P",
+   "charge": 0
+  },
+  {
+   "id": "23cgmp[p_Kp]",
+   "name": "23cgmp[p_Kp]",
+   "compartment": "p",
+   "formula": "C10H11O7N5P",
+   "charge": 0
+  },
+  {
+   "id": "23cump[p_Kp]",
+   "name": "23cump[p_Kp]",
+   "compartment": "p",
+   "formula": "C9H10O8N2P",
+   "charge": 0
+  },
+  {
+   "id": "23dappa[p_Kp]",
+   "name": "23dappa[p_Kp]",
+   "compartment": "p",
+   "formula": "C3H9O2N2",
+   "charge": 0
+  },
+  {
+   "id": "adphep-DD[c_Kp]",
+   "name": "adphep-DD[c_Kp]",
+   "compartment": "c",
+   "formula": "H25O16C17N5P2",
+   "charge": 0
+  },
+  {
+   "id": "ala-D[c_Kp]",
+   "name": "ala-D[c_Kp]",
+   "compartment": "c",
+   "formula": "C3H7O2N",
+   "charge": 0
+  },
+  {
+   "id": "cys-L[p_Kp]",
+   "name": "cys-L[p_Kp]",
+   "compartment": "p",
+   "formula": "C3H7O2NS",
+   "charge": 0
+  }
+ ],
+ "reactions": [
+  {
+   "id": "Biomass_Kp",
+   "name": "Biomass",
+   "metabolites": {
+    "h2o[c_Kp]": -66.33865918708,
+    "h[c_Kp]": 71.7,
+    "atp[c_Kp]": -71.787960387017,
+    "adp[c_Kp]": 71.7,
+    "pi[c_Kp]": 71.7,
+    "ppi[c_Kp]": 0.529511181564,
+    "ttdca[c_Kp]": -0.042220985768,
+    "pe160[c_Kp]": -0.011879826388,
+    "pe161[c_Kp]": -0.003766774221,
+    "pe181[c_Kp]": -0.002318014905,
+    "pg160[c_Kp]": -0.001226271278,
+    "pg161[c_Kp]": -0.000390130187,
+    "pg181[c_Kp]": -0.000222488038,
+    "glu-L[c_Kp]": -0.314587737097,
+    "gtp[c_Kp]": -0.128318682237,
+    "gln-L[c_Kp]": -0.259741848722,
+    "asp-L[c_Kp]": -0.320796705593,
+    "gam6p[c_Kp]": -0.011383108908,
+    "adphep-LD[c_Kp]": -0.007243796578,
+    "ala-L[c_Kp]": -0.642628239268,
+    "pe160[p_Kp]": -0.030548124997,
+    "pg160[p_Kp]": -0.001050350504,
+    "cys-L[c_Kp]": -0.080716590439,
+    "gly[c_Kp]": -0.557772336498,
+    "pro-L[c_Kp]": -0.197652163768,
+    "met-L[c_Kp]": -0.098308667843,
+    "arg-L[c_Kp]": -0.316657393262,
+    "asn-L[c_Kp]": -0.211104928842,
+    "clpn160[p_Kp]": -0.001345276507,
+    "clpn161[p_Kp]": -0.000413931233,
+    "clpn181[p_Kp]": -0.000206965617,
+    "ctp[c_Kp]": -0.121074885659,
+    "datp[c_Kp]": -0.017592077403,
+    "dctp[c_Kp]": -0.022766217816,
+    "dgtp[c_Kp]": -0.022766217816,
+    "dtdprmn[c_Kp]": -0.146945587723,
+    "dttp[c_Kp]": -0.017592077403,
+    "his-L[c_Kp]": -0.092099699348,
+    "ile-L[c_Kp]": -0.205930788429,
+    "kdo[c_Kp]": -0.005174140413,
+    "leu-L[c_Kp]": -0.396339155619,
+    "lipidA[c_Kp]": -0.021110492884,
+    "lys-L[c_Kp]": -0.247323911731,
+    "man1p[c_Kp]": -0.054845888376,
+    "murein5px4p[p_Kp]": -0.011383108908,
+    "pe161[p_Kp]": -0.009685990853,
+    "pe181[p_Kp]": -0.005960609756,
+    "pg161[p_Kp]": -0.000334249471,
+    "pg181[p_Kp]": -0.000191443195,
+    "phe-L[c_Kp]": -0.21834872542,
+    "ser-L[c_Kp]": -0.459463668655,
+    "thr-L[c_Kp]": -0.274229441878,
+    "trp-L[c_Kp]": -0.068298653449,
+    "tyr-L[c_Kp]": -0.068298653449,
+    "udpg[c_Kp]": -0.003104484248,
+    "udpgal[c_Kp]": -0.078646934274,
+    "udpgalur[c_Kp]": -0.001034828083,
+    "utp[c_Kp]": -0.110726604834,
+    "val-L[c_Kp]": -0.330110158336,
+    "biomassKp[e_Kp]": 1
+   },
+   "lower_bound": 0,
+   "upper_bound": 1000,
+   "subsystem": "Exchange"
+  },
+  {
+   "id": "EX_12ppd-S[u]tr_Kp",
+   "name": "(S)-Propane-1,2-diol exchange",
+   "metabolites": {
+    "12ppd-S[e_Kp]": -1
+   },
+   "lower_bound": -1000,
+   "upper_bound": 1000,
+   "subsystem": "Transport, intercellular"
+  },
+  {
+   "id": "EX_13ppd[u]tr_Kp",
+   "name": "1,3-Propanediol exchange",
+   "metabolites": {
+    "13ppd[e_Kp]": -1
+   },
+   "lower_bound": -1000,
+   "upper_bound": 1000,
+   "subsystem": "Transport, intercellular"
+  },
+  {
+   "id": "EX_14glucan[u]tr_Kp",
+   "name": "1,4-alpha-D-glucan exchange",
+   "metabolites": {
+    "14glucan[e_Kp]": -1
+   },
+   "lower_bound": -1000,
+   "upper_bound": 1000,
+   "subsystem": "Transport, intercellular"
+  },
+  {
+   "id": "EX_23camp[u]tr_Kp",
+   "name": "2',3'-Cyclic AMP exchange",
+   "metabolites": {
+    "23camp[e_Kp]": -1
+   },
+   "lower_bound": -1000,
+   "upper_bound": 1000,
+   "subsystem": "Transport, intercellular"
+  },
+  {
+   "id": "EX_23ccmp[u]tr_Kp",
+   "name": "2',3'-Cyclic CMP exchange",
+   "metabolites": {
+    "23ccmp[e_Kp]": -1
+   },
+   "lower_bound": -1000,
+   "upper_bound": 1000,
+   "subsystem": "Transport, intercellular"
+  },
+  {
+   "id": "EX_23cgmp[u]tr_Kp",
+   "name": "2',3'-Cyclic GMP exchange",
+   "metabolites": {
+    "23cgmp[e_Kp]": -1
+   },
+   "lower_bound": -1000,
+   "upper_bound": 1000,
+   "subsystem": "Transport, intercellular"
+  },
+  {
+   "id": "EX_23cump[u]tr_Kp",
+   "name": "2',3'-Cyclic UMP exchange",
+   "metabolites": {
+    "23cump[e_Kp]": -1
+   },
+   "lower_bound": -1000,
+   "upper_bound": 1000,
+   "subsystem": "Transport, intercellular"
+  },
+  {
+   "id": "EX_23dappa[u]tr_Kp",
+   "name": "2,3-diaminopropionate exchange",
+   "metabolites": {
+    "23dappa[e_Kp]": -1
+   },
+   "lower_bound": -1000,
+   "upper_bound": 1000,
+   "subsystem": "Transport, intercellular"
+  },
+  {
+   "id": "12PPDt_Kp",
+   "name": "S-Propane-1,2-diol facilitated transport",
+   "metabolites": {
+    "12ppd-S[c_Kp]": 1,
+    "12ppd-S[e_Kp]": -1
+   },
+   "lower_bound": -1000,
+   "upper_bound": 1000,
+   "subsystem": "Alternate Carbon Metabolism "
+  },
+  {
+   "id": "13PPDtex_Kp",
+   "name": "1,3-propanediol transporter via diffusion (extracellular to periplasm)",
+   "metabolites": {
+    "13ppd[e_Kp]": -1,
+    "13ppd[p_Kp]": 1
+   },
+   "lower_bound": -1000,
+   "upper_bound": 1000,
+   "subsystem": "Transport, Outer Membrane "
+  },
+  {
+   "id": "14GLUCANtexi_Kp",
+   "name": "1,4-alpha-D-glucan transport via diffusion (extracellular to periplasm) irreversible",
+   "metabolites": {
+    "14glucan[p_Kp]": 1,
+    "14glucan[e_Kp]": -1
+   },
+   "lower_bound": 0,
+   "upper_bound": 1000,
+   "subsystem": "Transport, Outer Membrane "
+  },
+  {
+   "id": "23CAMPtex_Kp",
+   "name": "23cAMP transport via diffusion (extracellular to periplasm)",
+   "metabolites": {
+    "23camp[e_Kp]": -1,
+    "23camp[p_Kp]": 1
+   },
+   "lower_bound": -1000,
+   "upper_bound": 1000,
+   "subsystem": "Transport, Outer Membrane Porin "
+  },
+  {
+   "id": "23CCMPtex_Kp",
+   "name": "23cCMP transport via diffusion (extracellular to periplasm)",
+   "metabolites": {
+    "23ccmp[e_Kp]": -1,
+    "23ccmp[p_Kp]": 1
+   },
+   "lower_bound": -1000,
+   "upper_bound": 1000,
+   "subsystem": "Transport, Outer Membrane Porin "
+  },
+  {
+   "id": "23CGMPtex_Kp",
+   "name": "23cGMP transport via diffusion (extracellular to periplasm)",
+   "metabolites": {
+    "23cgmp[e_Kp]": -1,
+    "23cgmp[p_Kp]": 1
+   },
+   "lower_bound": -1000,
+   "upper_bound": 1000,
+   "subsystem": "Transport, Outer Membrane Porin "
+  },
+  {
+   "id": "23CUMPtex_Kp",
+   "name": "23cUMP transport via diffusion (extracellular to periplasm)",
+   "metabolites": {
+    "23cump[e_Kp]": -1,
+    "23cump[p_Kp]": 1
+   },
+   "lower_bound": -1000,
+   "upper_bound": 1000,
+   "subsystem": "Transport, Outer Membrane Porin "
+  },
+  {
+   "id": "23DAPPAtex_Kp",
+   "name": "2,3-diaminopropionate transport via diffusion",
+   "metabolites": {
+    "23dappa[p_Kp]": 1,
+    "23dappa[e_Kp]": -1
+   },
+   "lower_bound": -1000,
+   "upper_bound": 1000,
+   "subsystem": "Transport, Outer Membrane Porin "
+  },
+  {
+   "id": "AGMHE_Kp",
+   "name": "ADP-D-glycero-D-manno-heptose epimerase",
+   "metabolites": {
+    "adphep-DD[c_Kp]": -1,
+    "adphep-LD[c_Kp]": 1
+   },
+   "lower_bound": 0,
+   "upper_bound": 1000,
+   "subsystem": "Lipopolysaccharide Biosynthesis / Recycling "
+  },
+  {
+   "id": "ALAR_Kp",
+   "name": "alanine racemase",
+   "metabolites": {
+    "ala-D[c_Kp]": 1,
+    "ala-L[c_Kp]": -1
+   },
+   "lower_bound": -1000,
+   "upper_bound": 1000,
+   "subsystem": "Alanine and Aspartate Metabolism "
+  },
+  {
+   "id": "CYStpp_Kp",
+   "name": "L-cysteine export via facilitated transport",
+   "metabolites": {
+    "cys-L[c_Kp]": -1,
+    "cys-L[p_Kp]": 1
+   },
+   "lower_bound": 0,
+   "upper_bound": 1000,
+   "subsystem": "Tranpsort, Inner Membrane "
+  }
+ ],
+ "genes": [],
+ "objective": {
+  "Biomass_Kp": 1
+ }
+}

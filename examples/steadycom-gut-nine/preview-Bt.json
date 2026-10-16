@@ -1,0 +1,1143 @@
+{
+ "id": "Bt_preview",
+ "name": "Bacteroides thetaiotamicron — map excerpt, 20 of 1443 reactions",
+ "cell": {
+  "name": "Bt",
+  "organism": "Bacteroides thetaiotamicron",
+  "shape": "rounded",
+  "color": "#0284c7",
+  "note": "1443 reactions in the full model"
+ },
+ "compartments": {
+  "c": "Cytosol",
+  "e": "Extracellular"
+ },
+ "metabolites": [
+  {
+   "id": "h2o[c_Bt]",
+   "name": "h2o[c_Bt]",
+   "compartment": "c",
+   "formula": "H2O",
+   "charge": 0
+  },
+  {
+   "id": "h[c_Bt]",
+   "name": "h[c_Bt]",
+   "compartment": "c",
+   "formula": "H",
+   "charge": 0
+  },
+  {
+   "id": "glu-L[c_Bt]",
+   "name": "glu-L[c_Bt]",
+   "compartment": "c",
+   "formula": "C5H8NO4",
+   "charge": 0
+  },
+  {
+   "id": "ala-L[c_Bt]",
+   "name": "ala-L[c_Bt]",
+   "compartment": "c",
+   "formula": "C3H7NO2",
+   "charge": 0
+  },
+  {
+   "id": "ACP[c_Bt]",
+   "name": "ACP[c_Bt]",
+   "compartment": "c",
+   "formula": "C11H20N2O6Apo_acpPS",
+   "charge": 0
+  },
+  {
+   "id": "coa[c_Bt]",
+   "name": "coa[c_Bt]",
+   "compartment": "c",
+   "formula": "C21H32N7O16P3S",
+   "charge": 0
+  },
+  {
+   "id": "nadp[c_Bt]",
+   "name": "nadp[c_Bt]",
+   "compartment": "c",
+   "formula": "C21H25N7O17P3",
+   "charge": 0
+  },
+  {
+   "id": "tyr-L[c_Bt]",
+   "name": "tyr-L[c_Bt]",
+   "compartment": "c",
+   "formula": "C9H11NO3",
+   "charge": 0
+  },
+  {
+   "id": "nad[c_Bt]",
+   "name": "nad[c_Bt]",
+   "compartment": "c",
+   "formula": "C21H26N7O14P2",
+   "charge": 0
+  },
+  {
+   "id": "pi[c_Bt]",
+   "name": "pi[c_Bt]",
+   "compartment": "c",
+   "formula": "HO4P",
+   "charge": 0
+  },
+  {
+   "id": "na1[c_Bt]",
+   "name": "na1[c_Bt]",
+   "compartment": "c",
+   "formula": "Na",
+   "charge": 0
+  },
+  {
+   "id": "atp[c_Bt]",
+   "name": "atp[c_Bt]",
+   "compartment": "c",
+   "formula": "C10H12N5O13P3",
+   "charge": 0
+  },
+  {
+   "id": "adp[c_Bt]",
+   "name": "adp[c_Bt]",
+   "compartment": "c",
+   "formula": "C10H12N5O10P2",
+   "charge": 0
+  },
+  {
+   "id": "apoACP[c_Bt]",
+   "name": "apoACP[c_Bt]",
+   "compartment": "c",
+   "formula": "Apo_acp",
+   "charge": 0
+  },
+  {
+   "id": "ppi[c_Bt]",
+   "name": "ppi[c_Bt]",
+   "compartment": "c",
+   "formula": "HO7P2",
+   "charge": 0
+  },
+  {
+   "id": "adocbl[c_Bt]",
+   "name": "adocbl[c_Bt]",
+   "compartment": "c",
+   "formula": "C72H100N18O17PCo",
+   "charge": 0
+  },
+  {
+   "id": "asp-L[c_Bt]",
+   "name": "asp-L[c_Bt]",
+   "compartment": "c",
+   "formula": "C4H6NO4",
+   "charge": 0
+  },
+  {
+   "id": "gtp[c_Bt]",
+   "name": "gtp[c_Bt]",
+   "compartment": "c",
+   "formula": "C10H12N5O14P3",
+   "charge": 0
+  },
+  {
+   "id": "10fthf[c_Bt]",
+   "name": "10fthf[c_Bt]",
+   "compartment": "c",
+   "formula": "C20H21N7O7",
+   "charge": 0
+  },
+  {
+   "id": "thf[c_Bt]",
+   "name": "thf[c_Bt]",
+   "compartment": "c",
+   "formula": "C19H21N7O6",
+   "charge": 0
+  },
+  {
+   "id": "gln-L[c_Bt]",
+   "name": "gln-L[c_Bt]",
+   "compartment": "c",
+   "formula": "C5H10N2O3",
+   "charge": 0
+  },
+  {
+   "id": "gly[c_Bt]",
+   "name": "gly[c_Bt]",
+   "compartment": "c",
+   "formula": "C2H5NO2",
+   "charge": 0
+  },
+  {
+   "id": "his-L[c_Bt]",
+   "name": "his-L[c_Bt]",
+   "compartment": "c",
+   "formula": "C6H9N3O2",
+   "charge": 0
+  },
+  {
+   "id": "leu-L[c_Bt]",
+   "name": "leu-L[c_Bt]",
+   "compartment": "c",
+   "formula": "C6H13NO2",
+   "charge": 0
+  },
+  {
+   "id": "thr-L[c_Bt]",
+   "name": "thr-L[c_Bt]",
+   "compartment": "c",
+   "formula": "C4H9NO3",
+   "charge": 0
+  },
+  {
+   "id": "amet[c_Bt]",
+   "name": "amet[c_Bt]",
+   "compartment": "c",
+   "formula": "C15H23N6O5S",
+   "charge": 0
+  },
+  {
+   "id": "mql10[c_Bt]",
+   "name": "mql10[c_Bt]",
+   "compartment": "c",
+   "formula": "C61H90O2",
+   "charge": 0
+  },
+  {
+   "id": "mql11[c_Bt]",
+   "name": "mql11[c_Bt]",
+   "compartment": "c",
+   "formula": "C66H98O2",
+   "charge": 0
+  },
+  {
+   "id": "mql7[c_Bt]",
+   "name": "mql7[c_Bt]",
+   "compartment": "c",
+   "formula": "C46H66O2",
+   "charge": 0
+  },
+  {
+   "id": "mql8[c_Bt]",
+   "name": "mql8[c_Bt]",
+   "compartment": "c",
+   "formula": "C51H74O2",
+   "charge": 0
+  },
+  {
+   "id": "mql9[c_Bt]",
+   "name": "mql9[c_Bt]",
+   "compartment": "c",
+   "formula": "C56H82O2",
+   "charge": 0
+  },
+  {
+   "id": "cys-L[c_Bt]",
+   "name": "cys-L[c_Bt]",
+   "compartment": "c",
+   "formula": "C3H7NO2S",
+   "charge": 0
+  },
+  {
+   "id": "pro-L[c_Bt]",
+   "name": "pro-L[c_Bt]",
+   "compartment": "c",
+   "formula": "C5H9NO2",
+   "charge": 0
+  },
+  {
+   "id": "arg-L[c_Bt]",
+   "name": "arg-L[c_Bt]",
+   "compartment": "c",
+   "formula": "C6H15N4O2",
+   "charge": 0
+  },
+  {
+   "id": "phe-L[c_Bt]",
+   "name": "phe-L[c_Bt]",
+   "compartment": "c",
+   "formula": "C9H11NO2",
+   "charge": 0
+  },
+  {
+   "id": "asn-L[c_Bt]",
+   "name": "asn-L[c_Bt]",
+   "compartment": "c",
+   "formula": "C4H8N2O3",
+   "charge": 0
+  },
+  {
+   "id": "btn[c_Bt]",
+   "name": "btn[c_Bt]",
+   "compartment": "c",
+   "formula": "C10H15N2O3S",
+   "charge": 0
+  },
+  {
+   "id": "met-L[c_Bt]",
+   "name": "met-L[c_Bt]",
+   "compartment": "c",
+   "formula": "C5H11NO2S",
+   "charge": 0
+  },
+  {
+   "id": "ca2[c_Bt]",
+   "name": "ca2[c_Bt]",
+   "compartment": "c",
+   "formula": "Ca",
+   "charge": 0
+  },
+  {
+   "id": "ctp[c_Bt]",
+   "name": "ctp[c_Bt]",
+   "compartment": "c",
+   "formula": "C9H12N3O14P3",
+   "charge": 0
+  },
+  {
+   "id": "pg140[c_Bt]",
+   "name": "pg140[c_Bt]",
+   "compartment": "c",
+   "formula": "C34H66O10P",
+   "charge": 0
+  },
+  {
+   "id": "clpn140[c_Bt]",
+   "name": "clpn140[c_Bt]",
+   "compartment": "c",
+   "formula": "C65H124O17P2",
+   "charge": 0
+  },
+  {
+   "id": "pg160[c_Bt]",
+   "name": "pg160[c_Bt]",
+   "compartment": "c",
+   "formula": "C38H74O10P",
+   "charge": 0
+  },
+  {
+   "id": "clpn160[c_Bt]",
+   "name": "clpn160[c_Bt]",
+   "compartment": "c",
+   "formula": "C73H140O17P2",
+   "charge": 0
+  },
+  {
+   "id": "pg180[c_Bt]",
+   "name": "pg180[c_Bt]",
+   "compartment": "c",
+   "formula": "C42H82O10P",
+   "charge": 0
+  },
+  {
+   "id": "clpn180[c_Bt]",
+   "name": "clpn180[c_Bt]",
+   "compartment": "c",
+   "formula": "C81H156O17P2",
+   "charge": 0
+  },
+  {
+   "id": "clpnai15[c_Bt]",
+   "name": "clpnai15[c_Bt]",
+   "compartment": "c",
+   "formula": "C69H132O17P2",
+   "charge": 0
+  },
+  {
+   "id": "pgai17[c_Bt]",
+   "name": "pgai17[c_Bt]",
+   "compartment": "c",
+   "formula": "C40H78O10P",
+   "charge": 0
+  },
+  {
+   "id": "clpnai17[c_Bt]",
+   "name": "clpnai17[c_Bt]",
+   "compartment": "c",
+   "formula": "C77H148O17P2",
+   "charge": 0
+  },
+  {
+   "id": "clpni14[c_Bt]",
+   "name": "clpni14[c_Bt]",
+   "compartment": "c",
+   "formula": "C65H124O17P2",
+   "charge": 0
+  },
+  {
+   "id": "clpni15[c_Bt]",
+   "name": "clpni15[c_Bt]",
+   "compartment": "c",
+   "formula": "C69H132O17P2",
+   "charge": 0
+  },
+  {
+   "id": "clpni16[c_Bt]",
+   "name": "clpni16[c_Bt]",
+   "compartment": "c",
+   "formula": "C73H140O17P2",
+   "charge": 0
+  },
+  {
+   "id": "pgi17[c_Bt]",
+   "name": "pgi17[c_Bt]",
+   "compartment": "c",
+   "formula": "C40H78O10P",
+   "charge": 0
+  },
+  {
+   "id": "clpni17[c_Bt]",
+   "name": "clpni17[c_Bt]",
+   "compartment": "c",
+   "formula": "C77H148O17P2",
+   "charge": 0
+  },
+  {
+   "id": "cobalt2[c_Bt]",
+   "name": "cobalt2[c_Bt]",
+   "compartment": "c",
+   "formula": "Co",
+   "charge": 0
+  },
+  {
+   "id": "cps_bt[e_Bt]",
+   "name": "Capsule polysaccharide (B.thetaiotaomicron specific)",
+   "compartment": "e",
+   "formula": "C69H102N14O67P8",
+   "charge": 0
+  },
+  {
+   "id": "spmd[c_Bt]",
+   "name": "spmd[c_Bt]",
+   "compartment": "c",
+   "formula": "C7H22N3",
+   "charge": 0
+  },
+  {
+   "id": "utp[c_Bt]",
+   "name": "utp[c_Bt]",
+   "compartment": "c",
+   "formula": "C9H11N2O15P3",
+   "charge": 0
+  },
+  {
+   "id": "lys-L[c_Bt]",
+   "name": "lys-L[c_Bt]",
+   "compartment": "c",
+   "formula": "C6H15N2O2",
+   "charge": 0
+  },
+  {
+   "id": "lps_bt[e_Bt]",
+   "name": "Lipopolysacharide BT",
+   "compartment": "e",
+   "formula": "C196H357N4O110P3",
+   "charge": 0
+  },
+  {
+   "id": "pe_cer1_bt[e_Bt]",
+   "name": "Ceramide phosphoethanolamine (B. thetaiotaomicron specific)",
+   "compartment": "e",
+   "formula": "C37H77N2O6P",
+   "charge": 0
+  },
+  {
+   "id": "sphmyln_bt[e_Bt]",
+   "name": "Sphingomyelin (B. thetaiotaomicron specific)",
+   "compartment": "e",
+   "formula": "C40H83N2O6P",
+   "charge": 0
+  },
+  {
+   "id": "fe2[c_Bt]",
+   "name": "fe2[c_Bt]",
+   "compartment": "c",
+   "formula": "Fe",
+   "charge": 0
+  },
+  {
+   "id": "fe3[c_Bt]",
+   "name": "fe3[c_Bt]",
+   "compartment": "c",
+   "formula": "Fe",
+   "charge": 0
+  },
+  {
+   "id": "fad[c_Bt]",
+   "name": "fad[c_Bt]",
+   "compartment": "c",
+   "formula": "C27H31N9O15P2",
+   "charge": 0
+  },
+  {
+   "id": "dttp[c_Bt]",
+   "name": "dttp[c_Bt]",
+   "compartment": "c",
+   "formula": "C10H13N2O14P3",
+   "charge": 0
+  },
+  {
+   "id": "ser-L[c_Bt]",
+   "name": "ser-L[c_Bt]",
+   "compartment": "c",
+   "formula": "C3H7NO3",
+   "charge": 0
+  },
+  {
+   "id": "datp[c_Bt]",
+   "name": "datp[c_Bt]",
+   "compartment": "c",
+   "formula": "C10H12N5O12P3",
+   "charge": 0
+  },
+  {
+   "id": "pheme[c_Bt]",
+   "name": "pheme[c_Bt]",
+   "compartment": "c",
+   "formula": "C34H30N4O4Fe",
+   "charge": 0
+  },
+  {
+   "id": "ile-L[c_Bt]",
+   "name": "ile-L[c_Bt]",
+   "compartment": "c",
+   "formula": "C6H13NO2",
+   "charge": 0
+  },
+  {
+   "id": "k[c_Bt]",
+   "name": "k[c_Bt]",
+   "compartment": "c",
+   "formula": "K",
+   "charge": 0
+  },
+  {
+   "id": "5mthf[c_Bt]",
+   "name": "5mthf[c_Bt]",
+   "compartment": "c",
+   "formula": "C20H24N7O6",
+   "charge": 0
+  },
+  {
+   "id": "mg2[c_Bt]",
+   "name": "mg2[c_Bt]",
+   "compartment": "c",
+   "formula": "Mg",
+   "charge": 0
+  },
+  {
+   "id": "mn2[c_Bt]",
+   "name": "mn2[c_Bt]",
+   "compartment": "c",
+   "formula": "Mn",
+   "charge": 0
+  },
+  {
+   "id": "dgtp[c_Bt]",
+   "name": "dgtp[c_Bt]",
+   "compartment": "c",
+   "formula": "C10H12N5O13P3",
+   "charge": 0
+  },
+  {
+   "id": "dctp[c_Bt]",
+   "name": "dctp[c_Bt]",
+   "compartment": "c",
+   "formula": "C9H12N3O13P3",
+   "charge": 0
+  },
+  {
+   "id": "pydx5p[c_Bt]",
+   "name": "pydx5p[c_Bt]",
+   "compartment": "c",
+   "formula": "C8H8NO6P",
+   "charge": 0
+  },
+  {
+   "id": "pe160[c_Bt]",
+   "name": "pe160[c_Bt]",
+   "compartment": "c",
+   "formula": "C37H74NO8P",
+   "charge": 0
+  },
+  {
+   "id": "pg120[c_Bt]",
+   "name": "pg120[c_Bt]",
+   "compartment": "c",
+   "formula": "C30H58O10P",
+   "charge": 0
+  },
+  {
+   "id": "pg181[c_Bt]",
+   "name": "pg181[c_Bt]",
+   "compartment": "c",
+   "formula": "C42H78O10P",
+   "charge": 0
+  },
+  {
+   "id": "peptido_EC[c_Bt]",
+   "name": "peptido_EC[c_Bt]",
+   "compartment": "c",
+   "formula": "C40H62N8O21",
+   "charge": 0
+  },
+  {
+   "id": "udcpdp[c_Bt]",
+   "name": "udcpdp[c_Bt]",
+   "compartment": "c",
+   "formula": "C55H89O7P2",
+   "charge": 0
+  },
+  {
+   "id": "pe120[c_Bt]",
+   "name": "pe120[c_Bt]",
+   "compartment": "c",
+   "formula": "C29H58NO8P",
+   "charge": 0
+  },
+  {
+   "id": "pe140[c_Bt]",
+   "name": "pe140[c_Bt]",
+   "compartment": "c",
+   "formula": "C33H66NO8P",
+   "charge": 0
+  },
+  {
+   "id": "pe180[c_Bt]",
+   "name": "pe180[c_Bt]",
+   "compartment": "c",
+   "formula": "C41H82NO8P",
+   "charge": 0
+  },
+  {
+   "id": "pe181[c_Bt]",
+   "name": "pe181[c_Bt]",
+   "compartment": "c",
+   "formula": "C41H78NO8P",
+   "charge": 0
+  },
+  {
+   "id": "peai15[c_Bt]",
+   "name": "peai15[c_Bt]",
+   "compartment": "c",
+   "formula": "C35H70NO8P",
+   "charge": 0
+  },
+  {
+   "id": "peai17[c_Bt]",
+   "name": "peai17[c_Bt]",
+   "compartment": "c",
+   "formula": "C39H78NO8P",
+   "charge": 0
+  },
+  {
+   "id": "pei14[c_Bt]",
+   "name": "pei14[c_Bt]",
+   "compartment": "c",
+   "formula": "C33H66NO8P",
+   "charge": 0
+  },
+  {
+   "id": "pei15[c_Bt]",
+   "name": "pei15[c_Bt]",
+   "compartment": "c",
+   "formula": "C35H70NO8P",
+   "charge": 0
+  },
+  {
+   "id": "pei16[c_Bt]",
+   "name": "pei16[c_Bt]",
+   "compartment": "c",
+   "formula": "C37H74NO8P",
+   "charge": 0
+  },
+  {
+   "id": "pei17[c_Bt]",
+   "name": "pei17[c_Bt]",
+   "compartment": "c",
+   "formula": "C39H78NO8P",
+   "charge": 0
+  },
+  {
+   "id": "ribflv[c_Bt]",
+   "name": "ribflv[c_Bt]",
+   "compartment": "c",
+   "formula": "C17H20N4O6",
+   "charge": 0
+  },
+  {
+   "id": "thmpp[c_Bt]",
+   "name": "thmpp[c_Bt]",
+   "compartment": "c",
+   "formula": "C12H16N4O7P2S",
+   "charge": 0
+  },
+  {
+   "id": "trp-L[c_Bt]",
+   "name": "trp-L[c_Bt]",
+   "compartment": "c",
+   "formula": "C11H12N2O2",
+   "charge": 0
+  },
+  {
+   "id": "val-L[c_Bt]",
+   "name": "val-L[c_Bt]",
+   "compartment": "c",
+   "formula": "C5H11NO2",
+   "charge": 0
+  },
+  {
+   "id": "zn2[c_Bt]",
+   "name": "zn2[c_Bt]",
+   "compartment": "c",
+   "formula": "Zn",
+   "charge": 0
+  },
+  {
+   "id": "biomassBt[e_Bt]",
+   "name": "Biomass of Bacteroides thetaiotamicron",
+   "compartment": "e",
+   "formula": "C43.33958482221233H70.68820660103184O15.628172295422996N8.019655406847951P1.235059184002145S0.18223390344973Na0.003251042808619Co0.006502085617239Ca0.003251042808619Fe0.009753128425858K0.003251042808619Mg0.003251042808619Mn0.003251042808619Zn0.003251042808619",
+   "charge": 0
+  },
+  {
+   "id": "12ethd[e_Bt]",
+   "name": "1,2-Ethanediol",
+   "compartment": "e",
+   "formula": "C2H6O2",
+   "charge": 0
+  },
+  {
+   "id": "12ppd-R[e_Bt]",
+   "name": "(R)-Propane-1,2-diol",
+   "compartment": "e",
+   "formula": "C3H8O2",
+   "charge": 0
+  },
+  {
+   "id": "12ppd-S[e_Bt]",
+   "name": "(S)-Propane-1,2-diol",
+   "compartment": "e",
+   "formula": "C3H8O2",
+   "charge": 0
+  },
+  {
+   "id": "2fuclac[e_Bt]",
+   "name": "2-Fucosyllactose (HMO, PMID:11425797)",
+   "compartment": "e",
+   "formula": "C18H32O15",
+   "charge": 0
+  },
+  {
+   "id": "h2o[e_Bt]",
+   "name": "H2O",
+   "compartment": "e",
+   "formula": "H2O",
+   "charge": 0
+  },
+  {
+   "id": "fuc-L[e_Bt]",
+   "name": "L-Fucose",
+   "compartment": "e",
+   "formula": "C6H12O5",
+   "charge": 0
+  },
+  {
+   "id": "lcts[e_Bt]",
+   "name": "Lactose",
+   "compartment": "e",
+   "formula": "C12H22O11",
+   "charge": 0
+  },
+  {
+   "id": "3fuclac[e_Bt]",
+   "name": "3-Fucosyllactose (HMO, PMID:11425797)",
+   "compartment": "e",
+   "formula": "C18H32O15",
+   "charge": 0
+  },
+  {
+   "id": "12ethd[c_Bt]",
+   "name": "12ethd[c_Bt]",
+   "compartment": "c",
+   "formula": "C2H6O2",
+   "charge": 0
+  },
+  {
+   "id": "12ppd-R[c_Bt]",
+   "name": "12ppd-R[c_Bt]",
+   "compartment": "c",
+   "formula": "C3H8O2",
+   "charge": 0
+  },
+  {
+   "id": "12ppd-S[c_Bt]",
+   "name": "12ppd-S[c_Bt]",
+   "compartment": "c",
+   "formula": "C3H8O2",
+   "charge": 0
+  },
+  {
+   "id": "ala-D[c_Bt]",
+   "name": "ala-D[c_Bt]",
+   "compartment": "c",
+   "formula": "C3H7NO2",
+   "charge": 0
+  },
+  {
+   "id": "cobalt2[e_Bt]",
+   "name": "Co2+",
+   "compartment": "e",
+   "formula": "Co",
+   "charge": 0
+  },
+  {
+   "id": "glu-D[c_Bt]",
+   "name": "glu-D[c_Bt]",
+   "compartment": "c",
+   "formula": "C5H8NO4",
+   "charge": 0
+  },
+  {
+   "id": "mg2[e_Bt]",
+   "name": "magnesium",
+   "compartment": "e",
+   "formula": "Mg",
+   "charge": 0
+  },
+  {
+   "id": "pe_cer1_bt[c_Bt]",
+   "name": "pe_cer1_bt[c_Bt]",
+   "compartment": "c",
+   "formula": "C37H77N2O6P",
+   "charge": 0
+  },
+  {
+   "id": "sphmyln_bt[c_Bt]",
+   "name": "sphmyln_bt[c_Bt]",
+   "compartment": "c",
+   "formula": "C40H83N2O6P",
+   "charge": 0
+  },
+  {
+   "id": "spmd[e_Bt]",
+   "name": "Spermidine",
+   "compartment": "e",
+   "formula": "C7H22N3",
+   "charge": 0
+  }
+ ],
+ "reactions": [
+  {
+   "id": "Biomass_BT_v2_Bt",
+   "name": "Biomass reaction Bacteroides thetaiotaomicron",
+   "metabolites": {
+    "h2o[c_Bt]": -36.376006586407,
+    "h[c_Bt]": 40,
+    "glu-L[c_Bt]": -0.178298943752,
+    "ala-L[c_Bt]": -0.3482683091,
+    "ACP[c_Bt]": -0.003251042809,
+    "coa[c_Bt]": -0.003251042809,
+    "nadp[c_Bt]": -0.003251042809,
+    "tyr-L[c_Bt]": -0.093498821135,
+    "nad[c_Bt]": -0.003251042809,
+    "pi[c_Bt]": 39.996726670694,
+    "na1[c_Bt]": -0.003251042809,
+    "atp[c_Bt]": -40.118466662756,
+    "adp[c_Bt]": 40,
+    "apoACP[c_Bt]": 0.003251042809,
+    "ppi[c_Bt]": 0.419529384545,
+    "adocbl[c_Bt]": -0.003251042809,
+    "asp-L[c_Bt]": -0.163443600327,
+    "gtp[c_Bt]": -0.145628331466,
+    "10fthf[c_Bt]": -0.003251042809,
+    "thf[c_Bt]": -0.003251042809,
+    "gln-L[c_Bt]": -0.178298943752,
+    "gly[c_Bt]": -0.414946723517,
+    "his-L[c_Bt]": -0.064507570279,
+    "leu-L[c_Bt]": -0.305506092208,
+    "thr-L[c_Bt]": -0.171780143262,
+    "amet[c_Bt]": -0.003251042809,
+    "mql10[c_Bt]": -0.003251042809,
+    "mql11[c_Bt]": -0.003251042809,
+    "mql7[c_Bt]": -0.003251042809,
+    "mql8[c_Bt]": -0.003251042809,
+    "mql9[c_Bt]": -0.003251042809,
+    "cys-L[c_Bt]": -0.06197039184,
+    "pro-L[c_Bt]": -0.150036879233,
+    "arg-L[c_Bt]": -0.200773483477,
+    "phe-L[c_Bt]": -0.125751561595,
+    "asn-L[c_Bt]": -0.163443600327,
+    "btn[c_Bt]": -0.003251042809,
+    "met-L[c_Bt]": -0.104008297566,
+    "ca2[c_Bt]": -0.003251042809,
+    "ctp[c_Bt]": -0.090455321333,
+    "pg140[c_Bt]": -0.007415832011,
+    "clpn140[c_Bt]": -0.007415832011,
+    "pg160[c_Bt]": -0.007415832011,
+    "clpn160[c_Bt]": -0.007415832011,
+    "pg180[c_Bt]": -0.007415832011,
+    "clpn180[c_Bt]": -0.007415832011,
+    "clpnai15[c_Bt]": -0.007415832011,
+    "pgai17[c_Bt]": -0.007415832011,
+    "clpnai17[c_Bt]": -0.007415832011,
+    "clpni14[c_Bt]": -0.007415832011,
+    "clpni15[c_Bt]": -0.007415832011,
+    "clpni16[c_Bt]": -0.007415832011,
+    "pgi17[c_Bt]": -0.007415832011,
+    "clpni17[c_Bt]": -0.007415832011,
+    "cobalt2[c_Bt]": -0.003251042809,
+    "cps_bt[e_Bt]": -0.003251042809,
+    "spmd[c_Bt]": -0.003251042809,
+    "utp[c_Bt]": -0.097691468459,
+    "lys-L[c_Bt]": -0.232301912771,
+    "lps_bt[e_Bt]": -0.013546011703,
+    "pe_cer1_bt[e_Bt]": -0.003251042809,
+    "sphmyln_bt[e_Bt]": -0.003251042809,
+    "fe2[c_Bt]": -0.003251042809,
+    "fe3[c_Bt]": -0.003251042809,
+    "fad[c_Bt]": -0.003251042809,
+    "dttp[c_Bt]": -0.016368735889,
+    "ser-L[c_Bt]": -0.146046203292,
+    "datp[c_Bt]": -0.016368735889,
+    "pheme[c_Bt]": -0.003251042809,
+    "ile-L[c_Bt]": -0.196782807535,
+    "k[c_Bt]": -0.003251042809,
+    "5mthf[c_Bt]": -0.003251042809,
+    "mg2[c_Bt]": -0.003251042809,
+    "mn2[c_Bt]": -0.003251042809,
+    "dgtp[c_Bt]": -0.016368735889,
+    "dctp[c_Bt]": -0.016368735889,
+    "pydx5p[c_Bt]": -0.003251042809,
+    "pe160[c_Bt]": -0.007415832011,
+    "pg120[c_Bt]": -0.007415832011,
+    "pg181[c_Bt]": -0.007415832011,
+    "peptido_EC[c_Bt]": -0.064405191682,
+    "udcpdp[c_Bt]": -0.064405191682,
+    "pe120[c_Bt]": -0.007415832011,
+    "pe140[c_Bt]": -0.007415832011,
+    "pe180[c_Bt]": -0.007415832011,
+    "pe181[c_Bt]": -0.007415832011,
+    "peai15[c_Bt]": -0.007415832011,
+    "peai17[c_Bt]": -0.007415832011,
+    "pei14[c_Bt]": -0.007415832011,
+    "pei15[c_Bt]": -0.007415832011,
+    "pei16[c_Bt]": -0.007415832011,
+    "pei17[c_Bt]": -0.007415832011,
+    "ribflv[c_Bt]": -0.003251042809,
+    "thmpp[c_Bt]": -0.003251042809,
+    "trp-L[c_Bt]": -0.038414260539,
+    "val-L[c_Bt]": -0.286660072842,
+    "zn2[c_Bt]": -0.003251042809,
+    "biomassBt[e_Bt]": 1
+   },
+   "lower_bound": 0,
+   "upper_bound": 1000,
+   "subsystem": "Biomass"
+  },
+  {
+   "id": "EX_12ethd[u]tr_Bt",
+   "name": "1,2-Ethanediol exchange",
+   "metabolites": {
+    "12ethd[e_Bt]": -1
+   },
+   "lower_bound": -1000,
+   "upper_bound": 1000,
+   "subsystem": "Transport, intercellular"
+  },
+  {
+   "id": "EX_12ppd-R[u]tr_Bt",
+   "name": "(R)-Propane-1,2-diol exchange",
+   "metabolites": {
+    "12ppd-R[e_Bt]": -1
+   },
+   "lower_bound": -1000,
+   "upper_bound": 1000,
+   "subsystem": "Transport, intercellular"
+  },
+  {
+   "id": "EX_12ppd-S[u]tr_Bt",
+   "name": "(S)-Propane-1,2-diol exchange",
+   "metabolites": {
+    "12ppd-S[e_Bt]": -1
+   },
+   "lower_bound": -1000,
+   "upper_bound": 1000,
+   "subsystem": "Transport, intercellular"
+  },
+  {
+   "id": "EX_2fuclac[u]tr_Bt",
+   "name": "2-Fucosyllactose (HMO, PMID:11425797) exchange",
+   "metabolites": {
+    "2fuclac[e_Bt]": -1
+   },
+   "lower_bound": -1000,
+   "upper_bound": 1000,
+   "subsystem": "Transport, intercellular"
+  },
+  {
+   "id": "EX_h2o[u]tr_Bt",
+   "name": "H2O exchange",
+   "metabolites": {
+    "h2o[e_Bt]": -1
+   },
+   "lower_bound": -1000,
+   "upper_bound": 1000,
+   "subsystem": "Transport, intercellular"
+  },
+  {
+   "id": "EX_fuc-L[u]tr_Bt",
+   "name": "L-Fucose exchange",
+   "metabolites": {
+    "fuc-L[e_Bt]": -1
+   },
+   "lower_bound": -1000,
+   "upper_bound": 1000,
+   "subsystem": "Transport, intercellular"
+  },
+  {
+   "id": "EX_lcts[u]tr_Bt",
+   "name": "Lactose exchange",
+   "metabolites": {
+    "lcts[e_Bt]": -1
+   },
+   "lower_bound": -1000,
+   "upper_bound": 1000,
+   "subsystem": "Transport, intercellular"
+  },
+  {
+   "id": "EX_3fuclac[u]tr_Bt",
+   "name": "3-Fucosyllactose (HMO, PMID:11425797) exchange",
+   "metabolites": {
+    "3fuclac[e_Bt]": -1
+   },
+   "lower_bound": -1000,
+   "upper_bound": 1000,
+   "subsystem": "Transport, intercellular"
+  },
+  {
+   "id": "12ETHDt_Bt",
+   "name": "1,2-Ethanediol facilitated transport",
+   "metabolites": {
+    "12ethd[e_Bt]": -1,
+    "12ethd[c_Bt]": 1
+   },
+   "lower_bound": -1000,
+   "upper_bound": 1000,
+   "subsystem": "Transport, Extracellular"
+  },
+  {
+   "id": "12PPDRt_Bt",
+   "name": "R-Propane-1,2-diol facilitated transport",
+   "metabolites": {
+    "12ppd-R[e_Bt]": -1,
+    "12ppd-R[c_Bt]": 1
+   },
+   "lower_bound": -1000,
+   "upper_bound": 1000,
+   "subsystem": "Transport, Extracellular"
+  },
+  {
+   "id": "12PPDt_Bt",
+   "name": "S-Propane-1,2-diol facilitated transport",
+   "metabolites": {
+    "12ppd-S[e_Bt]": -1,
+    "12ppd-S[c_Bt]": 1
+   },
+   "lower_bound": -1000,
+   "upper_bound": 1000,
+   "subsystem": "Transport, Extracellular"
+  },
+  {
+   "id": "ALAR_Bt",
+   "name": "alanine racemase",
+   "metabolites": {
+    "ala-L[c_Bt]": -1,
+    "ala-D[c_Bt]": 1
+   },
+   "lower_bound": -1000,
+   "upper_bound": 1000,
+   "subsystem": "Alanine and Aspartate Metabolism"
+  },
+  {
+   "id": "COBALTt5_Bt",
+   "name": "cobalt transport in/out via permease (no H+)",
+   "metabolites": {
+    "cobalt2[c_Bt]": -1,
+    "cobalt2[e_Bt]": 1
+   },
+   "lower_bound": -1000,
+   "upper_bound": 1000,
+   "subsystem": "Transport, Extracellular"
+  },
+  {
+   "id": "GLUR_Bt",
+   "name": "glutamate racemase",
+   "metabolites": {
+    "glu-L[c_Bt]": 1,
+    "glu-D[c_Bt]": -1
+   },
+   "lower_bound": -1000,
+   "upper_bound": 1000,
+   "subsystem": "Cell Envelope Biosynthesis"
+  },
+  {
+   "id": "H2Ot_Bt",
+   "name": "H2O transport via diffusion",
+   "metabolites": {
+    "h2o[c_Bt]": 1,
+    "h2o[e_Bt]": -1
+   },
+   "lower_bound": -1000,
+   "upper_bound": 1000,
+   "subsystem": "Transport, Extracellular"
+  },
+  {
+   "id": "MGt5_Bt",
+   "name": "magnesium transport in/out via permease (no H+)",
+   "metabolites": {
+    "mg2[c_Bt]": -1,
+    "mg2[e_Bt]": 1
+   },
+   "lower_bound": -1000,
+   "upper_bound": 1000,
+   "subsystem": "Transport, Extracellular"
+  },
+  {
+   "id": "PE_CER1_BTt_Bt",
+   "name": "Ceramide phosphoethanolamine (B.thetaiotaomicron specific) export",
+   "metabolites": {
+    "pe_cer1_bt[e_Bt]": 1,
+    "pe_cer1_bt[c_Bt]": -1
+   },
+   "lower_bound": -1000,
+   "upper_bound": 1000,
+   "subsystem": "Sphingolipid Metabolism"
+  },
+  {
+   "id": "SPHMYLN_BTt_Bt",
+   "name": "Sphingomyelin (B.thetaiotaomicron specific) export",
+   "metabolites": {
+    "sphmyln_bt[e_Bt]": 1,
+    "sphmyln_bt[c_Bt]": -1
+   },
+   "lower_bound": -1000,
+   "upper_bound": 1000,
+   "subsystem": "Sphingolipid Metabolism"
+  },
+  {
+   "id": "SPMDtex2_Bt",
+   "name": "spermidine excretion (cytosol to extracellular)",
+   "metabolites": {
+    "spmd[c_Bt]": -1,
+    "spmd[e_Bt]": 1
+   },
+   "lower_bound": 0,
+   "upper_bound": 1000,
+   "subsystem": "Transport, Extracellular"
+  }
+ ],
+ "genes": [],
+ "objective": {
+  "Biomass_BT_v2_Bt": 1
+ }
+}

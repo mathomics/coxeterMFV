@@ -1,0 +1,503 @@
+{
+ "id": "Er_preview",
+ "name": "Eubacterium rectale — map excerpt, 20 of 457 reactions",
+ "cell": {
+  "name": "Er",
+  "organism": "Eubacterium rectale",
+  "shape": "rounded",
+  "color": "#dc2626",
+  "note": "457 reactions in the full model"
+ },
+ "compartments": {
+  "c": "Cytosol",
+  "e": "Extracellular"
+ },
+ "metabolites": [
+  {
+   "id": "cpd00008[c_Er]",
+   "name": "ADP",
+   "compartment": "c",
+   "formula": "C10H12N5O10P2",
+   "charge": 0
+  },
+  {
+   "id": "cpd00002[c_Er]",
+   "name": "ATP",
+   "compartment": "c",
+   "formula": "C10H12N5O13P3",
+   "charge": 0
+  },
+  {
+   "id": "cpd00001[c_Er]",
+   "name": "H2O",
+   "compartment": "c",
+   "formula": "H2O",
+   "charge": 0
+  },
+  {
+   "id": "cpd00067[c_Er]",
+   "name": "H+",
+   "compartment": "c",
+   "formula": "H",
+   "charge": 0
+  },
+  {
+   "id": "cpd00009[c_Er]",
+   "name": "Phosphate",
+   "compartment": "c",
+   "formula": "HO4P",
+   "charge": 0
+  },
+  {
+   "id": "cpd11463[c_Er]",
+   "name": "Protein",
+   "compartment": "c",
+   "formula": "C38.738161419448H75.710466519269N10.16140132881O19.255910358353S0.249273901698",
+   "charge": 0
+  },
+  {
+   "id": "cpd11461[c_Er]",
+   "name": "DNA",
+   "compartment": "c",
+   "formula": "C20.386739970644H24.872028794908N7.594292423627O26.94469786115P6.218007198727",
+   "charge": 0
+  },
+  {
+   "id": "cpd11613[c_Er]",
+   "name": "RNA",
+   "compartment": "c",
+   "formula": "C19.18052043615H23.719545854964N7.581913556405O28.24844855875P6.055408130095",
+   "charge": 0
+  },
+  {
+   "id": "cpd11852[c_Er]",
+   "name": "Lipid",
+   "compartment": "c",
+   "formula": "C57.912600525909H112.489002598928O10.804087436125P0.5866472816",
+   "charge": 0
+  },
+  {
+   "id": "m344[c_Er]",
+   "name": "Cellwall",
+   "compartment": "c",
+   "formula": "C39.512389625146H66.140304372527N11.166544894063O18.897229820722",
+   "charge": 0
+  },
+  {
+   "id": "m345[c_Er]",
+   "name": "Pool",
+   "compartment": "c",
+   "formula": "C23.811482021016H44.641331175227N5.885106121917O30.488188690144P3.117317952701S0.069405735182",
+   "charge": 0
+  },
+  {
+   "id": "m346[c_Er]",
+   "name": "Biomassere",
+   "compartment": "c",
+   "formula": "C35.278992249027H63.874382570014N8.706104562645O21.460486600348P1.390679014663S0.109426363605",
+   "charge": 0
+  },
+  {
+   "id": "cpd00122[e_Er]",
+   "name": "N-Acetyl-D-glucosamine",
+   "compartment": "e",
+   "formula": "C8H15NO6",
+   "charge": 0
+  },
+  {
+   "id": "cpd00117[e_Er]",
+   "name": "D-Alanine",
+   "compartment": "e",
+   "formula": "C3H7NO2",
+   "charge": 0
+  },
+  {
+   "id": "cpd00035[e_Er]",
+   "name": "L-Alanine",
+   "compartment": "e",
+   "formula": "C3H7NO2",
+   "charge": 0
+  },
+  {
+   "id": "cpd00098[e_Er]",
+   "name": "Choline",
+   "compartment": "e",
+   "formula": "C5H14NO",
+   "charge": 0
+  },
+  {
+   "id": "cpd00082[e_Er]",
+   "name": "D-Fructose",
+   "compartment": "e",
+   "formula": "C6H12O6",
+   "charge": 0
+  },
+  {
+   "id": "cpd00023[e_Er]",
+   "name": "L-Glutamate",
+   "compartment": "e",
+   "formula": "C5H8NO4",
+   "charge": 0
+  },
+  {
+   "id": "cpd00080[e_Er]",
+   "name": "Glycerol 3-phosphate",
+   "compartment": "e",
+   "formula": "C3H7O6P",
+   "charge": 0
+  },
+  {
+   "id": "cpd00067[e_Er]",
+   "name": "H+",
+   "compartment": "e",
+   "formula": "H",
+   "charge": 0
+  },
+  {
+   "id": "cpd00023[c_Er]",
+   "name": "L-Glutamate",
+   "compartment": "c",
+   "formula": "C5H8NO4",
+   "charge": 0
+  },
+  {
+   "id": "cpd00009[e_Er]",
+   "name": "Phosphate",
+   "compartment": "e",
+   "formula": "HO4P",
+   "charge": 0
+  },
+  {
+   "id": "cpd00001[e_Er]",
+   "name": "H2O",
+   "compartment": "e",
+   "formula": "H2O",
+   "charge": 0
+  },
+  {
+   "id": "cpd12795[c_Er]",
+   "name": "Crosslinked peptideglycan",
+   "compartment": "c",
+   "formula": "C46H77N13O22",
+   "charge": 0
+  },
+  {
+   "id": "m348[e_Er]",
+   "name": "Biomassere",
+   "compartment": "e",
+   "formula": "C35.278992249027H63.874382570014N8.706104562645O21.460486600348P1.390679014663S0.109426363605",
+   "charge": 0
+  },
+  {
+   "id": "cpd00842[c_Er]",
+   "name": "(S)-3-Hydroxybutanoyl-CoA",
+   "compartment": "c",
+   "formula": "C25H38N7O18P3S",
+   "charge": 0
+  },
+  {
+   "id": "cpd00650[c_Er]",
+   "name": "Crotonoyl-CoA",
+   "compartment": "c",
+   "formula": "C25H36N7O17P3S",
+   "charge": 0
+  },
+  {
+   "id": "cpd00106[c_Er]",
+   "name": "Fumarate",
+   "compartment": "c",
+   "formula": "C4H2O4",
+   "charge": 0
+  },
+  {
+   "id": "cpd00130[c_Er]",
+   "name": "L-Malate",
+   "compartment": "c",
+   "formula": "C4H4O5",
+   "charge": 0
+  },
+  {
+   "id": "cpd00482[c_Er]",
+   "name": "D-Glycerate 2-phosphate",
+   "compartment": "c",
+   "formula": "C3H4O7P",
+   "charge": 0
+  },
+  {
+   "id": "cpd00061[c_Er]",
+   "name": "Phosphoenolpyruvate",
+   "compartment": "c",
+   "formula": "C3H2O6P",
+   "charge": 0
+  },
+  {
+   "id": "cpd02843[c_Er]",
+   "name": "D-erythro-1-(Imidazol-4-yl)glycerol 3-phosphate",
+   "compartment": "c",
+   "formula": "C6H9N2O6P",
+   "charge": 0
+  },
+  {
+   "id": "cpd00930[c_Er]",
+   "name": "3-(Imidazol-4-yl)-2-oxopropyl phosphate",
+   "compartment": "c",
+   "formula": "C6H7N2O5P",
+   "charge": 0
+  },
+  {
+   "id": "cpd01777[c_Er]",
+   "name": "1-(5-Phosphoribosyl)-AMP",
+   "compartment": "c",
+   "formula": "C15H19N5O14P2",
+   "charge": 0
+  },
+  {
+   "id": "cpd02979[c_Er]",
+   "name": "1-(5-Phosphoribosyl)-5-[(5-phosphoribosylamino)methylideneamino]imidazole-4-carboxamide",
+   "compartment": "c",
+   "formula": "C15H21N5O15P2",
+   "charge": 0
+  },
+  {
+   "id": "cpd00018[c_Er]",
+   "name": "AMP",
+   "compartment": "c",
+   "formula": "C10H12N5O7P",
+   "charge": 0
+  }
+ ],
+ "reactions": [
+  {
+   "id": "r55_Er",
+   "name": "Biomass and Maintenance",
+   "metabolites": {
+    "cpd00008[c_Er]": 20,
+    "cpd00002[c_Er]": -20,
+    "cpd00001[c_Er]": -20,
+    "cpd00067[c_Er]": 20,
+    "cpd00009[c_Er]": 20,
+    "cpd11463[c_Er]": -0.4,
+    "cpd11461[c_Er]": -0.03,
+    "cpd11613[c_Er]": -0.12,
+    "cpd11852[c_Er]": -0.07,
+    "m344[c_Er]": -0.24,
+    "m345[c_Er]": -0.14,
+    "m346[c_Er]": 1
+   },
+   "lower_bound": 0,
+   "upper_bound": 1000,
+   "subsystem": "Biomass synthesis"
+  },
+  {
+   "id": "EX_cpd00122(e)_Er",
+   "name": "N-Acetyl-D-glucosamine exchange",
+   "metabolites": {
+    "cpd00122[e_Er]": -1
+   },
+   "lower_bound": -1000,
+   "upper_bound": 1000,
+   "subsystem": ""
+  },
+  {
+   "id": "EX_cpd00117(e)_Er",
+   "name": "D-Alanine exchange",
+   "metabolites": {
+    "cpd00117[e_Er]": -1
+   },
+   "lower_bound": -1000,
+   "upper_bound": 1000,
+   "subsystem": ""
+  },
+  {
+   "id": "EX_cpd00035(e)_Er",
+   "name": "L-Alanine exchange",
+   "metabolites": {
+    "cpd00035[e_Er]": -1
+   },
+   "lower_bound": -1000,
+   "upper_bound": 1000,
+   "subsystem": ""
+  },
+  {
+   "id": "EX_cpd00098(e)_Er",
+   "name": "Choline exchange",
+   "metabolites": {
+    "cpd00098[e_Er]": -1
+   },
+   "lower_bound": -1000,
+   "upper_bound": 1000,
+   "subsystem": ""
+  },
+  {
+   "id": "EX_cpd00082(e)_Er",
+   "name": "D-Fructose exchange",
+   "metabolites": {
+    "cpd00082[e_Er]": -1
+   },
+   "lower_bound": -1000,
+   "upper_bound": 1000,
+   "subsystem": ""
+  },
+  {
+   "id": "EX_cpd00023(e)_Er",
+   "name": "L-Glutamate exchange",
+   "metabolites": {
+    "cpd00023[e_Er]": -1
+   },
+   "lower_bound": -1000,
+   "upper_bound": 1000,
+   "subsystem": ""
+  },
+  {
+   "id": "EX_cpd00080(e)_Er",
+   "name": "Glycerol 3-phosphate exchange",
+   "metabolites": {
+    "cpd00080[e_Er]": -1
+   },
+   "lower_bound": -1000,
+   "upper_bound": 1000,
+   "subsystem": ""
+  },
+  {
+   "id": "EX_cpd00067(e)_Er",
+   "name": "H+ exchange",
+   "metabolites": {
+    "cpd00067[e_Er]": -1
+   },
+   "lower_bound": -1000,
+   "upper_bound": 1000,
+   "subsystem": ""
+  },
+  {
+   "id": "r310_Er",
+   "name": "L-glutamate transport via proton symport, reversible",
+   "metabolites": {
+    "cpd00023[c_Er]": -1,
+    "cpd00023[e_Er]": 1
+   },
+   "lower_bound": -1000,
+   "upper_bound": 1000,
+   "subsystem": "Transport Reaction"
+  },
+  {
+   "id": "r321_Er",
+   "name": "Phosphate Transport",
+   "metabolites": {
+    "cpd00009[c_Er]": -1,
+    "cpd00009[e_Er]": 1
+   },
+   "lower_bound": -1000,
+   "upper_bound": 1000,
+   "subsystem": "Transport Reaction"
+  },
+  {
+   "id": "r322_Er",
+   "name": "H2O Transport",
+   "metabolites": {
+    "cpd00001[c_Er]": 1,
+    "cpd00001[e_Er]": -1
+   },
+   "lower_bound": -1000,
+   "upper_bound": 1000,
+   "subsystem": "Transport Reaction"
+  },
+  {
+   "id": "r52_Er",
+   "name": "Biomass(Cell wall)",
+   "metabolites": {
+    "cpd12795[c_Er]": -0.858964991851,
+    "m344[c_Er]": 1
+   },
+   "lower_bound": 0,
+   "upper_bound": 1000,
+   "subsystem": "Biomass synthesis"
+  },
+  {
+   "id": "r109_Er",
+   "name": "Biomass Transport",
+   "metabolites": {
+    "m346[c_Er]": -1,
+    "m348[e_Er]": 1
+   },
+   "lower_bound": 0,
+   "upper_bound": 1000,
+   "subsystem": "Exchange reaction"
+  },
+  {
+   "id": "r58_Er",
+   "name": "3-hydroxyacyl-CoA dehydratase (3-hydroxybutanoyl-CoA)",
+   "metabolites": {
+    "cpd00842[c_Er]": -1,
+    "cpd00650[c_Er]": 1,
+    "cpd00001[c_Er]": 1
+   },
+   "lower_bound": -1000,
+   "upper_bound": 1000,
+   "subsystem": "Butanoate metabolism"
+  },
+  {
+   "id": "r75_Er",
+   "name": "(S)-malate hydro-lyase (fumarate-forming)",
+   "metabolites": {
+    "cpd00106[c_Er]": -1,
+    "cpd00001[c_Er]": -1,
+    "cpd00130[c_Er]": 1
+   },
+   "lower_bound": 0,
+   "upper_bound": 1000,
+   "subsystem": "Citrate cycle (TCA cycle)"
+  },
+  {
+   "id": "r154_Er",
+   "name": "enolase",
+   "metabolites": {
+    "cpd00482[c_Er]": -1,
+    "cpd00001[c_Er]": 1,
+    "cpd00061[c_Er]": 1
+   },
+   "lower_bound": -1000,
+   "upper_bound": 1000,
+   "subsystem": "Glycolysis / Gluconeogenesis"
+  },
+  {
+   "id": "r171_Er",
+   "name": "imidazoleglycerol-phosphate dehydratase",
+   "metabolites": {
+    "cpd02843[c_Er]": -1,
+    "cpd00001[c_Er]": 1,
+    "cpd00930[c_Er]": 1
+   },
+   "lower_bound": 0,
+   "upper_bound": 1000,
+   "subsystem": "Histidine metabolism"
+  },
+  {
+   "id": "r172_Er",
+   "name": "phosphoribosyl-AMP cyclohydrolase",
+   "metabolites": {
+    "cpd00001[c_Er]": -1,
+    "cpd01777[c_Er]": -1,
+    "cpd02979[c_Er]": 1
+   },
+   "lower_bound": 0,
+   "upper_bound": 1000,
+   "subsystem": "Histidine metabolism"
+  },
+  {
+   "id": "r224_Er",
+   "name": "adenylate kinase",
+   "metabolites": {
+    "cpd00008[c_Er]": -2,
+    "cpd00018[c_Er]": 1,
+    "cpd00002[c_Er]": 1
+   },
+   "lower_bound": -1000,
+   "upper_bound": 1000,
+   "subsystem": "Purine and Pyrimidine Biosynthesis"
+  }
+ ],
+ "genes": [],
+ "objective": {
+  "r55_Er": 1
+ }
+}

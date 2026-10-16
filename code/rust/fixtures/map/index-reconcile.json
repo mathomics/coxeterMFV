@@ -1,0 +1,92 @@
+[
+ {
+  "name": "yeast-mito-bigg",
+  "kind": "upload",
+  "model": "large/map/model-yeast9-bigg.json",
+  "speciesId": "yeastGEM_v9.1.1",
+  "modelKey": "upload:yeastgem_v9.1.1-17.40",
+  "input": "Downloads/uploaded-models-coxeter-map(5) (1).json",
+  "home": true,
+  "file": "large/map/reconcile-yeast-mito-bigg.json"
+ },
+ {
+  "name": "yeast-mito-native",
+  "kind": "upload",
+  "model": "large/map/model-yeast9-native.json",
+  "speciesId": "yeastGEM_v9.0.0",
+  "modelKey": "upload:yeast-GEM",
+  "input": "Downloads/uploaded-models-coxeter-map(5) (1).json",
+  "home": true,
+  "file": "large/map/reconcile-yeast-mito-native.json"
+ },
+ {
+  "name": "yeast-cytosol-mito-native",
+  "kind": "upload",
+  "model": "large/map/model-yeast9-native.json",
+  "speciesId": "yeastGEM_v9.0.0",
+  "modelKey": "upload:yeast-GEM",
+  "input": "Downloads/yeast-GEM-cytosol-mito-coxeter-map.json",
+  "home": true,
+  "file": "large/map/reconcile-yeast-cytosol-mito-native.json"
+ },
+ {
+  "name": "merolae-stage16",
+  "kind": "upload",
+  "model": "large/map/model-merolae-stage16.json",
+  "speciesId": "sbml_model",
+  "modelKey": "upload:iCme_stage16_organelle_reconciled",
+  "input": "Documents/GitHub/Cyanidioschyzon_merolae/results/model_export_stage16/uploaded-models-coxeter-map_stage16.json",
+  "home": true,
+  "file": "large/map/reconcile-merolae-stage16.json"
+ },
+ {
+  "name": "organelle-beside-cell",
+  "kind": "scenario",
+  "scenario": "solo-levadura",
+  "keepSpecies": [],
+  "inputFixture": "large/map/reconcile-organelle-beside-cell-input.json",
+  "file": "large/map/reconcile-organelle-beside-cell.json"
+ },
+ {
+  "name": "compartment-goes-around",
+  "kind": "scenario",
+  "scenario": "solo-levadura",
+  "keepSpecies": [],
+  "inputFixture": "large/map/reconcile-compartment-goes-around-input.json",
+  "file": "large/map/reconcile-compartment-goes-around.json"
+ },
+ {
+  "name": "missing-compartment-created",
+  "kind": "scenario",
+  "scenario": "solo-levadura",
+  "keepSpecies": [],
+  "inputFixture": "large/map/reconcile-missing-compartment-created-input.json",
+  "file": "large/map/reconcile-missing-compartment-created.json"
+ },
+ {
+  "name": "species-gone",
+  "kind": "scenario",
+  "scenario": "solo-ecoli",
+  "keepSpecies": [],
+  "inputFixture": "large/map/reconcile-species-gone-input.json",
+  "file": "large/map/reconcile-species-gone.json"
+ },
+ {
+  "name": "species-switched-off",
+  "kind": "scenario",
+  "scenario": "solo-ecoli",
+  "keepSpecies": [
+   "sce"
+  ],
+  "inputFixture": "large/map/reconcile-species-switched-off-input.json",
+  "file": "large/map/reconcile-species-switched-off.json"
+ },
+ {
+  "name": "stale-contents",
+  "kind": "scenario",
+  "scenario": "solo-ecoli",
+  "keepSpecies": [],
+  "inputFixture": "large/map/reconcile-stale-contents-input.json",
+  "file": "large/map/reconcile-stale-contents.json"
+ }
+]

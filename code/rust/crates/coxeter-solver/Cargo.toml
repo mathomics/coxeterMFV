@@ -1,0 +1,18 @@
+[package]
+name = "coxeter-solver"
+description = "Flux balance analysis on HiGHS: FBA, pFBA, loopless FBA, parallel FVA and SteadyCom."
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[dependencies]
+coxeter-core.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+indexmap.workspace = true
+regex.workspace = true
+thiserror.workspace = true
+# HiGHS built from source (cmake) and linked statically. The C API is wrapped in
+# `lp`, so nothing else in the crate touches FFI.
+highs-sys = "1.15.0"
+rayon = "1.12.0"

@@ -1,0 +1,25 @@
+[package]
+name = "coxeter-io"
+description = "Reading and writing models: SBML, COBRA JSON, MATLAB v5, Excel; model editing, provenance and reproducibility bundles."
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[dependencies]
+coxeter-core.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+indexmap.workspace = true
+regex.workspace = true
+thiserror.workspace = true
+# SHA-256 digests of reproducibility bundles (crypto.subtle.digest in the JS).
+sha2 = "0.11.1"
+# Raw deflate (xlsx entries) and zlib (MAT miCOMPRESSED elements).
+miniz_oxide = "0.9.1"
+# String.prototype.normalize('NFKD') for export file names.
+unicode-normalization = "0.1.25"
+# Local time for dated export names and the bundle's creation time.
+chrono = { version = "0.4.45", default-features = false, features = ["clock", "std"] }
+
+[dev-dependencies]
+base64 = "0.23.1"

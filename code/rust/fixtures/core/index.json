@@ -1,0 +1,132 @@
+{
+ "models": [
+  "cyano_core_mc",
+  "ecoli_core_mc",
+  "lactobacillus_core_mc",
+  "methanogen_core_mc",
+  "yeast_core_mc"
+ ],
+ "scenarios": [
+  "consorcio-anaerobio",
+  "aerobio-mixto",
+  "fototrofo-heterotrofo",
+  "metanogenesis",
+  "todas",
+  "solo-ecoli",
+  "solo-levadura"
+ ],
+ "modelIndex": {
+  "models": [
+   {
+    "file": "ecoli_core_mc.json",
+    "id": "e_coli_core_mc",
+    "name": "Escherichia coli — core with periplasm",
+    "cell": {
+     "name": "E. coli",
+     "organism": "Escherichia coli K-12 MG1655",
+     "color": "#0284c7",
+     "shape": "rod",
+     "gram": "negative",
+     "note": "Facultative heterotroph. Ferments to acetate, formate and ethanol when O2 runs short."
+    },
+    "compartments": {
+     "e": "Extracellular",
+     "p": "Periplasm",
+     "c": "Cytosol"
+    },
+    "counts": {
+     "metabolites": 81,
+     "reactions": 95
+    }
+   },
+   {
+    "file": "yeast_core_mc.json",
+    "id": "yeast_core_mc",
+    "name": "Saccharomyces cerevisiae — core with mitochondrion",
+    "cell": {
+     "name": "S. cerevisiae",
+     "organism": "Saccharomyces cerevisiae S288C",
+     "color": "#d97706",
+     "shape": "round",
+     "gram": null,
+     "note": "Eukaryote. Crabtree positive: ferments to ethanol even with O2 when glucose is in excess."
+    },
+    "compartments": {
+     "e": "Extracellular",
+     "c": "Cytosol",
+     "im": "Intermembrane space",
+     "m": "Mitochondrial matrix"
+    },
+    "counts": {
+     "metabolites": 85,
+     "reactions": 88
+    }
+   },
+   {
+    "file": "cyano_core_mc.json",
+    "id": "cyano_core_mc",
+    "name": "Synechocystis sp. — photoautotrophic core with thylakoid",
+    "cell": {
+     "name": "Synechocystis",
+     "organism": "Synechocystis sp. PCC 6803",
+     "color": "#16a34a",
+     "shape": "round",
+     "gram": "negative",
+     "note": "Oxygenic photoautotroph. Fixes CO2 with RuBisCO and releases O2; its TCA cycle is incomplete (no AKGDH)."
+    },
+    "compartments": {
+     "e": "Extracellular",
+     "p": "Periplasm",
+     "c": "Cytoplasm",
+     "u": "Thylakoid lumen"
+    },
+    "counts": {
+     "metabolites": 60,
+     "reactions": 61
+    }
+   },
+   {
+    "file": "methanogen_core_mc.json",
+    "id": "methanogen_core_mc",
+    "name": "Methanosarcina sp. — methanogenic core",
+    "cell": {
+     "name": "Methanosarcina",
+     "organism": "Methanosarcina barkeri",
+     "color": "#7c3aed",
+     "shape": "round",
+     "gram": null,
+     "note": "Strictly anaerobic archaeon. Consumes the acetate and H2/CO2 the bacteria ferment, and releases methane."
+    },
+    "compartments": {
+     "e": "Extracellular",
+     "c": "Cytoplasm"
+    },
+    "counts": {
+     "metabolites": 22,
+     "reactions": 24
+    }
+   },
+   {
+    "file": "lactobacillus_core_mc.json",
+    "id": "lactobacillus_core_mc",
+    "name": "Lactococcus lactis — homofermentative core",
+    "cell": {
+     "name": "L. lactis",
+     "organism": "Lactococcus lactis subsp. lactis",
+     "color": "#db2777",
+     "shape": "round",
+     "gram": "positive",
+     "note": "Aerotolerant anaerobe. Converts glucose almost quantitatively into L-lactate."
+    },
+    "compartments": {
+     "e": "Extracellular",
+     "c": "Cytoplasm"
+    },
+    "counts": {
+     "metabolites": 47,
+     "reactions": 47
+    }
+   }
+  ]
+ }
+}

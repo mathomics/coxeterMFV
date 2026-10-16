@@ -1,0 +1,7 @@
+[
+ {
+  "name": "preview",
+  "model": "large/map/model-yeast9-bigg.json",
+  "file": "large/map/yeast9-preview.json"
+ }
+]

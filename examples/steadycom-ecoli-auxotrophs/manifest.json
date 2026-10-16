@@ -1,0 +1,54 @@
+{
+  "community": "steadycom-ecoli-auxotrophs",
+  "medium": {
+    "glc": 8,
+    "h2o": 1000,
+    "nh4": 1000,
+    "o2": 18.5,
+    "pi": 1000,
+    "so4": 1000
+  },
+  "source": "iAF1260.xml, with the tutorial's knockouts applied per strain",
+  "generatedBy": "tools/build-published-assets.mjs",
+  "media": "media.csv",
+  "bounds": "bounds.csv",
+  "members": [
+    {
+      "id": "Ec1",
+      "name": "Ec1",
+      "reactions": 2383,
+      "metabolites": 1668,
+      "model": "model-Ec1.json",
+      "preview": "preview-Ec1.json",
+      "previewReactions": 122
+    },
+    {
+      "id": "Ec2",
+      "name": "Ec2",
+      "reactions": 2383,
+      "metabolites": 1668,
+      "model": "model-Ec2.json",
+      "preview": "preview-Ec2.json",
+      "previewReactions": 122
+    },
+    {
+      "id": "Ec3",
+      "name": "Ec3",
+      "reactions": 2383,
+      "metabolites": 1668,
+      "model": "model-Ec3.json",
+      "preview": "preview-Ec3.json",
+      "previewReactions": 122
+    },
+    {
+      "id": "Ec4",
+      "name": "Ec4",
+      "reactions": 2383,
+      "metabolites": 1668,
+      "model": "model-Ec4.json",
+      "preview": "preview-Ec4.json",
+      "previewReactions": 122
+    }
+  ],
+  "previewPurpose": "Semantic pedagogical map: glucose entry, glycolysis, PPP, TCA/anaplerosis and amino-acid families organized by central-carbon precursor, plus the original SteadyCom interaction excerpt."
+}

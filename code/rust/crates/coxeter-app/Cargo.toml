@@ -1,0 +1,50 @@
+[package]
+name = "coxeter-app"
+description = "Coxeter Multicell Flux Visualizer: the native application."
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+build = "build.rs"
+
+[lib]
+name = "coxeter_app"
+path = "src/lib.rs"
+
+[[bin]]
+name = "coxeter"
+path = "src/main.rs"
+
+[features]
+default = []
+# Compile every file under `models/` into the binary (a release build always
+# does; see build.rs), so the program needs nothing beside it.
+embed-models = []
+
+[dependencies]
+coxeter-core.workspace = true
+coxeter-io = { path = "../coxeter-io" }
+coxeter-solver = { path = "../coxeter-solver" }
+coxeter-map = { path = "../coxeter-map" }
+coxeter-render = { path = "../coxeter-render" }
+coxeter-analysis = { path = "../coxeter-analysis" }
+# With its HTTPS downloader (Yeast9, the Zuñiga sources).
+coxeter-state = { path = "../coxeter-state", features = ["download"] }
+coxeter-canvas = { path = "../coxeter-canvas" }
+serde.workspace = true
+serde_json.workspace = true
+indexmap.workspace = true
+eframe = "0.36"
+egui = "0.36"
+# The system's fonts (the interface's glyphs: ⌕ ◐ ↶ ↷ ⤢ ✥ ⌘ ⌁ ⬡ ▣ ‹ ›), the
+# version the canvas and resvg use.
+fontdb = "0.24"
+# Native file dialogs for every import and export.
+rfd = "0.17.2"
+# `--screenshot`: one frame drawn offscreen through wgpu, written as a PNG.
+egui_kittest = { version = "0.36", features = ["wgpu", "eframe"] }
+image = { version = "0.25", default-features = false, features = ["png"] }
+# `toLocaleTimeString()` of the log and the results bar.
+chrono = { version = "0.4.45", default-features = false, features = ["clock", "std"] }
+
+[dev-dependencies]
+egui_kittest = { version = "0.36", features = ["wgpu", "snapshot", "eframe"] }

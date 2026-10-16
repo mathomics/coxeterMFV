@@ -1,0 +1,2242 @@
+{
+  "id": "yeast_core_mc",
+  "name": "Saccharomyces cerevisiae — core with mitochondrion",
+  "version": "1",
+  "compartments": {
+    "e": "Extracellular",
+    "c": "Cytosol",
+    "im": "Intermembrane space",
+    "m": "Mitochondrial matrix"
+  },
+  "compartment_tree": {
+    "e": null,
+    "c": "e",
+    "im": "c",
+    "m": "im"
+  },
+  "cell": {
+    "name": "S. cerevisiae",
+    "organism": "Saccharomyces cerevisiae S288C",
+    "color": "#d97706",
+    "shape": "round",
+    "gram": null,
+    "note": "Eukaryote. Crabtree positive: ferments to ethanol even with O2 when glucose is in excess."
+  },
+  "metabolites": [
+    {
+      "id": "13dpg_c",
+      "name": "1,3-Bisphospho-D-glycerate [Cytosol]",
+      "compartment": "c",
+      "formula": "C3H4O10P2",
+      "charge": -4
+    },
+    {
+      "id": "2pg_c",
+      "name": "D-Glycerate 2-phosphate [Cytosol]",
+      "compartment": "c",
+      "formula": "C3H4O7P",
+      "charge": -3
+    },
+    {
+      "id": "3pg_c",
+      "name": "3-Phospho-D-glycerate [Cytosol]",
+      "compartment": "c",
+      "formula": "C3H4O7P",
+      "charge": -3
+    },
+    {
+      "id": "6pgc_c",
+      "name": "6-Phospho-D-gluconate [Cytosol]",
+      "compartment": "c",
+      "formula": "C6H10O10P",
+      "charge": -3
+    },
+    {
+      "id": "6pgl_c",
+      "name": "6-phospho-D-glucono-1,5-lactone [Cytosol]",
+      "compartment": "c",
+      "formula": "C6H9O9P",
+      "charge": -2
+    },
+    {
+      "id": "ac_c",
+      "name": "Acetate [Cytosol]",
+      "compartment": "c",
+      "formula": "C2H3O2",
+      "charge": -1
+    },
+    {
+      "id": "ac_e",
+      "name": "Acetate [Extracellular]",
+      "compartment": "e",
+      "formula": "C2H3O2",
+      "charge": -1
+    },
+    {
+      "id": "acald_c",
+      "name": "Acetaldehyde [Cytosol]",
+      "compartment": "c",
+      "formula": "C2H4O",
+      "charge": 0,
+      "primary": true
+    },
+    {
+      "id": "acald_m",
+      "name": "Acetaldehyde [Mitochondrial matrix]",
+      "compartment": "m",
+      "formula": "C2H4O",
+      "charge": 0,
+      "primary": true
+    },
+    {
+      "id": "accoa_c",
+      "name": "Acetyl-CoA [Cytosol]",
+      "compartment": "c",
+      "formula": "C23H34N7O17P3S",
+      "charge": -4,
+      "primary": true
+    },
+    {
+      "id": "accoa_m",
+      "name": "Acetyl-CoA [Mitochondrial matrix]",
+      "compartment": "m",
+      "formula": "C23H34N7O17P3S",
+      "charge": -4,
+      "primary": true
+    },
+    {
+      "id": "adp_c",
+      "name": "ADP [Cytosol]",
+      "compartment": "c",
+      "formula": "C10H12N5O10P2",
+      "charge": -3,
+      "primary": false
+    },
+    {
+      "id": "adp_m",
+      "name": "ADP [Mitochondrial matrix]",
+      "compartment": "m",
+      "formula": "C10H12N5O10P2",
+      "charge": -3,
+      "primary": false
+    },
+    {
+      "id": "akg_c",
+      "name": "2-Oxoglutarate [Cytosol]",
+      "compartment": "c",
+      "formula": "C5H4O5",
+      "charge": -2
+    },
+    {
+      "id": "akg_m",
+      "name": "2-Oxoglutarate [Mitochondrial matrix]",
+      "compartment": "m",
+      "formula": "C5H4O5",
+      "charge": -2
+    },
+    {
+      "id": "amp_c",
+      "name": "AMP [Cytosol]",
+      "compartment": "c",
+      "formula": "C10H12N5O7P",
+      "charge": -2,
+      "primary": false
+    },
+    {
+      "id": "atp_c",
+      "name": "ATP [Cytosol]",
+      "compartment": "c",
+      "formula": "C10H12N5O13P3",
+      "charge": -4,
+      "primary": false
+    },
+    {
+      "id": "atp_m",
+      "name": "ATP [Mitochondrial matrix]",
+      "compartment": "m",
+      "formula": "C10H12N5O13P3",
+      "charge": -4,
+      "primary": false
+    },
+    {
+      "id": "cit_c",
+      "name": "Citrate [Cytosol]",
+      "compartment": "c",
+      "formula": "C6H5O7",
+      "charge": -3
+    },
+    {
+      "id": "cit_m",
+      "name": "Citrate [Mitochondrial matrix]",
+      "compartment": "m",
+      "formula": "C6H5O7",
+      "charge": -3
+    },
+    {
+      "id": "co2_c",
+      "name": "CO2 [Cytosol]",
+      "compartment": "c",
+      "formula": "CO2",
+      "charge": 0,
+      "primary": false
+    },
+    {
+      "id": "co2_e",
+      "name": "CO2 [Extracellular]",
+      "compartment": "e",
+      "formula": "CO2",
+      "charge": 0,
+      "primary": false
+    },
+    {
+      "id": "co2_m",
+      "name": "CO2 [Mitochondrial matrix]",
+      "compartment": "m",
+      "formula": "CO2",
+      "charge": 0,
+      "primary": false
+    },
+    {
+      "id": "coa_c",
+      "name": "Coenzyme A [Cytosol]",
+      "compartment": "c",
+      "formula": "C21H32N7O16P3S",
+      "charge": -4,
+      "primary": true
+    },
+    {
+      "id": "coa_m",
+      "name": "Coenzyme A [Mitochondrial matrix]",
+      "compartment": "m",
+      "formula": "C21H32N7O16P3S",
+      "charge": -4,
+      "primary": true
+    },
+    {
+      "id": "dhap_c",
+      "name": "Dihydroxyacetone phosphate [Cytosol]",
+      "compartment": "c",
+      "formula": "C3H5O6P",
+      "charge": -2
+    },
+    {
+      "id": "e4p_c",
+      "name": "D-Erythrose 4-phosphate [Cytosol]",
+      "compartment": "c",
+      "formula": "C4H7O7P",
+      "charge": -2
+    },
+    {
+      "id": "etoh_c",
+      "name": "Ethanol [Cytosol]",
+      "compartment": "c",
+      "formula": "C2H6O",
+      "charge": 0
+    },
+    {
+      "id": "etoh_e",
+      "name": "Ethanol [Extracellular]",
+      "compartment": "e",
+      "formula": "C2H6O",
+      "charge": 0
+    },
+    {
+      "id": "etoh_m",
+      "name": "Ethanol [Mitochondrial matrix]",
+      "compartment": "m",
+      "formula": "C2H6O",
+      "charge": 0
+    },
+    {
+      "id": "f6p_c",
+      "name": "D-Fructose 6-phosphate [Cytosol]",
+      "compartment": "c",
+      "formula": "C6H11O9P",
+      "charge": -2
+    },
+    {
+      "id": "fdp_c",
+      "name": "D-Fructose 1,6-bisphosphate [Cytosol]",
+      "compartment": "c",
+      "formula": "C6H10O12P2",
+      "charge": -4
+    },
+    {
+      "id": "fum_m",
+      "name": "Fumarate [Mitochondrial matrix]",
+      "compartment": "m",
+      "formula": "C4H2O4",
+      "charge": -2
+    },
+    {
+      "id": "g3p_c",
+      "name": "Glyceraldehyde 3-phosphate [Cytosol]",
+      "compartment": "c",
+      "formula": "C3H5O6P",
+      "charge": -2
+    },
+    {
+      "id": "g6p_c",
+      "name": "D-Glucose 6-phosphate [Cytosol]",
+      "compartment": "c",
+      "formula": "C6H11O9P",
+      "charge": -2
+    },
+    {
+      "id": "glc__D_c",
+      "name": "D-Glucose [Cytosol]",
+      "compartment": "c",
+      "formula": "C6H12O6",
+      "charge": 0
+    },
+    {
+      "id": "glc__D_e",
+      "name": "D-Glucose [Extracellular]",
+      "compartment": "e",
+      "formula": "C6H12O6",
+      "charge": 0
+    },
+    {
+      "id": "gln__L_c",
+      "name": "L-Glutamine [Cytosol]",
+      "compartment": "c",
+      "formula": "C5H10N2O3",
+      "charge": 0
+    },
+    {
+      "id": "glu__L_c",
+      "name": "L-Glutamate [Cytosol]",
+      "compartment": "c",
+      "formula": "C5H8NO4",
+      "charge": -1
+    },
+    {
+      "id": "glx_c",
+      "name": "Glyoxylate [Cytosol]",
+      "compartment": "c",
+      "formula": "C2HO3",
+      "charge": -1
+    },
+    {
+      "id": "glyc_c",
+      "name": "Glycerol [Cytosol]",
+      "compartment": "c",
+      "formula": "C3H8O3",
+      "charge": 0
+    },
+    {
+      "id": "glyc_e",
+      "name": "Glycerol [Extracellular]",
+      "compartment": "e",
+      "formula": "C3H8O3",
+      "charge": 0
+    },
+    {
+      "id": "glyc3p_c",
+      "name": "Glycerol 3-phosphate [Cytosol]",
+      "compartment": "c",
+      "formula": "C3H7O6P",
+      "charge": -2
+    },
+    {
+      "id": "h_c",
+      "name": "H+ [Cytosol]",
+      "compartment": "c",
+      "formula": "H",
+      "charge": 1,
+      "primary": false
+    },
+    {
+      "id": "h_e",
+      "name": "H+ [Extracellular]",
+      "compartment": "e",
+      "formula": "H",
+      "charge": 1,
+      "primary": false
+    },
+    {
+      "id": "h_im",
+      "name": "H+ [Intermembrane space]",
+      "compartment": "im",
+      "formula": "H",
+      "charge": 1,
+      "primary": false
+    },
+    {
+      "id": "h_m",
+      "name": "H+ [Mitochondrial matrix]",
+      "compartment": "m",
+      "formula": "H",
+      "charge": 1,
+      "primary": false
+    },
+    {
+      "id": "h2o_c",
+      "name": "H2O [Cytosol]",
+      "compartment": "c",
+      "formula": "H2O",
+      "charge": 0,
+      "primary": false
+    },
+    {
+      "id": "h2o_e",
+      "name": "H2O [Extracellular]",
+      "compartment": "e",
+      "formula": "H2O",
+      "charge": 0,
+      "primary": false
+    },
+    {
+      "id": "h2o_m",
+      "name": "H2O [Mitochondrial matrix]",
+      "compartment": "m",
+      "formula": "H2O",
+      "charge": 0,
+      "primary": false
+    },
+    {
+      "id": "hco3_c",
+      "name": "Bicarbonate [Cytosol]",
+      "compartment": "c",
+      "formula": "CHO3",
+      "charge": -1
+    },
+    {
+      "id": "icit_c",
+      "name": "Isocitrate [Cytosol]",
+      "compartment": "c",
+      "formula": "C6H5O7",
+      "charge": -3
+    },
+    {
+      "id": "icit_m",
+      "name": "Isocitrate [Mitochondrial matrix]",
+      "compartment": "m",
+      "formula": "C6H5O7",
+      "charge": -3
+    },
+    {
+      "id": "mal__L_c",
+      "name": "L-Malate [Cytosol]",
+      "compartment": "c",
+      "formula": "C4H4O5",
+      "charge": -2
+    },
+    {
+      "id": "mal__L_m",
+      "name": "L-Malate [Mitochondrial matrix]",
+      "compartment": "m",
+      "formula": "C4H4O5",
+      "charge": -2
+    },
+    {
+      "id": "nad_c",
+      "name": "NAD+ [Cytosol]",
+      "compartment": "c",
+      "formula": "C21H26N7O14P2",
+      "charge": -1,
+      "primary": false
+    },
+    {
+      "id": "nad_m",
+      "name": "NAD+ [Mitochondrial matrix]",
+      "compartment": "m",
+      "formula": "C21H26N7O14P2",
+      "charge": -1,
+      "primary": false
+    },
+    {
+      "id": "nadh_c",
+      "name": "NADH [Cytosol]",
+      "compartment": "c",
+      "formula": "C21H27N7O14P2",
+      "charge": -2,
+      "primary": false
+    },
+    {
+      "id": "nadh_m",
+      "name": "NADH [Mitochondrial matrix]",
+      "compartment": "m",
+      "formula": "C21H27N7O14P2",
+      "charge": -2,
+      "primary": false
+    },
+    {
+      "id": "nadp_c",
+      "name": "NADP+ [Cytosol]",
+      "compartment": "c",
+      "formula": "C21H25N7O17P3",
+      "charge": -3,
+      "primary": false
+    },
+    {
+      "id": "nadph_c",
+      "name": "NADPH [Cytosol]",
+      "compartment": "c",
+      "formula": "C21H26N7O17P3",
+      "charge": -4,
+      "primary": false
+    },
+    {
+      "id": "nh4_c",
+      "name": "Ammonium [Cytosol]",
+      "compartment": "c",
+      "formula": "H4N",
+      "charge": 1,
+      "primary": false
+    },
+    {
+      "id": "nh4_e",
+      "name": "Ammonium [Extracellular]",
+      "compartment": "e",
+      "formula": "H4N",
+      "charge": 1,
+      "primary": false
+    },
+    {
+      "id": "o2_c",
+      "name": "O2 [Cytosol]",
+      "compartment": "c",
+      "formula": "O2",
+      "charge": 0,
+      "primary": false
+    },
+    {
+      "id": "o2_e",
+      "name": "O2 [Extracellular]",
+      "compartment": "e",
+      "formula": "O2",
+      "charge": 0,
+      "primary": false
+    },
+    {
+      "id": "o2_m",
+      "name": "O2 [Mitochondrial matrix]",
+      "compartment": "m",
+      "formula": "O2",
+      "charge": 0,
+      "primary": false
+    },
+    {
+      "id": "oaa_c",
+      "name": "Oxaloacetate [Cytosol]",
+      "compartment": "c",
+      "formula": "C4H2O5",
+      "charge": -2
+    },
+    {
+      "id": "oaa_m",
+      "name": "Oxaloacetate [Mitochondrial matrix]",
+      "compartment": "m",
+      "formula": "C4H2O5",
+      "charge": -2
+    },
+    {
+      "id": "pep_c",
+      "name": "Phosphoenolpyruvate [Cytosol]",
+      "compartment": "c",
+      "formula": "C3H2O6P",
+      "charge": -3
+    },
+    {
+      "id": "pi_c",
+      "name": "Phosphate [Cytosol]",
+      "compartment": "c",
+      "formula": "HO4P",
+      "charge": -2,
+      "primary": false
+    },
+    {
+      "id": "pi_e",
+      "name": "Phosphate [Extracellular]",
+      "compartment": "e",
+      "formula": "HO4P",
+      "charge": -2,
+      "primary": false
+    },
+    {
+      "id": "pi_m",
+      "name": "Phosphate [Mitochondrial matrix]",
+      "compartment": "m",
+      "formula": "HO4P",
+      "charge": -2,
+      "primary": false
+    },
+    {
+      "id": "ppi_c",
+      "name": "Diphosphate [Cytosol]",
+      "compartment": "c",
+      "formula": "HO7P2",
+      "charge": -3,
+      "primary": false
+    },
+    {
+      "id": "pyr_c",
+      "name": "Pyruvate [Cytosol]",
+      "compartment": "c",
+      "formula": "C3H3O3",
+      "charge": -1
+    },
+    {
+      "id": "pyr_e",
+      "name": "Pyruvate [Extracellular]",
+      "compartment": "e",
+      "formula": "C3H3O3",
+      "charge": -1
+    },
+    {
+      "id": "pyr_m",
+      "name": "Pyruvate [Mitochondrial matrix]",
+      "compartment": "m",
+      "formula": "C3H3O3",
+      "charge": -1
+    },
+    {
+      "id": "q6_m",
+      "name": "Ubiquinone-6 [Mitochondrial matrix]",
+      "compartment": "m",
+      "formula": "C39H58O4",
+      "charge": 0,
+      "primary": false
+    },
+    {
+      "id": "q6h2_m",
+      "name": "Ubiquinol-6 [Mitochondrial matrix]",
+      "compartment": "m",
+      "formula": "C39H60O4",
+      "charge": 0,
+      "primary": false
+    },
+    {
+      "id": "r5p_c",
+      "name": "Alpha-D-Ribose 5-phosphate [Cytosol]",
+      "compartment": "c",
+      "formula": "C5H9O8P",
+      "charge": -2
+    },
+    {
+      "id": "ru5p__D_c",
+      "name": "D-Ribulose 5-phosphate [Cytosol]",
+      "compartment": "c",
+      "formula": "C5H9O8P",
+      "charge": -2
+    },
+    {
+      "id": "s7p_c",
+      "name": "Sedoheptulose 7-phosphate [Cytosol]",
+      "compartment": "c",
+      "formula": "C7H13O10P",
+      "charge": -2
+    },
+    {
+      "id": "succ_c",
+      "name": "Succinate [Cytosol]",
+      "compartment": "c",
+      "formula": "C4H4O4",
+      "charge": -2
+    },
+    {
+      "id": "succ_m",
+      "name": "Succinate [Mitochondrial matrix]",
+      "compartment": "m",
+      "formula": "C4H4O4",
+      "charge": -2
+    },
+    {
+      "id": "succoa_m",
+      "name": "Succinyl-CoA [Mitochondrial matrix]",
+      "compartment": "m",
+      "formula": "C25H35N7O19P3S",
+      "charge": -5
+    },
+    {
+      "id": "xu5p__D_c",
+      "name": "D-Xylulose 5-phosphate [Cytosol]",
+      "compartment": "c",
+      "formula": "C5H9O8P",
+      "charge": -2
+    }
+  ],
+  "reactions": [
+    {
+      "id": "GLCt1",
+      "name": "Glucose transport (Hxt, facilitated diffusion)",
+      "metabolites": {
+        "glc__D_e": -1,
+        "glc__D_c": 1
+      },
+      "lower_bound": -1000,
+      "upper_bound": 1000,
+      "gene_reaction_rule": "",
+      "subsystem": "Transport, plasma membrane",
+      "layout": {
+        "rank": 0,
+        "lane": 0
+      }
+    },
+    {
+      "id": "HEX1",
+      "name": "Hexoquinasa",
+      "metabolites": {
+        "atp_c": -1,
+        "glc__D_c": -1,
+        "adp_c": 1,
+        "g6p_c": 1,
+        "h_c": 1
+      },
+      "lower_bound": 0,
+      "upper_bound": 1000,
+      "gene_reaction_rule": "",
+      "subsystem": "Glycolysis",
+      "layout": {
+        "rank": 0,
+        "lane": 0
+      }
+    },
+    {
+      "id": "PMA1",
+      "name": "Plasma-membrane H+-ATPase (generates the proton-motive force)",
+      "metabolites": {
+        "atp_c": -1,
+        "h2o_c": -1,
+        "adp_c": 1,
+        "pi_c": 1,
+        "h_e": 1
+      },
+      "lower_bound": 0,
+      "upper_bound": 1000,
+      "gene_reaction_rule": "",
+      "subsystem": "Transport, plasma membrane",
+      "layout": {
+        "rank": 2,
+        "lane": 7
+      }
+    },
+    {
+      "id": "O2t",
+      "name": "O2 diffusion",
+      "metabolites": {
+        "o2_e": -1,
+        "o2_c": 1
+      },
+      "lower_bound": -1000,
+      "upper_bound": 1000,
+      "gene_reaction_rule": "",
+      "subsystem": "Transport, plasma membrane",
+      "layout": {
+        "rank": 4,
+        "lane": 6
+      }
+    },
+    {
+      "id": "CO2t",
+      "name": "CO2 diffusion",
+      "metabolites": {
+        "co2_e": -1,
+        "co2_c": 1
+      },
+      "lower_bound": -1000,
+      "upper_bound": 1000,
+      "gene_reaction_rule": "",
+      "subsystem": "Transport, plasma membrane",
+      "layout": {
+        "rank": 12,
+        "lane": 5
+      }
+    },
+    {
+      "id": "ETOHt",
+      "name": "Ethanol diffusion",
+      "metabolites": {
+        "etoh_e": -1,
+        "etoh_c": 1
+      },
+      "lower_bound": -1000,
+      "upper_bound": 1000,
+      "gene_reaction_rule": "",
+      "subsystem": "Transport, plasma membrane",
+      "layout": {
+        "rank": 14,
+        "lane": -2
+      }
+    },
+    {
+      "id": "ACt2r",
+      "name": "Simporte acetato/H+",
+      "metabolites": {
+        "ac_e": -1,
+        "h_e": -1,
+        "ac_c": 1,
+        "h_c": 1
+      },
+      "lower_bound": -1000,
+      "upper_bound": 1000,
+      "gene_reaction_rule": "",
+      "subsystem": "Transport, plasma membrane",
+      "layout": {
+        "rank": 13,
+        "lane": -1
+      }
+    },
+    {
+      "id": "GLYCt",
+      "name": "Glycerol facilitated diffusion",
+      "metabolites": {
+        "glyc_e": -1,
+        "glyc_c": 1
+      },
+      "lower_bound": -1000,
+      "upper_bound": 1000,
+      "gene_reaction_rule": "",
+      "subsystem": "Transport, plasma membrane",
+      "layout": {
+        "rank": 6,
+        "lane": 3
+      }
+    },
+    {
+      "id": "PYRt2",
+      "name": "Simporte piruvato/H+",
+      "metabolites": {
+        "h_e": -1,
+        "pyr_e": -1,
+        "h_c": 1,
+        "pyr_c": 1
+      },
+      "lower_bound": -1000,
+      "upper_bound": 1000,
+      "gene_reaction_rule": "",
+      "subsystem": "Transport, plasma membrane",
+      "layout": {
+        "rank": 10,
+        "lane": 2
+      }
+    },
+    {
+      "id": "NH4t",
+      "name": "Amonio",
+      "metabolites": {
+        "nh4_e": -1,
+        "nh4_c": 1
+      },
+      "lower_bound": -1000,
+      "upper_bound": 1000,
+      "gene_reaction_rule": "",
+      "subsystem": "Transport, plasma membrane",
+      "layout": {
+        "rank": 16,
+        "lane": -5
+      }
+    },
+    {
+      "id": "PIt2r",
+      "name": "Simporte fosfato/H+",
+      "metabolites": {
+        "h_e": -1,
+        "pi_e": -1,
+        "h_c": 1,
+        "pi_c": 1
+      },
+      "lower_bound": -1000,
+      "upper_bound": 1000,
+      "gene_reaction_rule": "",
+      "subsystem": "Transport, plasma membrane",
+      "layout": {
+        "rank": 3,
+        "lane": 7
+      }
+    },
+    {
+      "id": "H2Ot",
+      "name": "Agua (acuaporina)",
+      "metabolites": {
+        "h2o_e": -1,
+        "h2o_c": 1
+      },
+      "lower_bound": -1000,
+      "upper_bound": 1000,
+      "gene_reaction_rule": "",
+      "subsystem": "Transport, plasma membrane",
+      "layout": {
+        "rank": 5,
+        "lane": 7
+      }
+    },
+    {
+      "id": "PGI",
+      "name": "Glucose-6-phosphate isomerase",
+      "metabolites": {
+        "g6p_c": -1,
+        "f6p_c": 1
+      },
+      "lower_bound": -1000,
+      "upper_bound": 1000,
+      "gene_reaction_rule": "",
+      "subsystem": "Glycolysis",
+      "layout": {
+        "rank": 1,
+        "lane": 0
+      }
+    },
+    {
+      "id": "PFK",
+      "name": "Phosphofructokinase",
+      "metabolites": {
+        "atp_c": -1,
+        "f6p_c": -1,
+        "adp_c": 1,
+        "fdp_c": 1,
+        "h_c": 1
+      },
+      "lower_bound": 0,
+      "upper_bound": 1000,
+      "gene_reaction_rule": "",
+      "subsystem": "Glycolysis",
+      "layout": {
+        "rank": 2,
+        "lane": 0
+      }
+    },
+    {
+      "id": "FBP",
+      "name": "Fructose-1,6-bisphosphatase",
+      "metabolites": {
+        "fdp_c": -1,
+        "h2o_c": -1,
+        "f6p_c": 1,
+        "pi_c": 1
+      },
+      "lower_bound": 0,
+      "upper_bound": 1000,
+      "gene_reaction_rule": "",
+      "subsystem": "Glycolysis",
+      "layout": {
+        "rank": 2,
+        "lane": 1
+      }
+    },
+    {
+      "id": "FBA",
+      "name": "Fructose-bisphosphate aldolase",
+      "metabolites": {
+        "fdp_c": -1,
+        "dhap_c": 1,
+        "g3p_c": 1
+      },
+      "lower_bound": -1000,
+      "upper_bound": 1000,
+      "gene_reaction_rule": "",
+      "subsystem": "Glycolysis",
+      "layout": {
+        "rank": 3,
+        "lane": 0
+      }
+    },
+    {
+      "id": "TPI",
+      "name": "Triose-phosphate isomerase",
+      "metabolites": {
+        "dhap_c": -1,
+        "g3p_c": 1
+      },
+      "lower_bound": -1000,
+      "upper_bound": 1000,
+      "gene_reaction_rule": "",
+      "subsystem": "Glycolysis",
+      "layout": {
+        "rank": 4,
+        "lane": -1
+      }
+    },
+    {
+      "id": "GAPD",
+      "name": "Glyceraldehyde-3-phosphate dehydrogenase",
+      "metabolites": {
+        "g3p_c": -1,
+        "nad_c": -1,
+        "pi_c": -1,
+        "13dpg_c": 1,
+        "h_c": 1,
+        "nadh_c": 1
+      },
+      "lower_bound": -1000,
+      "upper_bound": 1000,
+      "gene_reaction_rule": "",
+      "subsystem": "Glycolysis",
+      "layout": {
+        "rank": 5,
+        "lane": 0
+      }
+    },
+    {
+      "id": "PGK",
+      "name": "Phosphoglycerate kinase",
+      "metabolites": {
+        "3pg_c": -1,
+        "atp_c": -1,
+        "13dpg_c": 1,
+        "adp_c": 1
+      },
+      "lower_bound": -1000,
+      "upper_bound": 1000,
+      "gene_reaction_rule": "",
+      "subsystem": "Glycolysis",
+      "layout": {
+        "rank": 6,
+        "lane": 0
+      }
+    },
+    {
+      "id": "PGM",
+      "name": "Phosphoglycerate mutase",
+      "metabolites": {
+        "2pg_c": -1,
+        "3pg_c": 1
+      },
+      "lower_bound": -1000,
+      "upper_bound": 1000,
+      "gene_reaction_rule": "",
+      "subsystem": "Glycolysis",
+      "layout": {
+        "rank": 7,
+        "lane": 0
+      }
+    },
+    {
+      "id": "ENO",
+      "name": "Enolase",
+      "metabolites": {
+        "2pg_c": -1,
+        "h2o_c": 1,
+        "pep_c": 1
+      },
+      "lower_bound": -1000,
+      "upper_bound": 1000,
+      "gene_reaction_rule": "",
+      "subsystem": "Glycolysis",
+      "layout": {
+        "rank": 8,
+        "lane": 0
+      }
+    },
+    {
+      "id": "PYK",
+      "name": "Pyruvate kinase",
+      "metabolites": {
+        "adp_c": -1,
+        "h_c": -1,
+        "pep_c": -1,
+        "atp_c": 1,
+        "pyr_c": 1
+      },
+      "lower_bound": 0,
+      "upper_bound": 1000,
+      "gene_reaction_rule": "",
+      "subsystem": "Glycolysis",
+      "layout": {
+        "rank": 9,
+        "lane": 0
+      }
+    },
+    {
+      "id": "G6PDH2r",
+      "name": "Glucose 6-phosphate dehydrogenase",
+      "metabolites": {
+        "g6p_c": -1,
+        "nadp_c": -1,
+        "6pgl_c": 1,
+        "h_c": 1,
+        "nadph_c": 1
+      },
+      "lower_bound": -1000,
+      "upper_bound": 1000,
+      "gene_reaction_rule": "",
+      "subsystem": "Pentose phosphate pathway",
+      "layout": {
+        "rank": 1,
+        "lane": -3
+      }
+    },
+    {
+      "id": "PGL",
+      "name": "6-phosphogluconolactonase",
+      "metabolites": {
+        "6pgl_c": -1,
+        "h2o_c": -1,
+        "6pgc_c": 1,
+        "h_c": 1
+      },
+      "lower_bound": 0,
+      "upper_bound": 1000,
+      "gene_reaction_rule": "",
+      "subsystem": "Pentose phosphate pathway",
+      "layout": {
+        "rank": 2,
+        "lane": -3
+      }
+    },
+    {
+      "id": "GND",
+      "name": "Phosphogluconate dehydrogenase",
+      "metabolites": {
+        "6pgc_c": -1,
+        "nadp_c": -1,
+        "co2_c": 1,
+        "nadph_c": 1,
+        "ru5p__D_c": 1
+      },
+      "lower_bound": 0,
+      "upper_bound": 1000,
+      "gene_reaction_rule": "",
+      "subsystem": "Pentose phosphate pathway",
+      "layout": {
+        "rank": 3,
+        "lane": -3
+      }
+    },
+    {
+      "id": "RPE",
+      "name": "Ribulose 5-phosphate 3-epimerase",
+      "metabolites": {
+        "ru5p__D_c": -1,
+        "xu5p__D_c": 1
+      },
+      "lower_bound": -1000,
+      "upper_bound": 1000,
+      "gene_reaction_rule": "",
+      "subsystem": "Pentose phosphate pathway",
+      "layout": {
+        "rank": 4,
+        "lane": -3
+      }
+    },
+    {
+      "id": "RPI",
+      "name": "Ribose-5-phosphate isomerase",
+      "metabolites": {
+        "r5p_c": -1,
+        "ru5p__D_c": 1
+      },
+      "lower_bound": -1000,
+      "upper_bound": 1000,
+      "gene_reaction_rule": "",
+      "subsystem": "Pentose phosphate pathway",
+      "layout": {
+        "rank": 4,
+        "lane": -4
+      }
+    },
+    {
+      "id": "TKT1",
+      "name": "Transketolase I",
+      "metabolites": {
+        "r5p_c": -1,
+        "xu5p__D_c": -1,
+        "g3p_c": 1,
+        "s7p_c": 1
+      },
+      "lower_bound": -1000,
+      "upper_bound": 1000,
+      "gene_reaction_rule": "",
+      "subsystem": "Pentose phosphate pathway",
+      "layout": {
+        "rank": 5,
+        "lane": -3
+      }
+    },
+    {
+      "id": "TALA",
+      "name": "Transaldolase",
+      "metabolites": {
+        "g3p_c": -1,
+        "s7p_c": -1,
+        "e4p_c": 1,
+        "f6p_c": 1
+      },
+      "lower_bound": -1000,
+      "upper_bound": 1000,
+      "gene_reaction_rule": "",
+      "subsystem": "Pentose phosphate pathway",
+      "layout": {
+        "rank": 6,
+        "lane": -3
+      }
+    },
+    {
+      "id": "TKT2",
+      "name": "Transketolase II",
+      "metabolites": {
+        "e4p_c": -1,
+        "xu5p__D_c": -1,
+        "f6p_c": 1,
+        "g3p_c": 1
+      },
+      "lower_bound": -1000,
+      "upper_bound": 1000,
+      "gene_reaction_rule": "",
+      "subsystem": "Pentose phosphate pathway",
+      "layout": {
+        "rank": 7,
+        "lane": -3
+      }
+    },
+    {
+      "id": "PDC",
+      "name": "Piruvato descarboxilasa",
+      "metabolites": {
+        "h_c": -1,
+        "pyr_c": -1,
+        "acald_c": 1,
+        "co2_c": 1
+      },
+      "lower_bound": 0,
+      "upper_bound": 1000,
+      "gene_reaction_rule": "",
+      "subsystem": "Alcoholic fermentation",
+      "layout": {
+        "rank": 11,
+        "lane": -2
+      }
+    },
+    {
+      "id": "ALCD2x",
+      "name": "Alcohol dehydrogenase",
+      "metabolites": {
+        "etoh_c": -1,
+        "nad_c": -1,
+        "acald_c": 1,
+        "h_c": 1,
+        "nadh_c": 1
+      },
+      "lower_bound": -1000,
+      "upper_bound": 1000,
+      "gene_reaction_rule": "",
+      "subsystem": "Alcoholic fermentation",
+      "layout": {
+        "rank": 13,
+        "lane": -2
+      }
+    },
+    {
+      "id": "ALDD2y",
+      "name": "Acetaldehyde dehydrogenase (NADP)",
+      "metabolites": {
+        "acald_c": -1,
+        "h2o_c": -1,
+        "nadp_c": -1,
+        "ac_c": 1,
+        "h_c": 2,
+        "nadph_c": 1
+      },
+      "lower_bound": 0,
+      "upper_bound": 1000,
+      "gene_reaction_rule": "",
+      "subsystem": "Alcoholic fermentation",
+      "layout": {
+        "rank": 12,
+        "lane": -1
+      }
+    },
+    {
+      "id": "ALDD2x",
+      "name": "Acetaldehyde dehydrogenase (NAD)",
+      "metabolites": {
+        "acald_c": -1,
+        "h2o_c": -1,
+        "nad_c": -1,
+        "ac_c": 1,
+        "h_c": 2,
+        "nadh_c": 1
+      },
+      "lower_bound": 0,
+      "upper_bound": 1000,
+      "gene_reaction_rule": "",
+      "subsystem": "Alcoholic fermentation",
+      "layout": {
+        "rank": 12,
+        "lane": 0
+      }
+    },
+    {
+      "id": "ACS",
+      "name": "Acetyl-CoA synthetase (PDH bypass)",
+      "metabolites": {
+        "ac_c": -1,
+        "atp_c": -1,
+        "coa_c": -1,
+        "accoa_c": 1,
+        "amp_c": 1,
+        "ppi_c": 1
+      },
+      "lower_bound": 0,
+      "upper_bound": 1000,
+      "gene_reaction_rule": "",
+      "subsystem": "Alcoholic fermentation",
+      "layout": {
+        "rank": 13,
+        "lane": 0
+      }
+    },
+    {
+      "id": "PPA",
+      "name": "Inorganic pyrophosphatase",
+      "metabolites": {
+        "h2o_c": -1,
+        "ppi_c": -1,
+        "h_c": 1,
+        "pi_c": 2
+      },
+      "lower_bound": 0,
+      "upper_bound": 1000,
+      "gene_reaction_rule": "",
+      "subsystem": "Alcoholic fermentation",
+      "layout": {
+        "rank": 14,
+        "lane": 1
+      }
+    },
+    {
+      "id": "ADK1",
+      "name": "Adenylate kinase",
+      "metabolites": {
+        "amp_c": -1,
+        "atp_c": -1,
+        "adp_c": 2
+      },
+      "lower_bound": -1000,
+      "upper_bound": 1000,
+      "gene_reaction_rule": "",
+      "subsystem": "Alcoholic fermentation",
+      "layout": {
+        "rank": 14,
+        "lane": 2
+      }
+    },
+    {
+      "id": "G3PD1ir",
+      "name": "Glycerol-3-phosphate dehydrogenase",
+      "metabolites": {
+        "dhap_c": -1,
+        "h_c": -1,
+        "nadh_c": -1,
+        "glyc3p_c": 1,
+        "nad_c": 1
+      },
+      "lower_bound": 0,
+      "upper_bound": 1000,
+      "gene_reaction_rule": "",
+      "subsystem": "Alcoholic fermentation",
+      "layout": {
+        "rank": 5,
+        "lane": 3
+      }
+    },
+    {
+      "id": "G3PT",
+      "name": "Glycerol-3-phosphatase",
+      "metabolites": {
+        "glyc3p_c": -1,
+        "h2o_c": -1,
+        "glyc_c": 1,
+        "pi_c": 1
+      },
+      "lower_bound": 0,
+      "upper_bound": 1000,
+      "gene_reaction_rule": "",
+      "subsystem": "Alcoholic fermentation",
+      "layout": {
+        "rank": 6,
+        "lane": 3
+      }
+    },
+    {
+      "id": "HCO3E",
+      "name": "Carbonic anhydrase",
+      "metabolites": {
+        "co2_c": -1,
+        "h2o_c": -1,
+        "h_c": 1,
+        "hco3_c": 1
+      },
+      "lower_bound": -1000,
+      "upper_bound": 1000,
+      "gene_reaction_rule": "",
+      "subsystem": "Anaplerotic reactions",
+      "layout": {
+        "rank": 10,
+        "lane": 3
+      }
+    },
+    {
+      "id": "PC",
+      "name": "Pyruvate carboxylase",
+      "metabolites": {
+        "atp_c": -1,
+        "hco3_c": -1,
+        "pyr_c": -1,
+        "adp_c": 1,
+        "h_c": 1,
+        "oaa_c": 1,
+        "pi_c": 1
+      },
+      "lower_bound": 0,
+      "upper_bound": 1000,
+      "gene_reaction_rule": "",
+      "subsystem": "Anaplerotic reactions",
+      "layout": {
+        "rank": 11,
+        "lane": 3
+      }
+    },
+    {
+      "id": "MDH_c",
+      "name": "Cytosolic malate dehydrogenase (Mdh2)",
+      "metabolites": {
+        "mal__L_c": -1,
+        "nad_c": -1,
+        "h_c": 1,
+        "nadh_c": 1,
+        "oaa_c": 1
+      },
+      "lower_bound": -1000,
+      "upper_bound": 1000,
+      "gene_reaction_rule": "",
+      "subsystem": "Anaplerotic reactions",
+      "layout": {
+        "rank": 12,
+        "lane": 3
+      }
+    },
+    {
+      "id": "CS_c",
+      "name": "Cytosolic citrate synthase (Cit2)",
+      "metabolites": {
+        "accoa_c": -1,
+        "h2o_c": -1,
+        "oaa_c": -1,
+        "cit_c": 1,
+        "coa_c": 1,
+        "h_c": 1
+      },
+      "lower_bound": 0,
+      "upper_bound": 1000,
+      "gene_reaction_rule": "",
+      "subsystem": "Anaplerotic reactions",
+      "layout": {
+        "rank": 14,
+        "lane": 4
+      }
+    },
+    {
+      "id": "ACONT_c",
+      "name": "Cytosolic aconitase",
+      "metabolites": {
+        "cit_c": -1,
+        "icit_c": 1
+      },
+      "lower_bound": -1000,
+      "upper_bound": 1000,
+      "gene_reaction_rule": "",
+      "subsystem": "Anaplerotic reactions",
+      "layout": {
+        "rank": 15,
+        "lane": 4
+      }
+    },
+    {
+      "id": "ICL",
+      "name": "Isocitrate lyase (Icl1)",
+      "metabolites": {
+        "icit_c": -1,
+        "glx_c": 1,
+        "succ_c": 1
+      },
+      "lower_bound": 0,
+      "upper_bound": 1000,
+      "gene_reaction_rule": "",
+      "subsystem": "Anaplerotic reactions",
+      "layout": {
+        "rank": 16,
+        "lane": 4
+      }
+    },
+    {
+      "id": "MALS",
+      "name": "Malate synthase (Mls1)",
+      "metabolites": {
+        "accoa_c": -1,
+        "glx_c": -1,
+        "h2o_c": -1,
+        "coa_c": 1,
+        "h_c": 1,
+        "mal__L_c": 1
+      },
+      "lower_bound": 0,
+      "upper_bound": 1000,
+      "gene_reaction_rule": "",
+      "subsystem": "Anaplerotic reactions",
+      "layout": {
+        "rank": 17,
+        "lane": 4
+      }
+    },
+    {
+      "id": "PPCK",
+      "name": "PEP carboxiquinasa (Pck1)",
+      "metabolites": {
+        "atp_c": -1,
+        "oaa_c": -1,
+        "adp_c": 1,
+        "co2_c": 1,
+        "pep_c": 1
+      },
+      "lower_bound": 0,
+      "upper_bound": 1000,
+      "gene_reaction_rule": "",
+      "subsystem": "Anaplerotic reactions",
+      "layout": {
+        "rank": 13,
+        "lane": 4
+      }
+    },
+    {
+      "id": "SUCCtm",
+      "name": "Succinate/malate antiport (dicarboxylate carrier)",
+      "metabolites": {
+        "succ_c": -1,
+        "mal__L_m": -1,
+        "succ_m": 1,
+        "mal__L_c": 1
+      },
+      "lower_bound": -1000,
+      "upper_bound": 1000,
+      "gene_reaction_rule": "",
+      "subsystem": "Mitochondrial transport",
+      "layout": {
+        "rank": 18,
+        "lane": 4
+      }
+    },
+    {
+      "id": "GLUDy",
+      "name": "Glutamate dehydrogenase (NADP)",
+      "metabolites": {
+        "glu__L_c": -1,
+        "h2o_c": -1,
+        "nadp_c": -1,
+        "akg_c": 1,
+        "h_c": 1,
+        "nadph_c": 1,
+        "nh4_c": 1
+      },
+      "lower_bound": -1000,
+      "upper_bound": 1000,
+      "gene_reaction_rule": "",
+      "subsystem": "Nitrogen metabolism",
+      "layout": {
+        "rank": 16,
+        "lane": -4
+      }
+    },
+    {
+      "id": "GLNS",
+      "name": "Glutamina sintetasa",
+      "metabolites": {
+        "atp_c": -1,
+        "glu__L_c": -1,
+        "nh4_c": -1,
+        "adp_c": 1,
+        "gln__L_c": 1,
+        "h_c": 1,
+        "pi_c": 1
+      },
+      "lower_bound": 0,
+      "upper_bound": 1000,
+      "gene_reaction_rule": "",
+      "subsystem": "Nitrogen metabolism",
+      "layout": {
+        "rank": 17,
+        "lane": -4
+      }
+    },
+    {
+      "id": "ATPM",
+      "name": "Non-growth-associated maintenance",
+      "metabolites": {
+        "atp_c": -1,
+        "h2o_c": -1,
+        "adp_c": 1,
+        "h_c": 1,
+        "pi_c": 1
+      },
+      "lower_bound": 1,
+      "upper_bound": 1000,
+      "gene_reaction_rule": "",
+      "subsystem": "Oxidative phosphorylation",
+      "layout": {
+        "rank": 8,
+        "lane": 4
+      }
+    },
+    {
+      "id": "PYRt2m",
+      "name": "Mitochondrial pyruvate carrier (MPC)",
+      "metabolites": {
+        "h_c": -1,
+        "pyr_c": -1,
+        "h_m": 1,
+        "pyr_m": 1
+      },
+      "lower_bound": 0,
+      "upper_bound": 1000,
+      "gene_reaction_rule": "",
+      "subsystem": "Mitochondrial transport",
+      "layout": {
+        "rank": 10,
+        "lane": 0
+      }
+    },
+    {
+      "id": "O2tm",
+      "name": "O2 diffusion (mitochondrion)",
+      "metabolites": {
+        "o2_c": -1,
+        "o2_m": 1
+      },
+      "lower_bound": -1000,
+      "upper_bound": 1000,
+      "gene_reaction_rule": "",
+      "subsystem": "Mitochondrial transport",
+      "layout": {
+        "rank": 4,
+        "lane": 5
+      }
+    },
+    {
+      "id": "CO2tm",
+      "name": "CO2 diffusion (mitochondrion)",
+      "metabolites": {
+        "co2_m": -1,
+        "co2_c": 1
+      },
+      "lower_bound": -1000,
+      "upper_bound": 1000,
+      "gene_reaction_rule": "",
+      "subsystem": "Mitochondrial transport",
+      "layout": {
+        "rank": 12,
+        "lane": 4
+      }
+    },
+    {
+      "id": "H2Otm",
+      "name": "Agua (mitocondria)",
+      "metabolites": {
+        "h2o_c": -1,
+        "h2o_m": 1
+      },
+      "lower_bound": -1000,
+      "upper_bound": 1000,
+      "gene_reaction_rule": "",
+      "subsystem": "Mitochondrial transport",
+      "layout": {
+        "rank": 5,
+        "lane": 5
+      }
+    },
+    {
+      "id": "PIt2m",
+      "name": "Simporte fosfato/H+ (mitocondria)",
+      "metabolites": {
+        "h_c": -1,
+        "pi_c": -1,
+        "h_m": 1,
+        "pi_m": 1
+      },
+      "lower_bound": 0,
+      "upper_bound": 1000,
+      "gene_reaction_rule": "",
+      "subsystem": "Mitochondrial transport",
+      "layout": {
+        "rank": 6,
+        "lane": 5
+      }
+    },
+    {
+      "id": "ATPtm",
+      "name": "Translocasa ADP/ATP (ANT)",
+      "metabolites": {
+        "adp_c": -1,
+        "atp_m": -1,
+        "adp_m": 1,
+        "atp_c": 1
+      },
+      "lower_bound": 0,
+      "upper_bound": 1000,
+      "gene_reaction_rule": "",
+      "subsystem": "Mitochondrial transport",
+      "layout": {
+        "rank": 7,
+        "lane": 5
+      }
+    },
+    {
+      "id": "AKGMALtm",
+      "name": "Antiporte 2-oxoglutarato/malato",
+      "metabolites": {
+        "akg_m": -1,
+        "mal__L_c": -1,
+        "akg_c": 1,
+        "mal__L_m": 1
+      },
+      "lower_bound": -1000,
+      "upper_bound": 1000,
+      "gene_reaction_rule": "",
+      "subsystem": "Mitochondrial transport",
+      "layout": {
+        "rank": 15,
+        "lane": 2
+      }
+    },
+    {
+      "id": "ACALDtm",
+      "name": "Acetaldehyde diffusion (mitochondrion)",
+      "metabolites": {
+        "acald_c": -1,
+        "acald_m": 1
+      },
+      "lower_bound": -1000,
+      "upper_bound": 1000,
+      "gene_reaction_rule": "",
+      "subsystem": "Mitochondrial transport",
+      "layout": {
+        "rank": 11,
+        "lane": -1
+      }
+    },
+    {
+      "id": "ETOHtm",
+      "name": "Ethanol diffusion (mitochondrion)",
+      "metabolites": {
+        "etoh_c": -1,
+        "etoh_m": 1
+      },
+      "lower_bound": -1000,
+      "upper_bound": 1000,
+      "gene_reaction_rule": "",
+      "subsystem": "Mitochondrial transport",
+      "layout": {
+        "rank": 13,
+        "lane": -1
+      }
+    },
+    {
+      "id": "PDHm",
+      "name": "Pyruvate dehydrogenase complex",
+      "metabolites": {
+        "coa_m": -1,
+        "nad_m": -1,
+        "pyr_m": -1,
+        "accoa_m": 1,
+        "co2_m": 1,
+        "nadh_m": 1
+      },
+      "lower_bound": 0,
+      "upper_bound": 1000,
+      "gene_reaction_rule": "",
+      "subsystem": "Citric acid cycle",
+      "layout": {
+        "rank": 11,
+        "lane": 0
+      }
+    },
+    {
+      "id": "CSm",
+      "name": "Citrate synthase",
+      "metabolites": {
+        "accoa_m": -1,
+        "h2o_m": -1,
+        "oaa_m": -1,
+        "cit_m": 1,
+        "coa_m": 1,
+        "h_m": 1
+      },
+      "lower_bound": 0,
+      "upper_bound": 1000,
+      "gene_reaction_rule": "",
+      "subsystem": "Citric acid cycle",
+      "layout": {
+        "rank": 12,
+        "lane": 0
+      }
+    },
+    {
+      "id": "ACONTm",
+      "name": "Aconitase",
+      "metabolites": {
+        "cit_m": -1,
+        "icit_m": 1
+      },
+      "lower_bound": -1000,
+      "upper_bound": 1000,
+      "gene_reaction_rule": "",
+      "subsystem": "Citric acid cycle",
+      "layout": {
+        "rank": 13,
+        "lane": 0
+      }
+    },
+    {
+      "id": "ICDHxmm",
+      "name": "Isocitrate dehydrogenase (NAD)",
+      "metabolites": {
+        "icit_m": -1,
+        "nad_m": -1,
+        "akg_m": 1,
+        "co2_m": 1,
+        "nadh_m": 1
+      },
+      "lower_bound": 0,
+      "upper_bound": 1000,
+      "gene_reaction_rule": "",
+      "subsystem": "Citric acid cycle",
+      "layout": {
+        "rank": 14,
+        "lane": 0
+      }
+    },
+    {
+      "id": "AKGDHm",
+      "name": "2-Oxoglutarate dehydrogenase",
+      "metabolites": {
+        "akg_m": -1,
+        "coa_m": -1,
+        "nad_m": -1,
+        "co2_m": 1,
+        "nadh_m": 1,
+        "succoa_m": 1
+      },
+      "lower_bound": 0,
+      "upper_bound": 1000,
+      "gene_reaction_rule": "",
+      "subsystem": "Citric acid cycle",
+      "layout": {
+        "rank": 15,
+        "lane": 0
+      }
+    },
+    {
+      "id": "SUCOASm",
+      "name": "Succinyl-CoA synthetase",
+      "metabolites": {
+        "atp_m": -1,
+        "coa_m": -1,
+        "succ_m": -1,
+        "adp_m": 1,
+        "pi_m": 1,
+        "succoa_m": 1
+      },
+      "lower_bound": -1000,
+      "upper_bound": 1000,
+      "gene_reaction_rule": "",
+      "subsystem": "Citric acid cycle",
+      "layout": {
+        "rank": 16,
+        "lane": 0
+      }
+    },
+    {
+      "id": "SUCDm",
+      "name": "Succinate dehydrogenase",
+      "metabolites": {
+        "q6_m": -1,
+        "succ_m": -1,
+        "fum_m": 1,
+        "q6h2_m": 1
+      },
+      "lower_bound": 0,
+      "upper_bound": 1000,
+      "gene_reaction_rule": "",
+      "subsystem": "Citric acid cycle",
+      "layout": {
+        "rank": 17,
+        "lane": 0
+      }
+    },
+    {
+      "id": "FUMm",
+      "name": "Fumarase",
+      "metabolites": {
+        "fum_m": -1,
+        "h2o_m": -1,
+        "mal__L_m": 1
+      },
+      "lower_bound": -1000,
+      "upper_bound": 1000,
+      "gene_reaction_rule": "",
+      "subsystem": "Citric acid cycle",
+      "layout": {
+        "rank": 18,
+        "lane": 0
+      }
+    },
+    {
+      "id": "MDHm",
+      "name": "Malate dehydrogenase",
+      "metabolites": {
+        "mal__L_m": -1,
+        "nad_m": -1,
+        "h_m": 1,
+        "nadh_m": 1,
+        "oaa_m": 1
+      },
+      "lower_bound": -1000,
+      "upper_bound": 1000,
+      "gene_reaction_rule": "",
+      "subsystem": "Citric acid cycle",
+      "layout": {
+        "rank": 19,
+        "lane": 0
+      }
+    },
+    {
+      "id": "ALCD2xm",
+      "name": "Mitochondrial alcohol dehydrogenase (Adh3)",
+      "metabolites": {
+        "etoh_m": -1,
+        "nad_m": -1,
+        "acald_m": 1,
+        "h_m": 1,
+        "nadh_m": 1
+      },
+      "lower_bound": -1000,
+      "upper_bound": 1000,
+      "gene_reaction_rule": "",
+      "subsystem": "Oxidative phosphorylation",
+      "layout": {
+        "rank": 12,
+        "lane": -1
+      }
+    },
+    {
+      "id": "NADH2_u6m",
+      "name": "Internal NADH dehydrogenase Ndi1 (does not pump H+)",
+      "metabolites": {
+        "nadh_m": -1,
+        "q6_m": -1,
+        "h_m": -1,
+        "nad_m": 1,
+        "q6h2_m": 1
+      },
+      "lower_bound": 0,
+      "upper_bound": 1000,
+      "gene_reaction_rule": "",
+      "subsystem": "Oxidative phosphorylation",
+      "layout": {
+        "rank": 4,
+        "lane": 3
+      }
+    },
+    {
+      "id": "NADH2_u6cm",
+      "name": "External NADH dehydrogenase Nde1/Nde2",
+      "metabolites": {
+        "nadh_c": -1,
+        "q6_m": -1,
+        "h_c": -1,
+        "nad_c": 1,
+        "q6h2_m": 1
+      },
+      "lower_bound": 0,
+      "upper_bound": 1000,
+      "gene_reaction_rule": "",
+      "subsystem": "Oxidative phosphorylation",
+      "layout": {
+        "rank": 4,
+        "lane": 2
+      }
+    },
+    {
+      "id": "CYOO_u6m",
+      "name": "bc1 + cytochrome c oxidase (pumps H+ into the intermembrane space)",
+      "metabolites": {
+        "q6h2_m": -1,
+        "o2_m": -0.5,
+        "h_m": -4,
+        "q6_m": 1,
+        "h2o_m": 1,
+        "h_im": 4
+      },
+      "lower_bound": 0,
+      "upper_bound": 1000,
+      "gene_reaction_rule": "",
+      "subsystem": "Oxidative phosphorylation",
+      "layout": {
+        "rank": 5,
+        "lane": 3
+      }
+    },
+    {
+      "id": "ATPS4m",
+      "name": "Mitochondrial ATP synthase",
+      "metabolites": {
+        "adp_m": -1,
+        "pi_m": -1,
+        "h_im": -3,
+        "atp_m": 1,
+        "h2o_m": 1,
+        "h_m": 2
+      },
+      "lower_bound": 0,
+      "upper_bound": 1000,
+      "gene_reaction_rule": "",
+      "subsystem": "Oxidative phosphorylation",
+      "layout": {
+        "rank": 6,
+        "lane": 3
+      }
+    },
+    {
+      "id": "Htm",
+      "name": "Outer membrane pores (VDAC)",
+      "metabolites": {
+        "h_im": -1,
+        "h_c": 1
+      },
+      "lower_bound": -1000,
+      "upper_bound": 1000,
+      "gene_reaction_rule": "",
+      "subsystem": "Mitochondrial transport",
+      "layout": {
+        "rank": 7,
+        "lane": 3
+      }
+    },
+    {
+      "id": "ATPMm",
+      "name": "Mitochondrial maintenance",
+      "metabolites": {
+        "atp_m": -1,
+        "h2o_m": -1,
+        "adp_m": 1,
+        "h_m": 1,
+        "pi_m": 1
+      },
+      "lower_bound": 0,
+      "upper_bound": 1000,
+      "gene_reaction_rule": "",
+      "subsystem": "Oxidative phosphorylation",
+      "layout": {
+        "rank": 8,
+        "lane": 3
+      }
+    },
+    {
+      "id": "EX_glc__D_e",
+      "name": "D-Glucose exchange",
+      "metabolites": {
+        "glc__D_e": -1
+      },
+      "lower_bound": -10,
+      "upper_bound": 1000,
+      "gene_reaction_rule": "",
+      "subsystem": "Exchange",
+      "layout": {
+        "rank": 0,
+        "lane": 0
+      }
+    },
+    {
+      "id": "EX_o2_e",
+      "name": "O2 exchange",
+      "metabolites": {
+        "o2_e": -1
+      },
+      "lower_bound": -1000,
+      "upper_bound": 1000,
+      "gene_reaction_rule": "",
+      "subsystem": "Exchange",
+      "layout": {
+        "rank": 4,
+        "lane": 6
+      }
+    },
+    {
+      "id": "EX_co2_e",
+      "name": "CO2 exchange",
+      "metabolites": {
+        "co2_e": -1
+      },
+      "lower_bound": -1000,
+      "upper_bound": 1000,
+      "gene_reaction_rule": "",
+      "subsystem": "Exchange",
+      "layout": {
+        "rank": 12,
+        "lane": 5
+      }
+    },
+    {
+      "id": "EX_nh4_e",
+      "name": "Ammonium exchange",
+      "metabolites": {
+        "nh4_e": -1
+      },
+      "lower_bound": -1000,
+      "upper_bound": 1000,
+      "gene_reaction_rule": "",
+      "subsystem": "Exchange",
+      "layout": {
+        "rank": 16,
+        "lane": -5
+      }
+    },
+    {
+      "id": "EX_pi_e",
+      "name": "Phosphate exchange",
+      "metabolites": {
+        "pi_e": -1
+      },
+      "lower_bound": -1000,
+      "upper_bound": 1000,
+      "gene_reaction_rule": "",
+      "subsystem": "Exchange",
+      "layout": {
+        "rank": 3,
+        "lane": 7
+      }
+    },
+    {
+      "id": "EX_h2o_e",
+      "name": "H2O exchange",
+      "metabolites": {
+        "h2o_e": -1
+      },
+      "lower_bound": -1000,
+      "upper_bound": 1000,
+      "gene_reaction_rule": "",
+      "subsystem": "Exchange",
+      "layout": {
+        "rank": 5,
+        "lane": 7
+      }
+    },
+    {
+      "id": "EX_h_e",
+      "name": "H+ exchange",
+      "metabolites": {
+        "h_e": -1
+      },
+      "lower_bound": -1000,
+      "upper_bound": 1000,
+      "gene_reaction_rule": "",
+      "subsystem": "Exchange",
+      "layout": {
+        "rank": 2,
+        "lane": 7
+      }
+    },
+    {
+      "id": "EX_etoh_e",
+      "name": "Ethanol exchange",
+      "metabolites": {
+        "etoh_e": -1
+      },
+      "lower_bound": 0,
+      "upper_bound": 1000,
+      "gene_reaction_rule": "",
+      "subsystem": "Exchange",
+      "layout": {
+        "rank": 14,
+        "lane": -2
+      }
+    },
+    {
+      "id": "EX_ac_e",
+      "name": "Acetate exchange",
+      "metabolites": {
+        "ac_e": -1
+      },
+      "lower_bound": 0,
+      "upper_bound": 1000,
+      "gene_reaction_rule": "",
+      "subsystem": "Exchange",
+      "layout": {
+        "rank": 13,
+        "lane": -1
+      }
+    },
+    {
+      "id": "EX_glyc_e",
+      "name": "Glycerol exchange",
+      "metabolites": {
+        "glyc_e": -1
+      },
+      "lower_bound": 0,
+      "upper_bound": 1000,
+      "gene_reaction_rule": "",
+      "subsystem": "Exchange",
+      "layout": {
+        "rank": 6,
+        "lane": 3
+      }
+    },
+    {
+      "id": "EX_pyr_e",
+      "name": "Pyruvate exchange",
+      "metabolites": {
+        "pyr_e": -1
+      },
+      "lower_bound": 0,
+      "upper_bound": 1000,
+      "gene_reaction_rule": "",
+      "subsystem": "Exchange",
+      "layout": {
+        "rank": 10,
+        "lane": 2
+      }
+    },
+    {
+      "id": "BIOMASS_Sc_core",
+      "name": "Biomass (yeast core, with GAM)",
+      "metabolites": {
+        "3pg_c": -1.24,
+        "accoa_c": -2.91,
+        "atp_c": -52,
+        "e4p_c": -0.32,
+        "f6p_c": -0.15,
+        "g3p_c": -0.13,
+        "g6p_c": -0.3,
+        "gln__L_c": -0.25,
+        "glu__L_c": -4.2,
+        "h2o_c": -52,
+        "nad_c": -3.1,
+        "nadph_c": -11.5,
+        "oaa_c": -1.5,
+        "pep_c": -0.52,
+        "pyr_c": -2.5,
+        "r5p_c": -0.9,
+        "adp_c": 52,
+        "akg_c": 3.6,
+        "coa_c": 2.91,
+        "h_c": 52,
+        "nadh_c": 3.1,
+        "nadp_c": 11.5,
+        "pi_c": 52
+      },
+      "lower_bound": 0,
+      "upper_bound": 1000,
+      "gene_reaction_rule": "",
+      "subsystem": "Biomass",
+      "layout": {
+        "rank": 21,
+        "lane": 0
+      },
+      "objective_coefficient": 1
+    }
+  ],
+  "genes": [],
+  "objective": {
+    "BIOMASS_Sc_core": 1
+  }
+}

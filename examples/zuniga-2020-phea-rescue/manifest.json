@@ -1,0 +1,58 @@
+{
+  "id": "zuniga-2020-phea-rescue",
+  "name": "Zuñiga (2020): ΔpheA rescue",
+  "runtime": "zuniga-mat",
+  "map": "map.json",
+  "results": "results.json",
+  "fluxReference": 0.1,
+  "fluxUnits": "mmol gDW⁻¹ h⁻¹ (original model flux basis)",
+  "growthUnits": "h⁻¹",
+  "members": [
+    { "id": "Ec", "name": "E. coli K-12 MG1655", "model": null, "source": "M-models.mat:SingleM{4}", "modelDescription": "iJO1366", "reactionCount": 2583, "metaboliteCount": 1805 },
+    { "id": "Se", "name": "S. elongatus PCC7942 cscB+", "model": null, "source": "M-models.mat:SingleM{2}", "modelDescription": "iJB785", "reactionCount": 899, "metaboliteCount": 793 }
+  ],
+  "sources": [
+    { "file": "M-models.mat", "url": "https://raw.githubusercontent.com/CZLaboratory/SyntheticMicrobialCommunities/5c53e44d56118e9ce2f197aa6c2a5ee25d63ee75/M-models.mat", "sha256": "73ea4b815d6473152867a609cf9820c2d4f3d360d3d0994b957c09b8e2a7e25b" },
+    { "file": "CM-modelsKO.mat", "url": "https://raw.githubusercontent.com/CZLaboratory/SyntheticMicrobialCommunities/5c53e44d56118e9ce2f197aa6c2a5ee25d63ee75/CM-modelsKO.mat", "sha256": "6befdb155af023af1072f2f70c671a5b4d1de6ce768c6c0f0796ccfc3b7f43a3" }
+  ],
+  "license": {
+    "articleAndSupplementaryData": "CC BY 4.0",
+    "authorsRepository": "No explicit redistribution license at pinned revision",
+    "distribution": "Original MAT files and full converted models are downloaded and cached privately on the user's device; neither is redistributed by Coxeter.",
+    "articleLicenseURL": "https://creativecommons.org/licenses/by/4.0/"
+  },
+  "provenance": {
+    "doi": "10.1038/s41467-020-17612-8",
+    "article": "https://www.nature.com/articles/s41467-020-17612-8",
+    "repository": "https://github.com/CZLaboratory/SyntheticMicrobialCommunities",
+    "commit": "5c53e44d56118e9ce2f197aa6c2a5ee25d63ee75",
+    "reference": "Supplementary Data 9, row pheA/b2599",
+    "referenceURL": "https://static-content.springer.com/esm/art%3A10.1038%2Fs41467-020-17612-8/MediaObjects/41467_2020_17612_MOESM13_ESM.xlsx",
+    "conditionsURL": "https://static-content.springer.com/esm/art%3A10.1038%2Fs41467-020-17612-8/MediaObjects/41467_2020_17612_MOESM6_ESM.xlsx"
+  },
+  "formulation": {
+    "method": "Stationary FBA, maximize the original c vector",
+    "monoculture": "M-models.mat SingleM{4}, all source bounds unchanged",
+    "coculture": "CM-modelsKO.mat modelCo2{2}, all source bounds unchanged",
+    "objectiveMonoculture": { "BIOMASS_Ec_iJO1366_core_53p95M": 1 },
+    "objectiveCoculture": { "BIOMASS_Ec_iJO1366_core_53p95M_D": 1, "BOF_A": 1 },
+    "perturbation": { "gene": "b2599", "name": "pheA", "blockedReaction": "PPNDH_D", "bounds": [0, 0], "retainedIsozymeReaction": "CHORM_D", "retainedGPR": "b2599 or b2600" },
+    "sharedPool": "The authors' original stoichiometric shared metabolite pool; no abundance normalization or equal-growth coupling",
+    "importantOriginalBounds": { "SUCRtex_A": [0, 0.182], "SUCRtex_D": [0, 0], "EX_sucr_[smp]": [0, 0], "EX_glc__D_[smp]": [-0.1, 1000], "EX_cit_[smp]": [-0.02, 1000], "EX_phe__L_[smp]": [0, 0] }
+  },
+  "reproduction": {
+    "status": "reproduced",
+    "scope": "The ΔpheA stationary predictions in Supplementary Data 9; not all of the article's experiments or OptCom framework",
+    "referenceValues": { "mutantMonocultureEc": 0, "mutantCocultureEc": 0.077574047954866, "mutantCocultureSe": 0.0348484100758386, "PHEtex_D": 0.0143717559943752, "PHELtex_A": -0.0143717559943752 },
+    "tolerance": 1e-8,
+    "limitations": [
+      "WT monoculture is a calculation with the published source model, not a reported experimental growth rate.",
+      "The MAT files identify iJO1366/iJB785; the article names iML1515/iJB792. File identities and dimensions are retained rather than silently substituted.",
+      "The public LiveScript calls optimizeCbModel with the saved objective, although Methods discusses OptCom; a separate OptCom optimizer is not reproduced.",
+      "Source Data Fig.4b pheA values conflict with Supplementary Data 9 and the article text. Data 9 is the explicit numerical reference.",
+      "The source medium allows low glucose and citrate uptake. It is not described as a carbon-free numerical medium.",
+      "The original PFL grRules text is malformed. The valid original indexed rules field is translated with identical gene associations.",
+      "The first model download requires internet; subsequent loads use the private browser cache or a personal reproducibility export."
+    ]
+  }
+}

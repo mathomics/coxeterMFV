@@ -1,0 +1,101 @@
+{
+  "community": "steadycom-gut-nine",
+  "medium": {
+    "14glucan": 0.009940463,
+    "ala-L": 0.02859828,
+    "arg-L": 0.01706165,
+    "asp-L": 0.04167771,
+    "glc-D": 0.03832823,
+    "h2o": 1,
+    "lcts": 0.01427873,
+    "pi": 1
+  },
+  "source": "model9.xlsx + model9_rxns_params.txt, from the paper's distribution",
+  "generatedBy": "tools/build-published-assets.mjs",
+  "media": "media.csv",
+  "bounds": "bounds.csv",
+  "map": "map.json",
+  "members": [
+    {
+      "id": "Bt",
+      "name": "Bacteroides thetaiotamicron",
+      "reactions": 1443,
+      "metabolites": 1071,
+      "model": "model-Bt.json",
+      "preview": "preview-Bt.json",
+      "previewReactions": 20
+    },
+    {
+      "id": "Fp",
+      "name": "Faecalibacterium prausnitzii",
+      "reactions": 804,
+      "metabolites": 596,
+      "model": "model-Fp.json",
+      "preview": "preview-Fp.json",
+      "previewReactions": 20
+    },
+    {
+      "id": "Kp",
+      "name": "Klebsiella pneumonia",
+      "reactions": 1960,
+      "metabolites": 1349,
+      "model": "model-Kp.json",
+      "preview": "preview-Kp.json",
+      "previewReactions": 20
+    },
+    {
+      "id": "St",
+      "name": "Streptococcus thermophilus",
+      "reactions": 467,
+      "metabolites": 408,
+      "model": "model-St.json",
+      "preview": "preview-St.json",
+      "previewReactions": 20
+    },
+    {
+      "id": "Ba",
+      "name": "Bifidobacterium adolescentis",
+      "reactions": 718,
+      "metabolites": 695,
+      "model": "model-Ba.json",
+      "preview": "preview-Ba.json",
+      "previewReactions": 20
+    },
+    {
+      "id": "Ec",
+      "name": "Escherichia coli",
+      "reactions": 2404,
+      "metabolites": 1624,
+      "model": "model-Ec.json",
+      "preview": "preview-Ec.json",
+      "previewReactions": 20
+    },
+    {
+      "id": "Ef",
+      "name": "Enterococcus faecalis",
+      "reactions": 539,
+      "metabolites": 449,
+      "model": "model-Ef.json",
+      "preview": "preview-Ef.json",
+      "previewReactions": 20
+    },
+    {
+      "id": "Er",
+      "name": "Eubacterium rectale",
+      "reactions": 457,
+      "metabolites": 409,
+      "model": "model-Er.json",
+      "preview": "preview-Er.json",
+      "previewReactions": 20
+    },
+    {
+      "id": "Lc",
+      "name": "Lactobacillus casei",
+      "reactions": 1101,
+      "metabolites": 1001,
+      "model": "model-Lc.json",
+      "preview": "preview-Lc.json",
+      "previewReactions": 20
+    }
+  ]
+}

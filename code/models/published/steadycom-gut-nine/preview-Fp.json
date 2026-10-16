@@ -1,0 +1,919 @@
+{
+ "id": "Fp_preview",
+ "name": "Faecalibacterium prausnitzii — map excerpt, 20 of 804 reactions",
+ "cell": {
+  "name": "Fp",
+  "organism": "Faecalibacterium prausnitzii",
+  "shape": "rounded",
+  "color": "#d97706",
+  "note": "804 reactions in the full model"
+ },
+ "compartments": {
+  "c": "Cytosol",
+  "e": "Extracellular"
+ },
+ "metabolites": [
+  {
+   "id": "h2o[c_Fp]",
+   "name": "h2o[c_Fp]",
+   "compartment": "c",
+   "formula": "H2O",
+   "charge": 0
+  },
+  {
+   "id": "h[c_Fp]",
+   "name": "h[c_Fp]",
+   "compartment": "c",
+   "formula": "H",
+   "charge": 0
+  },
+  {
+   "id": "glu-L[c_Fp]",
+   "name": "glu-L[c_Fp]",
+   "compartment": "c",
+   "formula": "C5H8O4N",
+   "charge": 0
+  },
+  {
+   "id": "nadp[c_Fp]",
+   "name": "nadp[c_Fp]",
+   "compartment": "c",
+   "formula": "C21H25N7O17P3",
+   "charge": 0
+  },
+  {
+   "id": "ACP[c_Fp]",
+   "name": "ACP[c_Fp]",
+   "compartment": "c",
+   "formula": "C11H20O6N2PSApo_acp",
+   "charge": 0
+  },
+  {
+   "id": "pi[c_Fp]",
+   "name": "pi[c_Fp]",
+   "compartment": "c",
+   "formula": "HO4P",
+   "charge": 0
+  },
+  {
+   "id": "coa[c_Fp]",
+   "name": "coa[c_Fp]",
+   "compartment": "c",
+   "formula": "C21H32N7O16P3S",
+   "charge": 0
+  },
+  {
+   "id": "nad[c_Fp]",
+   "name": "nad[c_Fp]",
+   "compartment": "c",
+   "formula": "C21H26N7O14P2",
+   "charge": 0
+  },
+  {
+   "id": "asp-L[c_Fp]",
+   "name": "asp-L[c_Fp]",
+   "compartment": "c",
+   "formula": "C4H6O4N",
+   "charge": 0
+  },
+  {
+   "id": "atp[c_Fp]",
+   "name": "atp[c_Fp]",
+   "compartment": "c",
+   "formula": "C10H12N5O13P3",
+   "charge": 0
+  },
+  {
+   "id": "adp[c_Fp]",
+   "name": "adp[c_Fp]",
+   "compartment": "c",
+   "formula": "C10H12N5O10P2",
+   "charge": 0
+  },
+  {
+   "id": "thmpp[c_Fp]",
+   "name": "thmpp[c_Fp]",
+   "compartment": "c",
+   "formula": "C12H16O7N4P2S",
+   "charge": 0
+  },
+  {
+   "id": "fad[c_Fp]",
+   "name": "fad[c_Fp]",
+   "compartment": "c",
+   "formula": "C27H31O15N9P2",
+   "charge": 0
+  },
+  {
+   "id": "apoACP[c_Fp]",
+   "name": "apoACP[c_Fp]",
+   "compartment": "c",
+   "formula": "Apo_acp",
+   "charge": 0
+  },
+  {
+   "id": "gln-L[c_Fp]",
+   "name": "gln-L[c_Fp]",
+   "compartment": "c",
+   "formula": "C5H10O3N2",
+   "charge": 0
+  },
+  {
+   "id": "ppi[c_Fp]",
+   "name": "ppi[c_Fp]",
+   "compartment": "c",
+   "formula": "HO7P2",
+   "charge": 0
+  },
+  {
+   "id": "gtp[c_Fp]",
+   "name": "gtp[c_Fp]",
+   "compartment": "c",
+   "formula": "C10H12O14N5P3",
+   "charge": 0
+  },
+  {
+   "id": "10fthf[c_Fp]",
+   "name": "10fthf[c_Fp]",
+   "compartment": "c",
+   "formula": "C20H21O7N7",
+   "charge": 0
+  },
+  {
+   "id": "thf[c_Fp]",
+   "name": "thf[c_Fp]",
+   "compartment": "c",
+   "formula": "C19H21O6N7",
+   "charge": 0
+  },
+  {
+   "id": "ala-L[c_Fp]",
+   "name": "ala-L[c_Fp]",
+   "compartment": "c",
+   "formula": "C3H7O2N",
+   "charge": 0
+  },
+  {
+   "id": "gly[c_Fp]",
+   "name": "gly[c_Fp]",
+   "compartment": "c",
+   "formula": "C2H5O2N",
+   "charge": 0
+  },
+  {
+   "id": "his-L[c_Fp]",
+   "name": "his-L[c_Fp]",
+   "compartment": "c",
+   "formula": "C6H9O2N3",
+   "charge": 0
+  },
+  {
+   "id": "leu-L[c_Fp]",
+   "name": "leu-L[c_Fp]",
+   "compartment": "c",
+   "formula": "C6H13O2N",
+   "charge": 0
+  },
+  {
+   "id": "thr-L[c_Fp]",
+   "name": "thr-L[c_Fp]",
+   "compartment": "c",
+   "formula": "C4H9O3N",
+   "charge": 0
+  },
+  {
+   "id": "cys-L[c_Fp]",
+   "name": "cys-L[c_Fp]",
+   "compartment": "c",
+   "formula": "C3H7O2NS",
+   "charge": 0
+  },
+  {
+   "id": "pro-L[c_Fp]",
+   "name": "pro-L[c_Fp]",
+   "compartment": "c",
+   "formula": "C5H9NO2",
+   "charge": 0
+  },
+  {
+   "id": "arg-L[c_Fp]",
+   "name": "arg-L[c_Fp]",
+   "compartment": "c",
+   "formula": "C6H15O2N4",
+   "charge": 0
+  },
+  {
+   "id": "phe-L[c_Fp]",
+   "name": "phe-L[c_Fp]",
+   "compartment": "c",
+   "formula": "C9H11O2N",
+   "charge": 0
+  },
+  {
+   "id": "asn-L[c_Fp]",
+   "name": "asn-L[c_Fp]",
+   "compartment": "c",
+   "formula": "C4H8O3N2",
+   "charge": 0
+  },
+  {
+   "id": "btn[c_Fp]",
+   "name": "btn[c_Fp]",
+   "compartment": "c",
+   "formula": "C10H15O3N2S",
+   "charge": 0
+  },
+  {
+   "id": "amet[c_Fp]",
+   "name": "amet[c_Fp]",
+   "compartment": "c",
+   "formula": "C15H23O5N6S",
+   "charge": 0
+  },
+  {
+   "id": "met-L[c_Fp]",
+   "name": "met-L[c_Fp]",
+   "compartment": "c",
+   "formula": "C5H11O2NS",
+   "charge": 0
+  },
+  {
+   "id": "pydx5p[c_Fp]",
+   "name": "pydx5p[c_Fp]",
+   "compartment": "c",
+   "formula": "C8H8O6NP",
+   "charge": 0
+  },
+  {
+   "id": "pg160[c_Fp]",
+   "name": "pg160[c_Fp]",
+   "compartment": "c",
+   "formula": "C38H74O10P",
+   "charge": 0
+  },
+  {
+   "id": "pg181[c_Fp]",
+   "name": "pg181[c_Fp]",
+   "compartment": "c",
+   "formula": "C42H78O10P",
+   "charge": 0
+  },
+  {
+   "id": "fe2[c_Fp]",
+   "name": "fe2[c_Fp]",
+   "compartment": "c",
+   "formula": "Fe",
+   "charge": 0
+  },
+  {
+   "id": "cu2[c_Fp]",
+   "name": "cu2[c_Fp]",
+   "compartment": "c",
+   "formula": "Cu",
+   "charge": 0
+  },
+  {
+   "id": "udcpdp[c_Fp]",
+   "name": "udcpdp[c_Fp]",
+   "compartment": "c",
+   "formula": "C55H89O7P2",
+   "charge": 0
+  },
+  {
+   "id": "5mthf[c_Fp]",
+   "name": "5mthf[c_Fp]",
+   "compartment": "c",
+   "formula": "C20H24O6N7",
+   "charge": 0
+  },
+  {
+   "id": "pg120[c_Fp]",
+   "name": "pg120[c_Fp]",
+   "compartment": "c",
+   "formula": "C30H58O10P",
+   "charge": 0
+  },
+  {
+   "id": "trp-L[c_Fp]",
+   "name": "trp-L[c_Fp]",
+   "compartment": "c",
+   "formula": "C11H12O2N2",
+   "charge": 0
+  },
+  {
+   "id": "lys-L[c_Fp]",
+   "name": "lys-L[c_Fp]",
+   "compartment": "c",
+   "formula": "C6H15O2N2",
+   "charge": 0
+  },
+  {
+   "id": "pg140[c_Fp]",
+   "name": "pg140[c_Fp]",
+   "compartment": "c",
+   "formula": "C34H66O10P",
+   "charge": 0
+  },
+  {
+   "id": "dttp[c_Fp]",
+   "name": "dttp[c_Fp]",
+   "compartment": "c",
+   "formula": "C10H13O14N2P3",
+   "charge": 0
+  },
+  {
+   "id": "cbl1[c_Fp]",
+   "name": "cbl1[c_Fp]",
+   "compartment": "c",
+   "formula": "C62H88CoN13O14P",
+   "charge": 0
+  },
+  {
+   "id": "clpn140[c_Fp]",
+   "name": "clpn140[c_Fp]",
+   "compartment": "c",
+   "formula": "C65H124O17P2",
+   "charge": 0
+  },
+  {
+   "id": "clpn181[c_Fp]",
+   "name": "clpn181[c_Fp]",
+   "compartment": "c",
+   "formula": "C81H148O17P2",
+   "charge": 0
+  },
+  {
+   "id": "k[c_Fp]",
+   "name": "k[c_Fp]",
+   "compartment": "c",
+   "formula": "K",
+   "charge": 0
+  },
+  {
+   "id": "pg180[c_Fp]",
+   "name": "pg180[c_Fp]",
+   "compartment": "c",
+   "formula": "C42H82O10P",
+   "charge": 0
+  },
+  {
+   "id": "ctp[c_Fp]",
+   "name": "ctp[c_Fp]",
+   "compartment": "c",
+   "formula": "C9H12O14N3P3",
+   "charge": 0
+  },
+  {
+   "id": "peptido_EC[c_Fp]",
+   "name": "peptido_EC[c_Fp]",
+   "compartment": "c",
+   "formula": "C40H62O21N8",
+   "charge": 0
+  },
+  {
+   "id": "ser-L[c_Fp]",
+   "name": "ser-L[c_Fp]",
+   "compartment": "c",
+   "formula": "C3H7O3N",
+   "charge": 0
+  },
+  {
+   "id": "so4[c_Fp]",
+   "name": "so4[c_Fp]",
+   "compartment": "c",
+   "formula": "O4S",
+   "charge": 0
+  },
+  {
+   "id": "mg2[c_Fp]",
+   "name": "mg2[c_Fp]",
+   "compartment": "c",
+   "formula": "Mg",
+   "charge": 0
+  },
+  {
+   "id": "cobalt2[c_Fp]",
+   "name": "cobalt2[c_Fp]",
+   "compartment": "c",
+   "formula": "Co",
+   "charge": 0
+  },
+  {
+   "id": "clpn180[c_Fp]",
+   "name": "clpn180[c_Fp]",
+   "compartment": "c",
+   "formula": "C81H156O17P2",
+   "charge": 0
+  },
+  {
+   "id": "datp[c_Fp]",
+   "name": "datp[c_Fp]",
+   "compartment": "c",
+   "formula": "C10H12O12N5P3",
+   "charge": 0
+  },
+  {
+   "id": "dgtp[c_Fp]",
+   "name": "dgtp[c_Fp]",
+   "compartment": "c",
+   "formula": "C10H12O13N5P3",
+   "charge": 0
+  },
+  {
+   "id": "dctp[c_Fp]",
+   "name": "dctp[c_Fp]",
+   "compartment": "c",
+   "formula": "C9H12O13N3P3",
+   "charge": 0
+  },
+  {
+   "id": "cl[c_Fp]",
+   "name": "cl[c_Fp]",
+   "compartment": "c",
+   "formula": "Cl",
+   "charge": 0
+  },
+  {
+   "id": "fe3[c_Fp]",
+   "name": "fe3[c_Fp]",
+   "compartment": "c",
+   "formula": "Fe",
+   "charge": 0
+  },
+  {
+   "id": "ribflv[c_Fp]",
+   "name": "ribflv[c_Fp]",
+   "compartment": "c",
+   "formula": "C17H20O6N4",
+   "charge": 0
+  },
+  {
+   "id": "utp[c_Fp]",
+   "name": "utp[c_Fp]",
+   "compartment": "c",
+   "formula": "C9H11O15N2P3",
+   "charge": 0
+  },
+  {
+   "id": "ile-L[c_Fp]",
+   "name": "ile-L[c_Fp]",
+   "compartment": "c",
+   "formula": "C6H13O2N",
+   "charge": 0
+  },
+  {
+   "id": "tyr-L[c_Fp]",
+   "name": "tyr-L[c_Fp]",
+   "compartment": "c",
+   "formula": "C9H11O3N",
+   "charge": 0
+  },
+  {
+   "id": "ca2[c_Fp]",
+   "name": "ca2[c_Fp]",
+   "compartment": "c",
+   "formula": "Ca",
+   "charge": 0
+  },
+  {
+   "id": "val-L[c_Fp]",
+   "name": "val-L[c_Fp]",
+   "compartment": "c",
+   "formula": "C5H11O2N",
+   "charge": 0
+  },
+  {
+   "id": "clpn160[c_Fp]",
+   "name": "clpn160[c_Fp]",
+   "compartment": "c",
+   "formula": "C73H140O17P2",
+   "charge": 0
+  },
+  {
+   "id": "cps_fp[e_Fp]",
+   "name": "Capsular polysaccharide (F. prausnitzii, putative)",
+   "compartment": "e",
+   "formula": "C63H93O66N9P8",
+   "charge": 0
+  },
+  {
+   "id": "biomassFp[e_Fp]",
+   "name": "Biomass of Faecalibacterium prausnitzii",
+   "compartment": "e",
+   "formula": "C43.73094770568205H71.63546816672353O15.305993361283816N7.846159568214003P1.292074962428731S0.188730993838005Co0.007801287320533Ca0.003900643660266Fe0.007801287320533K0.003900643660266Mg0.003900643660266Cu0.003900643660266Cl0.003900643660266",
+   "charge": 0
+  },
+  {
+   "id": "3mop[e_Fp]",
+   "name": "(S)-3-Methyl-2-oxopentanoate",
+   "compartment": "e",
+   "formula": "C6H9O3",
+   "charge": 0
+  },
+  {
+   "id": "h[e_Fp]",
+   "name": "H+",
+   "compartment": "e",
+   "formula": "H",
+   "charge": 0
+  },
+  {
+   "id": "gln-L[e_Fp]",
+   "name": "L-Glutamine",
+   "compartment": "e",
+   "formula": "C5H10O3N2",
+   "charge": 0
+  },
+  {
+   "id": "5oxpro[e_Fp]",
+   "name": "5-Oxoproline",
+   "compartment": "e",
+   "formula": "C5H6O3N",
+   "charge": 0
+  },
+  {
+   "id": "nh4[e_Fp]",
+   "name": "Ammonium",
+   "compartment": "e",
+   "formula": "H4N",
+   "charge": 0
+  },
+  {
+   "id": "acasp[e_Fp]",
+   "name": "N-acetyl-L-aspartate",
+   "compartment": "e",
+   "formula": "C6H7O5N",
+   "charge": 0
+  },
+  {
+   "id": "acgam[e_Fp]",
+   "name": "N-Acetyl-D-glucosamine",
+   "compartment": "e",
+   "formula": "C8H15O6N",
+   "charge": 0
+  },
+  {
+   "id": "acglu[e_Fp]",
+   "name": "N-Acetyl-L-glutamate",
+   "compartment": "e",
+   "formula": "C7H9O5N",
+   "charge": 0
+  },
+  {
+   "id": "3mop[c_Fp]",
+   "name": "3mop[c_Fp]",
+   "compartment": "c",
+   "formula": "C6H9O3",
+   "charge": 0
+  },
+  {
+   "id": "acasp[c_Fp]",
+   "name": "acasp[c_Fp]",
+   "compartment": "c",
+   "formula": "C6H7O5N",
+   "charge": 0
+  },
+  {
+   "id": "acglu[c_Fp]",
+   "name": "acglu[c_Fp]",
+   "compartment": "c",
+   "formula": "C7H9O5N",
+   "charge": 0
+  },
+  {
+   "id": "ala-D[c_Fp]",
+   "name": "ala-D[c_Fp]",
+   "compartment": "c",
+   "formula": "C3H7O2N",
+   "charge": 0
+  },
+  {
+   "id": "ala-L[e_Fp]",
+   "name": "L-Alanine",
+   "compartment": "e",
+   "formula": "C3H7O2N",
+   "charge": 0
+  },
+  {
+   "id": "cl[e_Fp]",
+   "name": "Chloride",
+   "compartment": "e",
+   "formula": "Cl",
+   "charge": 0
+  },
+  {
+   "id": "glu-D[c_Fp]",
+   "name": "glu-D[c_Fp]",
+   "compartment": "c",
+   "formula": "C5H8O4N",
+   "charge": 0
+  },
+  {
+   "id": "gly[e_Fp]",
+   "name": "Glycine",
+   "compartment": "e",
+   "formula": "C2H5O2N",
+   "charge": 0
+  },
+  {
+   "id": "h2o[e_Fp]",
+   "name": "H2O",
+   "compartment": "e",
+   "formula": "H2O",
+   "charge": 0
+  },
+  {
+   "id": "his-L[e_Fp]",
+   "name": "L-Histidine",
+   "compartment": "e",
+   "formula": "C6H9O2N3",
+   "charge": 0
+  }
+ ],
+ "reactions": [
+  {
+   "id": "Biomass_FP_Fp",
+   "name": "Curated ModelSEED biomass reaction F. prausnitzii",
+   "metabolites": {
+    "h2o[c_Fp]": -36.390232751263,
+    "h[c_Fp]": 40,
+    "glu-L[c_Fp]": -0.177599022456,
+    "nadp[c_Fp]": -0.00390064366,
+    "ACP[c_Fp]": -0.00390064366,
+    "pi[c_Fp]": 39.996115173135,
+    "coa[c_Fp]": -0.00390064366,
+    "nad[c_Fp]": -0.00390064366,
+    "asp-L[c_Fp]": -0.162801994414,
+    "atp[c_Fp]": -40.11800161603,
+    "adp[c_Fp]": 40,
+    "thmpp[c_Fp]": -0.00390064366,
+    "fad[c_Fp]": -0.00390064366,
+    "apoACP[c_Fp]": 0.00390064366,
+    "gln-L[c_Fp]": -0.177599022456,
+    "ppi[c_Fp]": 0.417882501258,
+    "gtp[c_Fp]": -0.145056660269,
+    "10fthf[c_Fp]": -0.00390064366,
+    "thf[c_Fp]": -0.00390064366,
+    "ala-L[c_Fp]": -0.346901164678,
+    "gly[c_Fp]": -0.413317829691,
+    "his-L[c_Fp]": -0.064254342631,
+    "leu-L[c_Fp]": -0.304306812978,
+    "thr-L[c_Fp]": -0.171105811838,
+    "cys-L[c_Fp]": -0.061727124011,
+    "pro-L[c_Fp]": -0.149447902065,
+    "arg-L[c_Fp]": -0.199978400076,
+    "phe-L[c_Fp]": -0.125563154035,
+    "asn-L[c_Fp]": -0.162801994414,
+    "btn[c_Fp]": -0.00390064366,
+    "amet[c_Fp]": -0.00390064366,
+    "met-L[c_Fp]": -0.103600007865,
+    "pydx5p[c_Fp]": -0.00390064366,
+    "pg160[c_Fp]": -0.125257917638,
+    "pg181[c_Fp]": -0.125257917638,
+    "fe2[c_Fp]": -0.00390064366,
+    "cu2[c_Fp]": -0.00390064366,
+    "udcpdp[c_Fp]": -0.064152365926,
+    "5mthf[c_Fp]": -0.00390064366,
+    "pg120[c_Fp]": -0.009851504699,
+    "trp-L[c_Fp]": -0.038263463465,
+    "lys-L[c_Fp]": -0.231390000157,
+    "pg140[c_Fp]": -0.009851504699,
+    "dttp[c_Fp]": -0.016304479609,
+    "cbl1[c_Fp]": -0.00390064366,
+    "clpn140[c_Fp]": -0.009851504699,
+    "clpn181[c_Fp]": -0.009851504699,
+    "k[c_Fp]": -0.00390064366,
+    "pg180[c_Fp]": -0.009851504699,
+    "ctp[c_Fp]": -0.090100234509,
+    "peptido_EC[c_Fp]": -0.064152365926,
+    "ser-L[c_Fp]": -0.145472891719,
+    "so4[c_Fp]": -0.00390064366,
+    "mg2[c_Fp]": -0.00390064366,
+    "cobalt2[c_Fp]": -0.00390064366,
+    "clpn180[c_Fp]": -0.009851504699,
+    "datp[c_Fp]": -0.016304479609,
+    "dgtp[c_Fp]": -0.016304479609,
+    "dctp[c_Fp]": -0.016304479609,
+    "cl[c_Fp]": -0.00390064366,
+    "fe3[c_Fp]": -0.00390064366,
+    "ribflv[c_Fp]": -0.00390064366,
+    "utp[c_Fp]": -0.097307975782,
+    "ile-L[c_Fp]": -0.19601032692,
+    "tyr-L[c_Fp]": -0.093131786902,
+    "ca2[c_Fp]": -0.00390064366,
+    "val-L[c_Fp]": -0.28553477459,
+    "clpn160[c_Fp]": -0.009851504699,
+    "cps_fp[e_Fp]": -0.00390064366,
+    "biomassFp[e_Fp]": 1
+   },
+   "lower_bound": 0,
+   "upper_bound": 1000,
+   "subsystem": "Biomass"
+  },
+  {
+   "id": "IEX_3mop[u]tr_Fp",
+   "name": "(S)-3-Methyl-2-oxopentanoate exchange",
+   "metabolites": {
+    "3mop[e_Fp]": -1
+   },
+   "lower_bound": -1000,
+   "upper_bound": 1000,
+   "subsystem": "Transport, intercellular"
+  },
+  {
+   "id": "IEX_h[u]tr_Fp",
+   "name": "H+ exchange",
+   "metabolites": {
+    "h[e_Fp]": -1
+   },
+   "lower_bound": -1000,
+   "upper_bound": 1000,
+   "subsystem": "Transport, intercellular"
+  },
+  {
+   "id": "IEX_gln-L[u]tr_Fp",
+   "name": "L-Glutamine exchange",
+   "metabolites": {
+    "gln-L[e_Fp]": -1
+   },
+   "lower_bound": -1000,
+   "upper_bound": 1000,
+   "subsystem": "Transport, intercellular"
+  },
+  {
+   "id": "IEX_5oxpro[u]tr_Fp",
+   "name": "5-Oxoproline exchange",
+   "metabolites": {
+    "5oxpro[e_Fp]": -1
+   },
+   "lower_bound": -1000,
+   "upper_bound": 1000,
+   "subsystem": "Transport, intercellular"
+  },
+  {
+   "id": "IEX_nh4[u]tr_Fp",
+   "name": "Ammonium exchange",
+   "metabolites": {
+    "nh4[e_Fp]": -1
+   },
+   "lower_bound": -1000,
+   "upper_bound": 1000,
+   "subsystem": "Transport, intercellular"
+  },
+  {
+   "id": "IEX_acasp[u]tr_Fp",
+   "name": "N-acetyl-L-aspartate exchange",
+   "metabolites": {
+    "acasp[e_Fp]": -1
+   },
+   "lower_bound": -1000,
+   "upper_bound": 1000,
+   "subsystem": "Transport, intercellular"
+  },
+  {
+   "id": "IEX_acgam[u]tr_Fp",
+   "name": "N-Acetyl-D-glucosamine exchange",
+   "metabolites": {
+    "acgam[e_Fp]": -1
+   },
+   "lower_bound": -1000,
+   "upper_bound": 1000,
+   "subsystem": "Transport, intercellular"
+  },
+  {
+   "id": "IEX_acglu[u]tr_Fp",
+   "name": "N-Acetyl-L-glutamate exchange",
+   "metabolites": {
+    "acglu[e_Fp]": -1
+   },
+   "lower_bound": -1000,
+   "upper_bound": 1000,
+   "subsystem": "Transport, intercellular"
+  },
+  {
+   "id": "3MOPt_Fp",
+   "name": "3-Methyl-2-oxopentanoate export",
+   "metabolites": {
+    "3mop[c_Fp]": -1,
+    "3mop[e_Fp]": 1
+   },
+   "lower_bound": 0,
+   "upper_bound": 1000,
+   "subsystem": "Transport, Extracellular"
+  },
+  {
+   "id": "ACASPt_Fp",
+   "name": "N-acetyl-L-aspartate export",
+   "metabolites": {
+    "acasp[c_Fp]": -1,
+    "acasp[e_Fp]": 1
+   },
+   "lower_bound": 0,
+   "upper_bound": 1000,
+   "subsystem": "Transport, Extracellular"
+  },
+  {
+   "id": "ACGLUt_Fp",
+   "name": "N-acetylglutamate export",
+   "metabolites": {
+    "acglu[c_Fp]": -1,
+    "acglu[e_Fp]": 1
+   },
+   "lower_bound": 0,
+   "upper_bound": 1000,
+   "subsystem": "Transport, Extracellular"
+  },
+  {
+   "id": "ALAR_Fp",
+   "name": "alanine racemase",
+   "metabolites": {
+    "ala-D[c_Fp]": 1,
+    "ala-L[c_Fp]": -1
+   },
+   "lower_bound": -1000,
+   "upper_bound": 1000,
+   "subsystem": "Alanine and Aspartate Metabolism"
+  },
+  {
+   "id": "ALAte_Fp",
+   "name": "L-alanine export via diffusion",
+   "metabolites": {
+    "ala-L[c_Fp]": -1,
+    "ala-L[e_Fp]": 1
+   },
+   "lower_bound": 0,
+   "upper_bound": 1000,
+   "subsystem": "Transport, Extracellular"
+  },
+  {
+   "id": "Clt_Fp",
+   "name": "chlorideion transport out via diffusion",
+   "metabolites": {
+    "cl[c_Fp]": 1,
+    "cl[e_Fp]": -1
+   },
+   "lower_bound": -1000,
+   "upper_bound": 1000,
+   "subsystem": "Transport, Extracellular"
+  },
+  {
+   "id": "GLNte_Fp",
+   "name": "L-glutamine export (cytosol to extracellular)",
+   "metabolites": {
+    "gln-L[e_Fp]": 1,
+    "gln-L[c_Fp]": -1
+   },
+   "lower_bound": 0,
+   "upper_bound": 1000,
+   "subsystem": "Transport, Extracellular"
+  },
+  {
+   "id": "GLUR_Fp",
+   "name": "glutamate racemase",
+   "metabolites": {
+    "glu-L[c_Fp]": 1,
+    "glu-D[c_Fp]": -1
+   },
+   "lower_bound": -1000,
+   "upper_bound": 1000,
+   "subsystem": "Glutamate Metabolism"
+  },
+  {
+   "id": "GLYte_Fp",
+   "name": "Glycine export via diffusion",
+   "metabolites": {
+    "gly[c_Fp]": -1,
+    "gly[e_Fp]": 1
+   },
+   "lower_bound": 0,
+   "upper_bound": 1000,
+   "subsystem": "Transport, Extracellular"
+  },
+  {
+   "id": "H2Ot_Fp",
+   "name": "H2O transport via diffusion",
+   "metabolites": {
+    "h2o[c_Fp]": 1,
+    "h2o[e_Fp]": -1
+   },
+   "lower_bound": -1000,
+   "upper_bound": 1000,
+   "subsystem": "Transport, Extracellular"
+  },
+  {
+   "id": "HISte_Fp",
+   "name": "L-histidine export via diffusion",
+   "metabolites": {
+    "his-L[c_Fp]": -1,
+    "his-L[e_Fp]": 1
+   },
+   "lower_bound": 0,
+   "upper_bound": 1000,
+   "subsystem": "Transport, Extracellular"
+  }
+ ],
+ "genes": [],
+ "objective": {
+  "Biomass_FP_Fp": 1
+ }
+}

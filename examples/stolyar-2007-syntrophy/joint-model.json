@@ -1,0 +1,3729 @@
+{
+ "id": "stolyar2007",
+ "name": "Stolyar 2007 joint model",
+ "compartments": {
+  "c": "Cytosol",
+  "e": "Extracellular"
+ },
+ "metabolites": [
+  {
+   "id": "Ribu5P",
+   "name": "D-ribulose-5-phosphate",
+   "compartment": "c",
+   "formula": "",
+   "charge": 0
+  },
+  {
+   "id": "R5P",
+   "name": "D-ribose-5P",
+   "compartment": "c",
+   "formula": "",
+   "charge": 0
+  },
+  {
+   "id": "X5P",
+   "name": "D-xylulose-5-phosphate",
+   "compartment": "c",
+   "formula": "",
+   "charge": 0
+  },
+  {
+   "id": "Sed7P",
+   "name": "D-seduheptulose-7-phosphate",
+   "compartment": "c",
+   "formula": "",
+   "charge": 0
+  },
+  {
+   "id": "E4P",
+   "name": "D-erythrose-5-phosphate",
+   "compartment": "c",
+   "formula": "",
+   "charge": 0
+  },
+  {
+   "id": "F6P",
+   "name": "D-fructose-6-phosphate",
+   "compartment": "c",
+   "formula": "",
+   "charge": 0
+  },
+  {
+   "id": "FBP",
+   "name": "D-fructose-1,6-bisphosphate",
+   "compartment": "c",
+   "formula": "",
+   "charge": 0
+  },
+  {
+   "id": "GAP",
+   "name": "glyceraldehyde",
+   "compartment": "c",
+   "formula": "",
+   "charge": 0
+  },
+  {
+   "id": "3PG",
+   "name": "3-phospho-D-glycerate",
+   "compartment": "c",
+   "formula": "",
+   "charge": 0
+  },
+  {
+   "id": "PEP",
+   "name": "phosphoenolpyruvate",
+   "compartment": "c",
+   "formula": "",
+   "charge": 0
+  },
+  {
+   "id": "Pyr",
+   "name": "Pyruvate",
+   "compartment": "c",
+   "formula": "",
+   "charge": 0
+  },
+  {
+   "id": "AcCoA",
+   "name": "Acetyl",
+   "compartment": "c",
+   "formula": "",
+   "charge": 0
+  },
+  {
+   "id": "Cit",
+   "name": "Citrate",
+   "compartment": "c",
+   "formula": "",
+   "charge": 0
+  },
+  {
+   "id": "Isocit",
+   "name": "Isocitrate",
+   "compartment": "c",
+   "formula": "",
+   "charge": 0
+  },
+  {
+   "id": "aKG",
+   "name": "2-oxoglutaric",
+   "compartment": "c",
+   "formula": "",
+   "charge": 0
+  },
+  {
+   "id": "SucCoA",
+   "name": "succinyl-S-CoA",
+   "compartment": "c",
+   "formula": "",
+   "charge": 0
+  },
+  {
+   "id": "Suc",
+   "name": "succinate",
+   "compartment": "c",
+   "formula": "",
+   "charge": 0
+  },
+  {
+   "id": "fum",
+   "name": "fumarate",
+   "compartment": "c",
+   "formula": "",
+   "charge": 0
+  },
+  {
+   "id": "Mal",
+   "name": "malate",
+   "compartment": "c",
+   "formula": "",
+   "charge": 0
+  },
+  {
+   "id": "OAA",
+   "name": "oxaloacetate",
+   "compartment": "c",
+   "formula": "",
+   "charge": 0
+  },
+  {
+   "id": "Asp",
+   "name": "aspartic",
+   "compartment": "c",
+   "formula": "",
+   "charge": 0
+  },
+  {
+   "id": "ASA",
+   "name": "aspartate-4-semialdehyde",
+   "compartment": "c",
+   "formula": "",
+   "charge": 0
+  },
+  {
+   "id": "DDP",
+   "name": "2,3-dihydrodipicolinate",
+   "compartment": "c",
+   "formula": "",
+   "charge": 0
+  },
+  {
+   "id": "THDP",
+   "name": "2,3,4,5-tetrahydrodipicolinate",
+   "compartment": "c",
+   "formula": "",
+   "charge": 0
+  },
+  {
+   "id": "SDAP",
+   "name": "N-succinyl-L-2,6-diaminoheptanedioate",
+   "compartment": "c",
+   "formula": "",
+   "charge": 0
+  },
+  {
+   "id": "mDAP",
+   "name": "meso-diaminoheptanedioate",
+   "compartment": "c",
+   "formula": "",
+   "charge": 0
+  },
+  {
+   "id": "Lys",
+   "name": "lysine",
+   "compartment": "c",
+   "formula": "",
+   "charge": 0
+  },
+  {
+   "id": "AcOH(exch)",
+   "name": "acetic",
+   "compartment": "e",
+   "formula": "",
+   "charge": 0
+  },
+  {
+   "id": "Glu",
+   "name": "L-glutamic",
+   "compartment": "c",
+   "formula": "",
+   "charge": 0
+  },
+  {
+   "id": "Gln",
+   "name": "L-glutamine",
+   "compartment": "c",
+   "formula": "",
+   "charge": 0
+  },
+  {
+   "id": "Pro",
+   "name": "proline",
+   "compartment": "c",
+   "formula": "",
+   "charge": 0
+  },
+  {
+   "id": "Arg",
+   "name": "arginine",
+   "compartment": "c",
+   "formula": "",
+   "charge": 0
+  },
+  {
+   "id": "Cys",
+   "name": "cysteine",
+   "compartment": "c",
+   "formula": "",
+   "charge": 0
+  },
+  {
+   "id": "Hse",
+   "name": "L-homoserine",
+   "compartment": "c",
+   "formula": "",
+   "charge": 0
+  },
+  {
+   "id": "Met",
+   "name": "methionine",
+   "compartment": "c",
+   "formula": "",
+   "charge": 0
+  },
+  {
+   "id": "Thr",
+   "name": "threonine",
+   "compartment": "c",
+   "formula": "",
+   "charge": 0
+  },
+  {
+   "id": "Ile",
+   "name": "isoleucine",
+   "compartment": "c",
+   "formula": "",
+   "charge": 0
+  },
+  {
+   "id": "Ser",
+   "name": "serine",
+   "compartment": "c",
+   "formula": "",
+   "charge": 0
+  },
+  {
+   "id": "Gly",
+   "name": "glycine",
+   "compartment": "c",
+   "formula": "",
+   "charge": 0
+  },
+  {
+   "id": "CHR",
+   "name": "chorismic",
+   "compartment": "c",
+   "formula": "",
+   "charge": 0
+  },
+  {
+   "id": "PPA",
+   "name": "prephenic",
+   "compartment": "c",
+   "formula": "",
+   "charge": 0
+  },
+  {
+   "id": "Tyr",
+   "name": "tyrosine",
+   "compartment": "c",
+   "formula": "",
+   "charge": 0
+  },
+  {
+   "id": "Phe",
+   "name": "phenylalanine",
+   "compartment": "c",
+   "formula": "",
+   "charge": 0
+  },
+  {
+   "id": "Trp",
+   "name": "tryptophan",
+   "compartment": "c",
+   "formula": "",
+   "charge": 0
+  },
+  {
+   "id": "Val",
+   "name": "valine",
+   "compartment": "c",
+   "formula": "",
+   "charge": 0
+  },
+  {
+   "id": "Ala",
+   "name": "alanine",
+   "compartment": "c",
+   "formula": "",
+   "charge": 0
+  },
+  {
+   "id": "Leu",
+   "name": "leucine",
+   "compartment": "c",
+   "formula": "",
+   "charge": 0
+  },
+  {
+   "id": "His",
+   "name": "histidine",
+   "compartment": "c",
+   "formula": "",
+   "charge": 0
+  },
+  {
+   "id": "aIVA",
+   "name": "alpha-keto-isovaleric",
+   "compartment": "c",
+   "formula": "",
+   "charge": 0
+  },
+  {
+   "id": "SKA",
+   "name": "shikimic",
+   "compartment": "c",
+   "formula": "",
+   "charge": 0
+  },
+  {
+   "id": "Ind",
+   "name": "indole",
+   "compartment": "c",
+   "formula": "",
+   "charge": 0
+  },
+  {
+   "id": "CO2",
+   "name": "carbon",
+   "compartment": "c",
+   "formula": "",
+   "charge": 0
+  },
+  {
+   "id": "ALC",
+   "name": "aceto-lactic",
+   "compartment": "c",
+   "formula": "",
+   "charge": 0
+  },
+  {
+   "id": "mTHF",
+   "name": "methyl-tetrahydrofolate",
+   "compartment": "c",
+   "formula": "",
+   "charge": 0
+  },
+  {
+   "id": "Asn",
+   "name": "Asparagine",
+   "compartment": "c",
+   "formula": "",
+   "charge": 0
+  },
+  {
+   "id": "ATP",
+   "name": "ATP",
+   "compartment": "c",
+   "formula": "",
+   "charge": 0
+  },
+  {
+   "id": "NADH",
+   "name": "NADH",
+   "compartment": "c",
+   "formula": "",
+   "charge": 0
+  },
+  {
+   "id": "NADPH",
+   "name": "NADPH",
+   "compartment": "c",
+   "formula": "",
+   "charge": 0
+  },
+  {
+   "id": "Glyox",
+   "name": "Glyoxylate",
+   "compartment": "c",
+   "formula": "",
+   "charge": 0
+  },
+  {
+   "id": "G6P",
+   "name": "D-glucose-6-phosphate",
+   "compartment": "c",
+   "formula": "",
+   "charge": 0
+  },
+  {
+   "id": "NH3",
+   "name": "Ammonia",
+   "compartment": "c",
+   "formula": "",
+   "charge": 0
+  },
+  {
+   "id": "FADH",
+   "name": "FADH",
+   "compartment": "c",
+   "formula": "",
+   "charge": 0
+  },
+  {
+   "id": "PRPP",
+   "name": "PRPP",
+   "compartment": "c",
+   "formula": "",
+   "charge": 0
+  },
+  {
+   "id": "Form",
+   "name": "Formate",
+   "compartment": "c",
+   "formula": "",
+   "charge": 0
+  },
+  {
+   "id": "SO4",
+   "name": "SO4(-2)",
+   "compartment": "e",
+   "formula": "",
+   "charge": 0
+  },
+  {
+   "id": "APS",
+   "name": "APS",
+   "compartment": "c",
+   "formula": "",
+   "charge": 0
+  },
+  {
+   "id": "C3(red)",
+   "name": "Cytochrome3(reduced)",
+   "compartment": "c",
+   "formula": "",
+   "charge": 0
+  },
+  {
+   "id": "ADP",
+   "name": "ADP",
+   "compartment": "c",
+   "formula": "",
+   "charge": 0
+  },
+  {
+   "id": "H2",
+   "name": "hydrogen",
+   "compartment": "c",
+   "formula": "",
+   "charge": 0
+  },
+  {
+   "id": "H+",
+   "name": "external",
+   "compartment": "c",
+   "formula": "",
+   "charge": 0
+  },
+  {
+   "id": "Fdx(red)",
+   "name": "Ferrodoxin(reduced)",
+   "compartment": "c",
+   "formula": "",
+   "charge": 0
+  },
+  {
+   "id": "SO3",
+   "name": "SO3(-2)",
+   "compartment": "c",
+   "formula": "",
+   "charge": 0
+  },
+  {
+   "id": "H2S",
+   "name": "H2S",
+   "compartment": "e",
+   "formula": "",
+   "charge": 0
+  },
+  {
+   "id": "Lac",
+   "name": "Lactate",
+   "compartment": "c",
+   "formula": "",
+   "charge": 0
+  },
+  {
+   "id": "QH2",
+   "name": "Ubiquinone(reduced)",
+   "compartment": "c",
+   "formula": "",
+   "charge": 0
+  },
+  {
+   "id": "AcP",
+   "name": "Acetyl-P",
+   "compartment": "c",
+   "formula": "",
+   "charge": 0
+  },
+  {
+   "id": "EtOH",
+   "name": "Ethanol",
+   "compartment": "e",
+   "formula": "",
+   "charge": 0
+  },
+  {
+   "id": "H2(exch)",
+   "name": "Hydrogen(external)",
+   "compartment": "e",
+   "formula": "",
+   "charge": 0
+  },
+  {
+   "id": "glycerol",
+   "name": "glycerol",
+   "compartment": "e",
+   "formula": "",
+   "charge": 0
+  },
+  {
+   "id": "glycerol-P",
+   "name": "glycerol-3-phosphate",
+   "compartment": "c",
+   "formula": "",
+   "charge": 0
+  },
+  {
+   "id": "Form(exch)",
+   "name": "Formate(external)",
+   "compartment": "e",
+   "formula": "",
+   "charge": 0
+  },
+  {
+   "id": "ZM_R5P",
+   "name": "MM_D-ribose-5P",
+   "compartment": "c",
+   "formula": "",
+   "charge": 0
+  },
+  {
+   "id": "ZM_X5P",
+   "name": "MM_D-xylulose-5-phosphate",
+   "compartment": "c",
+   "formula": "",
+   "charge": 0
+  },
+  {
+   "id": "ZM_Sed7P",
+   "name": "MM_D-seduheptulose-7-phosphate",
+   "compartment": "c",
+   "formula": "",
+   "charge": 0
+  },
+  {
+   "id": "ZM_E4P",
+   "name": "MM_D-erythrose-5-phosphate",
+   "compartment": "c",
+   "formula": "",
+   "charge": 0
+  },
+  {
+   "id": "ZM_F6P",
+   "name": "MM_D-fructose-6-phosphate",
+   "compartment": "c",
+   "formula": "",
+   "charge": 0
+  },
+  {
+   "id": "ZM_FBP",
+   "name": "MM_D-fructose-1,6-bisphosphate",
+   "compartment": "c",
+   "formula": "",
+   "charge": 0
+  },
+  {
+   "id": "ZM_GAP",
+   "name": "MM_glyceraldehyde",
+   "compartment": "c",
+   "formula": "",
+   "charge": 0
+  },
+  {
+   "id": "ZM_3PG",
+   "name": "MM_3-phospho-D-glycerate",
+   "compartment": "c",
+   "formula": "",
+   "charge": 0
+  },
+  {
+   "id": "ZM_PEP",
+   "name": "MM_phosphoenolpyruvate",
+   "compartment": "c",
+   "formula": "",
+   "charge": 0
+  },
+  {
+   "id": "ZM_Pyr",
+   "name": "MM_Pyruvate",
+   "compartment": "c",
+   "formula": "",
+   "charge": 0
+  },
+  {
+   "id": "ZM_AcCoA",
+   "name": "MM_Acetyl",
+   "compartment": "c",
+   "formula": "",
+   "charge": 0
+  },
+  {
+   "id": "ZM_aKG",
+   "name": "MM_2-oxoglutaric",
+   "compartment": "c",
+   "formula": "",
+   "charge": 0
+  },
+  {
+   "id": "ZM_SucCoA",
+   "name": "MM_succinyl-S-CoA",
+   "compartment": "c",
+   "formula": "",
+   "charge": 0
+  },
+  {
+   "id": "ZM_Suc",
+   "name": "MM_succinate",
+   "compartment": "c",
+   "formula": "",
+   "charge": 0
+  },
+  {
+   "id": "ZM_fum",
+   "name": "MM_fumarate",
+   "compartment": "c",
+   "formula": "",
+   "charge": 0
+  },
+  {
+   "id": "ZM_Mal",
+   "name": "MM_malate",
+   "compartment": "c",
+   "formula": "",
+   "charge": 0
+  },
+  {
+   "id": "ZM_OAA",
+   "name": "MM_oxaloacetate",
+   "compartment": "c",
+   "formula": "",
+   "charge": 0
+  },
+  {
+   "id": "ZM_Asp",
+   "name": "MM_aspartic",
+   "compartment": "c",
+   "formula": "",
+   "charge": 0
+  },
+  {
+   "id": "ZM_ASA",
+   "name": "MM_aspartate-4-semialdehyde",
+   "compartment": "c",
+   "formula": "",
+   "charge": 0
+  },
+  {
+   "id": "ZM_DDP",
+   "name": "MM_2,3-dihydrodipicolinate",
+   "compartment": "c",
+   "formula": "",
+   "charge": 0
+  },
+  {
+   "id": "ZM_THDP",
+   "name": "MM_2,3,4,5-tetrahydrodipicolinate",
+   "compartment": "c",
+   "formula": "",
+   "charge": 0
+  },
+  {
+   "id": "ZM_SDAP",
+   "name": "MM_N-succinyl-L-2,6-diaminoheptanedioate",
+   "compartment": "c",
+   "formula": "",
+   "charge": 0
+  },
+  {
+   "id": "ZM_mDAP",
+   "name": "MM_meso-diaminoheptanedioate",
+   "compartment": "c",
+   "formula": "",
+   "charge": 0
+  },
+  {
+   "id": "ZM_Lys",
+   "name": "MM_lysine",
+   "compartment": "c",
+   "formula": "",
+   "charge": 0
+  },
+  {
+   "id": "ZM_Glu",
+   "name": "MM_L-glutamic",
+   "compartment": "c",
+   "formula": "",
+   "charge": 0
+  },
+  {
+   "id": "ZM_Gln",
+   "name": "MM_L-glutamine",
+   "compartment": "c",
+   "formula": "",
+   "charge": 0
+  },
+  {
+   "id": "ZM_Pro",
+   "name": "MM_proline",
+   "compartment": "c",
+   "formula": "",
+   "charge": 0
+  },
+  {
+   "id": "ZM_Arg",
+   "name": "MM_arginine",
+   "compartment": "c",
+   "formula": "",
+   "charge": 0
+  },
+  {
+   "id": "ZM_Cys",
+   "name": "MM_cysteine",
+   "compartment": "c",
+   "formula": "",
+   "charge": 0
+  },
+  {
+   "id": "ZM_Hse",
+   "name": "MM_L-homoserine",
+   "compartment": "c",
+   "formula": "",
+   "charge": 0
+  },
+  {
+   "id": "ZM_Met",
+   "name": "MM_methionine",
+   "compartment": "c",
+   "formula": "",
+   "charge": 0
+  },
+  {
+   "id": "ZM_Thr",
+   "name": "MM_threonine",
+   "compartment": "c",
+   "formula": "",
+   "charge": 0
+  },
+  {
+   "id": "ZM_Ile",
+   "name": "MM_isoleucine",
+   "compartment": "c",
+   "formula": "",
+   "charge": 0
+  },
+  {
+   "id": "ZM_Ser",
+   "name": "MM_serine",
+   "compartment": "c",
+   "formula": "",
+   "charge": 0
+  },
+  {
+   "id": "ZM_Gly",
+   "name": "MM_glycine",
+   "compartment": "c",
+   "formula": "",
+   "charge": 0
+  },
+  {
+   "id": "ZM_CHR",
+   "name": "MM_chorismic",
+   "compartment": "c",
+   "formula": "",
+   "charge": 0
+  },
+  {
+   "id": "ZM_PPA",
+   "name": "MM_prephenic",
+   "compartment": "c",
+   "formula": "",
+   "charge": 0
+  },
+  {
+   "id": "ZM_Tyr",
+   "name": "MM_tyrosine",
+   "compartment": "c",
+   "formula": "",
+   "charge": 0
+  },
+  {
+   "id": "ZM_Phe",
+   "name": "MM_phenylalanine",
+   "compartment": "c",
+   "formula": "",
+   "charge": 0
+  },
+  {
+   "id": "ZM_Trp",
+   "name": "MM_tryptophan",
+   "compartment": "c",
+   "formula": "",
+   "charge": 0
+  },
+  {
+   "id": "ZM_Val",
+   "name": "MM_valine",
+   "compartment": "c",
+   "formula": "",
+   "charge": 0
+  },
+  {
+   "id": "ZM_Ala",
+   "name": "MM_alanine",
+   "compartment": "c",
+   "formula": "",
+   "charge": 0
+  },
+  {
+   "id": "ZM_Leu",
+   "name": "MM_leucine",
+   "compartment": "c",
+   "formula": "",
+   "charge": 0
+  },
+  {
+   "id": "ZM_His",
+   "name": "MM_histidine",
+   "compartment": "c",
+   "formula": "",
+   "charge": 0
+  },
+  {
+   "id": "ZM_aIVA",
+   "name": "MM_alpha-keto-isovaleric",
+   "compartment": "c",
+   "formula": "",
+   "charge": 0
+  },
+  {
+   "id": "ZM_SKA",
+   "name": "MM_shikimic",
+   "compartment": "c",
+   "formula": "",
+   "charge": 0
+  },
+  {
+   "id": "ZM_Ind",
+   "name": "MM_indole",
+   "compartment": "c",
+   "formula": "",
+   "charge": 0
+  },
+  {
+   "id": "ZM_CO2",
+   "name": "MM_carbon",
+   "compartment": "c",
+   "formula": "",
+   "charge": 0
+  },
+  {
+   "id": "ZM_ALC",
+   "name": "MM_aceto-lactic",
+   "compartment": "c",
+   "formula": "",
+   "charge": 0
+  },
+  {
+   "id": "ZM_Asn",
+   "name": "MM_Asparagine",
+   "compartment": "c",
+   "formula": "",
+   "charge": 0
+  },
+  {
+   "id": "ZM_ATP",
+   "name": "MM_ATP",
+   "compartment": "c",
+   "formula": "",
+   "charge": 0
+  },
+  {
+   "id": "ZM_NADH",
+   "name": "MM_NADH",
+   "compartment": "c",
+   "formula": "",
+   "charge": 0
+  },
+  {
+   "id": "ZM_NADPH",
+   "name": "MM_NADPH",
+   "compartment": "c",
+   "formula": "",
+   "charge": 0
+  },
+  {
+   "id": "ZM_G6P",
+   "name": "MM_D-glucose-6-phosphate",
+   "compartment": "c",
+   "formula": "",
+   "charge": 0
+  },
+  {
+   "id": "ZM_NH3",
+   "name": "MM_Ammonia",
+   "compartment": "c",
+   "formula": "",
+   "charge": 0
+  },
+  {
+   "id": "ZM_PRPP",
+   "name": "MM_PRPP",
+   "compartment": "c",
+   "formula": "",
+   "charge": 0
+  },
+  {
+   "id": "ZM_Form",
+   "name": "MM_Formate",
+   "compartment": "c",
+   "formula": "",
+   "charge": 0
+  },
+  {
+   "id": "ZM_H2",
+   "name": "MM_hydrogen",
+   "compartment": "c",
+   "formula": "",
+   "charge": 0
+  },
+  {
+   "id": "ZM_H+",
+   "name": "MM_externalH+",
+   "compartment": "c",
+   "formula": "",
+   "charge": 0
+  },
+  {
+   "id": "ZM_Fdx(red)",
+   "name": "MM_Ferrodoxin(reduced)",
+   "compartment": "c",
+   "formula": "",
+   "charge": 0
+  },
+  {
+   "id": "ZM_F420(red)",
+   "name": "MM_F420(reduced)",
+   "compartment": "c",
+   "formula": "",
+   "charge": 0
+  },
+  {
+   "id": "ZM_Formyl-MFR",
+   "name": "MM_Formyl-methanofuran",
+   "compartment": "c",
+   "formula": "",
+   "charge": 0
+  },
+  {
+   "id": "ZM_Formyl-H4MPT",
+   "name": "MM_Formyl-tetrahydromethanopterin",
+   "compartment": "c",
+   "formula": "",
+   "charge": 0
+  },
+  {
+   "id": "ZM_Me-H4MPT",
+   "name": "MM_methylene-tetrahydromethanopterin",
+   "compartment": "c",
+   "formula": "",
+   "charge": 0
+  },
+  {
+   "id": "ZM_CH3-H4MPT",
+   "name": "MM_Methyl-tetrahydromethanopterin",
+   "compartment": "c",
+   "formula": "",
+   "charge": 0
+  },
+  {
+   "id": "ZM_CH3-CoM",
+   "name": "MM_Methyl-S-CoM",
+   "compartment": "c",
+   "formula": "",
+   "charge": 0
+  },
+  {
+   "id": "ZM_CH4",
+   "name": "MM_Methane",
+   "compartment": "e",
+   "formula": "",
+   "charge": 0
+  },
+  {
+   "id": "ZM_CO-CODH",
+   "name": "MM_Carbon",
+   "compartment": "c",
+   "formula": "",
+   "charge": 0
+  },
+  {
+   "id": "ZM_CH3-B12",
+   "name": "MM_Methyl-B12",
+   "compartment": "c",
+   "formula": "",
+   "charge": 0
+  },
+  {
+   "id": "ZM_Ac-CODH",
+   "name": "MM_Acetyl-CODH",
+   "compartment": "c",
+   "formula": "",
+   "charge": 0
+  },
+  {
+   "id": "ZM_CoM-SH",
+   "name": "MM_CoM",
+   "compartment": "c",
+   "formula": "",
+   "charge": 0
+  },
+  {
+   "id": "ZM_ADP",
+   "name": "MM_ADP",
+   "compartment": "c",
+   "formula": "",
+   "charge": 0
+  },
+  {
+   "id": "ZM_G1P",
+   "name": "MM_Glucose-1-P",
+   "compartment": "c",
+   "formula": "",
+   "charge": 0
+  },
+  {
+   "id": "ZM_Mn-H4MPT",
+   "name": "MM_methenyl-H4MPT",
+   "compartment": "c",
+   "formula": "",
+   "charge": 0
+  },
+  {
+   "id": "ZM_N2",
+   "name": "MM_Nitrogen",
+   "compartment": "e",
+   "formula": "",
+   "charge": 0
+  },
+  {
+   "id": "ZM_DNA",
+   "name": "Methanococcus_DNA",
+   "compartment": "c",
+   "formula": "",
+   "charge": 0
+  },
+  {
+   "id": "ZM_RNA",
+   "name": "Methanococcus_RNA",
+   "compartment": "c",
+   "formula": "",
+   "charge": 0
+  },
+  {
+   "id": "ZM_glyc",
+   "name": "Methanococcus_glycogen",
+   "compartment": "c",
+   "formula": "",
+   "charge": 0
+  },
+  {
+   "id": "ZM_PLIP",
+   "name": "Methanococcus_phospholipid",
+   "compartment": "c",
+   "formula": "",
+   "charge": 0
+  },
+  {
+   "id": "ZM_PROT",
+   "name": "Methanococcus_protein",
+   "compartment": "c",
+   "formula": "",
+   "charge": 0
+  },
+  {
+   "id": "ZM_BIOMASS",
+   "name": "Methanococcus_biomass",
+   "compartment": "e",
+   "formula": "",
+   "charge": 0
+  },
+  {
+   "id": "NH3(ext)",
+   "name": "Ammonia(external)",
+   "compartment": "e",
+   "formula": "",
+   "charge": 0
+  },
+  {
+   "id": "RNA",
+   "name": "RNA",
+   "compartment": "c",
+   "formula": "",
+   "charge": 0
+  },
+  {
+   "id": "DNA",
+   "name": "DNA",
+   "compartment": "c",
+   "formula": "",
+   "charge": 0
+  },
+  {
+   "id": "PLIP",
+   "name": "Phospholipid",
+   "compartment": "c",
+   "formula": "",
+   "charge": 0
+  },
+  {
+   "id": "PEPTID",
+   "name": "Peptidoglycan",
+   "compartment": "c",
+   "formula": "",
+   "charge": 0
+  },
+  {
+   "id": "LPS",
+   "name": "Lipopolysaccharide",
+   "compartment": "c",
+   "formula": "",
+   "charge": 0
+  },
+  {
+   "id": "PROT",
+   "name": "Protein",
+   "compartment": "c",
+   "formula": "",
+   "charge": 0
+  },
+  {
+   "id": "Glyc",
+   "name": "Glycogen",
+   "compartment": "c",
+   "formula": "",
+   "charge": 0
+  }
+ ],
+ "reactions": [
+  {
+   "id": "D23",
+   "name": "D23",
+   "metabolites": {
+    "Ribu5P": -1,
+    "R5P": 1
+   },
+   "lower_bound": -100,
+   "upper_bound": 100,
+   "subsystem": ""
+  },
+  {
+   "id": "D24",
+   "name": "D24",
+   "metabolites": {
+    "Ribu5P": -1,
+    "X5P": 1
+   },
+   "lower_bound": -100,
+   "upper_bound": 100,
+   "subsystem": ""
+  },
+  {
+   "id": "D20",
+   "name": "D20",
+   "metabolites": {
+    "R5P": -1,
+    "X5P": -1,
+    "Sed7P": 1,
+    "GAP": 1
+   },
+   "lower_bound": -100,
+   "upper_bound": 100,
+   "subsystem": ""
+  },
+  {
+   "id": "D22",
+   "name": "D22",
+   "metabolites": {
+    "X5P": -1,
+    "E4P": -1,
+    "F6P": 1,
+    "GAP": 1
+   },
+   "lower_bound": -100,
+   "upper_bound": 100,
+   "subsystem": ""
+  },
+  {
+   "id": "D15",
+   "name": "D15",
+   "metabolites": {
+    "G6P": -1,
+    "F6P": 1
+   },
+   "lower_bound": -100,
+   "upper_bound": 100,
+   "subsystem": ""
+  },
+  {
+   "id": "D17",
+   "name": "D17",
+   "metabolites": {
+    "F6P": -1,
+    "ATP": -1,
+    "FBP": 1,
+    "ADP": 1
+   },
+   "lower_bound": 0,
+   "upper_bound": 0,
+   "subsystem": ""
+  },
+  {
+   "id": "D19",
+   "name": "D19",
+   "metabolites": {
+    "FBP": -1,
+    "GAP": 2
+   },
+   "lower_bound": -100,
+   "upper_bound": 100,
+   "subsystem": ""
+  },
+  {
+   "id": "D25",
+   "name": "D25",
+   "metabolites": {
+    "GAP": -1,
+    "ADP": -1,
+    "3PG": 1,
+    "ATP": 1,
+    "NADH": 1
+   },
+   "lower_bound": -100,
+   "upper_bound": 100,
+   "subsystem": ""
+  },
+  {
+   "id": "D26",
+   "name": "D26",
+   "metabolites": {
+    "3PG": -1,
+    "PEP": 1
+   },
+   "lower_bound": -100,
+   "upper_bound": 100,
+   "subsystem": ""
+  },
+  {
+   "id": "D27",
+   "name": "D27",
+   "metabolites": {
+    "PEP": -1,
+    "ADP": -1,
+    "Pyr": 1,
+    "ATP": 1
+   },
+   "lower_bound": 0,
+   "upper_bound": 0,
+   "subsystem": ""
+  },
+  {
+   "id": "D14",
+   "name": "D14",
+   "metabolites": {
+    "Pyr": -1,
+    "AcCoA": 1,
+    "CO2": 1,
+    "Fdx(red)": 1
+   },
+   "lower_bound": 0,
+   "upper_bound": 100,
+   "subsystem": ""
+  },
+  {
+   "id": "D30",
+   "name": "D30",
+   "metabolites": {
+    "AcCoA": -1,
+    "AcP": 1
+   },
+   "lower_bound": 0,
+   "upper_bound": 100,
+   "subsystem": ""
+  },
+  {
+   "id": "D32",
+   "name": "D32",
+   "metabolites": {
+    "AcCoA": -1,
+    "OAA": -1,
+    "Cit": 1
+   },
+   "lower_bound": 0,
+   "upper_bound": 100,
+   "subsystem": ""
+  },
+  {
+   "id": "D34",
+   "name": "D34",
+   "metabolites": {
+    "Cit": -1,
+    "Isocit": 1
+   },
+   "lower_bound": -100,
+   "upper_bound": 100,
+   "subsystem": ""
+  },
+  {
+   "id": "D35",
+   "name": "D35",
+   "metabolites": {
+    "Isocit": -1,
+    "aKG": 1,
+    "CO2": 1,
+    "NADPH": 1
+   },
+   "lower_bound": -100,
+   "upper_bound": 100,
+   "subsystem": ""
+  },
+  {
+   "id": "D40",
+   "name": "D40",
+   "metabolites": {
+    "aKG": -1,
+    "NADH": -1,
+    "NH3": -1,
+    "Glu": 1
+   },
+   "lower_bound": 0,
+   "upper_bound": 100,
+   "subsystem": ""
+  },
+  {
+   "id": "D36",
+   "name": "D36",
+   "metabolites": {
+    "SucCoA": -1,
+    "ADP": -1,
+    "Suc": 1,
+    "ATP": 1
+   },
+   "lower_bound": -100,
+   "upper_bound": 100,
+   "subsystem": ""
+  },
+  {
+   "id": "D37",
+   "name": "D37",
+   "metabolites": {
+    "Suc": -1,
+    "fum": 1,
+    "FADH": 1
+   },
+   "lower_bound": -100,
+   "upper_bound": 100,
+   "subsystem": ""
+  },
+  {
+   "id": "D38",
+   "name": "D38",
+   "metabolites": {
+    "fum": -1,
+    "Mal": 1
+   },
+   "lower_bound": -100,
+   "upper_bound": 100,
+   "subsystem": ""
+  },
+  {
+   "id": "D43",
+   "name": "D43",
+   "metabolites": {
+    "OAA": -1,
+    "Glu": -1,
+    "aKG": 1,
+    "Asp": 1
+   },
+   "lower_bound": 0,
+   "upper_bound": 100,
+   "subsystem": ""
+  },
+  {
+   "id": "D45",
+   "name": "D45",
+   "metabolites": {
+    "Asp": -1,
+    "ATP": -1,
+    "NADPH": -1,
+    "ASA": 1
+   },
+   "lower_bound": 0,
+   "upper_bound": 100,
+   "subsystem": ""
+  },
+  {
+   "id": "D46",
+   "name": "D46",
+   "metabolites": {
+    "Pyr": -1,
+    "ASA": -1,
+    "DDP": 1
+   },
+   "lower_bound": 0,
+   "upper_bound": 100,
+   "subsystem": ""
+  },
+  {
+   "id": "D47",
+   "name": "D47",
+   "metabolites": {
+    "DDP": -1,
+    "NADPH": -1,
+    "THDP": 1
+   },
+   "lower_bound": 0,
+   "upper_bound": 100,
+   "subsystem": ""
+  },
+  {
+   "id": "D48",
+   "name": "D48",
+   "metabolites": {
+    "SucCoA": -1,
+    "THDP": -1,
+    "Glu": -1,
+    "aKG": 1,
+    "SDAP": 1
+   },
+   "lower_bound": 0,
+   "upper_bound": 100,
+   "subsystem": ""
+  },
+  {
+   "id": "D49",
+   "name": "D49",
+   "metabolites": {
+    "SDAP": -1,
+    "Suc": 1,
+    "mDAP": 1
+   },
+   "lower_bound": 0,
+   "upper_bound": 100,
+   "subsystem": ""
+  },
+  {
+   "id": "D50",
+   "name": "D50",
+   "metabolites": {
+    "mDAP": -1,
+    "Lys": 1,
+    "CO2": 1
+   },
+   "lower_bound": 0,
+   "upper_bound": 100,
+   "subsystem": ""
+  },
+  {
+   "id": "D21",
+   "name": "D21",
+   "metabolites": {
+    "Sed7P": -1,
+    "GAP": -1,
+    "E4P": 1,
+    "F6P": 1
+   },
+   "lower_bound": -100,
+   "upper_bound": 100,
+   "subsystem": ""
+  },
+  {
+   "id": "D51",
+   "name": "D51",
+   "metabolites": {
+    "Glu": -1,
+    "ATP": -1,
+    "NADPH": -2,
+    "Pro": 1
+   },
+   "lower_bound": 0,
+   "upper_bound": 100,
+   "subsystem": ""
+  },
+  {
+   "id": "D52",
+   "name": "D52",
+   "metabolites": {
+    "AcCoA": -1,
+    "Asp": -1,
+    "Glu": -1,
+    "Gln": -1,
+    "CO2": -1,
+    "ATP": -5,
+    "NADPH": -1,
+    "aKG": 1,
+    "fum": 1,
+    "Arg": 1
+   },
+   "lower_bound": 0,
+   "upper_bound": 100,
+   "subsystem": ""
+  },
+  {
+   "id": "D53",
+   "name": "D53",
+   "metabolites": {
+    "ASA": -1,
+    "NADPH": -1,
+    "Hse": 1
+   },
+   "lower_bound": 0,
+   "upper_bound": 100,
+   "subsystem": ""
+  },
+  {
+   "id": "D75",
+   "name": "D75",
+   "metabolites": {
+    "SucCoA": -1,
+    "Cys": -1,
+    "Hse": -1,
+    "mTHF": -1,
+    "Pyr": 1,
+    "Suc": 1,
+    "Met": 1,
+    "NH3": 1
+   },
+   "lower_bound": 0,
+   "upper_bound": 100,
+   "subsystem": ""
+  },
+  {
+   "id": "D74",
+   "name": "D74",
+   "metabolites": {
+    "Hse": -1,
+    "ATP": -1,
+    "Thr": 1
+   },
+   "lower_bound": 0,
+   "upper_bound": 100,
+   "subsystem": ""
+  },
+  {
+   "id": "D54",
+   "name": "D54",
+   "metabolites": {
+    "Pyr": -1,
+    "Glu": -1,
+    "Thr": -1,
+    "NADPH": -1,
+    "aKG": 1,
+    "Ile": 1,
+    "CO2": 1,
+    "NH3": 1
+   },
+   "lower_bound": 0,
+   "upper_bound": 100,
+   "subsystem": ""
+  },
+  {
+   "id": "D73",
+   "name": "D73",
+   "metabolites": {
+    "3PG": -1,
+    "Ser": 1
+   },
+   "lower_bound": -100,
+   "upper_bound": 100,
+   "subsystem": ""
+  },
+  {
+   "id": "D55",
+   "name": "D55",
+   "metabolites": {
+    "Ser": -1,
+    "Gly": 1,
+    "mTHF": 1
+   },
+   "lower_bound": -100,
+   "upper_bound": 100,
+   "subsystem": ""
+  },
+  {
+   "id": "D58",
+   "name": "D58",
+   "metabolites": {
+    "E4P": -1,
+    "PEP": -1,
+    "NADPH": -1,
+    "SKA": 1
+   },
+   "lower_bound": -100,
+   "upper_bound": 100,
+   "subsystem": ""
+  },
+  {
+   "id": "D60",
+   "name": "D60",
+   "metabolites": {
+    "CHR": -1,
+    "PPA": 1
+   },
+   "lower_bound": 0,
+   "upper_bound": 100,
+   "subsystem": ""
+  },
+  {
+   "id": "D61",
+   "name": "D61",
+   "metabolites": {
+    "Glu": -1,
+    "PPA": -1,
+    "aKG": 1,
+    "Tyr": 1,
+    "CO2": 1,
+    "NADH": 1
+   },
+   "lower_bound": 0,
+   "upper_bound": 100,
+   "subsystem": ""
+  },
+  {
+   "id": "D62",
+   "name": "D62",
+   "metabolites": {
+    "Glu": -1,
+    "PPA": -1,
+    "aKG": 1,
+    "Phe": 1,
+    "CO2": 1
+   },
+   "lower_bound": 0,
+   "upper_bound": 100,
+   "subsystem": ""
+  },
+  {
+   "id": "D63",
+   "name": "D63",
+   "metabolites": {
+    "R5P": -1,
+    "Gln": -1,
+    "CHR": -1,
+    "ATP": -2,
+    "GAP": 1,
+    "Pyr": 1,
+    "Glu": 1,
+    "Ind": 1,
+    "CO2": 1
+   },
+   "lower_bound": 0,
+   "upper_bound": 100,
+   "subsystem": ""
+  },
+  {
+   "id": "D65",
+   "name": "D65",
+   "metabolites": {
+    "Pyr": -2,
+    "ALC": 1
+   },
+   "lower_bound": 0,
+   "upper_bound": 100,
+   "subsystem": ""
+  },
+  {
+   "id": "D67",
+   "name": "D67",
+   "metabolites": {
+    "Glu": -1,
+    "aIVA": -1,
+    "aKG": 1,
+    "Val": 1
+   },
+   "lower_bound": 0,
+   "upper_bound": 100,
+   "subsystem": ""
+  },
+  {
+   "id": "D68",
+   "name": "D68",
+   "metabolites": {
+    "Pyr": -1,
+    "Val": -1,
+    "Ala": 1,
+    "aIVA": 1
+   },
+   "lower_bound": 0,
+   "upper_bound": 100,
+   "subsystem": ""
+  },
+  {
+   "id": "D69",
+   "name": "D69",
+   "metabolites": {
+    "AcCoA": -1,
+    "Glu": -1,
+    "aIVA": -1,
+    "aKG": 1,
+    "Leu": 1,
+    "CO2": 1,
+    "NADH": 1
+   },
+   "lower_bound": 0,
+   "upper_bound": 100,
+   "subsystem": ""
+  },
+  {
+   "id": "D71",
+   "name": "D71",
+   "metabolites": {
+    "Gln": -1,
+    "ATP": -2,
+    "PRPP": -1,
+    "aKG": 1,
+    "His": 1,
+    "NADH": 2
+   },
+   "lower_bound": 0,
+   "upper_bound": 100,
+   "subsystem": ""
+  },
+  {
+   "id": "D72",
+   "name": "D72",
+   "metabolites": {
+    "AcCoA": -1,
+    "Ser": -1,
+    "AcOH(exch)": 1,
+    "Cys": 1
+   },
+   "lower_bound": 0,
+   "upper_bound": 100,
+   "subsystem": ""
+  },
+  {
+   "id": "D59",
+   "name": "D59",
+   "metabolites": {
+    "PEP": -1,
+    "SKA": -1,
+    "ATP": -1,
+    "CHR": 1
+   },
+   "lower_bound": 0,
+   "upper_bound": 100,
+   "subsystem": ""
+  },
+  {
+   "id": "D64",
+   "name": "D64",
+   "metabolites": {
+    "Ser": -1,
+    "Ind": -1,
+    "Trp": 1
+   },
+   "lower_bound": 0,
+   "upper_bound": 100,
+   "subsystem": ""
+  },
+  {
+   "id": "D66",
+   "name": "D66",
+   "metabolites": {
+    "ALC": -1,
+    "NADPH": -1,
+    "aIVA": 1,
+    "CO2": 1
+   },
+   "lower_bound": 0,
+   "upper_bound": 100,
+   "subsystem": ""
+  },
+  {
+   "id": "D44",
+   "name": "D44",
+   "metabolites": {
+    "Asp": -1,
+    "ATP": -2,
+    "NH3": -1,
+    "Asn": 1
+   },
+   "lower_bound": -100,
+   "upper_bound": 100,
+   "subsystem": ""
+  },
+  {
+   "id": "D76",
+   "name": "D76",
+   "metabolites": {
+    "AcCoA": -1,
+    "Glyox": -1,
+    "Mal": 1
+   },
+   "lower_bound": 0,
+   "upper_bound": 100,
+   "subsystem": ""
+  },
+  {
+   "id": "D70",
+   "name": "D70",
+   "metabolites": {
+    "R5P": -1,
+    "ATP": -2,
+    "PRPP": 1
+   },
+   "lower_bound": -100,
+   "upper_bound": 100,
+   "subsystem": ""
+  },
+  {
+   "id": "mue",
+   "name": "mue",
+   "metabolites": {
+    "RNA": -0.2133,
+    "DNA": -0.0323,
+    "PLIP": -0.0947,
+    "PEPTID": -0.026,
+    "LPS": -0.0354,
+    "PROT": -0.5723,
+    "Glyc": -0.026
+   },
+   "lower_bound": 0,
+   "upper_bound": 100,
+   "subsystem": "biomass composition, from macromolecules.txt"
+  },
+  {
+   "id": "D56",
+   "name": "D56",
+   "metabolites": {
+    "mTHF": -1,
+    "NADPH": 1,
+    "Form": 1
+   },
+   "lower_bound": 0,
+   "upper_bound": 100,
+   "subsystem": ""
+  },
+  {
+   "id": "D57",
+   "name": "D57",
+   "metabolites": {
+    "Gly": -1,
+    "CO2": 1,
+    "mTHF": 1,
+    "NADH": 1,
+    "NH3": 1
+   },
+   "lower_bound": 0,
+   "upper_bound": 10,
+   "subsystem": ""
+  },
+  {
+   "id": "D01",
+   "name": "D01",
+   "metabolites": {
+    "ATP": -1,
+    "SO4": -1,
+    "H+": -1,
+    "APS": 1
+   },
+   "lower_bound": 0,
+   "upper_bound": 100,
+   "subsystem": ""
+  },
+  {
+   "id": "D02",
+   "name": "D02",
+   "metabolites": {
+    "APS": -1,
+    "C3(red)": -1,
+    "SO3": 1
+   },
+   "lower_bound": 0,
+   "upper_bound": 100,
+   "subsystem": ""
+  },
+  {
+   "id": "D03",
+   "name": "D03",
+   "metabolites": {
+    "H2": -1,
+    "C3(red)": 1,
+    "H+": 2
+   },
+   "lower_bound": 0,
+   "upper_bound": 1000,
+   "subsystem": ""
+  },
+  {
+   "id": "D04",
+   "name": "D04",
+   "metabolites": {
+    "H2": -1,
+    "Fdx(red)": 1
+   },
+   "lower_bound": -1000,
+   "upper_bound": 1000,
+   "subsystem": ""
+  },
+  {
+   "id": "D05",
+   "name": "D05",
+   "metabolites": {
+    "NADH": -3,
+    "SO3": -1,
+    "H+": 6,
+    "H2S": 1
+   },
+   "lower_bound": 0,
+   "upper_bound": 1000,
+   "subsystem": ""
+  },
+  {
+   "id": "D06",
+   "name": "D06",
+   "metabolites": {
+    "FADH": -3,
+    "SO3": -1,
+    "H+": 6,
+    "H2S": 1
+   },
+   "lower_bound": 0,
+   "upper_bound": 1000,
+   "subsystem": ""
+  },
+  {
+   "id": "D07",
+   "name": "D07",
+   "metabolites": {
+    "Fdx(red)": -3,
+    "SO3": -1,
+    "H+": 6,
+    "H2S": 1
+   },
+   "lower_bound": 0,
+   "upper_bound": 1000,
+   "subsystem": ""
+  },
+  {
+   "id": "D13",
+   "name": "D13",
+   "metabolites": {
+    "Lac": -1,
+    "Pyr": 1,
+    "NADH": 1
+   },
+   "lower_bound": 0,
+   "upper_bound": 1000,
+   "subsystem": ""
+  },
+  {
+   "id": "D12",
+   "name": "D12",
+   "metabolites": {
+    "Lac": -1,
+    "Pyr": 1,
+    "Fdx(red)": 1
+   },
+   "lower_bound": 0,
+   "upper_bound": 1000,
+   "subsystem": ""
+  },
+  {
+   "id": "D08",
+   "name": "D08",
+   "metabolites": {
+    "FADH": -1,
+    "QH2": 1
+   },
+   "lower_bound": 0,
+   "upper_bound": 0,
+   "subsystem": ""
+  },
+  {
+   "id": "D09",
+   "name": "D09",
+   "metabolites": {
+    "QH2": -1,
+    "C3(red)": 1
+   },
+   "lower_bound": 0,
+   "upper_bound": 1000,
+   "subsystem": ""
+  },
+  {
+   "id": "D10",
+   "name": "D10",
+   "metabolites": {
+    "ADP": -1,
+    "H+": -2,
+    "ATP": 1
+   },
+   "lower_bound": 0,
+   "upper_bound": 1000,
+   "subsystem": ""
+  },
+  {
+   "id": "D11",
+   "name": "D11",
+   "metabolites": {
+    "ATP": -1,
+    "ADP": 2
+   },
+   "lower_bound": -1000,
+   "upper_bound": 1000,
+   "subsystem": ""
+  },
+  {
+   "id": "D16",
+   "name": "D16",
+   "metabolites": {
+    "G6P": -1,
+    "Ribu5P": 1,
+    "NADPH": 2
+   },
+   "lower_bound": 0,
+   "upper_bound": 100,
+   "subsystem": ""
+  },
+  {
+   "id": "D18",
+   "name": "D18",
+   "metabolites": {
+    "FBP": -1,
+    "F6P": 1
+   },
+   "lower_bound": 0,
+   "upper_bound": 100,
+   "subsystem": ""
+  },
+  {
+   "id": "D28",
+   "name": "D28",
+   "metabolites": {
+    "Pyr": -1,
+    "ATP": -1,
+    "PEP": 1
+   },
+   "lower_bound": 0,
+   "upper_bound": 100,
+   "subsystem": ""
+  },
+  {
+   "id": "D29",
+   "name": "D29",
+   "metabolites": {
+    "Pyr": -1,
+    "CO2": -1,
+    "ATP": -1,
+    "OAA": 1,
+    "ADP": 1
+   },
+   "lower_bound": 0,
+   "upper_bound": 100,
+   "subsystem": ""
+  },
+  {
+   "id": "D31",
+   "name": "D31",
+   "metabolites": {
+    "ADP": -1,
+    "AcP": -1,
+    "AcOH(exch)": 1,
+    "ATP": 1
+   },
+   "lower_bound": 0,
+   "upper_bound": 100,
+   "subsystem": ""
+  },
+  {
+   "id": "D33",
+   "name": "D33",
+   "metabolites": {
+    "AcOH(exch)": -1,
+    "ATP": -1,
+    "AcCoA": 1,
+    "ADP": 1
+   },
+   "lower_bound": 0,
+   "upper_bound": 0,
+   "subsystem": ""
+  },
+  {
+   "id": "D41",
+   "name": "D41",
+   "metabolites": {
+    "aKG": -1,
+    "Gln": -1,
+    "NADPH": -1,
+    "Glu": 2
+   },
+   "lower_bound": 0,
+   "upper_bound": 0,
+   "subsystem": ""
+  },
+  {
+   "id": "D39",
+   "name": "D39",
+   "metabolites": {
+    "Mal": -1,
+    "Pyr": 1,
+    "CO2": 1,
+    "NADPH": 1
+   },
+   "lower_bound": -100,
+   "upper_bound": 100,
+   "subsystem": ""
+  },
+  {
+   "id": "D42",
+   "name": "D42",
+   "metabolites": {
+    "Glu": -1,
+    "ATP": -1,
+    "NH3": -1,
+    "Gln": 1
+   },
+   "lower_bound": -100,
+   "upper_bound": 100,
+   "subsystem": ""
+  },
+  {
+   "id": "D77",
+   "name": "D77",
+   "metabolites": {
+    "Pyr": -1,
+    "AcCoA": 1,
+    "Form": 1
+   },
+   "lower_bound": 0,
+   "upper_bound": 100,
+   "subsystem": ""
+  },
+  {
+   "id": "D78",
+   "name": "D78",
+   "metabolites": {
+    "AcCoA": -1,
+    "NADH": -2,
+    "EtOH": 1
+   },
+   "lower_bound": 0,
+   "upper_bound": 0,
+   "subsystem": ""
+  },
+  {
+   "id": "D79",
+   "name": "D79",
+   "metabolites": {
+    "Form": -1,
+    "CO2": 1,
+    "Fdx(red)": 1
+   },
+   "lower_bound": 0,
+   "upper_bound": 100,
+   "subsystem": ""
+  },
+  {
+   "id": "D_ATPase",
+   "name": "D_ATPase",
+   "metabolites": {
+    "ATP": -1,
+    "ADP": 1
+   },
+   "lower_bound": 0,
+   "upper_bound": 100,
+   "subsystem": ""
+  },
+  {
+   "id": "D81",
+   "name": "D81",
+   "metabolites": {
+    "H2(exch)": -1,
+    "H2": 1
+   },
+   "lower_bound": -1000,
+   "upper_bound": 1000,
+   "subsystem": ""
+  },
+  {
+   "id": "D82",
+   "name": "D82",
+   "metabolites": {
+    "GAP": -1,
+    "NADH": -1,
+    "glycerol-P": 1
+   },
+   "lower_bound": -100,
+   "upper_bound": 100,
+   "subsystem": ""
+  },
+  {
+   "id": "D83",
+   "name": "D83",
+   "metabolites": {
+    "glycerol-P": -1,
+    "ATP": 1,
+    "glycerol": 1
+   },
+   "lower_bound": 0,
+   "upper_bound": 0,
+   "subsystem": ""
+  },
+  {
+   "id": "D80",
+   "name": "D80",
+   "metabolites": {
+    "Form": -1,
+    "Form(exch)": 1
+   },
+   "lower_bound": -100,
+   "upper_bound": 1000,
+   "subsystem": ""
+  },
+  {
+   "id": "M01",
+   "name": "M01",
+   "metabolites": {
+    "ZM_CO2": -1,
+    "ZM_Fdx(red)": -1,
+    "ZM_Formyl-MFR": 1
+   },
+   "lower_bound": 0,
+   "upper_bound": 1000,
+   "subsystem": ""
+  },
+  {
+   "id": "M02",
+   "name": "M02",
+   "metabolites": {
+    "ZM_CO2": -1,
+    "ZM_Fdx(red)": -1,
+    "ZM_CO-CODH": 1
+   },
+   "lower_bound": -100,
+   "upper_bound": 1000,
+   "subsystem": ""
+  },
+  {
+   "id": "M03",
+   "name": "M03",
+   "metabolites": {
+    "ZM_Formyl-MFR": -1,
+    "ZM_Formyl-H4MPT": 1
+   },
+   "lower_bound": 0,
+   "upper_bound": 1000,
+   "subsystem": ""
+  },
+  {
+   "id": "M05",
+   "name": "M05",
+   "metabolites": {
+    "ZM_F420(red)": -1,
+    "ZM_Mn-H4MPT": -1,
+    "ZM_Me-H4MPT": 1
+   },
+   "lower_bound": 0,
+   "upper_bound": 1000,
+   "subsystem": ""
+  },
+  {
+   "id": "M07",
+   "name": "M07",
+   "metabolites": {
+    "ZM_F420(red)": -1,
+    "ZM_Me-H4MPT": -1,
+    "ZM_CH3-H4MPT": 1
+   },
+   "lower_bound": 0,
+   "upper_bound": 1000,
+   "subsystem": ""
+  },
+  {
+   "id": "M08",
+   "name": "M08",
+   "metabolites": {
+    "ZM_CH3-H4MPT": -1,
+    "ZM_CH3-B12": 1
+   },
+   "lower_bound": -100,
+   "upper_bound": 1000,
+   "subsystem": ""
+  },
+  {
+   "id": "M10",
+   "name": "M10",
+   "metabolites": {
+    "ZM_Ac-CODH": -1,
+    "ZM_AcCoA": 1
+   },
+   "lower_bound": 0,
+   "upper_bound": 1000,
+   "subsystem": ""
+  },
+  {
+   "id": "M11",
+   "name": "M11",
+   "metabolites": {
+    "ZM_CH3-H4MPT": -1,
+    "ZM_CoM-SH": -1,
+    "ZM_CH3-CoM": 1
+   },
+   "lower_bound": 0,
+   "upper_bound": 1000,
+   "subsystem": ""
+  },
+  {
+   "id": "M12",
+   "name": "M12",
+   "metabolites": {
+    "ZM_CH3-CoM": -1,
+    "ZM_H+": 2,
+    "ZM_CH4": 1
+   },
+   "lower_bound": 0,
+   "upper_bound": 1000,
+   "subsystem": ""
+  },
+  {
+   "id": "M13",
+   "name": "M13",
+   "metabolites": {
+    "ZM_H2": -1,
+    "ZM_H+": 2,
+    "ZM_CoM-SH": 1
+   },
+   "lower_bound": 0,
+   "upper_bound": 1000,
+   "subsystem": ""
+  },
+  {
+   "id": "M14",
+   "name": "M14",
+   "metabolites": {
+    "ZM_H2": -1,
+    "ZM_H+": -2,
+    "ZM_Fdx(red)": 1
+   },
+   "lower_bound": 0,
+   "upper_bound": 1000,
+   "subsystem": ""
+  },
+  {
+   "id": "M15",
+   "name": "M15",
+   "metabolites": {
+    "H2(exch)": -1,
+    "ZM_H2": 1
+   },
+   "lower_bound": 0,
+   "upper_bound": 1000,
+   "subsystem": ""
+  },
+  {
+   "id": "M29",
+   "name": "M29",
+   "metabolites": {
+    "ZM_R5P": -1,
+    "ZM_X5P": -1,
+    "ZM_Sed7P": 1,
+    "ZM_GAP": 1
+   },
+   "lower_bound": -100,
+   "upper_bound": 100,
+   "subsystem": ""
+  },
+  {
+   "id": "M31",
+   "name": "M31",
+   "metabolites": {
+    "ZM_X5P": -1,
+    "ZM_E4P": -1,
+    "ZM_F6P": 1,
+    "ZM_GAP": 1
+   },
+   "lower_bound": -100,
+   "upper_bound": 100,
+   "subsystem": ""
+  },
+  {
+   "id": "M24",
+   "name": "M24",
+   "metabolites": {
+    "ZM_G6P": -1,
+    "ZM_F6P": 1
+   },
+   "lower_bound": -100,
+   "upper_bound": 100,
+   "subsystem": ""
+  },
+  {
+   "id": "M26",
+   "name": "M26",
+   "metabolites": {
+    "ZM_F6P": -1,
+    "ZM_ADP": -1,
+    "ZM_FBP": 1
+   },
+   "lower_bound": 0,
+   "upper_bound": 0,
+   "subsystem": ""
+  },
+  {
+   "id": "M28",
+   "name": "M28",
+   "metabolites": {
+    "ZM_FBP": -1,
+    "ZM_GAP": 2
+   },
+   "lower_bound": -100,
+   "upper_bound": 100,
+   "subsystem": ""
+  },
+  {
+   "id": "M32",
+   "name": "M32",
+   "metabolites": {
+    "ZM_GAP": -1,
+    "ZM_ADP": -1,
+    "ZM_3PG": 1,
+    "ZM_ATP": 1,
+    "ZM_NADH": 1
+   },
+   "lower_bound": 0,
+   "upper_bound": 0,
+   "subsystem": ""
+  },
+  {
+   "id": "M34",
+   "name": "M34",
+   "metabolites": {
+    "ZM_3PG": -1,
+    "ZM_PEP": 1
+   },
+   "lower_bound": -100,
+   "upper_bound": 100,
+   "subsystem": ""
+  },
+  {
+   "id": "M35",
+   "name": "M35",
+   "metabolites": {
+    "ZM_PEP": -1,
+    "ZM_ADP": -1,
+    "ZM_Pyr": 1,
+    "ZM_ATP": 1
+   },
+   "lower_bound": 0,
+   "upper_bound": 0,
+   "subsystem": ""
+  },
+  {
+   "id": "M23",
+   "name": "M23",
+   "metabolites": {
+    "ZM_AcCoA": -1,
+    "ZM_CO2": -1,
+    "ZM_Fdx(red)": -1,
+    "ZM_Pyr": 1
+   },
+   "lower_bound": -100,
+   "upper_bound": 100,
+   "subsystem": ""
+  },
+  {
+   "id": "M44",
+   "name": "M44",
+   "metabolites": {
+    "ZM_aKG": -1,
+    "ZM_Gln": -1,
+    "ZM_NADPH": -1,
+    "ZM_Glu": 2
+   },
+   "lower_bound": 0,
+   "upper_bound": 100,
+   "subsystem": ""
+  },
+  {
+   "id": "M40",
+   "name": "M40",
+   "metabolites": {
+    "ZM_Suc": -1,
+    "ZM_ATP": -1,
+    "ZM_SucCoA": 1,
+    "ZM_ADP": 1
+   },
+   "lower_bound": -100,
+   "upper_bound": 100,
+   "subsystem": ""
+  },
+  {
+   "id": "M41",
+   "name": "M41",
+   "metabolites": {
+    "ZM_fum": -1,
+    "ZM_NADH": -1,
+    "ZM_Suc": 1
+   },
+   "lower_bound": -100,
+   "upper_bound": 100,
+   "subsystem": ""
+  },
+  {
+   "id": "M42",
+   "name": "M42",
+   "metabolites": {
+    "ZM_Mal": -1,
+    "ZM_fum": 1
+   },
+   "lower_bound": -100,
+   "upper_bound": 100,
+   "subsystem": ""
+  },
+  {
+   "id": "M46",
+   "name": "M46",
+   "metabolites": {
+    "ZM_OAA": -1,
+    "ZM_Glu": -1,
+    "ZM_aKG": 1,
+    "ZM_Asp": 1
+   },
+   "lower_bound": 0,
+   "upper_bound": 100,
+   "subsystem": ""
+  },
+  {
+   "id": "M48",
+   "name": "M48",
+   "metabolites": {
+    "ZM_Asp": -1,
+    "ZM_ATP": -1,
+    "ZM_NADPH": -1,
+    "ZM_ASA": 1
+   },
+   "lower_bound": 0,
+   "upper_bound": 100,
+   "subsystem": ""
+  },
+  {
+   "id": "M49",
+   "name": "M49",
+   "metabolites": {
+    "ZM_Pyr": -1,
+    "ZM_ASA": -1,
+    "ZM_DDP": 1
+   },
+   "lower_bound": 0,
+   "upper_bound": 100,
+   "subsystem": ""
+  },
+  {
+   "id": "M50",
+   "name": "M50",
+   "metabolites": {
+    "ZM_DDP": -1,
+    "ZM_NADPH": -1,
+    "ZM_THDP": 1
+   },
+   "lower_bound": 0,
+   "upper_bound": 100,
+   "subsystem": ""
+  },
+  {
+   "id": "M51",
+   "name": "M51",
+   "metabolites": {
+    "ZM_SucCoA": -1,
+    "ZM_THDP": -1,
+    "ZM_Glu": -1,
+    "ZM_aKG": 1,
+    "ZM_SDAP": 1
+   },
+   "lower_bound": 0,
+   "upper_bound": 100,
+   "subsystem": ""
+  },
+  {
+   "id": "M52",
+   "name": "M52",
+   "metabolites": {
+    "ZM_SDAP": -1,
+    "ZM_Suc": 1,
+    "ZM_mDAP": 1
+   },
+   "lower_bound": 0,
+   "upper_bound": 100,
+   "subsystem": ""
+  },
+  {
+   "id": "M53",
+   "name": "M53",
+   "metabolites": {
+    "ZM_mDAP": -1,
+    "ZM_Lys": 1,
+    "ZM_CO2": 1
+   },
+   "lower_bound": 0,
+   "upper_bound": 100,
+   "subsystem": ""
+  },
+  {
+   "id": "M30",
+   "name": "M30",
+   "metabolites": {
+    "ZM_Sed7P": -1,
+    "ZM_GAP": -1,
+    "ZM_E4P": 1,
+    "ZM_F6P": 1
+   },
+   "lower_bound": -100,
+   "upper_bound": 100,
+   "subsystem": ""
+  },
+  {
+   "id": "M75",
+   "name": "M75",
+   "metabolites": {
+    "ZM_Glu": -1,
+    "ZM_ATP": -1,
+    "ZM_NADPH": -2,
+    "ZM_Pro": 1
+   },
+   "lower_bound": 0,
+   "upper_bound": 100,
+   "subsystem": ""
+  },
+  {
+   "id": "M54",
+   "name": "M54",
+   "metabolites": {
+    "ZM_AcCoA": -1,
+    "ZM_Asp": -1,
+    "ZM_Glu": -1,
+    "ZM_Gln": -1,
+    "ZM_CO2": -1,
+    "ZM_ATP": -5,
+    "ZM_NADPH": -1,
+    "ZM_aKG": 1,
+    "ZM_fum": 1,
+    "ZM_Arg": 1
+   },
+   "lower_bound": 0,
+   "upper_bound": 100,
+   "subsystem": ""
+  },
+  {
+   "id": "M55",
+   "name": "M55",
+   "metabolites": {
+    "ZM_ASA": -1,
+    "ZM_NADPH": -1,
+    "ZM_Hse": 1
+   },
+   "lower_bound": 0,
+   "upper_bound": 100,
+   "subsystem": ""
+  },
+  {
+   "id": "M76",
+   "name": "M76",
+   "metabolites": {
+    "ZM_SucCoA": -1,
+    "ZM_Cys": -1,
+    "ZM_Hse": -1,
+    "ZM_Me-H4MPT": -1,
+    "ZM_Pyr": 1,
+    "ZM_Suc": 1,
+    "ZM_Met": 1,
+    "ZM_NH3": 1
+   },
+   "lower_bound": 0,
+   "upper_bound": 100,
+   "subsystem": ""
+  },
+  {
+   "id": "M56",
+   "name": "M56",
+   "metabolites": {
+    "ZM_Hse": -1,
+    "ZM_ATP": -1,
+    "ZM_Thr": 1
+   },
+   "lower_bound": 0,
+   "upper_bound": 100,
+   "subsystem": ""
+  },
+  {
+   "id": "M57",
+   "name": "M57",
+   "metabolites": {
+    "ZM_Pyr": -1,
+    "ZM_AcCoA": -1,
+    "ZM_CO2": -1,
+    "ZM_NH3": -1,
+    "ZM_Ile": 1
+   },
+   "lower_bound": 0,
+   "upper_bound": 100,
+   "subsystem": ""
+  },
+  {
+   "id": "M58",
+   "name": "M58",
+   "metabolites": {
+    "ZM_3PG": -1,
+    "ZM_Ser": 1
+   },
+   "lower_bound": -100,
+   "upper_bound": 100,
+   "subsystem": ""
+  },
+  {
+   "id": "M73",
+   "name": "M73",
+   "metabolites": {
+    "ZM_Ser": -1,
+    "ZM_Gly": 1,
+    "ZM_Me-H4MPT": 1
+   },
+   "lower_bound": -100,
+   "upper_bound": 100,
+   "subsystem": ""
+  },
+  {
+   "id": "M59",
+   "name": "M59",
+   "metabolites": {
+    "ZM_3PG": -1,
+    "ZM_PEP": -1,
+    "ZM_CO2": -1,
+    "ZM_SKA": 1
+   },
+   "lower_bound": -100,
+   "upper_bound": 100,
+   "subsystem": ""
+  },
+  {
+   "id": "M61",
+   "name": "M61",
+   "metabolites": {
+    "ZM_CHR": -1,
+    "ZM_PPA": 1
+   },
+   "lower_bound": 0,
+   "upper_bound": 100,
+   "subsystem": ""
+  },
+  {
+   "id": "M62",
+   "name": "M62",
+   "metabolites": {
+    "ZM_Glu": -1,
+    "ZM_PPA": -1,
+    "ZM_aKG": 1,
+    "ZM_Tyr": 1,
+    "ZM_CO2": 1,
+    "ZM_NADH": 1
+   },
+   "lower_bound": 0,
+   "upper_bound": 100,
+   "subsystem": ""
+  },
+  {
+   "id": "M63",
+   "name": "M63",
+   "metabolites": {
+    "ZM_Glu": -1,
+    "ZM_PPA": -1,
+    "ZM_aKG": 1,
+    "ZM_Phe": 1,
+    "ZM_CO2": 1
+   },
+   "lower_bound": 0,
+   "upper_bound": 100,
+   "subsystem": ""
+  },
+  {
+   "id": "M64",
+   "name": "M64",
+   "metabolites": {
+    "ZM_CHR": -1,
+    "ZM_PRPP": -1,
+    "ZM_GAP": 1,
+    "ZM_Pyr": 1,
+    "ZM_Ind": 1,
+    "ZM_CO2": 1
+   },
+   "lower_bound": 0,
+   "upper_bound": 100,
+   "subsystem": ""
+  },
+  {
+   "id": "M66",
+   "name": "M66",
+   "metabolites": {
+    "ZM_Pyr": -2,
+    "ZM_ALC": 1
+   },
+   "lower_bound": 0,
+   "upper_bound": 100,
+   "subsystem": ""
+  },
+  {
+   "id": "M68",
+   "name": "M68",
+   "metabolites": {
+    "ZM_Glu": -1,
+    "ZM_aIVA": -1,
+    "ZM_aKG": 1,
+    "ZM_Val": 1
+   },
+   "lower_bound": 0,
+   "upper_bound": 100,
+   "subsystem": ""
+  },
+  {
+   "id": "M69",
+   "name": "M69",
+   "metabolites": {
+    "ZM_Pyr": -1,
+    "ZM_Val": -1,
+    "ZM_Ala": 1,
+    "ZM_aIVA": 1
+   },
+   "lower_bound": 0,
+   "upper_bound": 100,
+   "subsystem": ""
+  },
+  {
+   "id": "M70",
+   "name": "M70",
+   "metabolites": {
+    "ZM_AcCoA": -1,
+    "ZM_Glu": -1,
+    "ZM_aIVA": -1,
+    "ZM_aKG": 1,
+    "ZM_Leu": 1,
+    "ZM_CO2": 1,
+    "ZM_NADH": 1
+   },
+   "lower_bound": 0,
+   "upper_bound": 100,
+   "subsystem": ""
+  },
+  {
+   "id": "M72",
+   "name": "M72",
+   "metabolites": {
+    "ZM_Gln": -1,
+    "ZM_ATP": -2,
+    "ZM_PRPP": -1,
+    "ZM_aKG": 1,
+    "ZM_His": 1,
+    "ZM_NADH": 2
+   },
+   "lower_bound": 0,
+   "upper_bound": 100,
+   "subsystem": ""
+  },
+  {
+   "id": "M74",
+   "name": "M74",
+   "metabolites": {
+    "ZM_AcCoA": -1,
+    "ZM_Ser": -1,
+    "AcOH(exch)": 1,
+    "ZM_Cys": 1
+   },
+   "lower_bound": 0,
+   "upper_bound": 100,
+   "subsystem": ""
+  },
+  {
+   "id": "M60",
+   "name": "M60",
+   "metabolites": {
+    "ZM_PEP": -1,
+    "ZM_SKA": -1,
+    "ZM_ATP": -1,
+    "ZM_CHR": 1
+   },
+   "lower_bound": 0,
+   "upper_bound": 100,
+   "subsystem": ""
+  },
+  {
+   "id": "M65",
+   "name": "M65",
+   "metabolites": {
+    "ZM_Ser": -1,
+    "ZM_Ind": -1,
+    "ZM_Trp": 1
+   },
+   "lower_bound": 0,
+   "upper_bound": 100,
+   "subsystem": ""
+  },
+  {
+   "id": "M67",
+   "name": "M67",
+   "metabolites": {
+    "ZM_ALC": -1,
+    "ZM_NADPH": -1,
+    "ZM_aIVA": 1,
+    "ZM_CO2": 1
+   },
+   "lower_bound": 0,
+   "upper_bound": 100,
+   "subsystem": ""
+  },
+  {
+   "id": "M47",
+   "name": "M47",
+   "metabolites": {
+    "ZM_Asp": -1,
+    "ZM_ATP": -1,
+    "ZM_NH3": -1,
+    "ZM_Asn": 1
+   },
+   "lower_bound": -100,
+   "upper_bound": 100,
+   "subsystem": ""
+  },
+  {
+   "id": "M71",
+   "name": "M71",
+   "metabolites": {
+    "ZM_R5P": -1,
+    "ZM_ATP": -2,
+    "ZM_PRPP": 1
+   },
+   "lower_bound": -100,
+   "upper_bound": 100,
+   "subsystem": ""
+  },
+  {
+   "id": "M21",
+   "name": "M21",
+   "metabolites": {
+    "ZM_H+": -3,
+    "ZM_ADP": -1,
+    "ZM_ATP": 1
+   },
+   "lower_bound": 0,
+   "upper_bound": 1000,
+   "subsystem": ""
+  },
+  {
+   "id": "M22",
+   "name": "M22",
+   "metabolites": {
+    "ZM_ATP": -1,
+    "ZM_ADP": 2
+   },
+   "lower_bound": -1000,
+   "upper_bound": 1000,
+   "subsystem": ""
+  },
+  {
+   "id": "M25",
+   "name": "M25",
+   "metabolites": {
+    "ZM_G6P": -1,
+    "ZM_G1P": 1
+   },
+   "lower_bound": -100,
+   "upper_bound": 100,
+   "subsystem": ""
+  },
+  {
+   "id": "M27",
+   "name": "M27",
+   "metabolites": {
+    "ZM_FBP": -1,
+    "ZM_F6P": 1
+   },
+   "lower_bound": 0,
+   "upper_bound": 100,
+   "subsystem": ""
+  },
+  {
+   "id": "M36",
+   "name": "M36",
+   "metabolites": {
+    "ZM_Pyr": -1,
+    "ZM_ATP": -1,
+    "ZM_PEP": 1
+   },
+   "lower_bound": 0,
+   "upper_bound": 100,
+   "subsystem": ""
+  },
+  {
+   "id": "M37",
+   "name": "M37",
+   "metabolites": {
+    "ZM_Pyr": -1,
+    "ZM_CO2": -1,
+    "ZM_ATP": -1,
+    "ZM_OAA": 1,
+    "ZM_ADP": 1
+   },
+   "lower_bound": 0,
+   "upper_bound": 100,
+   "subsystem": ""
+  },
+  {
+   "id": "M43",
+   "name": "M43",
+   "metabolites": {
+    "ZM_OAA": -1,
+    "ZM_NADH": -1,
+    "ZM_Mal": 1
+   },
+   "lower_bound": -100,
+   "upper_bound": 100,
+   "subsystem": ""
+  },
+  {
+   "id": "M45",
+   "name": "M45",
+   "metabolites": {
+    "ZM_Glu": -1,
+    "ZM_ATP": -1,
+    "ZM_NH3": -1,
+    "ZM_Gln": 1
+   },
+   "lower_bound": -100,
+   "upper_bound": 100,
+   "subsystem": ""
+  },
+  {
+   "id": "M19",
+   "name": "M19",
+   "metabolites": {
+    "ZM_Form": -1,
+    "ZM_CO2": 1,
+    "ZM_F420(red)": 1
+   },
+   "lower_bound": 0,
+   "upper_bound": 1000,
+   "subsystem": ""
+  },
+  {
+   "id": "M_ATPase",
+   "name": "M_ATPase",
+   "metabolites": {
+    "ZM_ATP": -1,
+    "ZM_ADP": 1
+   },
+   "lower_bound": 0,
+   "upper_bound": 100,
+   "subsystem": ""
+  },
+  {
+   "id": "M33",
+   "name": "M33",
+   "metabolites": {
+    "ZM_GAP": -1,
+    "ZM_ADP": -1,
+    "ZM_3PG": 1,
+    "ZM_ATP": 1,
+    "ZM_Fdx(red)": 1
+   },
+   "lower_bound": -100,
+   "upper_bound": 100,
+   "subsystem": ""
+  },
+  {
+   "id": "M39",
+   "name": "M39",
+   "metabolites": {
+    "ZM_SucCoA": -1,
+    "ZM_CO2": -1,
+    "ZM_Fdx(red)": -1,
+    "ZM_aKG": 1
+   },
+   "lower_bound": 0,
+   "upper_bound": 100,
+   "subsystem": ""
+  },
+  {
+   "id": "M78",
+   "name": "M78",
+   "metabolites": {
+    "NH3(ext)": -1,
+    "ZM_NH3": 1
+   },
+   "lower_bound": 0,
+   "upper_bound": 1000,
+   "subsystem": ""
+  },
+  {
+   "id": "M17",
+   "name": "M17",
+   "metabolites": {
+    "ZM_F420(red)": -1,
+    "ZM_NADH": 1
+   },
+   "lower_bound": -100,
+   "upper_bound": 1000,
+   "subsystem": ""
+  },
+  {
+   "id": "M38",
+   "name": "M38",
+   "metabolites": {
+    "AcOH(exch)": -1,
+    "ZM_CO2": -1,
+    "ZM_ATP": -1,
+    "ZM_AcCoA": 1,
+    "ZM_ADP": 1
+   },
+   "lower_bound": 0,
+   "upper_bound": 1000,
+   "subsystem": ""
+  },
+  {
+   "id": "M18",
+   "name": "M18",
+   "metabolites": {
+    "ZM_F420(red)": -1,
+    "ZM_NADPH": 1
+   },
+   "lower_bound": -100,
+   "upper_bound": 1000,
+   "subsystem": ""
+  },
+  {
+   "id": "M77",
+   "name": "M77",
+   "metabolites": {
+    "ZM_X5P": -1,
+    "ZM_R5P": 1
+   },
+   "lower_bound": -100,
+   "upper_bound": 100,
+   "subsystem": ""
+  },
+  {
+   "id": "M20",
+   "name": "M20",
+   "metabolites": {
+    "Form(exch)": -1,
+    "ZM_Form": 1
+   },
+   "lower_bound": -100,
+   "upper_bound": 100,
+   "subsystem": ""
+  },
+  {
+   "id": "M04",
+   "name": "M04",
+   "metabolites": {
+    "ZM_Formyl-H4MPT": -1,
+    "ZM_Mn-H4MPT": 1
+   },
+   "lower_bound": -100,
+   "upper_bound": 1000,
+   "subsystem": ""
+  },
+  {
+   "id": "M06",
+   "name": "M06",
+   "metabolites": {
+    "ZM_H2": -1,
+    "ZM_Mn-H4MPT": -1,
+    "ZM_Me-H4MPT": 1
+   },
+   "lower_bound": 0,
+   "upper_bound": 0,
+   "subsystem": ""
+  },
+  {
+   "id": "M16",
+   "name": "M16",
+   "metabolites": {
+    "ZM_H2": -1,
+    "ZM_F420(red)": 1
+   },
+   "lower_bound": 0,
+   "upper_bound": 1000,
+   "subsystem": ""
+  },
+  {
+   "id": "M09",
+   "name": "M09",
+   "metabolites": {
+    "ZM_CO-CODH": -1,
+    "ZM_CH3-B12": -1,
+    "ZM_Ac-CODH": 1
+   },
+   "lower_bound": -100,
+   "upper_bound": 1000,
+   "subsystem": ""
+  },
+  {
+   "id": "M80",
+   "name": "M80",
+   "metabolites": {
+    "ZM_Ala": -1,
+    "ZM_Pyr": 1,
+    "ZM_NADH": 1,
+    "ZM_NH3": 1
+   },
+   "lower_bound": 0,
+   "upper_bound": 1000,
+   "subsystem": ""
+  },
+  {
+   "id": "M81",
+   "name": "M81",
+   "metabolites": {
+    "ZM_ATP": -8,
+    "ZM_Fdx(red)": -2,
+    "ZM_N2": -0.5,
+    "ZM_NH3": 1,
+    "ZM_H2": 1,
+    "ZM_ADP": 8
+   },
+   "lower_bound": 0,
+   "upper_bound": 0,
+   "subsystem": ""
+  },
+  {
+   "id": "M79",
+   "name": "M79",
+   "metabolites": {
+    "ZM_Ala": 1
+   },
+   "lower_bound": 0,
+   "upper_bound": 0,
+   "subsystem": ""
+  },
+  {
+   "id": "MC_DNA",
+   "name": "MC_DNA",
+   "metabolites": {
+    "ZM_Asp": -6,
+    "ZM_Gln": -4.88,
+    "ZM_Gly": -3,
+    "ZM_CO2": -1.12,
+    "ZM_ATP": -31.5,
+    "ZM_PRPP": -3.37,
+    "ZM_Me-H4MPT": -7.12,
+    "ZM_fum": 3.37,
+    "ZM_Glu": 4.88,
+    "ZM_NADH": 3,
+    "ZM_NADPH": 3.75,
+    "ZM_NH3": 3.75,
+    "ZM_DNA": 1
+   },
+   "lower_bound": 0,
+   "upper_bound": 100,
+   "subsystem": ""
+  },
+  {
+   "id": "MC_RNA",
+   "name": "MC_RNA",
+   "metabolites": {
+    "ZM_Asp": -6.17,
+    "ZM_Gln": -5.02,
+    "ZM_Gly": -3.08,
+    "ZM_CO2": -1.16,
+    "ZM_ATP": -32.41,
+    "ZM_PRPP": -3.47,
+    "ZM_Me-H4MPT": -6.17,
+    "ZM_fum": 3.47,
+    "ZM_Glu": 5.02,
+    "ZM_NADH": 3.09,
+    "ZM_NADPH": 6.17,
+    "ZM_NH3": 3.86,
+    "ZM_RNA": 1
+   },
+   "lower_bound": 0,
+   "upper_bound": 100,
+   "subsystem": ""
+  },
+  {
+   "id": "MC_glyc",
+   "name": "MC_glyc",
+   "metabolites": {
+    "ZM_ATP": -3.85,
+    "ZM_G1P": -3.85,
+    "ZM_ADP": 3.85,
+    "ZM_glyc": 1
+   },
+   "lower_bound": 0,
+   "upper_bound": 100,
+   "subsystem": ""
+  },
+  {
+   "id": "MC_PROT",
+   "name": "MC_PROT",
+   "metabolites": {
+    "ZM_Asp": -0.46,
+    "ZM_Lys": -0.54,
+    "ZM_Glu": -0.52,
+    "ZM_Gln": -0.52,
+    "ZM_Pro": -0.34,
+    "ZM_Arg": -0.46,
+    "ZM_Cys": -0.15,
+    "ZM_Met": -0.22,
+    "ZM_Thr": -0.48,
+    "ZM_Ile": -0.44,
+    "ZM_Ser": -0.44,
+    "ZM_Gly": -0.96,
+    "ZM_Tyr": -0.26,
+    "ZM_Phe": -0.3,
+    "ZM_Trp": -0.01,
+    "ZM_Val": -0.67,
+    "ZM_Ala": -0.96,
+    "ZM_Leu": -0.85,
+    "ZM_His": -0.16,
+    "ZM_Asn": -0.46,
+    "ZM_ATP": -39,
+    "ZM_ADP": 39,
+    "ZM_PROT": 1
+   },
+   "lower_bound": 0,
+   "upper_bound": 100,
+   "subsystem": ""
+  },
+  {
+   "id": "MC_PLIP",
+   "name": "MC_PLIP",
+   "metabolites": {
+    "ZM_GAP": -1.95,
+    "ZM_AcCoA": -20.8,
+    "ZM_Ser": -0.65,
+    "ZM_ATP": -44.2,
+    "ZM_NADH": -38.35,
+    "ZM_CO2": 0.65,
+    "ZM_ADP": 44.2,
+    "ZM_PLIP": 1
+   },
+   "lower_bound": 0,
+   "upper_bound": 100,
+   "subsystem": ""
+  },
+  {
+   "id": "MC_BIO",
+   "name": "MC_BIO",
+   "metabolites": {
+    "ZM_DNA": -0.0344,
+    "ZM_RNA": -0.2273,
+    "ZM_glyc": -0.0277,
+    "ZM_PLIP": -0.1009,
+    "ZM_PROT": -0.6097,
+    "ZM_BIOMASS": 1
+   },
+   "lower_bound": 0,
+   "upper_bound": 100,
+   "subsystem": ""
+  },
+  {
+   "id": "D84",
+   "name": "D84",
+   "metabolites": {
+    "NH3(ext)": -1,
+    "NH3": 1
+   },
+   "lower_bound": 0,
+   "upper_bound": 1000,
+   "subsystem": ""
+  },
+  {
+   "id": "H2gen",
+   "name": "H2gen",
+   "metabolites": {
+    "H2(exch)": -1
+   },
+   "lower_bound": 0,
+   "upper_bound": 0,
+   "subsystem": ""
+  },
+  {
+   "id": "D_CO2",
+   "name": "D_CO2",
+   "metabolites": {
+    "CO2": -1
+   },
+   "lower_bound": -100,
+   "upper_bound": 100,
+   "subsystem": ""
+  },
+  {
+   "id": "M_CO2",
+   "name": "M_CO2",
+   "metabolites": {
+    "ZM_CO2": -1
+   },
+   "lower_bound": -100,
+   "upper_bound": 100,
+   "subsystem": ""
+  },
+  {
+   "id": "D86",
+   "name": "D86",
+   "metabolites": {
+    "ATP": -0.5,
+    "ADP": 0.5,
+    "Lac": 1
+   },
+   "lower_bound": 10,
+   "upper_bound": 10,
+   "subsystem": ""
+  },
+  {
+   "id": "D87",
+   "name": "D87",
+   "metabolites": {
+    "aKG": -1,
+    "SucCoA": 1,
+    "Fdx(red)": 1
+   },
+   "lower_bound": -100,
+   "upper_bound": 100,
+   "subsystem": ""
+  },
+  {
+   "id": "Acegen",
+   "name": "Acegen",
+   "metabolites": {
+    "AcOH(exch)": -1
+   },
+   "lower_bound": -100,
+   "upper_bound": 100,
+   "subsystem": ""
+  },
+  {
+   "id": "RNA_syn",
+   "name": "RNA_syn",
+   "metabolites": {
+    "fum": 3.47,
+    "Asp": -6.17,
+    "Glu": 5.02,
+    "Gln": -5.02,
+    "Gly": -3.08,
+    "CO2": -1.16,
+    "mTHF": -6.17,
+    "ATP": -32.41,
+    "NADH": 3.09,
+    "NADPH": 6.17,
+    "NH3": 3.86,
+    "PRPP": -3.47,
+    "RNA": 1
+   },
+   "lower_bound": 0,
+   "upper_bound": 100,
+   "subsystem": "macromolecule synthesis, from macromolecule_synthesis.txt"
+  },
+  {
+   "id": "DNA_syn",
+   "name": "DNA_syn",
+   "metabolites": {
+    "fum": 3.37,
+    "Asp": -6,
+    "Glu": 4.88,
+    "Gln": -4.88,
+    "Gly": -3,
+    "CO2": -1.12,
+    "mTHF": -7.12,
+    "ATP": -31.5,
+    "NADH": 3,
+    "NADPH": 3.75,
+    "NH3": 3.75,
+    "PRPP": -3.37,
+    "DNA": 1
+   },
+   "lower_bound": 0,
+   "upper_bound": 100,
+   "subsystem": "macromolecule synthesis, from macromolecule_synthesis.txt"
+  },
+  {
+   "id": "PLIP_syn",
+   "name": "PLIP_syn",
+   "metabolites": {
+    "GAP": -1.95,
+    "AcCoA": -20.8,
+    "Ser": -0.65,
+    "CO2": 0.65,
+    "ATP": -44.2,
+    "NADH": -38.35,
+    "ADP": 44.2,
+    "PLIP": 1
+   },
+   "lower_bound": 0,
+   "upper_bound": 100,
+   "subsystem": "macromolecule synthesis, from macromolecule_synthesis.txt"
+  },
+  {
+   "id": "PEPTID_syn",
+   "name": "PEPTID_syn",
+   "metabolites": {
+    "F6P": -1.94,
+    "PEP": -0.97,
+    "AcCoA": -1.94,
+    "Lys": -0.97,
+    "Glu": 1.94,
+    "Gln": -1.94,
+    "Ala": -2.91,
+    "CO2": 0.97,
+    "ATP": -6.97,
+    "NADPH": -0.97,
+    "ADP": 6.97,
+    "PEPTID": 1
+   },
+   "lower_bound": 0,
+   "upper_bound": 100,
+   "subsystem": "macromolecule synthesis, from macromolecule_synthesis.txt"
+  },
+  {
+   "id": "LPS_syn",
+   "name": "LPS_syn",
+   "metabolites": {
+    "R5P": -0.91,
+    "F6P": -0.91,
+    "PEP": -0.91,
+    "AcCoA": -15.47,
+    "AcOH(exch)": 0.91,
+    "Glu": 0.91,
+    "Gln": -0.91,
+    "ATP": -32.76,
+    "NADH": -12.74,
+    "ADP": 32.76,
+    "LPS": 1
+   },
+   "lower_bound": 0,
+   "upper_bound": 100,
+   "subsystem": "macromolecule synthesis, from macromolecule_synthesis.txt"
+  },
+  {
+   "id": "PROT_syn",
+   "name": "PROT_syn",
+   "metabolites": {
+    "Asp": -0.46,
+    "Lys": -0.54,
+    "Glu": -0.52,
+    "Gln": -0.52,
+    "Pro": -0.34,
+    "Arg": -0.46,
+    "Cys": -0.15,
+    "Met": -0.22,
+    "Thr": -0.48,
+    "Ile": -0.44,
+    "Ser": -0.44,
+    "Gly": -0.96,
+    "Tyr": -0.26,
+    "Phe": -0.3,
+    "Trp": -0.01,
+    "Val": -0.67,
+    "Ala": -0.96,
+    "Leu": -0.85,
+    "His": -0.16,
+    "Asn": -0.46,
+    "ATP": -39,
+    "ADP": 39,
+    "PROT": 1
+   },
+   "lower_bound": 0,
+   "upper_bound": 100,
+   "subsystem": "macromolecule synthesis, from macromolecule_synthesis.txt"
+  },
+  {
+   "id": "Glyc_syn",
+   "name": "Glyc_syn",
+   "metabolites": {
+    "ATP": -3.85,
+    "G6P": -3.85,
+    "ADP": 3.85,
+    "Glyc": 1
+   },
+   "lower_bound": 0,
+   "upper_bound": 100,
+   "subsystem": "macromolecule synthesis, from macromolecule_synthesis.txt"
+  },
+  {
+   "id": "EX_SO4",
+   "name": "SO4(-2) exchange",
+   "metabolites": {
+    "SO4": -1
+   },
+   "lower_bound": -1000,
+   "upper_bound": 1000,
+   "subsystem": "Exchange"
+  },
+  {
+   "id": "EX_H2S",
+   "name": "H2S exchange",
+   "metabolites": {
+    "H2S": -1
+   },
+   "lower_bound": -1000,
+   "upper_bound": 1000,
+   "subsystem": "Exchange"
+  },
+  {
+   "id": "EX_EtOH",
+   "name": "Ethanol exchange",
+   "metabolites": {
+    "EtOH": -1
+   },
+   "lower_bound": -1000,
+   "upper_bound": 1000,
+   "subsystem": "Exchange"
+  },
+  {
+   "id": "EX_glycerol",
+   "name": "glycerol exchange",
+   "metabolites": {
+    "glycerol": -1
+   },
+   "lower_bound": -1000,
+   "upper_bound": 1000,
+   "subsystem": "Exchange"
+  },
+  {
+   "id": "EX_ZM_CH4",
+   "name": "MM_Methane exchange",
+   "metabolites": {
+    "ZM_CH4": -1
+   },
+   "lower_bound": -1000,
+   "upper_bound": 1000,
+   "subsystem": "Exchange"
+  },
+  {
+   "id": "EX_ZM_N2",
+   "name": "MM_Nitrogen exchange",
+   "metabolites": {
+    "ZM_N2": -1
+   },
+   "lower_bound": -1000,
+   "upper_bound": 1000,
+   "subsystem": "Exchange"
+  },
+  {
+   "id": "EX_ZM_BIOMASS",
+   "name": "Methanococcus_biomass exchange",
+   "metabolites": {
+    "ZM_BIOMASS": -1
+   },
+   "lower_bound": -1000,
+   "upper_bound": 1000,
+   "subsystem": "Exchange"
+  },
+  {
+   "id": "EX_NH3(ext)",
+   "name": "Ammonia(external) exchange",
+   "metabolites": {
+    "NH3(ext)": -1
+   },
+   "lower_bound": -1000,
+   "upper_bound": 1000,
+   "subsystem": "Exchange"
+  }
+ ],
+ "genes": [],
+ "objective": {
+  "mue": 1,
+  "D_ATPase": -1,
+  "MC_BIO": 0.1
+ }
+}
