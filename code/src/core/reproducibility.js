@@ -40,7 +40,8 @@ export async function createReproducibilityBundle(store){
   metadata:{createdAt:new Date().toISOString(),generator:'Coxeter Multicell Flux Visualizer',software:softwareIdentity(),coxeterVersion:softwareIdentity().version,
     userAgent:typeof navigator!=='undefined'?navigator.userAgent:null},
   models,modelHashes,
-  community:{scenario:store.scenario?.id??null,name:store.scenario?.name??null,species:store.species.map(x=>({...x})),objective:store.objective,productTarget:store.productTarget??null},
+  community:{scenario:store.scenario?.id??null,name:store.scenario?.name??null,species:store.species.map(x=>({...x})),objective:store.objective,productTarget:store.productTarget??null,
+    ...(store.customObjective?{customObjective:store.customObjective}:{})},
   constraints:{medium:{...store.medium},reactionOverrides:Object.fromEntries(store.overrides??[])},
   analysis,omics,map,solution,
   ...(store.isZunigaStudy ? { study: {

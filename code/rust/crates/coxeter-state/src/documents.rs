@@ -564,6 +564,7 @@ impl Store {
             "steadyCom": self.solution.as_ref().and_then(|s| s.steady_com.as_ref()).map(|sc| json!({"mu": num_json(sc.mu)})),
             "objective": self.objective,
             "productTarget": self.product_target,
+            "customObjective": self.custom_objective.as_ref().map(CustomObjective::to_json),
             "parsimonious": self.parsimonious,
             "pfbaBiomassPercent": num_json(self.pfba_biomass_percent),
             "loopless": self.loopless,
@@ -648,9 +649,11 @@ impl Store {
         if let Some(s) = self.scenarios.iter().find(|s| s.get("id").and_then(Value::as_str) == scenario_id.as_deref()).cloned() {
             self.scenario = Some(s);
         }
+        self.reset_opened_constraints();
         let get = |k: &str| doc.get(k).filter(|v| !v.is_null());
         self.objective = get("objective").map_or_else(|| objectives::EQUAL_GROWTH.to_string(), js::to_string);
         self.product_target = get("productTarget").map(js::to_string);
+        self.custom_objective = None;
         self.parsimonious = get("parsimonious").or_else(|| get("pfba")).is_some_and(js::truthy);
         let percent = match get("pfbaBiomassPercent") {
             Some(p) => js::to_number(p),
@@ -719,6 +722,7 @@ impl Store {
                     .collect()
             })
             .unwrap_or_default();
+        self.custom_objective = self.custom_objective_from(doc.get("customObjective"));
         self.apply_overrides();
         // Before solving, so the repaint that follows already reads "Saved".
         self.mark_scenario_saved();
@@ -818,6 +822,7 @@ impl Store {
             scenario: self.scenario.clone(),
             objective: json!(self.objective),
             product_target: self.product_target.as_ref().map(|t| json!(t)),
+            custom_objective: self.custom_objective.as_ref().map(CustomObjective::to_json),
             medium: self.medium.iter().map(|(k, v)| (k.clone(), num_json(*v))).collect(),
             overrides: self.overrides.iter().map(|(k, b)| (k.clone(), b.to_json())).collect(),
             parsimonious: self.parsimonious,
@@ -893,6 +898,7 @@ impl Store {
         self.species = species;
         self.objective = get(community, "objective").map_or_else(|| objectives::EQUAL_GROWTH.to_string(), |v| js::to_string(&v));
         self.product_target = get(community, "productTarget").map(|v| js::to_string(&v));
+        self.custom_objective = None;
         let constraints = bundle.get("constraints");
         self.medium = match get(constraints, "medium") {
             Some(Value::Object(m)) => m.iter().map(|(k, v)| (k.clone(), js::to_number(v))).collect(),
@@ -916,6 +922,8 @@ impl Store {
         // compared; its ranges are restored from the archive below.
         self.fva_enabled = false;
         self.rebuild(RebuildOptions::default())?;
+        self.custom_objective = self.custom_objective_from(community.and_then(|c| c.get("customObjective")));
+        self.apply_overrides();
         // Restore the exact archived drawing after the biological model exists.
         if let Some(map) = get(Some(bundle), "map") {
             self.map = Some(EditableMap::from_json(&map)?);

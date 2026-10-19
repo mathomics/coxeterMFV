@@ -10,9 +10,11 @@
 //! `actions.rs`; what each panel draws and does is in `panels/`.
 
 use std::path::PathBuf;
+use std::sync::Arc;
 
 use coxeter_canvas::gestures::{CanvasKey, KeyMods};
 use coxeter_canvas::{CanvasEvent, MapView};
+use coxeter_state::reactions::{ReactionTablePatch, ReactionTableModel};
 use coxeter_state::{JobKind, Status, StatusState, Store};
 use indexmap::IndexMap;
 
@@ -32,6 +34,8 @@ pub enum Deferred {
     Medium { base: String, value: String },
     /// `store.setPFBABiomassPercent(value)`.
     PfbaPercent(String),
+    /// `store.setReactionTable({ query })`: the Reactions page's search.
+    ReactionSearch(String),
     /// `paintSaveState()` (the badge is brought up to date once changes pause).
     SaveState,
 }
@@ -56,6 +60,10 @@ pub struct Shell {
     /// Counts store changes that touch the drawing: the map widget redraws
     /// when it moves.
     pub revision: u64,
+    /// Counts store changes that can change a reactions table row: the
+    /// table model is rebuilt once per revision, not once per frame.
+    pub table_revision: u64,
+    table_model: Option<(u64, Arc<ReactionTableModel>)>,
     /// Debounced store calls, by key, with the time (egui seconds) they run.
     pub deferred: IndexMap<&'static str, (f64, Deferred)>,
     /// `scheduleSolve()`: one solve on the next frame.
@@ -90,6 +98,8 @@ impl Shell {
             dialogs,
             menus: panels::menus::MapMenus::default(),
             revision: 1,
+            table_revision: 1,
+            table_model: None,
             deferred: IndexMap::new(),
             pending_solve: false,
             status_notice: StatusNotice::default(),
@@ -158,6 +168,8 @@ impl Shell {
         }
         self.setup(&ctx);
         self.before_frame(&ctx);
+        // Set again by a reactions table whose row is under the pointer.
+        self.ui.rx.hover = None;
 
         panels::topbar::show(ui, self);
         panels::left::show(ui, self);
@@ -179,6 +191,16 @@ impl Shell {
 
     /// The map, the workspace page over it, and the results dock.
     fn canvas_column(&mut self, ui: &mut egui::Ui) {
+        if self.reactions_split() {
+            // The Reactions page leaves the top of the map in view, so
+            // hovering a row shows the reaction and clicking one on the map
+            // finds its row.
+            let height = (ui.available_height() * 2.0 / 3.0).max(260.0);
+            let frame = egui::Frame::new().fill(self.palette().bg);
+            egui::Panel::bottom("reactions-page").exact_size(height).resizable(false).frame(frame).show(ui, |ui| panels::reactions::page(ui, self));
+            egui::CentralPanel::no_frame().show(ui, |ui| self.map_area(ui));
+            return;
+        }
         if let Some(ws) = self.ui.workspace {
             panels::workspace::show(ui, self, ws);
             return;
@@ -194,6 +216,7 @@ impl Shell {
     /// `#stage`: the map widget, and what it asks of the panels.
     pub fn map_area(&mut self, ui: &mut egui::Ui) {
         let revision = self.revision;
+        self.map.table_hover = self.ui.rx.hover.clone();
         let mut host = StoreHost::new(&mut self.store);
         let out = self.map.show(ui, &mut host, revision);
         self.map_rect = Some(out.response.rect);
@@ -201,6 +224,29 @@ impl Shell {
         for event in out.events {
             self.on_canvas_event(event);
         }
+        // Centred once the map has the box it is drawn in.
+        if let Some(rid) = self.ui.rx.center_on.take() {
+            self.center_on_reaction(&rid);
+            ui.ctx().request_repaint();
+        }
+    }
+
+    /// Whether the Reactions page is open with the map above it.
+    pub fn reactions_split(&self) -> bool {
+        self.ui.workspace == Some(crate::ui_state::Workspace::Reactions) && self.ui.rx.split && self.store.map.is_some()
+    }
+
+    /// `reactionTableModel()` of app.js: the reactions table for the store as
+    /// it is now, rebuilt once per store change, shared by the page and the dock.
+    pub fn reaction_table_model(&mut self) -> Arc<ReactionTableModel> {
+        if let Some((revision, model)) = &self.table_model {
+            if *revision == self.table_revision {
+                return model.clone();
+            }
+        }
+        let model = Arc::new(self.store.reaction_table_model());
+        self.table_model = Some((self.table_revision, model.clone()));
+        model
     }
 
     /// What the stage asks of the rest of the application.
@@ -265,8 +311,18 @@ impl Shell {
         if reasons.is_empty() {
             return;
         }
-        if reasons.iter().any(|r| r != "status" && r != "variability") {
+        // How the reactions table lists rows changes nothing on the map.
+        if reasons.iter().any(|r| r != "status" && r != "variability" && r != "reaction-table") {
             self.revision += 1;
+        }
+        if reasons.iter().any(|r| r != "status" && r != "variability" && r != "selection") {
+            self.table_revision += 1;
+        }
+        // A reaction picked on the map is found in the table.
+        let table_shown = self.ui.workspace == Some(crate::ui_state::Workspace::Reactions)
+            || (self.ui.results_tab == crate::ui_state::ResultsTab::Table && !self.ui.results_collapsed);
+        if table_shown && reasons.iter().any(|r| r == "selection") {
+            self.ui.rx.reveal = self.store.selected_reaction.clone();
         }
         // The badge compares the work with what was saved, which serialises
         // the scenario; it is brought up to date once the changes pause.
@@ -313,6 +369,11 @@ impl Shell {
             }
             Deferred::PfbaPercent(value) => {
                 let _ = self.store.set_pfba_biomass_percent(value.as_str());
+            }
+            Deferred::ReactionSearch(query) => {
+                if self.store.reaction_table.query != query {
+                    self.store.set_reaction_table(ReactionTablePatch { query: Some(query), ..Default::default() });
+                }
             }
             Deferred::SaveState => self.save_state = self.store.unsaved_work(),
         }
@@ -421,7 +482,7 @@ impl Shell {
         let events = ctx.input(|i| i.events.clone());
         let hover = ctx.input(|i| i.pointer.hover_pos());
         let focused = ctx.memory(|m| m.focused());
-        let canvas_has_keys = self.ui.workspace.is_none()
+        let canvas_has_keys = (self.ui.workspace.is_none() || self.reactions_split())
             && !self.ui.results_maximized
             && (hover.is_some_and(|p| self.map_rect.is_some_and(|r| r.contains(p)))
                 || (focused.is_some() && focused == self.map_id)

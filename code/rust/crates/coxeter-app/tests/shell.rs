@@ -195,7 +195,8 @@ fn the_simulate_hub_runs_fva_and_shows_results() {
 #[test]
 fn a_reaction_of_the_results_table_is_selected_and_shown() {
     let mut h = common::harness(None);
-    common::click(&mut h, "Table view");
+    // The top-20 flux table (the Table view lists every reaction, see tests/reactions.rs).
+    common::click(&mut h, "Analysis results");
     // The largest flux first: its row's link names the reaction by its model id.
     let rid = {
         let s = h.state().store.solution.clone().unwrap();

@@ -40,6 +40,9 @@ import { metaboliteLabelAngle } from '../map/metabolite-label.js';
 import { compartmentKey } from '../map/multi-selection.js';
 import { createWheelNavigation, wheelPanDelta } from './wheel-navigation.js';
 import { saveFile } from './save-file.js';
+import { signLogPosition, signLogValue } from './reactions-explorer.js';
+import { RX_ROW_HEIGHT, formatBound, reactionColumns, renderReactionRows, renderReactionsRegion } from './reactions-panel.js';
+import { OBJECTIVES } from '../core/community.js';
 
 const els = {
   app: document.getElementById('app-shell'),
@@ -71,6 +74,7 @@ const els = {
   omicsFileInput: document.getElementById('omics-file-input'),
   metatranscriptomicsFileInput: document.getElementById('metatranscriptomics-file-input'),
   reproducibilityFileInput: document.getElementById('reproducibility-file-input'),
+  boundsFileInput: document.getElementById('bounds-file-input'),
 };
 
 const ui = {
@@ -91,7 +95,18 @@ const ui = {
   // Set once the user works the right panel by hand.
   inspectorPinned: false,
   rightTab: 'inspector',
+  // The Reactions page and the dock's Table view: the table model of the last
+  // store change, scroll positions, whether the map shows above the page, the
+  // bulk bar's typed values and the row the pointer is on.
+  rx: {
+    model: null, revision: -1, pageScroll: 0, compactScroll: 0, split: true, showChanges: false,
+    bulk: { lower: '', upper: '', factor: '0.5' }, hover: null, compactMode: 'reactions',
+  },
 };
+
+// Bumped by every store change that can change a table row; the table model is
+// rebuilt once per revision, not once per paint or scroll.
+let storeRevision = 0;
 
 const store = new Store('.');
 store.view.dark = document.documentElement.dataset.theme === 'dark';
@@ -146,6 +161,7 @@ function paintMap() {
   markDraggedNode();
   markDraggedMetaboliteLabel();
   renderTextEditor();
+  if (ui.rx.hover) highlightReactionOnMap(ui.rx.hover);
 }
 
 /** Everything the renderer needs to draw the map as it stands. */
@@ -160,6 +176,9 @@ function mapRenderState() {
   if (omicsOverlay.enabled) {
     for (const [reactionId, color] of omicsOverlay.colors) omicsColors.set(reactionId, color);
   }
+  // Bounds changed from the model's: knocked-out reactions take the disabled
+  // style, the others a badge.
+  const changes = store.constraintChanges?.() ?? [];
   return {
     fluxes: store.displayFluxes(),
     solvedFluxes: store.solution?.status === 'optimal' ? store.solution.fluxes : new Map(),
@@ -167,7 +186,11 @@ function mapRenderState() {
     // Grey and dashed only against a solution: with none, nothing carries flux.
     offStyle: store.view.dashNoFlux !== false && store.solution?.status === 'optimal',
     lineHops: store.view.lineHops !== false,
-    disabledReactionIds: new Set(store.isZunigaStudy ? store.zunigaPrepared?.knockouts ?? [] : []),
+    disabledReactionIds: new Set([
+      ...(store.isZunigaStudy ? store.zunigaPrepared?.knockouts ?? [] : []),
+      ...changes.filter((change) => change.knockedOut).map((change) => change.id),
+    ]),
+    modifiedReactionIds: new Set(changes.filter((change) => !change.knockedOut).map((change) => change.id)),
     // Zuñiga's context cell, and any species switched off on a hand-built map.
     inactiveSpeciesIds: new Set([
       ...(store.isZunigaStudy && store.zunigaScenarioId !== 'mutant-coculture' ? ['Se'] : []),
@@ -335,6 +358,12 @@ function paintSidebar({ force = false } = {}) {
       force = true;
     }
   }
+  // The Reactions page repaints by region and keeps what is being typed in; it
+  // is only painted while open, since a closed one would still cost a table.
+  if ((ui.workspace || ui.lastWorkspace) === 'reactions') {
+    if (ui.workspace === 'reactions') paintReactionsPage();
+    return;
+  }
   // Re-rendering while a slider is being dragged destroys the element under the
   // pointer and the drag dies mid-gesture. While an input has focus, patch the
   // few values that change instead of rebuilding the panel, and catch up once
@@ -385,7 +414,7 @@ function discardModelEditorDraft(mode = store.modelEditorMode) {
   ui.drafts.delete(`model:${mode}`);
 }
 
-const WORKSPACES = new Set(['library','structure','map','scenario','community','medium','model','omics','analysis','crossfeeding','overview']);
+const WORKSPACES = new Set(['library','structure','map','scenario','community','medium','model','omics','analysis','crossfeeding','overview','reactions']);
 
 let scenarioLoadQueue = Promise.resolve();
 let pendingScenarioLoad = null;
@@ -426,23 +455,39 @@ function openWorkspace(name, trigger = document.activeElement) {
   closeMapMenus();
   els.app.classList.remove('is-task-overlay', 'is-results-maximized');
   els.workspaceEditor.hidden = false;
-  els.stage.inert = true;
-  els.stage.setAttribute('aria-hidden', 'true');
+  applyWorkspaceLayout();
   els.workspaceTitle.textContent = getWorkspaceTitle(name);
   paintSidebar({ force: true });
   paintShell();
   requestAnimationFrame(() => {
-    const first = name === 'library' ? els.sidebar.querySelector('#reaction-search-input') : els.workspaceEditor.querySelector('[data-action="close-workspace"]');
+    if (name === 'reactions') paintReactionRows('page');
+    const first = name === 'library' ? els.sidebar.querySelector('#reaction-search-input')
+      : name === 'reactions' ? els.sidebar.querySelector('.rx-search-input')
+        : els.workspaceEditor.querySelector('[data-action="close-workspace"]');
     first?.focus({ preventScroll: true });
   });
+}
+
+/*
+ * The Reactions page can leave the top of the map in view, so hovering a row
+ * shows the reaction and clicking one on the map finds its row. Every other
+ * workspace covers the map, which is then out of reach of pointer and keyboard.
+ */
+function applyWorkspaceLayout() {
+  const split = ui.workspace === 'reactions' && ui.rx.split && Boolean(store.layout);
+  els.workspaceEditor.classList.toggle('is-split', split);
+  els.workspaceEditor.dataset.workspace = ui.workspace ?? '';
+  els.stage.inert = Boolean(ui.workspace) && !split;
+  if (els.stage.inert) els.stage.setAttribute('aria-hidden', 'true');
+  else els.stage.removeAttribute('aria-hidden');
 }
 
 function closeWorkspace({ restoreFocus = true } = {}) {
   captureWorkspaceDraft();
   ui.workspace = null;
   els.workspaceEditor.hidden = true;
-  els.stage.inert = false;
-  els.stage.removeAttribute('aria-hidden');
+  applyWorkspaceLayout();
+  highlightReactionOnMap(null);
   paintShell();
   if (restoreFocus && ui.returnFocus) {
     const focus = [...els.app.querySelectorAll('button[data-action]')].find(button =>
@@ -484,10 +529,261 @@ function syncInspectorVisibility() {
 
 function paintResults() {
   const scroll = els.results.querySelector('.table-scroll')?.scrollTop ?? 0;
-  els.results.innerHTML = renderResults(store, ui.analysisTab);
+  const compact = els.results.querySelector('[data-rx-scroll="compact"]');
+  if (compact) ui.rx.compactScroll = compact.scrollTop;
+  // The Table view lists every reaction; built only while it can be seen.
+  const tableShown = ui.resultsTab === 'table' && !els.app.classList.contains('is-results-collapsed');
+  els.results.innerHTML = renderResults(store, ui.analysisTab, {
+    table: tableShown ? {
+      model: reactionTableModel(), scrollTop: ui.rx.compactScroll,
+      viewportHeight: Math.max(120, els.results.clientHeight - 60), mode: ui.rx.compactMode,
+    } : null,
+  });
   els.resultsPanel.dataset.tab = ui.resultsTab;
   const table = els.results.querySelector('.table-scroll');
   if (table) table.scrollTop = scroll;
+  const scroller = els.results.querySelector('[data-rx-scroll="compact"]');
+  if (scroller) scroller.scrollTop = ui.rx.compactScroll;
+}
+
+// Reactions page
+
+/** The reactions table for the store as it is now: rebuilt once per store change, shared by the page and the dock. */
+function reactionTableModel() {
+  if (!ui.rx.model || ui.rx.revision !== storeRevision) {
+    ui.rx.model = store.reactionTableModel();
+    ui.rx.revision = storeRevision;
+  }
+  return ui.rx.model;
+}
+
+/** A control a repaint must not replace while it has focus: replacing it ends the typing or the drag. */
+function isTextEntry(el) {
+  return Boolean(el?.matches?.('input:not([type="checkbox"]):not([type="radio"]), textarea, select'));
+}
+
+// What each region and table body was last painted with, so an unchanged one
+// is left alone: replacing a button between pointerdown and click loses the click.
+const paintedHTML = new WeakMap();
+
+/**
+ * Paint the Reactions page: the whole page the first time (or when the FVA or
+ * reduced-cost columns come or go), then only the regions whose content
+ * changed, never the one holding the focused control.
+ */
+function paintReactionsPage() {
+  const model = reactionTableModel();
+  const columns = reactionColumns(model, 'page').map((column) => column.id).join();
+  let page = els.sidebar.querySelector('[data-rx-page]');
+  // New columns need a new table, which waits until nothing in it is being typed in.
+  const stale = Boolean(page) && page.dataset.columns !== columns;
+  if (stale && !page.contains(document.activeElement)) page = null;
+  const view = { model, split: ui.rx.split, showChanges: ui.rx.showChanges, bulk: ui.rx.bulk };
+  if (!page) {
+    els.sidebar.innerHTML = renderWorkspace(store, 'reactions', {
+      reactions: { ...view, scrollTop: ui.rx.pageScroll, viewportHeight: Math.max(200, els.sidebar.clientHeight - 220) },
+    });
+    page = els.sidebar.querySelector('[data-rx-page]');
+    if (page) page.dataset.columns = columns;
+    for (const region of page?.querySelectorAll('[data-rx-region]') ?? []) {
+      paintedHTML.set(region, regionSignature(region.dataset.rxRegion, renderReactionsRegion(region.dataset.rxRegion, store, view)));
+    }
+    const scroller = els.sidebar.querySelector('[data-rx-scroll="page"]');
+    if (scroller) scroller.scrollTop = ui.rx.pageScroll;
+    paintReactionRows('page');
+    deferredPaint = false;
+    return;
+  }
+  const active = document.activeElement;
+  let held = stale;
+  for (const region of page.querySelectorAll('[data-rx-region]')) {
+    const name = region.dataset.rxRegion;
+    if (name === 'changes') region.hidden = !ui.rx.showChanges;
+    const html = renderReactionsRegion(name, store, view);
+    const signature = regionSignature(name, html);
+    if (paintedHTML.get(region) === signature) continue;
+    if (region.contains(active) && isTextEntry(active)) { held = true; continue; }
+    region.innerHTML = html;
+    paintedHTML.set(region, signature);
+  }
+  if (!paintReactionRows('page')) held = true;
+  deferredPaint = held;
+}
+
+/** What decides whether a region needs repainting: its HTML, except the bulk bar, whose fields hold what is being typed. */
+function regionSignature(name, html) {
+  return name === 'bulk' ? `${store.reactionTable.selection.size}|${store.isZunigaStudy}` : html;
+}
+
+/**
+ * Paint the rows in view of the page ('page') or the dock ('compact'). With a
+ * control in the table focused, only the other cells of the rows already
+ * there are brought up to date. Returns false when it had to hold back.
+ */
+function paintReactionRows(mode) {
+  const container = mode === 'page' ? els.sidebar : els.results;
+  const body = container.querySelector(`[data-rx-rows="${mode}"]`);
+  const scroller = container.querySelector(`[data-rx-scroll="${mode}"]`);
+  if (!body || !scroller) return true;
+  const header = scroller.querySelector('thead')?.offsetHeight ?? 0;
+  const html = renderReactionRows(store, {
+    model: reactionTableModel(),
+    scrollTop: Math.max(0, scroller.scrollTop - header),
+    viewportHeight: scroller.clientHeight,
+  }, mode);
+  if (paintedHTML.get(body) === html) return true;
+  const active = document.activeElement;
+  if (body.contains(active) && isTextEntry(active)) {
+    patchReactionRows(body, html, active);
+    // The rows now match neither the last full paint nor this one, so the next
+    // paint must not be skipped because its HTML equals that earlier one (undo).
+    paintedHTML.delete(body);
+    return false;
+  }
+  body.innerHTML = html;
+  paintedHTML.set(body, html);
+  return true;
+}
+
+/** Bring the rows already in a table body up to date, cell by cell, leaving the cell with the focused control as it is. */
+function patchReactionRows(body, html, active) {
+  const template = document.createElement('template');
+  template.innerHTML = `<table><tbody>${html}</tbody></table>`;
+  const fresh = new Map([...template.content.querySelectorAll('tr[data-rid]')].map((row) => [row.dataset.rid, row]));
+  for (const row of body.querySelectorAll('tr[data-rid]')) {
+    const next = fresh.get(row.dataset.rid);
+    if (!next) continue;
+    row.className = next.className;
+    [...row.children].forEach((cell, index) => {
+      const replacement = next.children[index];
+      if (!replacement || cell.contains(active) || cell.innerHTML === replacement.innerHTML) return;
+      cell.replaceWith(replacement.cloneNode(true));
+    });
+  }
+}
+
+const pendingRows = new Set();
+function scheduleReactionRows(mode) {
+  if (pendingRows.has(mode)) return;
+  pendingRows.add(mode);
+  requestAnimationFrame(() => {
+    pendingRows.delete(mode);
+    paintReactionRows(mode);
+  });
+}
+
+/** Repaint what lists reactions after the table's own settings changed: the page and the dock. */
+function paintReactionTables() {
+  // A new search, filter, order or grouping is a new list: read it from the top.
+  const table = store.reactionTable;
+  const listing = JSON.stringify([table.query, table.filters, table.sort, table.groupBy]);
+  if (ui.rx.listing !== undefined && ui.rx.listing !== listing) {
+    ui.rx.pageScroll = 0;
+    ui.rx.compactScroll = 0;
+    for (const scroller of document.querySelectorAll('[data-rx-scroll]')) scroller.scrollTop = 0;
+  }
+  ui.rx.listing = listing;
+  if (ui.workspace === 'reactions') paintReactionsPage();
+  if (ui.resultsTab === 'table') paintResults();
+}
+
+/** Scroll a table so a reaction's row is in view, when it is listed. */
+function revealReactionRow(rid, mode = 'page') {
+  const container = mode === 'page' ? els.sidebar : els.results;
+  const scroller = container.querySelector(`[data-rx-scroll="${mode}"]`);
+  if (!scroller || !rid) return false;
+  const index = reactionTableModel().items.findIndex((item) => item.kind === 'row' && item.row.id === rid);
+  if (index < 0) return false;
+  const height = RX_ROW_HEIGHT[mode];
+  const header = scroller.querySelector('thead')?.offsetHeight ?? 0;
+  const top = header + index * height;
+  if (top < scroller.scrollTop + header || top + height > scroller.scrollTop + scroller.clientHeight) {
+    scroller.scrollTop = Math.max(0, top - scroller.clientHeight / 3);
+  }
+  paintReactionRows(mode);
+  return true;
+}
+
+/** Open the Reactions page on one reaction, clearing a search or filter that hides it. */
+function revealInReactions(rid, trigger = null) {
+  if (!rid) return;
+  if (ui.workspace !== 'reactions') openWorkspace('reactions', trigger);
+  const model = reactionTableModel();
+  if (!model.items.some((item) => item.kind === 'row' && item.row.id === rid)) {
+    store.reactionTable.collapsed.clear();
+    const filtered = !model.visible.some((row) => row.id === rid);
+    store.setReactionTable(filtered ? { query: '', filters: [] } : {});
+  }
+  if (store.selectedReaction !== rid) store.select(rid);
+  requestAnimationFrame(() => revealReactionRow(rid, 'page'));
+}
+
+/** Select a reaction and centre the map on it, bringing the map into view above the page if need be. */
+function locateReaction(rid) {
+  if (!rid) return;
+  if (!store.layout?.reactions?.has(rid)) {
+    // Still selected, so the inspector shows it: only the map has nothing to show.
+    store.select(rid);
+    store.status = { ...store.status, state: 'warn', message: `${store.reactionTitle(rid)} is not drawn on the map. Add it from the Reaction library.` };
+    store.emit('status');
+    return;
+  }
+  if (ui.workspace === 'reactions' && !ui.rx.split) {
+    ui.rx.split = true;
+    applyWorkspaceLayout();
+    paintReactionsPage();
+  } else if (ui.workspace && ui.workspace !== 'reactions') {
+    closeWorkspace({ restoreFocus: false });
+  }
+  store.select(rid);
+  requestAnimationFrame(() => centerOnReaction(rid));
+}
+
+/** Ring a reaction on the map while its table row is under the pointer; null takes the ring away. */
+function highlightReactionOnMap(rid) {
+  ui.rx.hover = rid ?? null;
+  const svg = els.stage.querySelector('svg.emc-map');
+  if (!svg) return;
+  svg.querySelectorAll('.emc-table-hover').forEach((node) => node.remove());
+  svg.querySelectorAll('.is-table-hover').forEach((node) => node.classList.remove('is-table-hover'));
+  const rxn = rid ? store.layout?.reactions?.get(rid) : null;
+  if (!rxn) return;
+  const ring = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+  ring.setAttribute('class', 'emc-table-hover');
+  ring.setAttribute('cx', String(rxn.x));
+  ring.setAttribute('cy', String(rxn.y));
+  ring.setAttribute('r', String(Math.max(26, 18 / (camera.scale || 1))));
+  ring.setAttribute('pointer-events', 'none');
+  svg.appendChild(ring);
+  for (const part of svg.querySelectorAll(`.emc-seg[data-rxn="${CSS.escape(rid)}"], .emc-marker[data-rxn="${CSS.escape(rid)}"]`)) {
+    part.classList.add('is-table-hover');
+  }
+}
+
+/**
+ * Run a constraint edit from the page. A published case refuses edits by
+ * throwing, and an undo or a preset change is asynchronous: either way what
+ * went wrong is said in the status line.
+ */
+function runConstraintEdit(edit) {
+  const fail = (error) => {
+    store.status = { ...store.status, state: 'error', message: error.message };
+    store.emit('status');
+  };
+  try {
+    const result = edit();
+    if (result && typeof result.catch === 'function') result.catch(fail);
+  } catch (error) {
+    fail(error);
+  }
+}
+
+async function exportBoundsCSV() {
+  if (!store.community) return;
+  const filename = await download(store.fileNameFor(EXPORT_SUFFIX.bounds, 'csv'), () => store.boundsCSV(), 'text/csv');
+  if (!filename) return;
+  store.addLog('ok', `Bounds exported as ${filename}`);
+  store.emit('status');
 }
 
 /**
@@ -603,7 +899,10 @@ function paintShell() {
 function flushDeferredPaint() {
   if (!deferredPaint) return;
   setTimeout(() => {
-    if (deferredPaint && !isAdjusting()) paintSidebar({ force: true });
+    if (deferredPaint && !isAdjusting()) {
+      paintSidebar({ force: true });
+      paintInspector({ force: true });
+    }
   }, 0);
 }
 window.addEventListener('pointerup', flushDeferredPaint);
@@ -777,9 +1076,15 @@ function centerOnReaction(reactionId) {
   if (!rxn) return;
   const box = els.stage.getBoundingClientRect();
   camera.x = box.width / 2 - rxn.x * camera.scale;
-  camera.y = box.height / 2 - rxn.y * camera.scale;
+  camera.y = visibleStageHeight(box) / 2 - rxn.y * camera.scale;
   camera.fitted = true;
   applyCamera();
+}
+
+/** How much of the stage shows: all of it, or what the Reactions page leaves above itself. */
+function visibleStageHeight(box) {
+  if (els.workspaceEditor.hidden || !els.workspaceEditor.classList.contains('is-split')) return box.height;
+  return Math.max(80, Math.min(box.height, els.workspaceEditor.getBoundingClientRect().top - box.top));
 }
 
 function centerOnPathway(pathwayKey) {
@@ -3407,16 +3712,69 @@ function onSidebarInput(event) {
       debounce('medium', () => store.setMediumLimit(el.dataset.base, el.value), 120);
       break;
     case 'bound-lower':
-    case 'bound-lower-number':
-      if (!acceptNumber(el, event, () => store.currentReactionBounds(el.dataset.rxn).lower)) break;
-      store.setReactionBounds(el.dataset.rxn, el.value, null);
+    case 'bound-upper': {
+      // A sign-log slider: its position is not the bound, signLogValue is.
+      const lower = action === 'bound-lower';
+      const value = el.dataset.scale === 'signlog' ? signLogValue(el.valueAsNumber) : el.valueAsNumber;
+      if (!Number.isFinite(value)) break;
+      const box = el.closest('.bound-control')?.querySelector('input[type="number"]');
+      if (box) {
+        box.value = formatBound(value);
+        box.removeAttribute('aria-invalid');
+      }
+      el.title = `${formatBound(value)} (log scale; the middle is 0)`;
+      runConstraintEdit(() => store.setReactionBounds(el.dataset.rxn, lower ? value : null, lower ? null : value));
       scheduleSolve();
       break;
-    case 'bound-upper':
-    case 'bound-upper-number':
-      if (!acceptNumber(el, event, () => store.currentReactionBounds(el.dataset.rxn).upper)) break;
-      store.setReactionBounds(el.dataset.rxn, null, el.value);
+    }
+    case 'bound-lower-number':
+    case 'bound-upper-number': {
+      // The box applies on Enter or when it is left; while typing it is only checked.
+      const lower = action === 'bound-lower-number';
+      const current = () => formatBound(store.currentReactionBounds(el.dataset.rxn)[lower ? 'lower' : 'upper']);
+      if (!acceptNumber(el, event, current) || event.type !== 'change') break;
+      runConstraintEdit(() => store.setReactionBounds(el.dataset.rxn, lower ? el.value : null, lower ? null : el.value));
+      const slider = el.closest('.bound-control')?.querySelector('input[type="range"]');
+      if (slider?.dataset.scale === 'signlog') slider.value = String(signLogPosition(el.valueAsNumber));
       scheduleSolve();
+      break;
+    }
+    case 'rx-search':
+      if (store.reactionTable.query !== el.value) debounce('rx-search', () => store.setReactionTable({ query: el.value }), 140);
+      break;
+    case 'rx-group-by':
+      if (event.type === 'change') store.setReactionTable({ groupBy: el.value });
+      break;
+    case 'rx-select':
+      if (event.type === 'change') store.selectReactionRows([el.dataset.rid], el.checked);
+      break;
+    case 'rx-group-select':
+      if (event.type === 'change') {
+        const group = reactionTableModel().items.find((item) => item.kind === 'group' && item.key === el.dataset.group);
+        if (group) store.selectReactionRows(group.ids, el.checked);
+      }
+      break;
+    case 'rx-select-visible':
+      if (event.type === 'change') store.selectReactionRows(reactionTableModel().visible.map((row) => row.id), el.checked);
+      break;
+    case 'rx-objective':
+      if (event.type === 'change') {
+        // An emptied box takes the reaction out of the objective.
+        if (el.value.trim() !== '' && !Number.isFinite(el.valueAsNumber)) {
+          acceptNumber(el, event, () => formatBound(store.objectiveCoefficients()[el.dataset.rid] ?? 0));
+          break;
+        }
+        runConstraintEdit(() => store.setObjectiveCoefficient(el.dataset.rid, el.value.trim() === '' ? 0 : el.value));
+      }
+      break;
+    case 'rx-objective-sense':
+      if (event.type === 'change') runConstraintEdit(() => store.setObjectiveSense(el.value));
+      break;
+    case 'rx-objective-product':
+      if (event.type === 'change' && el.value) runConstraintEdit(() => store.setObjective(OBJECTIVES.PRODUCT, el.value));
+      break;
+    case 'rx-bulk-field':
+      ui.rx.bulk[el.dataset.field] = el.value;
       break;
     case 'species-toggle':
       // A kept drawing keeps its view too; only a fresh layout is refitted.
@@ -3654,6 +4012,10 @@ async function onSidebarClick(event) {
         tab.classList.toggle('is-active', active);
         tab.setAttribute('aria-pressed', String(active));
       });
+      if (ui.resultsTab === 'table') {
+        paintResults();
+        requestAnimationFrame(() => paintReactionRows('compact'));
+      }
       break;
     case 'analysis-subtab':
       ui.analysisTab = ['flux','fva','reduced','scaled','shadow','repro'].includes(button.dataset.analysisTab) ? button.dataset.analysisTab : 'flux';
@@ -3677,6 +4039,7 @@ async function onSidebarClick(event) {
       els.app.classList.remove('is-results-maximized');
       els.app.classList.toggle('is-results-collapsed');
       paintShell();
+      if (ui.resultsTab === 'table') paintResults();
       break;
     case 'tool-select':
       closeWorkspace({ restoreFocus: false });
@@ -3804,7 +4167,7 @@ async function onSidebarClick(event) {
     case 'reaction-rotate':
       store.rotateMapReaction(rxn, (Number(button.dataset.angle) * Math.PI) / 180);
       break;
-    case 'knockout': store.knockout(rxn); break;
+    case 'knockout': runConstraintEdit(() => store.knockout(rxn)); break;
     case 'remove-map-reaction': boundaryMenu.close(); metaboliteMenu.close(); compartmentMenu.close(); store.removeMapReaction(rxn); break;
     case 'map-undo': finishMetaboliteLabelDragForHistory(); closeMapMenus(); store.undoMap(); break;
     case 'map-redo': finishMetaboliteLabelDragForHistory(); closeMapMenus(); store.redoMap(); break;
@@ -3898,8 +4261,48 @@ async function onSidebarClick(event) {
       store.showFullMap();
       break;
     }
-    case 'reset-reaction': store.resetReaction(rxn); break;
-    case 'reset-all': store.resetAllReactions(); break;
+    case 'reset-reaction': runConstraintEdit(() => store.resetReaction(rxn)); break;
+    case 'reset-all': runConstraintEdit(() => store.resetAllReactions()); break;
+    case 'rx-filter': store.setReactionTable({ toggleFilter: button.dataset.filter }); break;
+    case 'rx-sort': store.setReactionTable({ sortBy: button.dataset.sort }); break;
+    case 'rx-group-toggle': store.setReactionTable({ toggleGroup: button.dataset.group }); break;
+    case 'rx-open': store.select(button.dataset.rid); break;
+    case 'rx-locate': locateReaction(button.dataset.rid); break;
+    case 'rx-reveal': revealInReactions(button.dataset.rid, button); break;
+    case 'rx-ko': {
+      const id = button.dataset.rid;
+      runConstraintEdit(() => (store.reactionKnockedOut(id) ? store.resetReaction(id) : store.knockout(id)));
+      break;
+    }
+    case 'rx-reset': runConstraintEdit(() => store.resetReaction(button.dataset.rid)); break;
+    case 'rx-undo': runConstraintEdit(() => store.undoConstraints()); break;
+    case 'rx-redo': runConstraintEdit(() => store.redoConstraints()); break;
+    case 'rx-changes-toggle':
+      ui.rx.showChanges = !ui.rx.showChanges;
+      paintReactionsPage();
+      break;
+    case 'rx-split-toggle':
+      ui.rx.split = !ui.rx.split;
+      applyWorkspaceLayout();
+      paintReactionsPage();
+      break;
+    case 'rx-export-csv': exportBoundsCSV(); break;
+    case 'rx-import-csv': els.boundsFileInput?.click(); break;
+    case 'rx-bulk': {
+      // Read where the user typed: the draft follows the fields, the fields are the truth.
+      const bar = button.closest('.rx-bulk-bar');
+      for (const field of bar?.querySelectorAll('[data-field]') ?? []) ui.rx.bulk[field.dataset.field] = field.value;
+      runConstraintEdit(() => store.bulkReactionAction(button.dataset.bulk, { ...ui.rx.bulk }));
+      break;
+    }
+    case 'rx-select-none': store.clearReactionRowSelection(); break;
+    case 'rx-objective-preset': runConstraintEdit(() => store.setObjective(button.dataset.preset)); break;
+    case 'rx-objective-remove': runConstraintEdit(() => store.setObjectiveCoefficient(button.dataset.rid, 0)); break;
+    case 'rx-objective-reset': runConstraintEdit(() => store.resetObjective()); break;
+    case 'rx-compact-mode':
+      ui.rx.compactMode = button.dataset.mode === 'shadow' ? 'shadow' : 'reactions';
+      paintResults();
+      break;
     case 'clear-selection': store.select(null); break;
     case 'search-add-reaction': {
       closeWorkspace({ restoreFocus: false });
@@ -4148,6 +4551,43 @@ els.omicsFileInput.addEventListener('change', async () => {
   }
   els.omicsFileInput.value = '';
 });
+
+els.boundsFileInput?.addEventListener('change', async () => {
+  const file = els.boundsFileInput.files?.[0];
+  if (!file) return;
+  try {
+    store.importBoundsCSV(await file.text(), { name: file.name });
+  } catch (error) {
+    store.status = { ...store.status, state: 'error', message: `Could not import bounds: ${error.message}` };
+    store.emit('status');
+  }
+  els.boundsFileInput.value = '';
+});
+
+// The tables draw the rows in view only: scrolling draws the next ones. A box
+// being typed in is committed first, as leaving it would.
+for (const [container, mode] of [[els.sidebar, 'page'], [els.results, 'compact']]) {
+  container.addEventListener('scroll', (event) => {
+    if (event.target?.dataset?.rxScroll !== mode) return;
+    const active = document.activeElement;
+    if (event.target.contains(active) && isTextEntry(active) && active.closest('tbody')) active.blur();
+    if (mode === 'page') ui.rx.pageScroll = event.target.scrollTop;
+    else ui.rx.compactScroll = event.target.scrollTop;
+    scheduleReactionRows(mode);
+  }, true);
+  container.addEventListener('mouseover', (event) => {
+    const rid = event.target.closest?.('.rx-table tr[data-rid]')?.dataset.rid ?? null;
+    if (rid !== ui.rx.hover) highlightReactionOnMap(rid);
+  });
+  container.addEventListener('mouseleave', () => highlightReactionOnMap(null));
+}
+// A resized page or dock shows a different number of rows.
+const tableSizeObserver = new ResizeObserver(() => {
+  if (ui.workspace === 'reactions') scheduleReactionRows('page');
+  if (ui.resultsTab === 'table') scheduleReactionRows('compact');
+});
+tableSizeObserver.observe(els.sidebar);
+tableSizeObserver.observe(els.results);
 
 els.reproducibilityFileInput?.addEventListener('change', async () => {
   const file=els.reproducibilityFileInput.files?.[0]; if(!file)return;
@@ -4724,16 +5164,27 @@ async function download(name, content, type) {
 // Boot
 
 store.subscribe((_, reason) => {
+  if (!['status', 'selection', 'variability'].includes(reason)) storeRevision += 1;
   paintStatus();
   paintShell();
   if (reason === 'status') {
     paintResults();
     return;
   }
+  // How the reactions table lists rows: nothing else changed.
+  if (reason === 'reaction-table') {
+    paintReactionTables();
+    return;
+  }
   if (reason === 'variability' || reason === 'selection') {
     paintInspector();
     paintResults();
-    if (reason === 'selection') paintMap();
+    if (reason === 'selection') {
+      paintMap();
+      // A reaction picked on the map is found in the table.
+      if (ui.workspace === 'reactions' && !revealReactionRow(store.selectedReaction, 'page')) paintReactionRows('page');
+      if (ui.resultsTab === 'table') revealReactionRow(store.selectedReaction, 'compact');
+    }
     return;
   }
   paintSidebar();

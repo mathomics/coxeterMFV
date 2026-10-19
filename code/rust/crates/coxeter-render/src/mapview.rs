@@ -1822,6 +1822,25 @@ fn render_markers(cx: &Ctx) -> Element {
                     .child(Element::paired("title").text("Disabled reaction: both bounds fixed to zero"))
                     .child(Element::new("path").with("d", "M -9 -9 L 9 9 M -9 9 L 9 -9")),
             );
+        } else if !cx.s.for_export && cx.s.modified_reaction_ids.contains(rid) {
+            // A small amber dot off the marker's corner: the bounds are not
+            // the model's. A note to the editor, not part of the figure.
+            glyphs.push(
+                Element::paired("g")
+                    .with("class", "emc-modified-badge")
+                    .with("data-modified-reaction", rid.clone())
+                    .with("transform", format!("translate({} {})", n(rxn.x + 13.0), n(rxn.y - 13.0)))
+                    .with("pointer-events", "none")
+                    .text("\n        ")
+                    .child(Element::paired("title").text("Bounds changed from the model's"))
+                    .child(
+                        Element::new("circle")
+                            .with("r", "5.5")
+                            .with("fill", if cx.dark { "#fbbf24" } else { "#d97706" })
+                            .with("stroke", if cx.dark { "#0f172a" } else { "#ffffff" })
+                            .with("stroke-width", "1.6"),
+                    ),
+            );
         }
         if inactive {
             let mut wrapper = Element::paired("g").with("opacity", "0.22");

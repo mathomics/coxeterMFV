@@ -55,7 +55,7 @@ fn the_exported_svg_is_what_exportablesvg_returns_in_the_browser() {
     let Some(reference) = reference() else { return };
     // The <style> text: the rules of app.css and map.css that mention `.emc-`.
     let expected = reference["exportCss"].as_str().unwrap();
-    let actual: String = export_css().lines().filter(|r| !common::is_new_rule(r)).collect::<Vec<_>>().join("\n");
+    let actual: String = common::without_new_rules(&export_css()).join("\n");
     for (a, e) in actual.lines().zip(expected.lines()) {
         assert_eq!(a, e, "a rule of the exported <style>");
     }

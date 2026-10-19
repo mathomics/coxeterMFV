@@ -25,6 +25,8 @@
 //! | [`view`] | `setView`, the flux scale |
 //! | [`work`] | saved / unsaved work |
 //! | [`omics`], [`cross_feeding`], [`zuniga`] | omics overlays and GIMME, the cross-feeding explorer, the Zuñiga case (on `coxeter-analysis`) |
+//! | [`reactions`] | reactions and bounds: medium-controlled exchanges, constraint history, the edited objective, bulk edits, bounds CSV, the Reactions table |
+//! | [`reactions_explorer`] | `src/ui/reactions-explorer.js` |
 //! | [`model_editor`] | the biological model editor |
 //! | [`render_state`] | `mapRenderState()` of `src/ui/app.js` |
 //! | [`status_line`] | `src/ui/status-line.js` |
@@ -46,6 +48,8 @@ pub mod model_editor;
 pub mod omics;
 pub mod operation_boundary;
 pub mod pathways;
+pub mod reactions;
+pub mod reactions_explorer;
 pub mod render_state;
 pub mod scenarios;
 pub mod simulation;

@@ -31,6 +31,15 @@ fn main_states_render() {
     common::shot(&mut h, "workspace-scenario");
     h.state_mut().close_workspace();
 
+    // The Reactions page under the map, and the dock's Table view.
+    h.state_mut().open_workspace(Workspace::Reactions);
+    common::settle(&mut h);
+    common::shot(&mut h, "workspace-reactions");
+    h.state_mut().close_workspace();
+    common::settle(&mut h);
+    common::click(&mut h, "Table view");
+    common::shot(&mut h, "results-table");
+
     // Dark.
     common::click(&mut h, "Switch to dark theme");
     common::shot(&mut h, "dark");

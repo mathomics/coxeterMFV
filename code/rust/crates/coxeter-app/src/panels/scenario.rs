@@ -294,21 +294,32 @@ fn objective_controls(ui: &mut Ui, shell: &mut Shell) {
     let fixed_mu = shell.store.solution.as_ref().is_some_and(|s| s.steady_com.is_some());
 
     sc_label(ui, "Community objective");
-    let objectives = [
+    let mut objectives = vec![
         (objectives::EQUAL_GROWTH.to_string(), "Equal growth (shared µ)".to_string()),
         (objectives::SUM_BIOMASS.to_string(), "Weighted biomass sum".to_string()),
     ];
     // A select whose value is none of its options shows the first.
-    let current = if objectives.iter().any(|(v, _)| *v == shell.store.objective) {
+    let mut current = if objectives.iter().any(|(v, _)| *v == shell.store.objective) {
         shell.store.objective.clone()
     } else {
         objectives[0].0.clone()
     };
+    // An objective edited in the Reactions page is shown as what it is.
+    if shell.store.custom_objective.is_some() {
+        objectives.insert(0, (String::new(), format!("Edited: {}", shell.store.objective_description())));
+        current = String::new();
+    }
     let width = ui.available_width() - 8.0;
-    if let Some(objective) = widgets::select(ui, "objective-select", &current, &objectives, width, true, "Community objective") {
+    // The edited objective is a reading, not a choice.
+    let picked = widgets::select(ui, "objective-select", &current, &objectives, width, true, "Community objective").filter(|o| !o.is_empty());
+    if let Some(objective) = picked {
         if let Err(error) = shell.store.set_objective(&objective, None) {
             shell.status_error(error.to_string());
         }
+    }
+    let edit = Btn::new("Edit objective in Reactions ↗").title("Any reaction, any coefficient, maximised or minimised").wide().show(ui);
+    if edit.clicked() {
+        shell.open_workspace(crate::ui_state::Workspace::Reactions);
     }
 
     ui.add_space(10.0);

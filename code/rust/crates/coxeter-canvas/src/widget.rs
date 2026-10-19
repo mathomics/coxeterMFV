@@ -103,6 +103,9 @@ pub struct MapView {
     /// moves ([`crate::settle`]). On by default.
     pub crisp: bool,
     settled: SettledLayer,
+    /// The reaction whose row is under the pointer in a reactions table,
+    /// ringed on the map (`highlightReactionOnMap`).
+    pub table_hover: Option<String>,
 }
 
 impl Default for MapView {
@@ -127,6 +130,7 @@ impl MapView {
             dark: false,
             crisp: true,
             settled: SettledLayer::default(),
+            table_hover: None,
         }
     }
 
@@ -439,6 +443,20 @@ impl MapView {
         if let Some(d) = &g.compartment_draw {
             let r = Self::client_rect(d.start_client, d.current_client);
             painter.rect(r, CornerRadius::same(12), mix(colors.accent, 0.10), Stroke::new(2.0, colors.accent), StrokeKind::Inside);
+        }
+        // `.emc-table-hover`: an amber ring, pulsing, at least 26 map units
+        // across and never under 18 px, around the reaction of the table row
+        // under the pointer.
+        let hovered = self.table_hover.as_deref().and_then(|rid| host.map().and_then(|m| m.reaction(rid))).map(|r| Point::new(r.x, r.y));
+        if let Some(at) = hovered {
+            let scale = self.canvas.camera.scale;
+            let radius = (26.0 * scale).max(18.0) as f32;
+            let center = self.canvas.map_to_screen(at);
+            let time = ui.input(|i| i.time);
+            let pulse = 0.625 + 0.275 * (std::f64::consts::TAU * time / 1.2).cos();
+            let amber = Color32::from_rgb(0xf5, 0x9e, 0x0b);
+            painter.circle_stroke(Pos2::new(center.x as f32, center.y as f32), radius, Stroke::new(4.0, mix(amber, pulse as f32)));
+            ui.ctx().request_repaint_after(std::time::Duration::from_millis(40));
         }
     }
 

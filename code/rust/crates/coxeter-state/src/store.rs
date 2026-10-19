@@ -57,6 +57,8 @@ use crate::error::{Result, StoreError};
 use crate::jobs::Jobs;
 use crate::omics::{CommunityOmics, OmicsDataset, OmicsSettings};
 use crate::operation_boundary::{OperationDomain, assert_operation_domain, operation_domain};
+use crate::reactions::{ConstraintCulprits, CulpritCheck, ReactionCaches, ReactionTableState};
+use crate::reactions_explorer::ConstraintHistory;
 use crate::steadycom::{CachedSpec, HighsSteadyComRunner, SteadyComRunner};
 use crate::types::*;
 use crate::zuniga::{SourceZunigaLoader, ZunigaLoader, ZunigaStudyState};
@@ -133,6 +135,8 @@ pub struct Store {
     pub species: Vec<Species>,
     pub objective: String,
     pub product_target: Option<String>,
+    /// An objective edited on top of the preset; `None` is the preset's own.
+    pub custom_objective: Option<CustomObjective>,
     /// false = FBA, true = pFBA.
     pub parsimonious: bool,
     /// Percentage of the primary optimum fixed in pFBA.
@@ -145,6 +149,8 @@ pub struct Store {
     pub(crate) fva_generation: u64,
     /// Base metabolite → uptake limit (positive).
     pub medium: IndexMap<String, f64>,
+    /// The medium as it was opened: what "original" means for an exchange's bounds.
+    pub base_medium: IndexMap<String, f64>,
 
     pub community: Option<Arc<CommunityModel>>,
     /// `community.communityExchangeIds` of a joint projection.
@@ -173,6 +179,15 @@ pub struct Store {
     pub growth: IndexMap<String, f64>,
     /// Merged reaction id → `{ lower, upper }`.
     pub overrides: IndexMap<String, Bounds>,
+    /// Undo/redo of bounds, medium and objective, apart from the map's history.
+    pub constraint_history: ConstraintHistory,
+    /// Set once a change left the LP without an optimum.
+    pub constraint_culprits: Option<ConstraintCulprits>,
+    pub(crate) culprit_check: Option<CulpritCheck>,
+    /// The Reactions page: search, quick filters, sorting, grouping and the
+    /// rows ticked for bulk actions.
+    pub reaction_table: ReactionTableState,
+    pub(crate) reaction_caches: ReactionCaches,
     pub manual_pathways: IndexMap<String, ManualPathway>,
     /// Model pathway name → `{ color?, visible? }`.
     pub pathway_settings: IndexMap<String, PathwaySetting>,
@@ -246,6 +261,7 @@ impl Store {
             species: Vec::new(),
             objective: objectives::EQUAL_GROWTH.into(),
             product_target: None,
+            custom_objective: None,
             parsimonious: false,
             pfba_biomass_percent: 100.0,
             loopless: false,
@@ -254,6 +270,7 @@ impl Store {
             fva_progress: FvaProgress::default(),
             fva_generation: 0,
             medium: IndexMap::new(),
+            base_medium: IndexMap::new(),
             community: None,
             community_exchange_ids: None,
             problem: None,
@@ -272,6 +289,11 @@ impl Store {
             cross_feeding_explorer: CrossFeedingExplorer::default(),
             growth: IndexMap::new(),
             overrides: IndexMap::new(),
+            constraint_history: ConstraintHistory::default(),
+            constraint_culprits: None,
+            culprit_check: None,
+            reaction_table: ReactionTableState::default(),
+            reaction_caches: ReactionCaches::default(),
             manual_pathways: IndexMap::new(),
             pathway_settings: IndexMap::new(),
             omics_dataset: None,

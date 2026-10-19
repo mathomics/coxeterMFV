@@ -41,9 +41,81 @@ impl Shell {
         self.ui.task_overlay = false;
         self.ui.results_maximized = false;
         self.ui.view_open = false;
-        // The library opens with the keyboard in its search field.
+        // The library and the Reactions page open with the keyboard in their search field.
         if ws == Workspace::Library {
             self.ui.focus_request = Some(crate::panels::map_options::reaction_search_id());
+        }
+        if ws == Workspace::Reactions {
+            self.ui.focus_request = Some(crate::panels::reactions::search_id());
+        }
+    }
+
+    // Reactions page
+
+    /// `revealInReactions(rid)`: open the Reactions page on one reaction,
+    /// clearing a search or filter that hides it.
+    pub fn reveal_in_reactions(&mut self, rid: &str) {
+        if self.ui.workspace != Some(Workspace::Reactions) {
+            self.open_workspace(Workspace::Reactions);
+            self.ui.focus_request = None;
+        }
+        let model = self.reaction_table_model();
+        let listed = model.items.iter().any(|i| matches!(i, coxeter_state::reactions_explorer::TableItem::Row(r) if r.id() == rid));
+        if !listed {
+            self.store.reaction_table.collapsed.clear();
+            let filtered = !model.visible.iter().any(|r| r.id() == rid);
+            let patch = if filtered {
+                coxeter_state::reactions::ReactionTablePatch { query: Some(String::new()), filters: Some(Vec::new()), ..Default::default() }
+            } else {
+                Default::default()
+            };
+            self.store.set_reaction_table(patch);
+        }
+        if self.store.selected_reaction.as_deref() != Some(rid) {
+            self.store.select(Some(rid));
+        }
+        self.ui.rx.reveal = Some(rid.to_string());
+    }
+
+    /// `locateReaction(rid)`: select a reaction and centre the map on it,
+    /// bringing the map into view above the page if need be.
+    pub fn locate_reaction(&mut self, rid: &str) {
+        if !self.store.map.as_ref().is_some_and(|m| m.has_reaction(rid)) {
+            // Still selected, so the inspector shows it: only the map has nothing to show.
+            self.store.select(Some(rid));
+            let title = self.store.reaction_title(rid);
+            self.status_warn(format!("{title} is not drawn on the map. Add it from the Reaction library."));
+            return;
+        }
+        if self.ui.workspace == Some(Workspace::Reactions) {
+            self.ui.rx.split = true;
+        } else {
+            self.close_workspace_quietly();
+        }
+        self.store.select(Some(rid));
+        self.ui.rx.center_on = Some(rid.to_string());
+    }
+
+    /// `exportBoundsCSV()`: every reaction's bounds in force.
+    pub fn export_bounds_csv(&mut self) {
+        if self.store.community.is_none() {
+            return;
+        }
+        let name = self.store.file_name_for(export_suffix::BOUNDS, "csv");
+        let csv = self.store.bounds_csv(None);
+        if let Some(path) = self.save_file("Export reaction bounds", &name, &[filter::CSV], csv.as_bytes()) {
+            self.log_ok(&format!("Bounds exported as {}", files::display_name(&path)));
+        }
+    }
+
+    /// The bounds file input's `change`: apply a bounds CSV.
+    pub fn import_bounds_csv(&mut self) {
+        let Some((name, text)) = self.pick_texts("Import reaction bounds", &[filter::CSV, filter::TABLE], false).into_iter().next() else {
+            return;
+        };
+        let result = text.and_then(|t| self.store.import_bounds_csv(&t, &name).map(|_| ()).map_err(|e| e.to_string()));
+        if let Err(e) = result {
+            self.status_error(format!("Could not import bounds: {e}"));
         }
     }
 

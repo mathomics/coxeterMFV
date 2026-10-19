@@ -105,6 +105,8 @@ pub struct RenderState {
     pub reaction_width_mode: ReactionWidthMode,
     /// Reactions kept on the map with both bounds at zero (knockouts).
     pub disabled_reaction_ids: HashSet<String>,
+    /// Reactions whose bounds differ from the model's, badged (not in exports).
+    pub modified_reaction_ids: HashSet<String>,
     /// Context cells kept visible outside the current simulation.
     pub inactive_species_ids: HashSet<String>,
     pub inactive_species_label: String,
@@ -173,6 +175,7 @@ impl Default for RenderState {
             solved_fluxes: None,
             reaction_width_mode: ReactionWidthMode::Constant,
             disabled_reaction_ids: HashSet::new(),
+            modified_reaction_ids: HashSet::new(),
             inactive_species_ids: HashSet::new(),
             inactive_species_label: "inactive context".into(),
             emphasized_reaction_ids: HashSet::new(),

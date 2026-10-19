@@ -30,9 +30,9 @@ const GAP_CLEAR = 3.5;
 // A line crossing at a shallow angle runs beside the other for longer, so its
 // gap is longer by 1/sin of the angle, which is floored here to cap the gap.
 const GAP_MIN_SINE = 0.3;
-// A gap keeps this far from either end of a line, so it never cuts into the
-// metabolite or arrowhead there.
-const END_MARGIN = 4;
+// A gap keeps this far from either end of a line, so it never leaves a stub
+// next to the metabolite, reaction or arrowhead the line ends at.
+const END_MARGIN = 8;
 
 /** The point at `t` on a line (2 points) or a cubic Bézier (4 points). */
 export function curvePoint(curve, t) {
@@ -48,7 +48,8 @@ export function curvePoint(curve, t) {
  *
  * @param {{curve:{x:number,y:number}[], reactionId:string, width:number}[]} items
  *   segments in drawing order, widths in map units: of two that cross, the
- *   earlier one is underneath and is the one that gets the gap
+ *   earlier one is underneath and gets the gap, unless the crossing is by one
+ *   of its ends, when the other one does
  * @returns {Map<number, {t:number, half:number}[]>} gaps by item index, each at
  *   curve parameter `t` and `half` map units long on either side of it. Empty
  *   when there are more than `limit` (default MAX_LINE_HOPS) crossings
@@ -111,20 +112,33 @@ export function findLineHops(items, { limit = MAX_LINE_HOPS } = {}) {
         // both pieces are listed in every square they pass over.
         if (cellOf(hit.x) !== gx || cellOf(hit.y) !== gy) continue;
 
-        const [under, over] = p.index < q.index ? [p, q] : [q, p];
-        const overWidth = items[over.index].width ?? 7.5;
-        const underWidth = items[under.index].width ?? 7.5;
         // The cut has to clear the top line's half width and a gap, measured
-        // along the lower line, plus the round cap each cut end is drawn with.
+        // along the cut line, plus the round cap each cut end may be drawn with.
         const sine = Math.max(GAP_MIN_SINE, crossingSine(p.a, p.b, q.a, q.b));
-        const half = (overWidth / 2 + GAP_CLEAR) / sine + underWidth / 2;
-        // Lines that only meet where they end (at a metabolite they share, at
-        // the reaction they both run into) are not crossing each other.
-        if (nearEnd(under, hit, half) || nearEnd(over, hit, underWidth / 2 + GAP_CLEAR)) continue;
-        const s = projection(under.a, under.b, hit);
-        const t = under.t0 + (under.t1 - under.t0) * s;
-        if (!hops.has(under.index)) hops.set(under.index, []);
-        hops.get(under.index).push({ t, half });
+        const gapFor = (cut, top) => ((items[top.index].width ?? 7.5) / 2 + GAP_CLEAR) / sine
+          + (items[cut.index].width ?? 7.5) / 2;
+
+        // The line drawn underneath is the one cut, unless the crossing sits by
+        // one of its ends. Then the other line is cut instead, so a line ending
+        // at a metabolite stays joined to it and the crossing still reads as
+        // one line passing over another, not as a junction at the metabolite.
+        let [cut, top] = p.index < q.index ? [p, q] : [q, p];
+        let half = gapFor(cut, top);
+        if (nearEnd(cut, hit, half + END_MARGIN)) {
+          [cut, top] = [top, cut];
+          half = gapFor(cut, top);
+        }
+        // Lines that both end where they cross (at a metabolite they share, at
+        // the reaction they both run into) meet there rather than cross.
+        if (nearEnd(cut, hit, half + END_MARGIN)) continue;
+        // The line on top has to run on past the cut line's edge and the gap
+        // on both sides. One that ends on the other line touches it rather
+        // than passing over it, so nothing is cut.
+        if (nearEnd(top, hit, (items[cut.index].width ?? 7.5) / 2 + GAP_CLEAR)) continue;
+        const s = projection(cut.a, cut.b, hit);
+        const t = cut.t0 + (cut.t1 - cut.t0) * s;
+        if (!hops.has(cut.index)) hops.set(cut.index, []);
+        hops.get(cut.index).push({ t, half });
         count += 1;
         if (count > limit) return new Map();
       }
@@ -143,11 +157,10 @@ function crossingSine(a, b, c, d) {
   return lengths > 1e-12 ? Math.abs(ux * vy - uy * vx) / lengths : 0;
 }
 
-/** Whether `hit` lies within `reach` (plus END_MARGIN) of either end of its line. */
+/** Whether `hit` lies within `reach` map units of either end of its line. */
 function nearEnd(piece, hit, reach) {
   const along = piece.before + distance(piece.a, hit);
-  const margin = reach + END_MARGIN;
-  return along < margin || piece.total - along < margin;
+  return along < reach || piece.total - along < reach;
 }
 
 function projection(a, b, p) {

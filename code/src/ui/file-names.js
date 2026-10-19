@@ -10,6 +10,7 @@ export const EXPORT_SUFFIX = {
   model: 'model',        // model JSON and SBML
   scenario: 'scenario',
   fluxes: 'fluxes',
+  bounds: 'bounds',      // reaction bounds (CSV)
   repro: 'repro',        // reproducibility bundle
   methods: 'methods',    // methods / provenance report
   findings: 'findings',

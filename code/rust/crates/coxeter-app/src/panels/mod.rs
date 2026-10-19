@@ -12,6 +12,7 @@
 //! | [`right`] | `.inspector-panel`: its tabs and collapse |
 //! | [`inspector`] | `renderInspector`, `renderLayoutSettings`, the inspectors, `reactionDrawingControls`, `mapLabelControl` |
 //! | [`workspace`] | `.workspace-editor`, `renderWorkspace`, `getWorkspaceTitle` |
+//! | [`reactions`] | `src/ui/reactions-panel.js`: the Reactions page, the dock's Table view, `boundControl` |
 //! | [`scenario`] | `scenarioCard`, `objectiveControls`, published communities, `steadyComBlock`, the sweep figure, `zunigaCaseBlock` |
 //! | [`model`] | `speciesCard`, `mediumCard`, `modelEditorCard`, `modelOverviewCard`, `communityOmicsCard`, `omicsOverlayCard` |
 //! | [`map_options`] | `displayCard`, `mapAppearanceCard`, `fluxColorEditor`, `legendCard`, `pathwayManagerCard`, `mapStructureCard`, `mapCanvasCard`, `reactionSearchCard` |
@@ -26,6 +27,7 @@ pub mod left;
 pub mod map_options;
 pub mod menus;
 pub mod model;
+pub mod reactions;
 pub mod results;
 pub mod right;
 pub mod scenario;

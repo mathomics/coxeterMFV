@@ -123,10 +123,12 @@ pub enum Workspace {
     Settings,
     Crossfeeding,
     Overview,
+    /// Reactions & bounds: a table of its own, not a grid of cards.
+    Reactions,
 }
 
 impl Workspace {
-    pub const ALL: [Workspace; 12] = [
+    pub const ALL: [Workspace; 13] = [
         Workspace::Library,
         Workspace::Structure,
         Workspace::Map,
@@ -139,6 +141,7 @@ impl Workspace {
         Workspace::Settings,
         Workspace::Crossfeeding,
         Workspace::Overview,
+        Workspace::Reactions,
     ];
 
     pub fn as_str(self) -> &'static str {
@@ -155,6 +158,7 @@ impl Workspace {
             Workspace::Settings => "settings",
             Workspace::Crossfeeding => "crossfeeding",
             Workspace::Overview => "overview",
+            Workspace::Reactions => "reactions",
         }
     }
 
@@ -177,6 +181,56 @@ impl Workspace {
             Workspace::Analysis | Workspace::Settings => "Analysis settings",
             Workspace::Crossfeeding => "Cross-feeding explorer",
             Workspace::Overview => "Model overview",
+            Workspace::Reactions => "Reactions & bounds",
+        }
+    }
+}
+
+/// What the dock's Table view lists: every reaction, or the metabolites'
+/// shadow prices.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Hash)]
+pub enum CompactMode {
+    #[default]
+    Reactions,
+    Shadow,
+}
+
+/// `ui.rx`: what the Reactions page and the dock's Table view keep between
+/// frames: whether the map shows above the page, the Changes panel, the
+/// bulk bar's typed values, the row under the pointer, and a row to bring
+/// into view.
+#[derive(Debug, Clone, PartialEq)]
+pub struct ReactionsUi {
+    /// The top of the map stays in view above the page.
+    pub split: bool,
+    pub show_changes: bool,
+    pub bulk_lower: String,
+    pub bulk_upper: String,
+    pub bulk_factor: String,
+    /// The reaction whose row is under the pointer (ringed on the map).
+    pub hover: Option<String>,
+    pub compact_mode: CompactMode,
+    /// Scroll the tables so this reaction's row is in view.
+    pub reveal: Option<String>,
+    /// Centre the map on this reaction once it is laid out.
+    pub center_on: Option<String>,
+    /// How far the middle columns of the page are scrolled sideways.
+    pub h_scroll: f32,
+}
+
+impl Default for ReactionsUi {
+    fn default() -> Self {
+        ReactionsUi {
+            split: true,
+            show_changes: false,
+            bulk_lower: String::new(),
+            bulk_upper: String::new(),
+            bulk_factor: "0.5".into(),
+            hover: None,
+            compact_mode: CompactMode::Reactions,
+            reveal: None,
+            center_on: None,
+            h_scroll: 0.0,
         }
     }
 }
@@ -262,6 +316,8 @@ pub struct UiState {
     pub focus_lower_bound: bool,
     /// `details.canvas-view[open]`: the View popover of the map toolbar.
     pub view_open: bool,
+    /// The Reactions page and the dock's Table view (`ui.rx`).
+    pub rx: ReactionsUi,
 }
 
 impl Default for UiState {
@@ -292,6 +348,7 @@ impl Default for UiState {
             focus_request: None,
             focus_lower_bound: false,
             view_open: false,
+            rx: ReactionsUi::default(),
         }
     }
 }

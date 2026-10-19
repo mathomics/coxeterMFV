@@ -21,6 +21,8 @@ pub mod export_suffix {
     pub const MODEL: &str = "model";
     pub const SCENARIO: &str = "scenario";
     pub const FLUXES: &str = "fluxes";
+    /// Reaction bounds (CSV).
+    pub const BOUNDS: &str = "bounds";
     /// Reproducibility bundle.
     pub const REPRO: &str = "repro";
     /// Methods / provenance report.

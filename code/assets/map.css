@@ -381,3 +381,12 @@
 /* A reaction with no flux in the solution, drawn the way the segments are: off. */
 .emc-label-rxn.is-off { fill: #8a8d96; }
 .emc-map.emc-dark .emc-label-rxn.is-off { fill: #7c8799; }
+
+/* The reaction whose row is under the pointer in a reactions table. */
+.emc-table-hover {
+  fill: none; stroke: #f59e0b; stroke-width: 4; opacity: .9;
+  vector-effect: non-scaling-stroke; animation: emc-table-hover 1.2s ease-in-out infinite;
+}
+@keyframes emc-table-hover { 50% { opacity: .35; } }
+@media (prefers-reduced-motion: reduce) { .emc-table-hover { animation: none; } }
+.emc-map .is-table-hover { filter: drop-shadow(0 0 3px #f59e0b); }

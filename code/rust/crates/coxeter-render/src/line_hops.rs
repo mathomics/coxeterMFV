@@ -40,9 +40,9 @@ const GAP_CLEAR: f64 = 3.5;
 // A line crossing at a shallow angle runs beside the other for longer, so its
 // gap is longer by 1/sin of the angle, which is floored here to cap the gap.
 const GAP_MIN_SINE: f64 = 0.3;
-// A gap keeps this far from either end of a line, so it never cuts into the
-// metabolite or arrowhead there.
-const END_MARGIN: f64 = 4.0;
+// A gap keeps this far from either end of a line, so it never leaves a stub
+// next to the metabolite, reaction or arrowhead the line ends at.
+const END_MARGIN: f64 = 8.0;
 
 /// `curvePoint(curve, t)`: the point at `t` on a line (2 points) or a cubic
 /// Bézier (4 points).
@@ -87,8 +87,9 @@ struct Piece {
 /// `findLineHops(items, { limit })`: where the lines cross, and the gap each
 /// crossing cuts in the lower line. `items` are the segments in drawing
 /// order, widths in map units: of two that cross, the earlier one is
-/// underneath and is the one that gets the gap. Gaps by item index, empty
-/// when there are more than `limit` crossings.
+/// underneath and gets the gap, unless the crossing is by one of its ends,
+/// when the other one does. Gaps by item index, empty when there are more
+/// than `limit` crossings.
 pub fn find_line_hops(items: &[HopItem], limit: usize) -> HashMap<usize, Vec<Hop>> {
     let mut pieces: Vec<Piece> = Vec::new();
     for (index, item) in items.iter().enumerate() {
@@ -150,23 +151,38 @@ pub fn find_line_hops(items: &[HopItem], limit: usize) -> HashMap<usize, Vec<Hop
                 if cell_of(hit.x) != gx || cell_of(hit.y) != gy {
                     continue;
                 }
-                let (under, over) = if p.index < q.index { (p, q) } else { (q, p) };
-                let over_width = items[over.index].width;
-                let under_width = items[under.index].width;
                 // The cut has to clear the top line's half width and a gap,
-                // measured along the lower line, plus the round cap each cut
-                // end is drawn with.
+                // measured along the cut line, plus the round cap each cut end
+                // may be drawn with.
                 let sine = js::max(GAP_MIN_SINE, crossing_sine(p.a, p.b, q.a, q.b));
-                let half = (over_width / 2.0 + GAP_CLEAR) / sine + under_width / 2.0;
-                // Lines that only meet where they end (at a metabolite they
-                // share, or at the reaction they both run into) are not crossing
-                // each other.
-                if near_end(under, hit, half) || near_end(over, hit, under_width / 2.0 + GAP_CLEAR) {
+                let gap_for = |cut: &Piece, top: &Piece| (items[top.index].width / 2.0 + GAP_CLEAR) / sine + items[cut.index].width / 2.0;
+
+                // The line drawn underneath is the one cut, unless the crossing
+                // sits by one of its ends. Then the other line is cut instead,
+                // so a line ending at a metabolite stays joined to it and the
+                // crossing still reads as one line passing over another, not
+                // as a junction at the metabolite.
+                let (mut cut, mut top) = if p.index < q.index { (p, q) } else { (q, p) };
+                let mut half = gap_for(cut, top);
+                if near_end(cut, hit, half + END_MARGIN) {
+                    (cut, top) = (top, cut);
+                    half = gap_for(cut, top);
+                }
+                // Lines that both end where they cross (at a metabolite they
+                // share, at the reaction they both run into) meet there rather
+                // than cross.
+                if near_end(cut, hit, half + END_MARGIN) {
                     continue;
                 }
-                let s = projection(under.a, under.b, hit);
-                let t = under.t0 + (under.t1 - under.t0) * s;
-                hops.entry(under.index).or_default().push(Hop { t, half });
+                // The line on top has to run on past the cut line's edge and
+                // the gap on both sides. One that ends on the other line
+                // touches it rather than passing over it, so nothing is cut.
+                if near_end(top, hit, items[cut.index].width / 2.0 + GAP_CLEAR) {
+                    continue;
+                }
+                let s = projection(cut.a, cut.b, hit);
+                let t = cut.t0 + (cut.t1 - cut.t0) * s;
+                hops.entry(cut.index).or_default().push(Hop { t, half });
                 count += 1;
                 if count > limit {
                     return HashMap::new();
@@ -185,11 +201,10 @@ fn crossing_sine(a: Point, b: Point, c: Point, d: Point) -> f64 {
     if lengths > 1e-12 { (ux * vy - uy * vx).abs() / lengths } else { 0.0 }
 }
 
-/// Whether `hit` lies within `reach` (plus `END_MARGIN`) of either end of its line.
+/// Whether `hit` lies within `reach` map units of either end of its line.
 fn near_end(piece: &Piece, hit: Point, reach: f64) -> bool {
     let along = piece.before + distance(piece.a, hit);
-    let margin = reach + END_MARGIN;
-    along < margin || piece.total - along < margin
+    along < reach || piece.total - along < reach
 }
 
 fn projection(a: Point, b: Point, p: Point) -> f64 {
@@ -326,6 +341,18 @@ mod tests {
         let square = find_line_hops(&[item(vec![p(0.0, 50.0), p(100.0, 50.0)], "A"), item(vec![p(50.0, 0.0), p(50.0, 100.0)], "B")], MAX_LINE_HOPS)[&0][0].half;
         let shallow = find_line_hops(&[item(vec![p(0.0, 50.0), p(200.0, 50.0)], "A"), item(vec![p(0.0, 0.0), p(200.0, 100.0)], "B")], MAX_LINE_HOPS)[&0][0].half;
         assert!(shallow > square * 1.5, "{shallow} against {square}");
+    }
+
+    #[test]
+    fn a_line_ending_by_a_crossing_stays_whole_and_the_other_line_is_cut_instead() {
+        let hops = find_line_hops(&[item(vec![p(0.0, 50.0), p(60.0, 50.0)], "A"), item(vec![p(50.0, 0.0), p(50.0, 100.0)], "B")], MAX_LINE_HOPS);
+        assert_eq!(hops.keys().copied().collect::<Vec<_>>(), [1], "A runs on to its metabolite uncut");
+    }
+
+    #[test]
+    fn a_line_that_ends_on_another_touches_it_and_cuts_nothing() {
+        let hops = find_line_hops(&[item(vec![p(0.0, 50.0), p(53.0, 50.0)], "A"), item(vec![p(50.0, 0.0), p(50.0, 100.0)], "B")], MAX_LINE_HOPS);
+        assert!(hops.is_empty());
     }
 
     #[test]

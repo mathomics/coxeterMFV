@@ -12,7 +12,7 @@ use std::sync::{Arc, OnceLock};
 use egui::{FontData, FontDefinitions, FontFamily};
 
 /// Every symbol the interface draws outside plain text.
-pub const UI_GLYPHS: &str = "⌕◐↶↷⤢✥⌘⌁⬡▣‹›⌄►☷−⬉○⇄⟲⟳⌖◇◌≋⚙↗✓●×←→↑↓…µ⁻¹₂Δ⬌⬍✕⇖⇑⇗⇐⇒⇙⇓⇘";
+pub const UI_GLYPHS: &str = "⌕◐↶↷⤢✥⌘⌁⬡▣‹›⌄►☷−⬉○⇄⟲⟳⌖◇◌≋⚙↗✓●×←→↑↓…µ⁻¹₂Δ⬌⬍✕⇖⇑⇗⇐⇒⇙⇓⇘☰↺▾▸▴–";
 
 /// Symbols whose first choice in the JavaScript app has no outline in the
 /// usual system fonts: Windows 11 keeps ▶ ↖ ↘ ↕ (characters with an emoji

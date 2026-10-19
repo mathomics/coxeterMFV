@@ -65,6 +65,7 @@ enum Act {
     ReactionRotate(String, f64),
     Knockout(String),
     ResetReaction(String),
+    ShowInReactions(String),
     ResetAll,
     RemoveMapReaction(String),
     Bound { rid: String, lower: bool, value: UserNumber },
@@ -215,6 +216,7 @@ fn apply(shell: &mut Shell, acts: Vec<Act>) {
                     shell.status_error(error.to_string());
                 }
             }
+            Act::ShowInReactions(rid) => shell.reveal_in_reactions(&rid),
             Act::RemoveMapReaction(rid) => {
                 shell.close_map_menus();
                 shell.store.remove_map_reaction(&rid);
@@ -543,18 +545,6 @@ fn visual_or<'a>(visual: &'a str, id: &'a str) -> &'a str {
 /// `Math.round(v)` as text.
 fn round_text(v: f64) -> String {
     js::number_to_string(js::round(v))
-}
-
-/// `round(v)` of panels.js: `Number(v.toFixed(4))`, 0 when not finite.
-fn round4(v: f64) -> String {
-    if v.is_finite() { js::number_to_string(js::string_to_number(&js::to_fixed(v, 4))) } else { "0".into() }
-}
-
-/// `aria-invalid="true"` on a field, for assistive technology and tests.
-fn aria_invalid(response: &Response, invalid: bool) {
-    if invalid {
-        response.ctx.accesskit_node_builder(response.id, |node| node.set_invalid(egui::accesskit::Invalid::True));
-    }
 }
 
 /// The value egui shows a slider at: clamped into its range and snapped to
@@ -1040,17 +1030,20 @@ fn inspector_card(ui: &mut Ui, store: &Store, p: &Palette, focus_lower: bool, ac
     let owner_species = owner.and_then(|o| o.species_id.clone());
     let flux = store.solution.as_ref().and_then(|s| s.fluxes.get(&rid)).copied().unwrap_or(0.0);
     let bounds = store.current_reaction_bounds(&rid);
-    let defaults = store.default_reaction_bounds(&rid);
-    let modified = store.overrides.contains_key(&rid);
+    // "Original" is as the scenario was opened, its medium included.
+    let defaults = store.original_reaction_bounds(&rid);
+    let knocked_out = store.reaction_knocked_out(&rid);
+    let modified = (bounds.lower - defaults.lower).abs() > 1e-9 || (bounds.upper - defaults.upper).abs() > 1e-9;
     let fva = if store.fva_enabled { store.fva_ranges.get(&rid).copied() } else { None };
     let result = store.solution.as_ref().and_then(|s| s.result.as_ref());
     let reduced_cost = result.and_then(|r| r.reduced_costs.get(&rid)).copied();
     let scaled_reduced_cost = result.and_then(|r| r.scaled_reduced_costs.get(&rid)).copied();
+    let objective_coefficient = store.objective_coefficients().get(&rid).copied().unwrap_or(0.0);
 
+    // The FVA bar's scale.
     let span = js::max_n([defaults.lower.abs(), defaults.upper.abs(), 10.0]);
     let lo = if defaults.lower < 0.0 { -span } else { 0.0 };
     let hi = span;
-    let step = if span > 200.0 { 5.0 } else { 0.1 };
 
     let local_model = owner_species.as_ref().and_then(|sid| store.species.iter().find(|s| &s.id == sid)).and_then(|s| store.models.get(&s.file));
     let cell_name = match &owner_species {
@@ -1098,7 +1091,8 @@ fn inspector_card(ui: &mut Ui, store: &Store, p: &Palette, focus_lower: bool, ac
                 ui.add(Label::new(widgets::code(merged.equation()).size(10.5)).wrap());
             });
     });
-    property(ui, "Objective coefficient", format_flux(Some(merged.objective_coefficient), 4));
+    let minimised = if store.objective_sense() == coxeter_state::ObjectiveSense::Min { " (minimised)" } else { "" };
+    property(ui, "Objective coefficient", format!("{}{minimised}", format_flux(Some(objective_coefficient), 4)));
     property(ui, "Reduced cost", reduced_cost.filter(|v| v.is_finite()).map_or_else(|| "—".to_string(), |v| format_flux(Some(v), 6)));
     property(ui, "Scaled reduced cost", scaled_reduced_cost.filter(|v| v.is_finite()).map_or_else(|| "—".to_string(), |v| format_flux(Some(v), 6)));
     property(ui, "GPR", if merged.gene_reaction_rule.is_empty() { "—".to_string() } else { merged.gene_reaction_rule.clone() });
@@ -1124,7 +1118,14 @@ fn inspector_card(ui: &mut Ui, store: &Store, p: &Palette, focus_lower: bool, ac
     });
 
     ui.add_space(8.0);
-    widgets::readout(ui, &[("Flux", format_flux(Some(flux), 4)), ("State", (if modified { "Modified" } else { "Original" }).to_string())]);
+    let state = if knocked_out {
+        "Knocked out"
+    } else if modified {
+        "Modified"
+    } else {
+        "Original"
+    };
+    widgets::readout(ui, &[("Flux", format_flux(Some(flux), 4)), ("State", state.to_string())]);
     omics_reaction_readout(ui, store, p, &rid);
 
     // The FVA range at the optimal objective, on the slider's scale.
@@ -1167,11 +1168,16 @@ fn inspector_card(ui: &mut Ui, store: &Store, p: &Palette, focus_lower: bool, ac
     }
     // `<fieldset disabled>` around the bounds of the Zuñiga case.
     ui.add_enabled_ui(!zuniga, |ui| {
-        bound_row(ui, p, &rid, true, bounds.lower, lo, hi, step, focus_lower && !zuniga, acts);
-        bound_row(ui, p, &rid, false, bounds.upper, lo, hi, step, false, acts);
+        bound_row(ui, p, &rid, &shown_id, true, bounds.lower, focus_lower && !zuniga, acts);
+        bound_row(ui, p, &rid, &shown_id, false, bounds.upper, false, acts);
+        ui.add(egui::Label::new(text("Sliders are logarithmic (±0.001 to ±1000, 0 in the middle); type exact values in the boxes.", 10.5, p.ink_3)).wrap());
         ui.add_space(6.0);
         ui.horizontal(|ui| {
-            if Btn::new("Knockout").danger().show(ui).clicked() {
+            if knocked_out {
+                if Btn::new("Restore").title("Back to the bounds as opened").show(ui).clicked() {
+                    acts.push(Act::ResetReaction(rid.clone()));
+                }
+            } else if Btn::new("Knockout").danger().show(ui).clicked() {
                 acts.push(Act::Knockout(rid.clone()));
             }
             if Btn::new("Reset").show(ui).clicked() {
@@ -1184,6 +1190,10 @@ fn inspector_card(ui: &mut Ui, store: &Store, p: &Palette, focus_lower: bool, ac
             });
         });
     });
+    ui.add_space(6.0);
+    if Btn::new("Show in Reactions ↗").wide().show(ui).clicked() {
+        acts.push(Act::ShowInReactions(rid.clone()));
+    }
     reaction_drawing_controls(ui, store, p, &rid, acts);
     ui.add_space(8.0);
     if Btn::new("Delete reaction from map").look(Look::DangerBox).wide().height(34.0).show(ui).clicked() {
@@ -1193,51 +1203,27 @@ fn inspector_card(ui: &mut Ui, store: &Store, p: &Palette, focus_lower: bool, ac
     widgets::hint(ui, format!("Original bounds: [{}, {}]", format_flux(Some(defaults.lower), 3), format_flux(Some(defaults.upper), 3)));
 }
 
-/// One `.bound-row`: the label, the slider (`bound-lower` / `bound-upper`)
-/// and the number field (`bound-lower-number` / `bound-upper-number`), with
-/// `acceptNumber`: a field holding no number is marked `aria-invalid` while
-/// it is typed and, once left, shows the value in force again and says so.
+/// One `.bound-row`: the label and the shared bound control
+/// (`boundControl`): the sign-log slider (`bound-lower` / `bound-upper`) and
+/// the exact number box (`bound-lower-number` / `bound-upper-number`), which
+/// applies on Enter or when it is left. A box holding no number is marked
+/// `aria-invalid` while it is typed and, once left, shows the value in force
+/// again and says so.
 #[allow(clippy::too_many_arguments)]
-fn bound_row(ui: &mut Ui, p: &Palette, rid: &str, lower: bool, value: f64, lo: f64, hi: f64, step: f64, focus: bool, acts: &mut Vec<Act>) {
+fn bound_row(ui: &mut Ui, p: &Palette, rid: &str, label: &str, lower: bool, value: f64, focus: bool, acts: &mut Vec<Act>) {
+    use crate::panels::reactions::{BoundEdit, bound_control};
     let name = if lower { "Lower" } else { "Upper" };
     ui.horizontal(|ui| {
         ui.allocate_ui_with_layout(Vec2::new(38.0, 20.0), Layout::left_to_right(Align::Center), |ui| {
             ui.set_min_width(38.0);
             ui.label(text(name, 11.0, p.ink_3));
         });
-        let field_width = 65.0;
-        ui.spacing_mut().slider_width = (ui.available_width() - field_width - 2.0 * ui.spacing().item_spacing.x).max(40.0);
-        let (response, event) = widgets::slider(ui, value, lo, hi, step, true, &format!("{name} bound slider"));
-        if let Some(v) = slider_event(&response, event, value, lo, hi, step).value() {
-            acts.push(Act::Bound { rid: rid.to_string(), lower, value: UserNumber::Number(v) });
-        }
         let id = Id::new(("bound-number", lower, rid.to_string()));
-        let invalid_id = id.with("aria-invalid");
-        let invalid = ui.data(|d| d.get_temp::<bool>(invalid_id)).unwrap_or(false);
-        let (response, event) = widgets::number_field(ui, id, &round4(value), Field::new().width(field_width).aria(&format!("{name} bound")).invalid(invalid));
-        aria_invalid(&response, invalid);
-        if focus {
-            response.request_focus();
-            response.scroll_to_me(Some(Align::Center));
-        }
-        match event {
-            FieldEvent::None => {}
-            FieldEvent::Input(typed) => {
-                if widgets::value_as_number(&typed).is_finite() {
-                    ui.data_mut(|d| d.remove::<bool>(invalid_id));
-                    acts.push(Act::Bound { rid: rid.to_string(), lower, value: UserNumber::Text(typed) });
-                } else {
-                    ui.data_mut(|d| d.insert_temp(invalid_id, true));
-                }
-            }
-            FieldEvent::Change(typed) => {
-                ui.data_mut(|d| d.remove::<bool>(invalid_id));
-                if widgets::value_as_number(&typed).is_finite() {
-                    acts.push(Act::Bound { rid: rid.to_string(), lower, value: UserNumber::Text(typed) });
-                } else {
-                    acts.push(Act::NotANumber);
-                }
-            }
+        match bound_control(ui, id, lower, value, true, label, 65.0, focus) {
+            Some(BoundEdit::Slider(v)) => acts.push(Act::Bound { rid: rid.to_string(), lower, value: UserNumber::Number(v) }),
+            Some(BoundEdit::Typed(typed)) => acts.push(Act::Bound { rid: rid.to_string(), lower, value: UserNumber::Text(typed) }),
+            Some(BoundEdit::NotANumber) => acts.push(Act::NotANumber),
+            None => {}
         }
     });
 }

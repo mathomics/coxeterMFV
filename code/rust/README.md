@@ -8,6 +8,12 @@ scenarios), so a map can move between the two.
 The JavaScript app in `../src` is the specification. Every crate here is tested
 against outputs of the JavaScript modules themselves (see *Testing*).
 
+## Prebuilt
+
+`bin/coxeter-mfv.exe` is a release build for Windows x64 with the bundled
+models compiled in: it runs on its own, no Rust needed. Rebuild it with
+`cargo build --release -p coxeter-app` and copy `target/release/coxeter.exe`.
+
 ## Build and run
 
 Needs Rust (`rustup`, stable) and, for the HiGHS solver, `cmake` and a C++
@@ -45,3 +51,8 @@ for f in rust/tools/fixtures-*.mjs; do node "$f"; done   # from the repo root
 Genome-scale references are written to `fixtures/large/` (not committed);
 the tests that need them skip when they are absent.
 
+## Working on it
+
+`AGENTS.md` holds the rules every part of the port follows: which JavaScript
+behaviours need the helpers in `coxeter_core::js`, how points shared with a
+reaction's axis are handled, and how parity is tested.

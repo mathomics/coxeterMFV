@@ -13,7 +13,7 @@ Metabolic maps with explicit cells and subcellular compartments, and flux balanc
 
 <img src="docs/images/yeast9-cytosol-mitochondria-peroxisome.png" alt="Yeast9 map of the cytoplasm, mitochondrion and peroxisome drawn with Coxeter-MFV" width="100%">
 
-<sub>Central and mitochondrial metabolism of <i>Saccharomyces cerevisiae</i> drawn over the Yeast9 genome-scale model, with the extracellular space, cell envelope, cytoplasm, mitochondrial membrane, mitochondrion and peroxisome as nested compartments. See <a href="examples/yeast9-cytosol-mitochondria-peroxisome">the example</a>.</sub>
+<sub>Central and mitochondrial metabolism of <i>Saccharomyces cerevisiae</i> drawn over the Yeast9 genome-scale model, with the extracellular space, cell envelope, cytoplasm, mitochondrial membrane, mitochondrion, peroxisome, ER membrane and lipid particle as nested compartments. See <a href="examples/yeast9-cytosol-mitochondria-peroxisome">the example</a>.</sub>
 
 </div>
 
@@ -30,6 +30,7 @@ Coxeter-MFV was built for researchers who work with genome-scale metabolic model
 - **Compartment-aware maps.** Cells, organelles and membranes are first-class objects that can be drawn, nested, resized, reshaped and moved with everything they contain.
 - **Microbial communities.** Several species in one map, each with its own abundance, exchanging metabolites through a shared medium.
 - **Flux analysis.** FBA, parsimonious FBA, loopless FBA, flux variability analysis and SteadyCom community FBA, with live recalculation when bounds, medium or abundances change.
+- **Reactions and bounds.** Every reaction of the model in one table, grouped by type, compartment, species or pathway, with a slider and an exact value for each bound, any objective to maximise or minimise, bulk edits, undo for every change and bounds exported to and imported from CSV.
 - **Omics integration.** Gene expression and metatranscriptomics overlays, condition comparisons and GIMME context-specific models.
 - **Cross-feeding explorer.** Every metabolite exchanged between species, filterable by producer, consumer and flux, drawn as routes on the map.
 - **Map editor.** Add and remove reactions, metabolites, compartments and cells, adjust curves with control points, align and distribute, annotate with text, colour pathways, and undo any step.
@@ -80,7 +81,7 @@ Each example folder holds the model and map files needed to open it. The work ea
 
 | Example | What it shows | Source |
 | --- | --- | --- |
-| [Yeast9 cytoplasm, mitochondrion and peroxisome](examples/yeast9-cytosol-mitochondria-peroxisome) | One eukaryotic cell with six nested compartments, 115 reactions and 359 metabolite nodes, from glycolysis to respiration, heme biosynthesis and peroxisomal β-oxidation | Zhang et al. (2024) |
+| [Yeast9 cytoplasm, mitochondrion and peroxisome](examples/yeast9-cytosol-mitochondria-peroxisome) | One eukaryotic cell with eight nested compartments, 134 reactions and 423 metabolite nodes, from glycolysis to respiration and ATP export, triacylglycerol synthesis, heme biosynthesis and peroxisomal β-oxidation | Zhang et al. (2024) |
 | [*D. vulgaris* and *M. maripaludis*](examples/stolyar-2007-syntrophy) | Syntrophic growth on lactate through hydrogen and formate transfer | Stolyar et al. (2007) |
 | [Four auxotrophic *E. coli* strains](examples/steadycom-ecoli-auxotrophs) | Amino acid cross-feeding solved with SteadyCom, maximum community growth 0.73599 h⁻¹ | Chan et al. (2017) |
 | [Nine-species gut community](examples/steadycom-gut-nine) | An 11009-reaction community model with a curated map of 1171 reactions in nine cells | Chan et al. (2017) |

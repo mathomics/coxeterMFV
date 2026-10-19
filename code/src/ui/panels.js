@@ -14,6 +14,7 @@ import { normalizeHexColor } from '../core/colors.js';
 import { TEXT_FONTS, TEXT_SIZE, DEFAULT_TEXT_FONT } from '../core/text-style.js';
 import { OBJECTIVES } from '../core/community.js';
 import { ZUNIGA_ID, ZUNIGA_SCENARIOS } from '../communities/zuniga.js';
+import { boundControl, renderCompactReactionsTable, renderReactionsPage } from './reactions-panel.js';
 
 const esc = (s) => String(s ?? '')
   .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
@@ -81,6 +82,7 @@ export function renderTaskPanel(store, ui = {}) {
         ${link('scenario', '◇', 'Scenario & objective', 'Setup and published communities')}
         ${link('community', '⬡', 'Species & abundance', 'Models and community composition')}
         ${link('medium', '◌', 'Shared medium', 'Nutrient supply and exchange')}
+        ${link('reactions', '☰', 'Reactions & bounds', 'Every reaction’s constraints')}
         ${link('model', '⌁', 'Biological model', 'Create reactions and metabolites')}
         ${link('omics', '≋', 'Omics & expression', 'Visual overlays and GIMME')}
       </nav>
@@ -91,7 +93,9 @@ export function renderTaskPanel(store, ui = {}) {
   if (tab === 'analysis') {
     const fixedMu = Boolean(store.solution?.steadyCom);
     const method = currentAnalysisMethod(store);
-    const objective = fixedMu ? `µ = ${store.solution.steadyCom.mu} h⁻¹` : store.objective === OBJECTIVES.SUM_BIOMASS ? 'Weighted biomass sum' : 'Equal growth';
+    const objective = fixedMu ? `µ = ${store.solution.steadyCom.mu} h⁻¹`
+      : store.customObjective ? `Edited objective (${store.customObjective.sense === 'min' ? 'minimised' : 'maximised'})`
+        : store.objective === OBJECTIVES.SUM_BIOMASS ? 'Weighted biomass sum' : 'Equal growth';
     const status = store.status?.state === 'busy' ? 'Computing…'
       : store.solution?.status === 'optimal' ? 'Optimal solution'
         : store.solution?.status ?? 'Ready to analyse';
@@ -113,6 +117,7 @@ export function renderTaskPanel(store, ui = {}) {
       </div>
       <nav class="task-links" aria-label="Analysis tools">
         ${link('analysis', '⚙', 'Simulation settings', 'Objective and solver options')}
+        ${link('reactions', '☰', 'Reactions & bounds', 'Bounds, objective and fluxes')}
         ${link('crossfeeding', '⇄', 'Cross-feeding explorer', 'Producer and consumer transfers')}
       </nav>
       <button class="task-results-button" data-action="show-results" type="button">View simulation results <span aria-hidden="true">↗</span></button>
@@ -155,6 +160,7 @@ const WORKSPACE_TITLES = {
   scenario: 'Scenario & objective', community: 'Species & abundance', medium: 'Shared medium',
   model: 'Biological model', omics: 'Omics & expression', analysis: 'Analysis settings',
   settings: 'Analysis settings', crossfeeding: 'Cross-feeding explorer', overview: 'Model overview',
+  reactions: 'Reactions & bounds',
 };
 
 /** The heading shown for a workspace id. */
@@ -163,11 +169,12 @@ export function getWorkspaceTitle(workspace) {
 }
 
 /**
- * The HTML of one workspace (`library`, `scenario`, `medium`, ...), one full
- * editor at a time. Its cards keep the data-actions and form ids they have in
- * the sidebar, so the same delegated handlers drive them.
+ * The HTML of one workspace (`library`, `scenario`, `medium`, `reactions`,
+ * ...), one full editor at a time. Its cards keep the data-actions and form
+ * ids they have in the sidebar, so the same delegated handlers drive them.
+ * `reactions` is the Reactions page's view state (see renderReactionsPage).
  */
-export function renderWorkspace(store, workspace, { fluxColorDraft = null, steadyComDraft = null, steadyComPending = false } = {}) {
+export function renderWorkspace(store, workspace, { fluxColorDraft = null, steadyComDraft = null, steadyComPending = false, reactions = null } = {}) {
   const content = {
     library: () => reactionSearchCard(store),
     structure: () => mapStructureCard(store) + mapCanvasCard(store),
@@ -181,6 +188,7 @@ export function renderWorkspace(store, workspace, { fluxColorDraft = null, stead
     settings: () => scenarioCard(store, { steadyComDraft, steadyComPending }),
     crossfeeding: () => crossFeedingCard(store),
     overview: () => modelOverviewCard(store),
+    reactions: () => renderReactionsPage(store, reactions ?? {}),
   }[workspace];
   return `<div class="workspace-cards" data-workspace-content="${esc(workspace)}">${content ? content() : '<p class="empty">Choose a workspace from the task panel.</p>'}</div>`;
 }
@@ -270,8 +278,15 @@ export function renderInspector(store) {
   return `<section class="inspector-empty"><h2>Selection</h2><p>No properties are available.</p></section>`;
 }
 
-/** The results dock as HTML: the analysis summary with its subtab (`flux`, `fva`, `reduced`, `scaled`, `shadow`, `repro`), the full table and the log. */
-export function renderResults(store, analysisTab = 'flux') {
+/**
+ * The results dock as HTML: the analysis summary with its subtab (`flux`,
+ * `fva`, `reduced`, `scaled`, `shadow`, `repro`), the Table view and the log.
+ * The Table view lists every reaction (see renderCompactReactionsTable) when
+ * `table` gives its view state, `{model, scrollTop, viewportHeight, mode}`;
+ * `mode: 'shadow'` lists the metabolites' shadow prices instead. Without it,
+ * which is while the view is hidden, it is left empty.
+ */
+export function renderResults(store, analysisTab = 'flux', { table = null } = {}) {
   const solution = store.solution;
   const optimal = solution?.status === 'optimal';
   const mode = solution?.steadyCom ? 'SteadyCom fixed µ' : (solution?.gimme ? 'GIMME' : (store.loopless ? 'Loopless FBA' : (store.parsimonious ? 'pFBA' : (store.fvaEnabled ? 'FVA' : 'FBA'))));
@@ -312,7 +327,7 @@ export function renderResults(store, analysisTab = 'flux') {
     </div>
   </div>
   <div class="result-pane" data-result-pane="table">
-    ${analysisTabContent(store, active, { optimal, dualAvailable, fvaAvailable, progress, full:true })}
+    ${tableViewPane(store, table, { optimal, dualAvailable, fvaAvailable, progress })}
   </div>
   <div class="result-pane log-pane" data-result-pane="logs">
     <p><span>Now</span> ${esc(mode)} · ${esc(statusLabel)} · ${store.status?.solveMs ?? 0} ms</p>
@@ -335,6 +350,23 @@ export function renderLogEntries(log = []) {
     <div class="log-history-head"><span>History · ${log.length} message${log.length === 1 ? '' : 's'}</span>
       <button class="secondary" data-action="clear-log" type="button">Clear</button></div>
     <ol class="log-list">${rows}</ol>
+  </div>`;
+}
+
+function tableViewPane(store, table, state) {
+  if (!table) return '<div class="analysis-empty">Open the Table view to list every reaction.</div>';
+  const shadow = table.mode === 'shadow';
+  const tab = (mode, label) => `<button type="button" data-action="rx-compact-mode" data-mode="${mode}" class="${(table.mode ?? 'reactions') === mode ? 'is-active' : ''}"
+    aria-pressed="${(table.mode ?? 'reactions') === mode}">${label}</button>`;
+  return `<div class="rx-compact">
+    <div class="rx-compact-bar">
+      <div class="subtabs" role="group" aria-label="Table">${tab('reactions', 'Reactions')}${tab('shadow', 'Shadow prices')}</div>
+      <span class="grow"></span>
+      <button type="button" class="rx-open-page" data-action="open-workspace" data-workspace="reactions">Open in Reactions ↗</button>
+    </div>
+    ${shadow
+      ? analysisTabContent(store, 'shadow', { ...state, full: true })
+      : renderCompactReactionsTable(store, table)}
   </div>`;
 }
 
@@ -602,8 +634,12 @@ function objectiveControls(store) {
     [OBJECTIVES.SUM_BIOMASS, 'Weighted biomass sum'],
   ].map(([v, label]) => `<option value="${v}"${store.objective === v ? ' selected' : ''}>${esc(label)}</option>`).join('');
 
+  const edited = store.customObjective
+    ? `<option value="" selected disabled>Edited: ${esc(store.objectiveDescription?.() ?? 'custom')}</option>` : '';
   return `<label class="sc-label" for="objective-select">Community objective</label>
-    <select id="objective-select" data-action="objective">${objectives}</select>
+    <select id="objective-select" data-action="objective">${edited}${objectives}</select>
+    <button type="button" class="sc-objective-edit" data-action="open-workspace" data-workspace="reactions"
+      title="Any reaction, any coefficient, maximised or minimised">Edit objective in Reactions ↗</button>
     <label class="row" style="margin-top:10px;cursor:pointer">
       <input type="checkbox" data-action="parsimonious" ${store.parsimonious ? 'checked' : ''}
         aria-label="Use Parsimonious Flux Balance Analysis">
@@ -2018,16 +2054,19 @@ function inspectorCard(store) {
   const owner = store.community.reactionOwner.get(rid) || {};
   const flux = store.solution?.fluxes.get(rid) ?? 0;
   const bounds = store.currentReactionBounds(rid);
-  const defaults = store.defaultReactionBounds(rid);
-  const modified = store.overrides.has(rid);
+  const defaults = store.originalReactionBounds?.(rid) ?? store.defaultReactionBounds(rid);
+  const knockedOut = Boolean(store.reactionKnockedOut?.(rid));
+  const modified = store.originalReactionBounds
+    ? Math.abs(bounds.lower - defaults.lower) > 1e-9 || Math.abs(bounds.upper - defaults.upper) > 1e-9
+    : store.overrides.has(rid);
   const fva = store.fvaEnabled ? store.fvaRanges.get(rid) ?? null : null;
   const reducedCost = store.solution?.reducedCosts?.get(rid);
   const scaledReducedCost = store.solution?.scaledReducedCosts?.get(rid);
+  const objectiveCoefficient = store.objectiveCoefficients?.()[rid] ?? merged?.objectiveCoefficient ?? 0;
 
   const span = Math.max(Math.abs(defaults.lower), Math.abs(defaults.upper), 10);
   const lo = defaults.lower < 0 ? -span : 0;
   const hi = span;
-  const step = span > 200 ? 5 : 0.1;
 
   const cellName = owner.speciesId
     ? store.models.get(store.species.find((s) => s.id === owner.speciesId)?.file)?.cell.name
@@ -2070,7 +2109,7 @@ function inspectorCard(store) {
       ${propertyRow('ID', `<code>${esc(owner.originalId ?? rid)}</code>`)}
       ${propertyRow('Name', esc(merged?.name ?? '—'))}
       ${propertyRow('Equation', `<code class="equation-inline">${esc(merged?.equation() ?? '')}</code>`, 'is-stacked')}
-      ${propertyRow('Objective coefficient', formatFlux(merged?.objectiveCoefficient ?? 0, 4))}
+      ${propertyRow('Objective coefficient', `${formatFlux(objectiveCoefficient, 4)}${store.objectiveSense?.() === 'min' ? ' (minimised)' : ''}`)}
       ${propertyRow('Reduced cost', Number.isFinite(reducedCost) ? formatFlux(reducedCost, 6) : '—')}
       ${propertyRow('Scaled reduced cost', Number.isFinite(scaledReducedCost) ? formatFlux(scaledReducedCost, 6) : '—')}
       ${propertyRow('GPR', esc(merged?.geneReactionRule || '—'))}
@@ -2084,7 +2123,7 @@ function inspectorCard(store) {
 
     <dl class="readout">
       <div><dt>Flux</dt><dd>${formatFlux(flux, 4)}</dd></div>
-      <div><dt>State</dt><dd style="font-size:13px">${modified ? 'Modified' : 'Original'}</dd></div>
+      <div><dt>State</dt><dd style="font-size:13px">${knockedOut ? 'Knocked out' : modified ? 'Modified' : 'Original'}</dd></div>
     </dl>
 
     ${omicsReactionReadout(store, rid)}
@@ -2095,26 +2134,24 @@ function inspectorCard(store) {
     ${store.isZunigaStudy ? '<p class="hint">Source bounds are fixed for this case; select a documented scenario to apply its perturbation.</p><fieldset disabled style="border:0;padding:0;margin:0">' : ''}
     <div class="bound-row">
       <label>Lower</label>
-      <input type="range" min="${lo}" max="${hi}" step="${step}" value="${bounds.lower}"
-        data-action="bound-lower" data-rxn="${esc(rid)}">
-      <input type="number" step="${step}" value="${round(bounds.lower)}"
-        data-action="bound-lower-number" data-rxn="${esc(rid)}">
+      ${boundControl({ rid, side: 'lower', value: bounds.lower, label: owner.originalId ?? rid })}
     </div>
     <div class="bound-row">
       <label>Upper</label>
-      <input type="range" min="${lo}" max="${hi}" step="${step}" value="${bounds.upper}"
-        data-action="bound-upper" data-rxn="${esc(rid)}">
-      <input type="number" step="${step}" value="${round(bounds.upper)}"
-        data-action="bound-upper-number" data-rxn="${esc(rid)}">
+      ${boundControl({ rid, side: 'upper', value: bounds.upper, label: owner.originalId ?? rid })}
     </div>
+    <p class="hint bound-scale-note">Sliders are logarithmic (±0.001 to ±1000, 0 in the middle); type exact values in the boxes.</p>
 
     <div class="row" style="margin-top:10px">
-      <button class="danger" data-action="knockout" data-rxn="${esc(rid)}">Knockout</button>
+      ${knockedOut
+        ? `<button data-action="reset-reaction" data-rxn="${esc(rid)}" title="Back to the bounds as opened">Restore</button>`
+        : `<button class="danger" data-action="knockout" data-rxn="${esc(rid)}">Knockout</button>`}
       <button data-action="reset-reaction" data-rxn="${esc(rid)}">Reset</button>
       <span class="grow"></span>
       <button data-action="reset-all" title="Reset all modified reactions">All</button>
     </div>
     ${store.isZunigaStudy ? '</fieldset>' : ''}
+    <button class="inspector-reactions-link" data-action="rx-reveal" data-rid="${esc(rid)}" type="button">Show in Reactions ↗</button>
     ${reactionDrawingControls(store, rid)}
     <div class="row" style="margin-top:8px">
       <button class="danger grow inspector-delete" data-action="remove-map-reaction" data-rxn="${esc(rid)}">Delete reaction from map</button>
@@ -2677,6 +2714,5 @@ function mapCanvasCard(store) {
 }
 
 const clamp = (v) => Math.min(100, Math.max(0, v));
-const round = (v) => (Number.isFinite(v) ? Number(v.toFixed(4)) : 0);
 
 export { esc };

@@ -63,13 +63,20 @@ impl Store {
             .map(event);
         let scale = self.scale.clone().unwrap_or_else(|| FluxScale::automatic([], self.view.dark));
         let to_map = |m: &indexmap::IndexMap<String, String>| m.iter().map(|(k, v)| (k.clone(), v.clone())).collect::<HashMap<_, _>>();
+        // Bounds changed from the model's: knocked-out reactions take the
+        // disabled style, the others a badge.
+        let changes = self.constraint_changes();
+        let mut disabled: HashSet<String> = if zuniga { self.zuniga_knockouts().into_iter().collect() } else { HashSet::new() };
+        disabled.extend(changes.iter().filter(|c| c.knocked_out).map(|c| c.id.clone()));
+        let modified: HashSet<String> = changes.iter().filter(|c| !c.knocked_out).map(|c| c.id.clone()).collect();
         RenderState {
             fluxes: self.display_fluxes().into_iter().collect(),
             solved_fluxes: Some(
                 self.solution.as_ref().filter(|s| s.is_optimal()).map(|s| s.fluxes.clone().into_iter().collect()).unwrap_or_default(),
             ),
             reaction_width_mode: if zuniga || self.view.width_by_flux { ReactionWidthMode::Flux } else { ReactionWidthMode::Constant },
-            disabled_reaction_ids: if zuniga { self.zuniga_knockouts().into_iter().collect() } else { HashSet::new() },
+            disabled_reaction_ids: disabled,
+            modified_reaction_ids: modified,
             inactive_species_ids: inactive,
             inactive_species_label: if zuniga { "inactive context" } else { "switched off" }.into(),
             emphasized_reaction_ids: if zuniga {

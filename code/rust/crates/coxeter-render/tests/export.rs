@@ -48,7 +48,8 @@ fn the_exported_svg_is_the_map_alone_with_its_stylesheet_rules_in_front() {
     assert!(css.contains(".emc-label-met { font-size: calc(12.5px * var(--label-scale)); font-weight: 600; }"));
     assert!(css.contains(".emc-node.is-multi-selected { stroke: var(--accent, #2563eb) !important; stroke-width: 4px !important; filter: url(\"#emc-glow\"); }"));
     assert!(css.contains(".emc-node-metabolite, .emc-node-medium { cursor: grab; }"), "selector lists on one line");
-    assert!(css.lines().all(|rule| rule.contains(".emc-")), "only rules that mention the map's classes");
+    // An at-rule (`@media`) opens and closes on lines of its own around them.
+    assert!(css.lines().all(|rule| rule.contains(".emc-") || rule.starts_with('@') || rule == "}"), "only rules that mention the map's classes");
     assert!(css.contains(".emc-selection-box {"), "app.css rules that mention them come too, as in the app");
     assert!(!css.contains("/*"));
 

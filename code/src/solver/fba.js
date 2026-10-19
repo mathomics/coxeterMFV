@@ -589,7 +589,8 @@ function yieldFrame() {
   });
 }
 
-function defaultObjective(model) {
+/** The objective a FluxProblem starts with: the model's objective reactions, or its biomass reaction when it names none. */
+export function defaultObjective(model) {
   const objective = model.objectiveReactions();
   if (objective.length) {
     const out = {};

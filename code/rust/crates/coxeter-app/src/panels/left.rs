@@ -263,6 +263,7 @@ pub fn render_task_panel(ui: &mut Ui, shell: &mut Shell, p: &Palette) {
             task_link(ui, shell, "scenario", "◇", "Scenario & objective", "Setup and published communities", p);
             task_link(ui, shell, "community", "⬡", "Species & abundance", "Models and community composition", p);
             task_link(ui, shell, "medium", "◌", "Shared medium", "Nutrient supply and exchange", p);
+            task_link(ui, shell, "reactions", "☰", "Reactions & bounds", "Every reaction’s constraints", p);
             task_link(ui, shell, "model", "⌁", "Biological model", "Create reactions and metabolites", p);
             task_link(ui, shell, "omics", "≋", "Omics & expression", "Visual overlays and GIMME", p);
             footnote(ui, "Model edits affect the analysis. Map edits affect the drawing.", p);
@@ -314,6 +315,10 @@ fn analysis_hub(ui: &mut Ui, shell: &mut Shell, p: &Palette) {
     let method = current_analysis_method(shell);
     let objective = match fixed_mu {
         Some(mu) => format!("µ = {} h⁻¹", coxeter_core::js::number_to_string(mu)),
+        None if store.custom_objective.is_some() => format!(
+            "Edited objective ({})",
+            if store.objective_sense() == coxeter_state::ObjectiveSense::Min { "minimised" } else { "maximised" }
+        ),
         None if store.objective == objectives::SUM_BIOMASS => "Weighted biomass sum".into(),
         None => "Equal growth".into(),
     };
@@ -370,6 +375,7 @@ fn analysis_hub(ui: &mut Ui, shell: &mut Shell, p: &Palette) {
         });
     }
     task_link(ui, shell, "analysis", "⚙", "Simulation settings", "Objective and solver options", p);
+    task_link(ui, shell, "reactions", "☰", "Reactions & bounds", "Bounds, objective and fluxes", p);
     task_link(ui, shell, "crossfeeding", "⇄", "Cross-feeding explorer", "Producer and consumer transfers", p);
     if Btn::new("View simulation results ↗").wide().height(34.0).show(ui).clicked() {
         let stage = shell.map_rect.map_or(600.0, |r| r.height());

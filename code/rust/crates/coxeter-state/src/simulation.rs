@@ -15,18 +15,21 @@ use indexmap::IndexMap;
 
 use crate::error::{Result, StoreError};
 use crate::jobs::{JobContext, JobKind, JobMessage, JobPayload, sleep_unless_cancelled};
+use crate::reactions::minimised_result;
 use crate::steadycom::steady_com_cross_feeding;
 use crate::store::{AUTO_DRAW_METABOLITE_LIMIT, AUTO_DRAW_REACTION_LIMIT, Store};
 use crate::types::*;
 use crate::util::{csv, describe_status, format_duration, normalize_pfba_percent};
 
 /// How a solve is posed: plain FBA, pFBA at a biomass percentage, or the
-/// loopless MILP.
+/// loopless MILP, and whether the problem holds a minimised objective
+/// negated (see `Store::apply_objective`).
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct SolvePlan {
     pub loopless: bool,
     pub parsimonious: bool,
     pub pfba_percent: f64,
+    pub minimise: bool,
 }
 
 impl SolvePlan {
@@ -43,14 +46,23 @@ impl SolvePlan {
 }
 
 /// Solve one flux problem as `solve()` would.
+///
+/// A minimised objective is posed as the maximum of its negative, so every
+/// analysis keeps its one maximising path; the result is read back with its
+/// own signs.
 pub fn compute_solution(problem: &FluxProblem, plan: SolvePlan, interrupt: Option<Arc<AtomicBool>>) -> FluxResult {
-    if plan.loopless {
+    let fraction = plan.pfba_percent / 100.0;
+    let res = if plan.loopless {
         problem.loopless(&LooplessOptions { interrupt, ..LooplessOptions::default() })
     } else if plan.parsimonious {
-        problem.parsimonious(PfbaOptions { fraction: plan.pfba_percent / 100.0, maximize: true })
+        // Within a share of a minimum is above it: a target of (2 - f) times
+        // the optimum, as FluxProblem itself does when asked to minimise.
+        let fraction = if plan.minimise { 2.0 - fraction } else { fraction };
+        problem.parsimonious(PfbaOptions { fraction, maximize: true })
     } else {
         problem.optimize()
-    }
+    };
+    if plan.minimise { minimised_result(res) } else { res }
 }
 
 /// A solve running in the background for `runAnalysis`.
@@ -123,6 +135,7 @@ impl Store {
             loopless: self.loopless,
             parsimonious: parsimonious.unwrap_or(self.parsimonious),
             pfba_percent: self.pfba_biomass_percent,
+            minimise: self.objective_sense() == ObjectiveSense::Min,
         }
     }
 
@@ -162,7 +175,9 @@ impl Store {
         } else {
             describe_status(res.status.as_str())
         };
+        let status = res.status;
         let solution = self.apply_solution(Solution::from_result(res), true);
+        self.note_constraint_outcome(status);
         let layout_ms = self.status().layout_ms;
         self.set_status(Status {
             state: if optimal { StatusState::Ok } else { StatusState::Error },
@@ -686,11 +701,16 @@ impl Store {
         self.rebuild(RebuildOptions { relayout: false, ..RebuildOptions::default() })
     }
 
-    /// `setObjective(type, target)`.
+    /// `setObjective(type, target)`: a preset objective (equal growth,
+    /// biomass sum, product), dropping any edited one. Structural: rebuilds
+    /// and solves.
     pub fn set_objective(&mut self, objective: &str, target: Option<&str>) -> Result<()> {
         self.assert_published_study_constraints()?;
-        self.objective = objective.to_string();
-        self.product_target = target.map(str::to_string);
+        self.change_constraints("Objective preset", Some("objective-preset"), |s| {
+            s.objective = objective.to_string();
+            s.product_target = target.map(str::to_string);
+            s.custom_objective = None;
+        });
         self.rebuild(RebuildOptions { relayout: false, ..RebuildOptions::default() })
     }
 
@@ -702,15 +722,18 @@ impl Store {
         self.assert_published_study_constraints()?;
         let Some(limit) = finite_input(&value.into()) else { return Ok(false) };
         self.invalidate_steady_com();
-        if self.scenario_published().as_deref() == Some("steadycom-gut-nine") {
-            self.overrides.shift_remove(&format!("UT_{base}(u)"));
-        }
-        self.medium.insert(base.to_string(), limit.abs());
-        // Per-reaction overrides are applied after the medium, so an override
-        // left on this exchange would swallow the slider and make it look
-        // broken. The slider is the more direct expression of intent, so it
-        // wins.
-        self.overrides.shift_remove(&community_exchange(base));
+        let gut_nine = self.scenario_published().as_deref() == Some("steadycom-gut-nine");
+        self.change_constraints(&format!("Medium supply of {base}"), Some(&format!("medium:{base}")), |s| {
+            if gut_nine {
+                s.overrides.shift_remove(&format!("UT_{base}(u)"));
+            }
+            s.medium.insert(base.to_string(), limit.abs());
+            // Per-reaction overrides are applied after the medium, so an
+            // override left on this exchange would swallow the slider and make
+            // it look broken. The slider is the more direct expression of
+            // intent, so it wins.
+            s.overrides.shift_remove(&community_exchange(base));
+        });
         self.apply_overrides();
         self.solve();
         Ok(true)
@@ -721,7 +744,9 @@ impl Store {
     ///
     /// A side given as nothing, an empty string or anything that is not a
     /// finite number is left as it is: a field the user has just cleared is
-    /// not a bound of 0.
+    /// not a bound of 0. The lower bound never ends above the upper one. An
+    /// exchange the medium controls is written to the medium (see
+    /// `write_reaction_bounds`), so this and the Medium card never disagree.
     pub fn set_reaction_bounds(&mut self, rid: &str, lower: impl Into<UserNumber>, upper: impl Into<UserNumber>) -> Result<Bounds> {
         self.assert_published_study_constraints()?;
         let current = self.current_reaction_bounds(rid);
@@ -739,12 +764,14 @@ impl Store {
                 next.lower = next.upper;
             }
         }
-        self.overrides.insert(rid.to_string(), next);
+        let label = format!("Bounds of {}", self.reaction_title(rid));
+        self.change_constraints(&label, Some(&format!("bounds:{rid}")), |s| s.write_reaction_bounds(rid, next));
         self.apply_overrides();
         Ok(next)
     }
 
-    /// `defaultReactionBounds(rid)`: the bounds the model gives.
+    /// `defaultReactionBounds(rid)`: the bounds the LP was built with: the
+    /// model's, with the medium of the last rebuild.
     pub fn default_reaction_bounds(&self, rid: &str) -> Bounds {
         let index = self.problem.as_ref().and_then(|p| p.reaction_index(rid));
         match (index, &self.default_bounds) {
@@ -753,34 +780,57 @@ impl Store {
         }
     }
 
-    /// `currentReactionBounds(rid)`.
+    /// `currentReactionBounds(rid)`: the bounds in force: an override, else
+    /// what the medium gives an exchange, else the model's.
     pub fn current_reaction_bounds(&self, rid: &str) -> Bounds {
-        self.overrides.get(rid).copied().unwrap_or_else(|| self.default_reaction_bounds(rid))
+        if let Some(b) = self.overrides.get(rid) {
+            return *b;
+        }
+        self.medium_reaction_bounds(rid, &self.medium, false).unwrap_or_else(|| self.default_reaction_bounds(rid))
     }
 
-    /// `resetReaction(rid)`.
+    /// `resetReaction(rid)`: one reaction back as opened, an exchange's
+    /// medium supply included, and solve.
     pub fn reset_reaction(&mut self, rid: &str) -> Result<()> {
         self.assert_published_study_constraints()?;
         self.invalidate_steady_com();
-        self.overrides.shift_remove(rid);
+        let label = format!("Reset {}", self.reaction_title(rid));
+        self.change_constraints(&label, None, |s| s.reset_reaction_bounds(rid));
         self.apply_overrides();
         self.solve();
         Ok(())
     }
 
-    /// `resetAllReactions()`.
+    /// `resetAllReactions()`: every reaction back as opened, the medium
+    /// included, and solve. The objective is left as it is.
     pub fn reset_all_reactions(&mut self) -> Result<()> {
         self.assert_published_study_constraints()?;
         self.invalidate_steady_com();
-        self.overrides.clear();
+        self.change_constraints("Reset all reactions", None, |s| {
+            s.overrides.clear();
+            let mut medium = s.base_medium.clone();
+            // A metabolite added to the medium since is closed rather than
+            // dropped: dropped, its exchange would keep whatever the last
+            // rebuild gave it.
+            for base in s.medium.keys() {
+                if !medium.contains_key(base) {
+                    medium.insert(base.clone(), 0.0);
+                }
+            }
+            s.medium = medium;
+        });
         self.apply_overrides();
         self.solve();
         Ok(())
     }
 
-    /// `knockout(rid)`.
+    /// `knockout(rid)`: close a reaction (bounds 0, 0) and solve.
     pub fn knockout(&mut self, rid: &str) -> Result<()> {
-        self.set_reaction_bounds(rid, 0.0, 0.0)?;
+        self.assert_published_study_constraints()?;
+        self.invalidate_steady_com();
+        let label = format!("Knock out {}", self.reaction_title(rid));
+        self.change_constraints(&label, None, |s| s.write_reaction_bounds(rid, Bounds { lower: 0.0, upper: 0.0 }));
+        self.apply_overrides();
         self.solve();
         Ok(())
     }

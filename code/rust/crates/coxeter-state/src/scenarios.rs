@@ -104,6 +104,7 @@ impl Store {
         }
         self.objective = text_field(&scenario, "objective").filter(|o| !o.is_empty()).unwrap_or_else(|| objectives::EQUAL_GROWTH.into());
         self.product_target = text_field(&scenario, "productTarget").filter(|o| !o.is_empty());
+        self.custom_objective = None;
         self.parsimonious = flag(&scenario, &["parsimonious", "pfba"]);
         let percent = match field(&scenario, "pfbaBiomassPercent") {
             Some(p) => js::to_number(&p),
@@ -198,6 +199,7 @@ impl Store {
         self.scenario = Some(scenario);
         self.objective = objectives::EQUAL_GROWTH.into();
         self.product_target = None;
+        self.custom_objective = None;
         self.parsimonious = false;
         self.pfba_biomass_percent = 100.0;
         self.loopless = false;
@@ -362,6 +364,7 @@ impl Store {
 
         self.objective = text_field(&scenario, "objective").filter(|o| !o.is_empty()).unwrap_or_else(|| objectives::SUM_BIOMASS.into());
         self.product_target = text_field(&scenario, "productTarget").filter(|o| !o.is_empty());
+        self.custom_objective = None;
         self.parsimonious = flag(&scenario, &["parsimonious"]);
         self.pfba_biomass_percent =
             normalize_pfba_percent(field(&scenario, "pfbaBiomassPercent").map_or(100.0, |p| js::to_number(&p)));
@@ -541,6 +544,7 @@ impl Store {
         let manifest = manifest.unwrap_or(Value::Null);
         self.objective = objectives::EQUAL_GROWTH.into();
         self.product_target = None;
+        self.custom_objective = None;
         self.parsimonious = false;
         self.pfba_biomass_percent = 100.0;
         self.loopless = false;
@@ -802,7 +806,7 @@ impl Store {
     }
 
     /// `applyOverrides()`: the model's bounds, then the medium, then the
-    /// per-reaction overrides.
+    /// per-reaction overrides, and the objective in force.
     pub fn apply_overrides(&mut self) {
         let Some(defaults) = self.default_bounds.clone() else { return };
         if self.problem.is_none() {
@@ -851,6 +855,7 @@ impl Store {
             }
             let _ = problem.set_bounds(rid, Some(b.lower), Some(b.upper));
         }
+        self.apply_objective();
     }
 
     /// `speciesHeldOut(id)`: whether a species is out of the simulation

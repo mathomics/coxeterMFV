@@ -202,6 +202,48 @@ impl Bounds {
     }
 }
 
+/// Whether the objective is maximised or minimised.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Hash)]
+pub enum ObjectiveSense {
+    #[default]
+    Max,
+    Min,
+}
+
+impl ObjectiveSense {
+    pub fn as_str(self) -> &'static str {
+        match self {
+            ObjectiveSense::Max => "max",
+            ObjectiveSense::Min => "min",
+        }
+    }
+
+    /// `'max'` or `'min'`; anything else is no sense at all.
+    pub fn parse(s: &str) -> Option<ObjectiveSense> {
+        match s {
+            "max" => Some(ObjectiveSense::Max),
+            "min" => Some(ObjectiveSense::Min),
+            _ => None,
+        }
+    }
+}
+
+/// `store.customObjective`: an objective edited on top of the preset, any
+/// reaction with any coefficient, maximised or minimised.
+#[derive(Debug, Clone, PartialEq, Default)]
+pub struct CustomObjective {
+    pub sense: ObjectiveSense,
+    pub coefficients: IndexMap<String, f64>,
+}
+
+impl CustomObjective {
+    /// `{ sense, coefficients }` as the scenario file and the bundle hold it.
+    pub fn to_json(&self) -> Value {
+        let coefficients: Map<String, Value> = self.coefficients.iter().map(|(k, v)| (k.clone(), crate::util::num_json(*v))).collect();
+        json!({ "sense": self.sense.as_str(), "coefficients": coefficients })
+    }
+}
+
 // View
 
 /// The size and font new texts are set in.

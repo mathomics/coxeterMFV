@@ -42,6 +42,7 @@ use coxeter_core::mapdata::NodeKind;
 use coxeter_core::model::Model;
 use coxeter_map::{EditableMap, LayoutOptions, PlaceOptions};
 use coxeter_state::StatusState;
+use coxeter_state::reactions_explorer::{SIGN_LOG, sign_log_position, sign_log_value};
 use egui::accesskit::{Invalid, Role, Toggled};
 use egui_kittest::Harness;
 use egui_kittest::kittest::{NodeT, Queryable};
@@ -624,7 +625,8 @@ fn knockout_reset_and_reset_all() {
     let bounds = store.current_reaction_bounds(PGI);
     assert_eq!((bounds.lower, bounds.upper), (0.0, 0.0));
     assert_eq!(store.solution.as_ref().unwrap().fluxes.get(PGI).copied().unwrap_or(0.0), 0.0);
-    assert!(label_is(&h, "Modified"));
+    assert!(label_is(&h, "Knocked out"));
+    assert!(common::has(&h, "Restore"), "a knocked-out reaction offers its way back");
     // reset-reaction
     common::click(&mut h, "Reset");
     assert!(!h.state().store.overrides.contains_key(PGI));
@@ -644,16 +646,20 @@ fn bound_sliders_apply_and_solve() {
     let before = h.state().store.current_reaction_bounds(PGI);
     // Selecting a reaction applies nothing by itself.
     assert!(!h.state().store.overrides.contains_key(PGI));
+    // The sliders are sign-log: a position, read back as a bound by `sign_log_value`.
+    let at = |v: f64| sign_log_position(v, &SIGN_LOG) as f64;
+    let five = sign_log_value(at(5.0), &SIGN_LOG);
+    assert!((five - 5.0).abs() < 0.05, "a position lands on a number worth reading: {five}");
     // bound-lower
-    common::set_value(&mut h, "Lower bound slider", -5.0);
-    assert_eq!(h.state().store.current_reaction_bounds(PGI).lower, -5.0);
+    common::set_value(&mut h, "Lower bound of PGI, logarithmic slider", at(-5.0));
+    assert_eq!(h.state().store.current_reaction_bounds(PGI).lower, -five);
     assert_eq!(h.state().store.current_reaction_bounds(PGI).upper, before.upper);
     // bound-upper
-    common::set_value(&mut h, "Upper bound slider", 5.0);
-    assert_eq!(h.state().store.current_reaction_bounds(PGI).upper, 5.0);
+    common::set_value(&mut h, "Upper bound of PGI, logarithmic slider", at(5.0));
+    assert_eq!(h.state().store.current_reaction_bounds(PGI).upper, five);
     let flux = h.state().store.solution.as_ref().unwrap().fluxes.get(PGI).copied().unwrap_or(0.0);
-    assert!(flux <= 5.0 + 1e-9, "solved with the new bound: {flux}");
-    assert_eq!(value_of(&h, "Upper bound"), "5", "the number field follows");
+    assert!(flux <= five + 1e-9, "solved with the new bound: {flux}");
+    assert_eq!(value_of(&h, "Upper bound of PGI"), coxeter_core::js::number_to_string(five), "the number field follows");
 }
 
 #[test]
@@ -661,10 +667,10 @@ fn bound_number_fields_apply_and_solve() {
     let mut h = ecoli();
     select_reaction(&mut h, PGI);
     // bound-lower-number
-    common::type_into(&mut h, "Lower bound", "-3");
+    common::type_into(&mut h, "Lower bound of PGI", "-3");
     assert_eq!(h.state().store.current_reaction_bounds(PGI).lower, -3.0);
     // bound-upper-number
-    common::type_into(&mut h, "Upper bound", "2.5");
+    common::type_into(&mut h, "Upper bound of PGI", "2.5");
     assert_eq!(h.state().store.current_reaction_bounds(PGI).upper, 2.5);
     let flux = h.state().store.solution.as_ref().unwrap().fluxes.get(PGI).copied().unwrap_or(0.0);
     assert!(flux <= 2.5 + 1e-9, "solved with the new bound: {flux}");
@@ -675,18 +681,18 @@ fn a_cleared_bound_field_is_marked_and_changes_nothing() {
     let mut h = ecoli();
     select_reaction(&mut h, PGI);
     let before = h.state().store.current_reaction_bounds(PGI);
-    clear_field(&mut h, "Upper bound");
-    assert!(invalid(&h, "Upper bound"), "aria-invalid while it holds no number");
+    clear_field(&mut h, "Upper bound of PGI");
+    assert!(invalid(&h, "Upper bound of PGI"), "aria-invalid while it holds no number");
     assert_eq!(h.state().store.current_reaction_bounds(PGI).upper, before.upper, "nothing applied");
     h.key_press(egui::Key::Enter);
     common::settle(&mut h);
-    assert!(!invalid(&h, "Upper bound"));
+    assert!(!invalid(&h, "Upper bound of PGI"));
     assert_eq!(h.state().store.current_reaction_bounds(PGI).upper, before.upper);
     assert!(!h.state().store.overrides.contains_key(PGI), "no override from an ignored value");
     let status = h.state().store.status().clone();
     assert_eq!(status.state, StatusState::Warn);
     assert_eq!(status.message, coxeter_app::panels::inspector::NOT_A_NUMBER);
-    assert_eq!(value_of(&h, "Upper bound"), coxeter_core::js::number_to_string(before.upper), "it shows the value in force");
+    assert_eq!(value_of(&h, "Upper bound of PGI"), coxeter_core::js::number_to_string(before.upper), "it shows the value in force");
 }
 
 #[test]
@@ -695,7 +701,7 @@ fn a_double_click_gives_the_keyboard_to_the_lower_bound() {
     select_reaction(&mut h, PGI);
     h.state_mut().on_canvas_event(coxeter_canvas::CanvasEvent::FocusLowerBound);
     common::settle(&mut h);
-    assert!(common::control(&h, "Lower bound").is_focused());
+    assert!(common::control(&h, "Lower bound of PGI").is_focused());
     assert!(!h.state().ui.focus_lower_bound, "the request is taken");
 }
 
@@ -718,7 +724,7 @@ fn switching_a_species_off_leaves_its_reaction_without_bounds() {
     common::settle(&mut h);
     select_reaction(&mut h, "other@At");
     assert!(common::shows(&h, "switched off: it stays on the map, dimmed, and is not simulated"));
-    assert!(!common::has(&h, "Upper bound"), "no bounds to edit for a reaction the analysis cannot see");
+    assert!(!common::has(&h, "Upper bound of At"), "no bounds to edit for a reaction the analysis cannot see");
 }
 
 #[test]
@@ -741,7 +747,7 @@ fn a_zero_abundance_joint_member_is_held_out_like_a_switched_off_one() {
     }
     common::settle(&mut h);
     assert!(common::shows(&h, "zero abundance in this community, so its reactions are held at zero"));
-    assert!(!common::has(&h, "Upper bound"));
+    assert!(!common::has(&h, "Upper bound of At"));
 }
 
 // Reaction drawing

@@ -39,6 +39,7 @@ const n = (v) => (Math.round(v * 100) / 100).toString();
  * @param {Map<string, number>} [state.solvedFluxes] actual flux directions when fluxes contains differences
  * @param {'constant'|'flux'} [state.reactionWidthMode] opt-in scaling by the displayed flux magnitude
  * @param {Set<string>} [state.disabledReactionIds] map-visible zero-bound reactions
+ * @param {Set<string>} [state.modifiedReactionIds] reactions whose bounds differ from the model's, badged
  * @param {Set<string>} [state.inactiveSpeciesIds] context cells kept visible outside the current simulation
  * @param {import('./theme.js').FluxScale} state.scale
  * @param {boolean} [state.dark]
@@ -63,6 +64,8 @@ export function renderMap(layout, state) {
       ...state,
       selectedReaction: null, selectedGeometry: null, geometryEdit: false,
       reactionEdit: false, multiSelection: null, minHitRadius: 0,
+      // A badge for edited bounds is a note to the editor, not part of the figure.
+      modifiedReactionIds: new Set(),
       // The event picked in the cross-feeding explorer is a selection too.
       crossFeedingExplorer: state.crossFeedingExplorer
         ? { ...state.crossFeedingExplorer, selectedEvent: null }
@@ -74,7 +77,7 @@ export function renderMap(layout, state) {
     fluxes = new Map(), scale, dark = false,
     solvedFluxes = fluxes, reactionWidthMode = 'constant',
     disabledReactionIds = new Set(), inactiveSpeciesIds = new Set(), inactiveSpeciesLabel = 'inactive context',
-    emphasizedReactionIds = new Set(),
+    emphasizedReactionIds = new Set(), modifiedReactionIds = new Set(),
     reactionColorMode = 'flux', reactionColors = new Map(),
     pathwayRibbonMode = 'off', pathwayRibbonColors = new Map(), pathwayRibbonGroups = new Map(),
     pathwayRibbonWidth = 56, pathwayRibbonOpacity = 0.18,
@@ -142,7 +145,7 @@ export function renderMap(layout, state) {
   parts.push(renderMarkers(
     layout, fluxes, scale, selectedReaction, dark, multiSelection,
     reactionColorMode, reactionColors, omicsEnabled, omicsColors, omicsFallbackColor,
-    { solvedFluxes, disabledReactionIds, inactiveSpeciesIds, offStyle, tooltip: tooltips?.reaction ?? null },
+    { solvedFluxes, disabledReactionIds, modifiedReactionIds, inactiveSpeciesIds, offStyle, tooltip: tooltips?.reaction ?? null },
   ));
   parts.push(renderNodes(layout, dark, showCurrency, multiSelection, inactiveSpeciesIds, tooltips?.node ?? null));
   parts.push(renderEditHandles(layout, dark, reactionEdit, minHitRadius));
@@ -1037,7 +1040,10 @@ function renderMultiSelectionBorder(bounds, minHitRadius = 0) {
 function renderMarkers(
   layout, fluxes, scale, selected, dark, multiSelection,
   reactionColorMode, reactionColors, omicsEnabled, omicsColors, omicsFallbackColor,
-  { solvedFluxes = fluxes, disabledReactionIds = new Set(), inactiveSpeciesIds = new Set(), offStyle = false, tooltip = null } = {},
+  {
+    solvedFluxes = fluxes, disabledReactionIds = new Set(), modifiedReactionIds = new Set(),
+    inactiveSpeciesIds = new Set(), offStyle = false, tooltip = null,
+  } = {},
 ) {
   const out = ['<g class="emc-layer emc-layer-markers">'];
 
@@ -1115,6 +1121,10 @@ function renderMarkers(
     if (disabled) {
       out.push(`<g class="emc-ko-mark" data-disabled-reaction="${esc(rid)}" transform="translate(${n(rxn.x)} ${n(rxn.y)})" stroke="#db2777" stroke-width="3" pointer-events="none">
         <title>Disabled reaction: both bounds fixed to zero</title><path d="M -9 -9 L 9 9 M -9 9 L 9 -9"/></g>`);
+    } else if (modifiedReactionIds.has(rid)) {
+      // A small amber dot off the marker's corner: the bounds are not the model's.
+      out.push(`<g class="emc-modified-badge" data-modified-reaction="${esc(rid)}" transform="translate(${n(rxn.x + 13)} ${n(rxn.y - 13)})" pointer-events="none">
+        <title>Bounds changed from the model's</title><circle r="5.5" fill="${dark ? '#fbbf24' : '#d97706'}" stroke="${dark ? '#0f172a' : '#ffffff'}" stroke-width="1.6"/></g>`);
     }
     if (inactive) out.push('</g>');
     if (isSel || isMulti) {

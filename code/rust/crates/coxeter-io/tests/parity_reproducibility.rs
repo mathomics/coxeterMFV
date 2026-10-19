@@ -74,6 +74,7 @@ fn store<'a>(desc: &Value, models: &'a IndexMap<String, Model>) -> ReproStore<'a
         scenario: opt(&desc["scenario"]),
         objective: desc["objective"].clone(),
         product_target: desc.get("productTarget").and_then(opt),
+        custom_objective: desc.get("customObjective").and_then(opt),
         medium: desc["medium"].as_object().unwrap().clone(),
         overrides: entries(&desc["overrides"]),
         parsimonious: desc["parsimonious"].as_bool().unwrap(),

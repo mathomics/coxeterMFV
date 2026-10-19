@@ -43,6 +43,21 @@ test('a shallow crossing gets a longer gap than a square one', () => {
   assert.ok(shallow > square * 1.5, `${shallow} against ${square}`);
 });
 
+test('a line ending by a crossing stays whole and the other line is cut instead', () => {
+  const hops = findLineHops([
+    { curve: [p(0, 50), p(60, 50)], reactionId: 'A', width: 7.5 },
+    { curve: [p(50, 0), p(50, 100)], reactionId: 'B', width: 7.5 },
+  ]);
+  assert.deepEqual([...hops.keys()], [1], 'A runs on to its metabolite uncut');
+});
+
+test('a line that ends on another touches it and cuts nothing', () => {
+  assert.equal(findLineHops([
+    { curve: [p(0, 50), p(53, 50)], reactionId: 'A', width: 7.5 },
+    { curve: [p(50, 0), p(50, 100)], reactionId: 'B', width: 7.5 },
+  ]).size, 0);
+});
+
 test('a cubic branch under a line is cut where it crosses', () => {
   const curve = [p(0, 0), p(40, 120), p(80, -40), p(120, 80)];
   const hops = findLineHops([

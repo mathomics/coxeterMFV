@@ -427,6 +427,7 @@ impl Store {
         self.view.reaction_color_mode = coxeter_render::reaction_colors::ReactionColorMode::Flux;
         self.view.pathway_ribbon_mode = coxeter_render::reaction_colors::PathwayRibbonMode::Off;
         self.product_target = None;
+        self.custom_objective = None;
         self.parsimonious = false;
         self.loopless = false;
         self.fva_enabled = false;

@@ -59,6 +59,7 @@ impl Store {
                 "overrides": overrides,
                 "objective": self.objective,
                 "productTarget": self.product_target,
+                "customObjective": self.custom_objective.as_ref().map(crate::types::CustomObjective::to_json),
                 "parsimonious": self.parsimonious,
                 "pfbaBiomassPercent": num_json(self.pfba_biomass_percent),
                 "loopless": self.loopless,
@@ -95,6 +96,7 @@ impl Store {
     /// of what was opened, not unsaved edits.
     pub fn settle_opened_work(&mut self) {
         self.saved_work = None;
+        self.settle_opened_constraints();
         self.track_work_context();
     }
 

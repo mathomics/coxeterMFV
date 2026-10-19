@@ -29,12 +29,21 @@ pub fn cards(ws: Workspace) -> Vec<CardFn> {
         Workspace::Omics => vec![model::omics_overlay_card, model::community_omics_card],
         Workspace::Crossfeeding => vec![cross_feeding::cross_feeding_card],
         Workspace::Overview => vec![model::model_overview_card],
+        // A table of its own (see `reactions::page`), not cards.
+        Workspace::Reactions => Vec::new(),
     }
 }
 
 /// The page, laid over the stage and the results dock.
 pub fn show(ui: &mut Ui, shell: &mut Shell, ws: Workspace) {
     let p = shell.palette();
+    if ws == Workspace::Reactions {
+        egui::CentralPanel::no_frame().show(ui, |ui| {
+            ui.painter().rect_filled(ui.max_rect(), CornerRadius::ZERO, p.bg);
+            crate::panels::reactions::page(ui, shell);
+        });
+        return;
+    }
     egui::CentralPanel::no_frame().show(ui, |ui| {
         ui.painter().rect_filled(ui.max_rect(), CornerRadius::ZERO, p.bg);
         Frame::new()

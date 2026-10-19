@@ -2,7 +2,8 @@
 //! the run summary (`paintRunSummary` of `src/ui/app.js`), maximize and
 //! collapse, and what `renderResults`, `analysisTabContent`,
 //! `reproducibilityReport`, `resultReactionTable` and `renderLogEntries` of
-//! `src/ui/panels.js` render.
+//! `src/ui/panels.js` render. The Table view lists every reaction (see
+//! `reactions::table_view`), or the shadow prices in full.
 
 use coxeter_core::js;
 use coxeter_render::format_flux;
@@ -25,7 +26,17 @@ pub fn show(ui: &mut Ui, shell: &mut Shell, fill: bool) {
     let collapsed = (shell.ui.results_collapsed || shell.ui.focus_mode) && !fill;
     let body = |ui: &mut Ui, shell: &mut Shell| {
         tabs(ui, shell, &p);
-        if !collapsed {
+        if !collapsed && shell.ui.results_tab == ResultsTab::Table {
+            // The Table view scrolls its own rows.
+            Frame::new().inner_margin(Margin::same(10)).show(ui, |ui| {
+                ui.set_width(ui.available_width());
+                ui.set_height(ui.available_height());
+                crate::panels::reactions::table_view(ui, shell, |ui, shell| {
+                    let state = tab_state(shell);
+                    analysis_tab_content(ui, shell, AnalysisTab::Shadow, &state, true, &p);
+                });
+            });
+        } else if !collapsed {
             egui::ScrollArea::vertical().id_salt("results-scroll").auto_shrink([false, false]).show(ui, |ui| {
                 Frame::new().inner_margin(Margin::same(10)).show(ui, |ui| {
                     ui.set_width(ui.available_width());
@@ -271,7 +282,8 @@ fn content(ui: &mut Ui, shell: &mut Shell, p: &Palette) {
                 });
             });
         }
-        ResultsTab::Table => analysis_tab_content(ui, shell, tab, &state, true, p),
+        // Drawn by `show` itself (see `reactions::table_view`).
+        ResultsTab::Table => {}
         ResultsTab::Logs => logs(ui, shell, p),
     }
 }

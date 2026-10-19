@@ -40,7 +40,12 @@ import { cellCompartmentName } from '../core/compartments.js';
 import { COMPARTMENT_SHAPES } from '../layout/geometry.js';
 import { localMetaboliteBase } from '../layout/place-reaction.js';
 import { CommunityModel, OBJECTIVES, communityExchange, namespaced, splitId } from '../core/community.js';
-import { FluxProblem } from '../solver/fba.js';
+import { FluxProblem, defaultObjective } from '../solver/fba.js';
+import {
+  ConstraintHistory, REACTION_FILTERS, REACTION_GROUPINGS, REACTION_SORT_KEYS, buildReactionCatalog,
+  changedReactionIds, classifyReaction, filterReactionRows, formatBoundsCSV, groupReactionRows, isKnockedOut,
+  parseBoundsCSV, resolveBoundsReaction, sameBounds, sameConstraints, sortReactionRows, toggleReactionFilter,
+} from './reactions-explorer.js';
 import { runSteadyComTask } from '../communities/steadycom-client.js';
 import {
   ZUNIGA_ID, ZUNIGA_SCENARIOS, loadZunigaStudy, createZunigaScenario, solveZunigaScenario,
@@ -139,6 +144,9 @@ export class Store {
     this.species = [];            // { id, file, abundance, enabled }
     this.objective = OBJECTIVES.EQUAL_GROWTH;
     this.productTarget = null;
+    // An objective edited on top of the preset: { coefficients: {rid: number},
+    // sense: 'max'|'min' }. Null means the preset's own objective.
+    this.customObjective = null;
     this.parsimonious = false;    // false = FBA, true = pFBA
     this.pfbaBiomassPercent = 100; // percentage of the primary optimum fixed in pFBA
     this.loopless = false;         // exact loopless FBA (MILP)
@@ -148,6 +156,8 @@ export class Store {
     this._fvaGeneration = 0;
     this._fvaTimer = null;
     this.medium = {};             // base metabolite -> uptake limit (positive)
+    // The medium as it was opened: what "original" means for an exchange's bounds.
+    this.baseMedium = {};
 
     this.community = null;
     this.problem = null;
@@ -162,6 +172,16 @@ export class Store {
     this.crossFeedingExplorer = { enabled:false, index:null, query:'', metabolite:'', producer:'', consumer:'', minFlux:0, selectedId:null, selectedAt:null };
     this.growth = new Map();
     this.overrides = new Map();   // merged reaction id -> { lower, upper }
+    // Undo/redo of bounds, medium and objective, apart from the map's history.
+    this.constraintHistory = new ConstraintHistory(100);
+    // { ids:Set, label, status } once a change left the LP without an optimum.
+    this.constraintCulprits = null;
+    this._culpritCheck = null;
+    // The Reactions page: search, quick filters, sorting, grouping and the rows ticked for bulk actions.
+    this.reactionTable = {
+      query: '', filters: [], groupBy: 'type', sort: { key: 'reaction', dir: 1 },
+      collapsed: new Set(), selection: new Set(),
+    };
     this.manualPathways = new Map(); // id -> { id, name, color, visible, reactionIds:Set }
     this.pathwaySettings = new Map(); // model pathway name -> { color?, visible? }
     this.omicsDataset = null;
@@ -381,6 +401,7 @@ export class Store {
     this.scenario = scenario;
     this.objective = scenario.objective || OBJECTIVES.SUM_BIOMASS;
     this.productTarget = scenario.productTarget || null;
+    this.customObjective = null;
     this.parsimonious = Boolean(scenario.parsimonious ?? false);
     this.pfbaBiomassPercent = normalizePfbaPercent(scenario.pfbaBiomassPercent ?? 100);
     this.loopless = false;
@@ -520,6 +541,7 @@ export class Store {
     this.scenario = scenario;
     this.objective = OBJECTIVES.EQUAL_GROWTH;
     this.productTarget = null;
+    this.customObjective = null;
     this.parsimonious = false;
     this.pfbaBiomassPercent = 100;
     this.loopless = false;
@@ -878,7 +900,7 @@ export class Store {
     if(!species.length)throw new Error('The bundle contains no reproducible models.');
 
     this.scenario={id:'reproducibility-bundle',name:bundle.community?.name??'Reproduced analysis',objective:bundle.community?.objective,species};
-    this.species=species;this.objective=bundle.community?.objective??OBJECTIVES.EQUAL_GROWTH;this.productTarget=bundle.community?.productTarget??null;
+    this.species=species;this.objective=bundle.community?.objective??OBJECTIVES.EQUAL_GROWTH;this.productTarget=bundle.community?.productTarget??null;this.customObjective=null;
     this.medium={...(bundle.constraints?.medium??{})};this.overrides=new Map(Object.entries(bundle.constraints?.reactionOverrides??{}));
     this.parsimonious=Boolean(bundle.analysis?.parsimonious);this.pfbaBiomassPercent=bundle.analysis?.pfbaBiomassPercent??100;
     this.loopless=Boolean(bundle.analysis?.loopless);
@@ -887,6 +909,8 @@ export class Store {
     this.fvaEnabled=false;
 
     await this.rebuild({relayout:true});
+    this.customObjective=this.customObjectiveFrom(bundle.community?.customObjective);
+    this.applyOverrides();
 
     // Restore the exact archived drawing after the biological model exists.
     if(bundle.map){
@@ -958,6 +982,7 @@ export class Store {
     this.scenario = scenario;
     this.objective = scenario.objective || OBJECTIVES.EQUAL_GROWTH;
     this.productTarget = scenario.productTarget || null;
+    this.customObjective = null;
     this.parsimonious = Boolean(scenario.parsimonious ?? scenario.pfba ?? false);
     this.pfbaBiomassPercent = normalizePfbaPercent(
       scenario.pfbaBiomassPercent
@@ -1043,6 +1068,7 @@ export class Store {
       this.modelEditorSpeciesId = 'Ec';
       this.modelEditorMode = null;
       this.objective = 'published-original';
+      this.customObjective = null;
       this._zunigaPreviousView = { showCrossFeeding: this.view.showCrossFeeding };
       this.view.showCrossFeeding = false;
       this.view.reactionColorMode = 'flux';
@@ -1245,6 +1271,7 @@ export class Store {
     }
     this.objective = OBJECTIVES.EQUAL_GROWTH;
     this.productTarget = null;
+    this.customObjective = null;
     this.parsimonious = false;
     this.pfbaBiomassPercent = 100;
     this.loopless = false;
@@ -1436,6 +1463,7 @@ export class Store {
       if (off.size && off.has(this.community?.reactionOwner?.get(rid)?.speciesId)) continue;
       this.problem.setBounds(rid, b.lower, b.upper);
     }
+    this.applyObjective();
   }
 
   /**
@@ -1526,13 +1554,21 @@ export class Store {
     this.cancelSteadyCom({ silent: true });
     if (this.solution?.steadyCom) this.refreshCompositionProblem();
     const useParsimonious = parsimonious === null ? this.parsimonious : Boolean(parsimonious);
+    // A minimised objective is posed as the maximum of its negative (see
+    // applyObjective), so every analysis keeps its one maximising path.
+    const minimise = this.objectiveSense() === 'min';
+    const fraction = this.pfbaBiomassPercent / 100;
     const t = performance.now();
-    const res = this.loopless
+    let res = this.loopless
       ? this.problem.loopless()
       : useParsimonious
-        ? this.problem.parsimonious({ fraction: this.pfbaBiomassPercent / 100 })
+        // Within a share of a minimum is above it: a target of (2 - f) times
+        // the optimum, as FluxProblem itself does when asked to minimise.
+        ? this.problem.parsimonious({ fraction: minimise ? 2 - fraction : fraction })
         : this.problem.optimize();
+    if (minimise) res = minimisedResult(res);
     this.applySolution(res, { allowFVA:true });
+    this.noteConstraintOutcome(res);
     this.status = {
       state: res.status === 'optimal' ? 'ok' : 'error',
       message: res.status === 'optimal' ? '' : (res.message || describeStatus(res.status)),
@@ -2134,10 +2170,14 @@ export class Store {
     await this.rebuild({ relayout: false });
   }
 
+  /** Use a preset objective (equal growth, biomass sum, product), dropping any edited one. Structural: rebuilds and solves. */
   async setObjective(type, target = null) {
     this.assertPublishedStudyConstraints();
-    this.objective = type;
-    this.productTarget = target;
+    this._changeConstraints('Objective preset', 'objective-preset', () => {
+      this.objective = type;
+      this.productTarget = target;
+      this.customObjective = null;
+    });
     await this.rebuild({ relayout: false });
   }
 
@@ -2148,12 +2188,14 @@ export class Store {
     const limit = finiteInput(value);
     if (limit === null) return null;
     this.invalidateSteadyCom();
-    if (this.scenario?.published === 'steadycom-gut-nine') this.overrides.delete(`UT_${base}(u)`);
-    this.medium[base] = Math.abs(limit);
-    // Per-reaction overrides are applied after the medium, so an override left
-    // on this exchange would swallow the slider and make it look broken. The
-    // slider is the more direct expression of intent, so it wins.
-    this.overrides.delete(communityExchange(base));
+    this._changeConstraints(`Medium supply of ${base}`, `medium:${base}`, () => {
+      if (this.scenario?.published === 'steadycom-gut-nine') this.overrides.delete(`UT_${base}(u)`);
+      this.medium[base] = Math.abs(limit);
+      // Per-reaction overrides are applied after the medium, so an override left
+      // on this exchange would swallow the slider and make it look broken. The
+      // slider is the more direct expression of intent, so it wins.
+      this.overrides.delete(communityExchange(base));
+    });
     this.applyOverrides();
     this.solve();
   }
@@ -2163,11 +2205,13 @@ export class Store {
    *
    * A side given as null, undefined, an empty string or anything that is not a
    * finite number is left as it is: a field the user has just cleared is not a
-   * bound of 0.
+   * bound of 0. The lower bound never ends above the upper one. An exchange the
+   * medium controls is written to the medium (see _writeReactionBounds), so
+   * this and the Medium card never disagree.
    */
   setReactionBounds(rid, lower, upper) {
     this.assertPublishedStudyConstraints();
-    const current = this.overrides.get(rid) || this.defaultReactionBounds(rid);
+    const current = this.currentReactionBounds(rid);
     const lowerValue = finiteInput(lower);
     const upperValue = finiteInput(upper);
     if (lowerValue === null && upperValue === null) return { ...current };
@@ -2180,41 +2224,743 @@ export class Store {
       if (lowerValue === null) next.upper = next.lower;
       else next.lower = next.upper;
     }
-    this.overrides.set(rid, next);
+    this._changeConstraints(`Bounds of ${this.reactionTitle(rid)}`, `bounds:${rid}`, () => this._writeReactionBounds(rid, next));
     this.applyOverrides();
     return next;
   }
 
+  /** The bounds the LP was built with: the model's, with the medium of the last rebuild. */
   defaultReactionBounds(rid) {
     const j = this.problem?.rxnIndex.get(rid);
     if (j === undefined) return { lower: 0, upper: 0 };
     return { lower: this.defaultBounds.lb[j], upper: this.defaultBounds.ub[j] };
   }
 
+  /** The bounds in force: an override, else what the medium gives an exchange, else the model's. */
   currentReactionBounds(rid) {
-    return this.overrides.get(rid) || this.defaultReactionBounds(rid);
+    return this.overrides.get(rid) ?? this.mediumReactionBounds(rid) ?? this.defaultReactionBounds(rid);
   }
 
+  /** The bounds a reaction had when the scenario was opened: the model's, with the medium it was opened with. */
+  originalReactionBounds(rid) {
+    return this.mediumReactionBounds(rid, this.baseMedium, { absentClosed: true }) ?? this.defaultReactionBounds(rid);
+  }
+
+  /** Whether the user closed a reaction (both bounds 0) that was open as opened. */
+  reactionKnockedOut(rid) {
+    return isKnockedOut(this.currentReactionBounds(rid), this.originalReactionBounds(rid));
+  }
+
+  /** Put one reaction back as opened, an exchange's medium supply included, and solve. */
   resetReaction(rid) {
     this.assertPublishedStudyConstraints();
     this.invalidateSteadyCom();
-    this.overrides.delete(rid);
+    this._changeConstraints(`Reset ${this.reactionTitle(rid)}`, null, () => this._resetReactionBounds(rid));
     this.applyOverrides();
     this.solve();
   }
 
+  /** Put every reaction back as opened, the medium included, and solve. The objective is left as it is. */
   resetAllReactions() {
     this.assertPublishedStudyConstraints();
     this.invalidateSteadyCom();
-    this.overrides.clear();
+    this._changeConstraints('Reset all reactions', null, () => {
+      this.overrides.clear();
+      const medium = { ...this.baseMedium };
+      // A metabolite added to the medium since is closed rather than dropped:
+      // dropped, its exchange would keep whatever the last rebuild gave it.
+      for (const base of Object.keys(this.medium)) if (!(base in medium)) medium[base] = 0;
+      this.medium = medium;
+    });
     this.applyOverrides();
     this.solve();
   }
 
   /** Close a reaction (bounds 0, 0) and solve. */
   knockout(rid) {
-    this.setReactionBounds(rid, 0, 0);
-    this.solve();
+    this.assertPublishedStudyConstraints();
+    this.invalidateSteadyCom();
+    this._changeConstraints(`Knock out ${this.reactionTitle(rid)}`, null, () => this._writeReactionBounds(rid, { lower: 0, upper: 0 }));
+    this.applyOverrides();
+    return this.solve();
+  }
+
+  // Reactions and bounds
+
+  /**
+   * The reactions whose bounds the medium sets: per reaction id its medium
+   * metabolite and the side the medium owns. That is the community exchange of
+   * each medium metabolite (the lower bound is the supply) or, in a joint
+   * community, its uptake reaction (the upper bound is the supply). `byBase`
+   * goes the other way, and `transferBase` gives the metabolite each species'
+   * exchange moves.
+   */
+  mediumReactions() {
+    const community = this.community;
+    const merged = community?.merged;
+    const none = { byReaction: new Map(), byBase: new Map(), transferBase: new Map() };
+    if (!merged || this.isZunigaStudy) return none;
+    const cached = mediumReactionCache.get(merged);
+    if (cached?.community === community) return cached.value;
+    const value = none;
+    for (const [base, ids] of community.communityExchangeIds ?? []) {
+      if (!ids?.uptake || !merged.reactions.has(ids.uptake)) continue;
+      value.byReaction.set(ids.uptake, { base, side: 'upper' });
+      value.byBase.set(base, ids.uptake);
+    }
+    for (const [base, transfers] of community.transfersByBase ?? []) {
+      const id = communityExchange(base);
+      if (!value.byBase.has(base) && merged.reactions.has(id)) {
+        value.byReaction.set(id, { base, side: 'lower' });
+        value.byBase.set(base, id);
+      }
+      for (const transfer of transfers) value.transferBase.set(transfer.reactionId, base);
+    }
+    mediumReactionCache.set(merged, { community, value });
+    return value;
+  }
+
+  /**
+   * The bounds `medium` gives a reaction the medium controls, as applyOverrides
+   * sets them, or null for any other reaction. A metabolite the medium does not
+   * list keeps the bounds of the last rebuild, or, with `absentClosed`, is
+   * closed to uptake as a freshly built community has it.
+   */
+  mediumReactionBounds(rid, medium = this.medium, { absentClosed = false } = {}) {
+    const entry = this.mediumReactions().byReaction.get(rid);
+    if (!entry) return null;
+    const defaults = this.defaultReactionBounds(rid);
+    const listed = Object.prototype.hasOwnProperty.call(medium ?? {}, entry.base);
+    const limit = Math.abs(Number(medium?.[entry.base]) || 0);
+    if (entry.side === 'upper') return { lower: defaults.lower, upper: listed ? limit : defaults.upper };
+    if (listed) return { lower: -limit, upper: 1000 };
+    return absentClosed ? { lower: 0, upper: 1000 } : defaults;
+  }
+
+  /**
+   * Store a reaction's new bounds where they belong. An exchange the medium
+   * controls takes its supply from the medium, so the supply goes there; what
+   * the medium cannot say (a cap on secretion, a forced flux) stays an override
+   * on top of it. Everything else is an override. No history, no solve.
+   */
+  _writeReactionBounds(rid, next) {
+    const bounds = { lower: next.lower, upper: next.upper };
+    const entry = this.mediumReactions().byReaction.get(rid);
+    if (!entry) {
+      this.overrides.set(rid, bounds);
+      return;
+    }
+    const { base, side } = entry;
+    const listed = Object.prototype.hasOwnProperty.call(this.medium, base);
+    const defaults = this.defaultReactionBounds(rid);
+    if (side === 'upper') {
+      if (listed || Math.abs(bounds.upper - defaults.upper) > 1e-9) this.medium[base] = Math.max(0, bounds.upper);
+      if (Math.abs(bounds.lower - defaults.lower) <= 1e-9) this.overrides.delete(rid);
+      else this.overrides.set(rid, bounds);
+      return;
+    }
+    const supply = Math.max(0, -bounds.lower);
+    if (listed || supply > 0) this.medium[base] = supply;
+    if (Math.abs(bounds.upper - 1000) <= 1e-9 && bounds.lower <= 0) this.overrides.delete(rid);
+    else this.overrides.set(rid, bounds);
+  }
+
+  /** Put one reaction's bounds back as opened, its medium supply included. No history, no solve. */
+  _resetReactionBounds(rid) {
+    this.overrides.delete(rid);
+    const entry = this.mediumReactions().byReaction.get(rid);
+    if (!entry) return;
+    if (Object.prototype.hasOwnProperty.call(this.baseMedium, entry.base)) this.medium[entry.base] = this.baseMedium[entry.base];
+    else if (Object.prototype.hasOwnProperty.call(this.medium, entry.base)) this.medium[entry.base] = 0;
+  }
+
+  /** A reaction as history entries and messages name it: its model id, and its species when there are several. */
+  reactionTitle(rid) {
+    const owner = this.community?.reactionOwner?.get(rid);
+    const id = owner?.originalId ?? rid;
+    return owner?.speciesId && this.species.length > 1 ? `${id} (${owner.speciesId})` : id;
+  }
+
+  /** Whether a reaction belongs to a species held out of the simulation, whose bounds cannot be edited now. */
+  reactionHeldOut(rid) {
+    const speciesId = this.community?.reactionOwner?.get(rid)?.speciesId;
+    return Boolean(speciesId) && this.speciesHeldOut(speciesId);
+  }
+
+  /**
+   * Every reaction whose bounds differ from the ones it was opened with, by
+   * label: `{id, label, speciesId, current, original, knockedOut, medium}`,
+   * `medium` naming the medium metabolite when the change is to its supply.
+   */
+  constraintChanges() {
+    const merged = this.community?.merged;
+    if (!merged) return [];
+    const media = this.mediumReactions();
+    const ids = new Set(this.overrides.keys());
+    for (const [rid, entry] of media.byReaction) {
+      if (Object.prototype.hasOwnProperty.call(this.medium, entry.base)
+        || Object.prototype.hasOwnProperty.call(this.baseMedium, entry.base)) ids.add(rid);
+    }
+    const changes = [];
+    for (const id of ids) {
+      if (!merged.reactions.has(id)) continue;
+      const current = this.currentReactionBounds(id);
+      const original = this.originalReactionBounds(id);
+      if (sameBounds(current, original)) continue;
+      changes.push({
+        id, label: this.entityLabel('reaction', id).label,
+        speciesId: this.community.reactionOwner?.get(id)?.speciesId ?? null,
+        current: { ...current }, original: { ...original },
+        knockedOut: isKnockedOut(current, original),
+        medium: media.byReaction.get(id)?.base ?? null,
+      });
+    }
+    return changes.sort((a, b) => a.label.localeCompare(b.label) || a.id.localeCompare(b.id));
+  }
+
+  // Constraint history
+
+  /** What the LP is asked, as plain data in a fixed order: overrides, medium and objective. */
+  constraintSnapshot() {
+    const ordered = (entries) => entries.sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0));
+    const custom = this.customObjective;
+    return {
+      overrides: ordered([...this.overrides].map(([id, b]) => [id, { lower: b.lower, upper: b.upper }])),
+      medium: Object.fromEntries(ordered(Object.entries(this.medium ?? {}).map(([base, value]) => [base, Number(value)]))),
+      objective: {
+        type: this.objective ?? null,
+        productTarget: this.productTarget ?? null,
+        custom: custom ? { sense: custom.sense, coefficients: Object.fromEntries(ordered(Object.entries(custom.coefficients))) } : null,
+      },
+    };
+  }
+
+  /**
+   * Run `mutate` as one constraint edit: if it changed anything, the state
+   * before it goes on the undo stack under `label`. Edits with the same `key`
+   * in quick succession (a slider drag) are one entry.
+   */
+  _changeConstraints(label, key, mutate) {
+    const before = this.constraintSnapshot();
+    const result = mutate();
+    if (!sameConstraints(before, this.constraintSnapshot())) {
+      const entry = this.constraintHistory.record(before, { label, key });
+      this._culpritCheck = { before: this._culpritCheck?.before ?? entry.snapshot, label };
+    }
+    return result;
+  }
+
+  get canUndoConstraints() { return this.constraintHistory.canUndo; }
+  get canRedoConstraints() { return this.constraintHistory.canRedo; }
+
+  /** Take back the last constraint edit and solve. Resolves to `{label}` of what was undone, or null. */
+  async undoConstraints() {
+    this.assertPublishedStudyConstraints();
+    const entry = this.constraintHistory.undo(this.constraintSnapshot());
+    if (!entry) return null;
+    await this.restoreConstraintSnapshot(entry.snapshot);
+    this.reportConstraintStep(`Undone: ${entry.label}`);
+    return entry;
+  }
+
+  /** Apply again the last constraint edit undone, and solve. Resolves to `{label}`, or null. */
+  async redoConstraints() {
+    this.assertPublishedStudyConstraints();
+    const entry = this.constraintHistory.redo(this.constraintSnapshot());
+    if (!entry) return null;
+    await this.restoreConstraintSnapshot(entry.snapshot);
+    this.reportConstraintStep(`Redone: ${entry.label}`);
+    return entry;
+  }
+
+  reportConstraintStep(message) {
+    this.addLog('ok', message);
+    if (this.solution?.status === 'optimal') this.status = { ...this.status, state: 'ok', message };
+    this.emit('constraints');
+  }
+
+  /**
+   * Make a snapshot the constraints in force and solve. A different preset
+   * objective changes the community's structure, so that rebuilds.
+   */
+  async restoreConstraintSnapshot(snapshot) {
+    this.invalidateSteadyCom();
+    const objective = snapshot?.objective ?? {};
+    const structural = (objective.type ?? null) !== (this.objective ?? null)
+      || (objective.productTarget ?? null) !== (this.productTarget ?? null);
+    this.overrides = new Map((snapshot?.overrides ?? []).map(([id, b]) => [id, { lower: b.lower, upper: b.upper }]));
+    this.medium = { ...(snapshot?.medium ?? {}) };
+    if (objective.type) this.objective = objective.type;
+    this.productTarget = objective.productTarget ?? null;
+    this.customObjective = objective.custom
+      ? { sense: objective.custom.sense === 'min' ? 'min' : 'max', coefficients: { ...objective.custom.coefficients } }
+      : null;
+    // What is flagged belonged to the state being left.
+    this.constraintCulprits = null;
+    this._culpritCheck = null;
+    if (structural) {
+      await this.rebuild({ relayout: false });
+      return;
+    }
+    this.applyOverrides();
+    this.solve({ silent: true });
+  }
+
+  /**
+   * After a solve: an optimum clears the flagged culprits; no optimum right
+   * after a constraint edit flags the reactions that edit touched, which is
+   * what "Revert last change" offers to undo. Edits made while the LP already
+   * had no optimum join the flagged ones, and the message keeps naming the
+   * edit that lost it.
+   */
+  noteConstraintOutcome(res) {
+    const check = this._culpritCheck;
+    this._culpritCheck = null;
+    if (res?.status === 'optimal') {
+      this.constraintCulprits = null;
+      return;
+    }
+    if (!check) return;
+    const byBase = this.mediumReactions().byBase;
+    const ids = changedReactionIds(check.before, this.constraintSnapshot(), (base) => byBase.get(base) ?? null);
+    const earlier = this.constraintCulprits;
+    this.constraintCulprits = {
+      ids: new Set([...(earlier?.ids ?? []), ...ids]),
+      label: earlier?.label ?? check.label,
+      status: res?.status ?? 'infeasible',
+    };
+  }
+
+  // Objective
+
+  /** The coefficients of the preset objective, as the LP was built with them. */
+  presetObjectiveCoefficients() {
+    if (this.isZunigaStudy) return { ...(this.problem?.objective ?? {}) };
+    const merged = this.community?.merged;
+    return merged ? defaultObjective(merged) : {};
+  }
+
+  /** The objective in force, {reaction id: coefficient}: the edited one, or the preset's. */
+  objectiveCoefficients() {
+    return this.customObjective ? { ...this.customObjective.coefficients } : this.presetObjectiveCoefficients();
+  }
+
+  /** 'max' or 'min'. Presets maximise. */
+  objectiveSense() {
+    return this.customObjective?.sense === 'min' ? 'min' : 'max';
+  }
+
+  /**
+   * Give the LP the objective in force. A minimised objective goes in negated,
+   * so every analysis (FBA, pFBA, FVA, loopless) keeps maximising; solve()
+   * turns the signs of its result back.
+   */
+  applyObjective() {
+    if (!this.problem || this.isZunigaStudy) return;
+    const sign = this.objectiveSense() === 'min' ? -1 : 1;
+    const coefficients = this.objectiveCoefficients();
+    this.problem.setObjective(Object.fromEntries(Object.entries(coefficients).map(([id, c]) => [id, sign * c])));
+  }
+
+  /** Install an edited objective; one equal to the preset, maximised, is the preset again. */
+  _setCustomObjective(sense, coefficients) {
+    const preset = this.presetObjectiveCoefficients();
+    const keys = new Set([...Object.keys(preset), ...Object.keys(coefficients)]);
+    const same = sense === 'max' && [...keys].every((id) => (preset[id] ?? 0) === (coefficients[id] ?? 0));
+    this.customObjective = same ? null : { sense, coefficients };
+  }
+
+  /** Set one reaction's objective coefficient (0 takes it out) and solve. Any reaction, any number of them. */
+  setObjectiveCoefficient(rid, value) {
+    this.assertPublishedStudyConstraints();
+    const coefficient = finiteInput(value);
+    if (coefficient === null || !this.community?.merged?.reactions?.has(rid)) return null;
+    const coefficients = this.objectiveCoefficients();
+    if ((coefficients[rid] ?? 0) === coefficient) return this.solution;
+    this.invalidateSteadyCom();
+    this._changeConstraints(`Objective coefficient of ${this.reactionTitle(rid)}`, `objective:${rid}`, () => {
+      if (coefficient === 0) delete coefficients[rid];
+      else coefficients[rid] = coefficient;
+      this._setCustomObjective(this.objectiveSense(), coefficients);
+    });
+    this.applyOverrides();
+    return this.solve();
+  }
+
+  /** Maximise ('max') or minimise ('min') the objective in force, and solve. */
+  setObjectiveSense(sense) {
+    this.assertPublishedStudyConstraints();
+    if (!['max', 'min'].includes(sense)) return null;
+    if (sense === this.objectiveSense()) return this.solution;
+    this.invalidateSteadyCom();
+    this._changeConstraints(sense === 'min' ? 'Minimise the objective' : 'Maximise the objective', null, () => {
+      this._setCustomObjective(sense, this.objectiveCoefficients());
+    });
+    this.applyOverrides();
+    return this.solve();
+  }
+
+  /** Go back to the preset's own objective, maximised, and solve. */
+  resetObjective() {
+    this.assertPublishedStudyConstraints();
+    if (!this.customObjective) return this.solution;
+    this.invalidateSteadyCom();
+    this._changeConstraints('Objective back to the preset', null, () => { this.customObjective = null; });
+    this.applyOverrides();
+    return this.solve();
+  }
+
+  /**
+   * An edited objective read from a file: finite, non-zero coefficients of
+   * reactions this community has, and a sense. Null when the file has none, or
+   * when every reaction it names is missing here (the preset then stands).
+   */
+  customObjectiveFrom(raw) {
+    if (!raw || typeof raw !== 'object') return null;
+    const reactions = this.community?.merged?.reactions;
+    const coefficients = {};
+    let dropped = 0;
+    for (const [id, value] of Object.entries(raw.coefficients ?? {})) {
+      const coefficient = Number(value);
+      if (!reactions?.has(id) || !Number.isFinite(coefficient)) { dropped += 1; continue; }
+      if (coefficient !== 0) coefficients[id] = coefficient;
+    }
+    if (dropped) this.addLog('warn', `${dropped} objective coefficient(s) in the file name reactions this model does not have; they were left out.`);
+    if (dropped && !Object.keys(coefficients).length) return null;
+    return { sense: raw.sense === 'min' ? 'min' : 'max', coefficients };
+  }
+
+  /** The objective in words: `max 1 COMMUNITY_GROWTH`, `min 1 EX_glc__D_s + 0.5 ...`. */
+  objectiveDescription() {
+    const terms = Object.entries(this.objectiveCoefficients())
+      .map(([id, coefficient]) => `${Number(coefficient.toPrecision(6))} ${this.reactionTitle(id)}`);
+    return `${this.objectiveSense()} ${terms.join(' + ') || '0'}`;
+  }
+
+  // Bulk actions
+
+  /**
+   * One action on many reactions, as one undoable edit, then a solve.
+   *
+   *   set-bounds            params {lower, upper}; an empty side is left as it is
+   *   scale                 params {factor}; finite bounds are multiplied, ±1000
+   *                         (unbounded by convention) stays
+   *   knockout              both bounds 0
+   *   reset                 back to the bounds as opened
+   *   close-uptakes-except  every exchange's uptake closed except those given
+   *                         (an uptake/secretion row keeps its metabolite open)
+   *
+   * @param {string} action
+   * @param {object} [params]
+   * @param {string[]} [ids] reactions to act on, by default the ticked rows
+   * @returns {{changed:number, skipped:number}}
+   */
+  bulkReactionAction(action, params = {}, ids = [...this.reactionTable.selection]) {
+    this.assertPublishedStudyConstraints();
+    const merged = this.community?.merged;
+    if (!merged) return { changed: 0, skipped: 0 };
+    const targets = ids.filter((id) => merged.reactions.has(id) && !this.reactionHeldOut(id));
+    let changed = 0;
+    let skipped = 0;
+    const write = (id, next) => {
+      if (next.lower > next.upper) { skipped += 1; return; }
+      if (sameBounds(next, this.currentReactionBounds(id))) return;
+      this._writeReactionBounds(id, next);
+      changed += 1;
+    };
+    let label;
+    let edit;
+    if (action === 'set-bounds') {
+      const lower = finiteInput(params.lower);
+      const upper = finiteInput(params.upper);
+      if (lower === null && upper === null) return { changed, skipped };
+      label = `Set bounds of ${targets.length} reactions`;
+      edit = () => targets.forEach((id) => {
+        const current = this.currentReactionBounds(id);
+        write(id, { lower: lower ?? current.lower, upper: upper ?? current.upper });
+      });
+    } else if (action === 'scale') {
+      const factor = finiteInput(params.factor);
+      if (factor === null) return { changed, skipped };
+      // 1000 is "unbounded" in COBRA models: scaling it would invent a limit.
+      const scale = (value) => (Math.abs(value) >= 1000 ? value : value * factor);
+      label = `Scale bounds of ${targets.length} reactions by ${factor}`;
+      edit = () => targets.forEach((id) => {
+        const current = this.currentReactionBounds(id);
+        const a = scale(current.lower);
+        const b = scale(current.upper);
+        write(id, { lower: Math.min(a, b), upper: Math.max(a, b) });
+      });
+    } else if (action === 'knockout') {
+      label = `Knock out ${targets.length} reactions`;
+      edit = () => targets.forEach((id) => write(id, { lower: 0, upper: 0 }));
+    } else if (action === 'reset') {
+      label = `Reset ${targets.length} reactions`;
+      edit = () => targets.forEach((id) => {
+        if (sameBounds(this.currentReactionBounds(id), this.originalReactionBounds(id))) return;
+        this._resetReactionBounds(id);
+        changed += 1;
+      });
+    } else if (action === 'close-uptakes-except') {
+      const media = this.mediumReactions();
+      const keep = new Set(targets);
+      const keepBases = new Set(targets.map((id) => media.byReaction.get(id)?.base ?? media.transferBase.get(id)).filter(Boolean));
+      label = `Close all uptakes except ${targets.length} selected`;
+      edit = () => {
+        for (const id of merged.reactions.keys()) {
+          if (keep.has(id) || this.reactionHeldOut(id)) continue;
+          const entry = media.byReaction.get(id);
+          const current = this.currentReactionBounds(id);
+          if (entry) {
+            if (keepBases.has(entry.base)) continue;
+            write(id, entry.side === 'upper'
+              ? { lower: Math.min(current.lower, 0), upper: 0 }
+              : { lower: 0, upper: Math.max(current.upper, 0) });
+          } else if (current.lower < 0 && classifyReaction(this.community, id) === 'exchange') {
+            write(id, { lower: 0, upper: Math.max(current.upper, 0) });
+          }
+        }
+      };
+    } else {
+      throw new Error(`Unknown bulk action "${action}".`);
+    }
+    this.invalidateSteadyCom();
+    this._changeConstraints(label, null, edit);
+    if (changed) {
+      this.applyOverrides();
+      this.solve({ silent: true });
+    }
+    this.status = {
+      ...this.status,
+      ...(this.solution?.status === 'optimal' || !changed ? { state: skipped ? 'warn' : 'ok' } : {}),
+      message: `${label}: ${changed} changed${skipped ? `, ${skipped} skipped (the lower bound would pass the upper)` : ''}.`
+        + (changed && this.solution?.status !== 'optimal' ? ` The LP has no optimum now (${this.solution?.status}); Revert last change takes it back.` : ''),
+    };
+    this.emit('constraints');
+    return { changed, skipped };
+  }
+
+  // Bounds CSV
+
+  /** Every reaction's bounds in force as CSV (see formatBoundsCSV), or only `ids`. */
+  boundsCSV(ids = null) {
+    const merged = this.community?.merged;
+    if (!merged) return formatBoundsCSV([]);
+    return formatBoundsCSV((ids ?? [...merged.reactions.keys()]).filter((id) => merged.reactions.has(id)).map((id) => {
+      const owner = this.community.reactionOwner?.get(id) ?? {};
+      const bounds = this.currentReactionBounds(id);
+      return {
+        id, lower: bounds.lower, upper: bounds.upper,
+        species: owner.speciesId ?? '', originalId: owner.originalId ?? id, name: merged.reactions.get(id).name ?? '',
+      };
+    }));
+  }
+
+  /**
+   * Apply a bounds CSV as one undoable edit and solve. Lines are matched by
+   * merged id, or by original id with species, or by an original id only one
+   * species has. Unknown and ambiguous ids and unreadable lines are reported,
+   * never dropped silently; a line giving the bounds as opened resets them.
+   *
+   * @returns {{applied:number, unchanged:number, unknown:string[], ambiguous:string[], errors:{line:number,message:string}[], rows:number}}
+   */
+  importBoundsCSV(text, { name = 'the CSV' } = {}) {
+    this.assertPublishedStudyConstraints();
+    if (!this.community) throw new Error('Load a model before importing bounds.');
+    const parsed = parseBoundsCSV(text);
+    const unknown = [];
+    const ambiguous = [];
+    const errors = [...parsed.errors];
+    const changes = [];
+    for (const row of parsed.rows) {
+      const found = resolveBoundsReaction(row, this.community);
+      const asWritten = row.species ? `${row.species}@${row.originalId || row.id}` : (row.id || row.originalId);
+      if (found.error === 'ambiguous') { ambiguous.push(asWritten); continue; }
+      if (found.error) { unknown.push(asWritten); continue; }
+      if (this.reactionHeldOut(found.id)) {
+        errors.push({ line: row.line, message: `${found.id}: its species is held out of the simulation.` });
+        continue;
+      }
+      const current = this.currentReactionBounds(found.id);
+      const next = { lower: row.lower ?? current.lower, upper: row.upper ?? current.upper };
+      if (next.lower > next.upper) {
+        errors.push({ line: row.line, message: `${found.id}: the lower bound would pass the upper one.` });
+        continue;
+      }
+      changes.push({ id: found.id, next, current });
+    }
+    let applied = 0;
+    const unchanged = changes.filter((change) => sameBounds(change.next, change.current)).length;
+    if (changes.length > unchanged) {
+      this.invalidateSteadyCom();
+      this._changeConstraints(`Import bounds from ${name}`, null, () => {
+        for (const { id, next, current } of changes) {
+          if (sameBounds(next, current)) continue;
+          if (sameBounds(next, this.originalReactionBounds(id))) this._resetReactionBounds(id);
+          else this._writeReactionBounds(id, next);
+          applied += 1;
+        }
+      });
+      this.applyOverrides();
+      this.solve({ silent: true });
+    }
+    const list = (ids) => `${ids.slice(0, 5).join(', ')}${ids.length > 5 ? ', …' : ''}`;
+    const parts = [`${applied} reaction${applied === 1 ? '' : 's'} changed`, `${unchanged} already as given`];
+    if (unknown.length) parts.push(`${unknown.length} unknown id${unknown.length === 1 ? '' : 's'} (${list(unknown)})`);
+    if (ambiguous.length) parts.push(`${ambiguous.length} ambiguous, give the species (${list(ambiguous)})`);
+    if (errors.length) parts.push(`${errors.length} line${errors.length === 1 ? '' : 's'} not read (line ${errors[0].line}: ${errors[0].message})`);
+    if (unknown.length > 5) this.addLog('warn', `Bounds import from ${name}: unknown reaction ids ${unknown.join(', ')}`);
+    if (ambiguous.length > 5) this.addLog('warn', `Bounds import from ${name}: ambiguous reaction ids ${ambiguous.join(', ')}`);
+    const failed = applied > 0 && this.solution?.status !== 'optimal';
+    this.status = {
+      ...this.status,
+      state: failed ? 'error' : (unknown.length || ambiguous.length || errors.length ? 'warn' : 'ok'),
+      message: `Bounds from ${name}: ${parts.join(' · ')}.${failed ? ` The LP has no optimum now (${this.solution?.status}); Revert last change takes the import back.` : ''}`,
+    };
+    this.emit('constraints');
+    return { applied, unchanged, unknown, ambiguous, errors, rows: parsed.rows.length };
+  }
+
+  // Reactions table
+
+  /** What does not change between solves for every reaction, cached per built model and reaction label setting. */
+  reactionCatalog() {
+    const merged = this.community?.merged;
+    if (!merged) return [];
+    const labelSource = this.mapLabelSource('reaction');
+    const cached = reactionCatalogCache.get(merged);
+    if (cached && cached.community === this.community && cached.labelSource === labelSource) return cached.rows;
+    const compartmentNames = new Map(this.species.map((sp) => [sp.id, this.models.get(sp.file)?.compartmentNames ?? {}]));
+    const speciesNames = new Map(this.species.map((sp) => [sp.id, this.models.get(sp.file)?.cell?.name ?? sp.id]));
+    const rows = buildReactionCatalog(this.community, {
+      label: (rid) => this.entityLabel('reaction', rid).label,
+      species: (id) => (id ? speciesNames.get(id) ?? id : 'Community (shared medium)'),
+      compartment: (speciesId, cid) => cellCompartmentName(cid, compartmentNames.get(speciesId) ?? {}),
+    });
+    reactionCatalogCache.set(merged, { community: this.community, labelSource, rows });
+    return rows;
+  }
+
+  /**
+   * Every reaction as a table row: the catalogue entry with its bounds in force
+   * and as opened, flux, FVA range, reduced cost, objective coefficient,
+   * whether it is drawn, and its status ('culprit', 'knocked-out', 'modified',
+   * 'blocked' or 'original', in that order of precedence).
+   */
+  reactionTableRows() {
+    const catalog = this.reactionCatalog();
+    if (!catalog.length) return [];
+    const solved = this.solution?.status === 'optimal';
+    const fluxes = solved ? this.solution.fluxes : null;
+    const ranges = this.fvaRanges?.size ? this.fvaRanges : null;
+    const costs = this.reducedCostsAvailable() ? this.solution.reducedCosts : null;
+    const objective = this.objectiveCoefficients();
+    const culprits = this.constraintCulprits?.ids ?? null;
+    const heldOut = new Set(this.species.filter((sp) => this.speciesHeldOut(sp.id)).map((sp) => sp.id));
+    return catalog.map((entry) => {
+      const current = this.currentReactionBounds(entry.id);
+      const original = this.originalReactionBounds(entry.id);
+      const range = ranges?.get(entry.id) ?? null;
+      const modified = !sameBounds(current, original);
+      const knockedOut = isKnockedOut(current, original);
+      const blocked = Boolean(range) && Math.abs(range.min) <= 1e-9 && Math.abs(range.max) <= 1e-9;
+      const culprit = Boolean(culprits?.has(entry.id));
+      return {
+        ...entry,
+        lower: current.lower, upper: current.upper,
+        originalLower: original.lower, originalUpper: original.upper,
+        modified, knockedOut, blocked, culprit,
+        flux: fluxes ? fluxes.get(entry.id) ?? 0 : NaN,
+        fvaMin: range ? range.min : NaN, fvaMax: range ? range.max : NaN,
+        reducedCost: costs?.get(entry.id) ?? NaN,
+        objective: objective[entry.id] ?? 0,
+        onMap: Boolean(this.map?.hasReaction?.(entry.id)),
+        heldOut: Boolean(entry.speciesId) && heldOut.has(entry.speciesId),
+        status: culprit ? 'culprit' : knockedOut ? 'knocked-out' : modified ? 'modified' : blocked ? 'blocked' : 'original',
+      };
+    });
+  }
+
+  /** Whether the solution in force reports reduced costs worth a column. */
+  reducedCostsAvailable() {
+    const solution = this.solution;
+    return solution?.status === 'optimal' && !this.loopless
+      && solution.dualAnalysis?.available !== false && (solution.reducedCosts?.size ?? 0) > 0;
+  }
+
+  /**
+   * The table as the Reactions page lists it, for the current search, filters,
+   * sort and grouping: `{rows, visible, items, total, shown, modified,
+   * selected, columns}`. `items` are groupReactionRows' items; `columns` says
+   * whether the FVA and reduced-cost columns have anything to show.
+   */
+  reactionTableModel() {
+    const rows = this.reactionTableRows();
+    const table = this.reactionTable;
+    const visible = sortReactionRows(filterReactionRows(rows, table), table.sort);
+    let pathwayOf = null;
+    if (table.groupBy === 'pathway') {
+      const groups = this.managedPathwayColoring().groups;
+      pathwayOf = (rid) => {
+        const name = groups.get(rid);
+        return name && !/^Sin pathway$/i.test(name) ? name : null;
+      };
+    }
+    const items = groupReactionRows(visible, table.groupBy, { collapsed: table.collapsed, selection: table.selection, pathwayOf });
+    return {
+      rows, visible, items,
+      total: rows.length, shown: visible.length,
+      modified: rows.filter((row) => row.modified).length,
+      selected: table.selection.size,
+      columns: { fva: Boolean(this.fvaRanges?.size) || Boolean(this.fvaEnabled), rc: this.reducedCostsAvailable() },
+    };
+  }
+
+  /**
+   * Change how the Reactions page lists rows: `query`, `groupBy`, `filters`,
+   * `toggleFilter` (one quick filter on or off), `sortBy` (a column; again
+   * reverses it) or `toggleGroup` (fold or unfold a group). Emits
+   * 'reaction-table', which repaints the tables only.
+   */
+  setReactionTable(patch = {}) {
+    const table = this.reactionTable;
+    if ('query' in patch) table.query = String(patch.query ?? '');
+    if ('groupBy' in patch && REACTION_GROUPINGS.some((group) => group.id === patch.groupBy)) {
+      table.groupBy = patch.groupBy;
+      table.collapsed = new Set();
+    }
+    if ('filters' in patch) table.filters = REACTION_FILTERS.map((f) => f.id).filter((id) => (patch.filters ?? []).includes(id));
+    if ('toggleFilter' in patch) table.filters = toggleReactionFilter(table.filters, patch.toggleFilter);
+    if ('sortBy' in patch && REACTION_SORT_KEYS[patch.sortBy]) {
+      const numeric = Boolean(REACTION_SORT_KEYS[patch.sortBy].number) && !['type', 'status'].includes(patch.sortBy);
+      table.sort = table.sort.key === patch.sortBy
+        ? { key: patch.sortBy, dir: -table.sort.dir }
+        : { key: patch.sortBy, dir: numeric ? -1 : 1 };
+    }
+    if ('toggleGroup' in patch) {
+      const key = String(patch.toggleGroup);
+      if (table.collapsed.has(key)) table.collapsed.delete(key);
+      else table.collapsed.add(key);
+    }
+    this.emit('reaction-table');
+    return table;
+  }
+
+  /** Tick (`on`) or untick reactions for bulk actions. */
+  selectReactionRows(ids, on = true) {
+    const selection = this.reactionTable.selection;
+    for (const id of ids) {
+      if (on && this.community?.merged?.reactions?.has(id)) selection.add(id);
+      else selection.delete(id);
+    }
+    this.emit('reaction-table');
+    return selection;
+  }
+
+  clearReactionRowSelection() {
+    if (!this.reactionTable.selection.size) return;
+    this.reactionTable.selection.clear();
+    this.emit('reaction-table');
   }
 
   /** Capture the current drawing before a multi-step edit such as dragging. */
@@ -2258,6 +3004,7 @@ export class Store {
       overrides: [...this.overrides],
       objective: this.objective,
       productTarget: this.productTarget,
+      customObjective: this.customObjective,
       parsimonious: this.parsimonious,
       pfbaBiomassPercent: this.pfbaBiomassPercent,
       loopless: this.loopless,
@@ -2291,6 +3038,12 @@ export class Store {
    */
   settleOpenedWork() {
     this.savedWork = null;
+    // Bounds edits start over too: what was opened is "original", with its medium.
+    this.baseMedium = { ...(this.medium ?? {}) };
+    this.constraintHistory.clear();
+    this.constraintCulprits = null;
+    this._culpritCheck = null;
+    this.reactionTable.selection.clear();
     this.trackWorkContext();
   }
 
@@ -4656,6 +5409,7 @@ export class Store {
       steadyCom: this.solution?.steadyCom ? { mu: this.solution.steadyCom.mu } : null,
       objective: this.objective,
       productTarget: this.productTarget,
+      customObjective: this.customObjective,
       parsimonious: this.parsimonious,
       pfbaBiomassPercent: this.pfbaBiomassPercent,
       loopless: this.loopless,
@@ -4703,8 +5457,14 @@ export class Store {
     if (String(doc.scenario ?? '').startsWith('published:')) await this.usePublishedCommunity(doc.scenario.slice('published:'.length));
     this.steadyComConfig = { fiber, parsimonious: Boolean(doc.steadyComConfig?.parsimonious) };
     this.scenario = this.scenarios.find((s) => s.id === doc.scenario) ?? this.scenario;
+    // "Original" bounds are the scenario's own; what the file changes is a change.
+    this.baseMedium = { ...(this.scenario?.medium ?? this.baseMedium ?? {}) };
+    this.constraintHistory.clear();
+    this.constraintCulprits = null;
+    this._culpritCheck = null;
     this.objective = doc.objective ?? OBJECTIVES.EQUAL_GROWTH;
     this.productTarget = doc.productTarget ?? null;
+    this.customObjective = null;
     this.parsimonious = Boolean(doc.parsimonious ?? doc.pfba ?? false);
     this.pfbaBiomassPercent = normalizePfbaPercent(
       doc.pfbaBiomassPercent
@@ -4733,12 +5493,34 @@ export class Store {
     this.restorePathwayManagerState(doc.pathwayManager);
     this.restoreOmicsState(doc.omics);
     this.overrides = new Map((doc.overrides ?? []).map((o) => [o.id, { lower: o.lower, upper: o.upper }]));
+    this.customObjective = this.customObjectiveFrom(doc.customObjective);
     this.applyOverrides();
     // Before solving, so the repaint that follows already reads "Saved".
     this.markScenarioSaved();
     if (doc.steadyCom) await this.solveSteadyComAt(doc.steadyCom.mu);
     else this.solve();
   }
+}
+
+// Per built model: which reactions the medium controls, and the reactions table's catalogue.
+const mediumReactionCache = new WeakMap();
+const reactionCatalogCache = new WeakMap();
+
+/**
+ * A result solved as the maximum of the negated objective, read back as the
+ * minimum of the objective: the objective value and every dual change sign.
+ */
+function minimisedResult(res) {
+  if (!res) return res;
+  const flip = (values) => (values instanceof Map ? new Map([...values].map(([id, v]) => [id, -v])) : values);
+  return {
+    ...res,
+    objectiveValue: Number.isFinite(res.objectiveValue) ? -res.objectiveValue : res.objectiveValue,
+    reducedCosts: flip(res.reducedCosts),
+    scaledReducedCosts: flip(res.scaledReducedCosts),
+    shadowPrices: flip(res.shadowPrices),
+    sense: 'min',
+  };
 }
 
 /** Whether every community-level bound and extra constraint admits zero flux. steadyComRange caps the total biomass only then. */

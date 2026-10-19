@@ -31,18 +31,43 @@ use serde_json::Value;
 // - map.css has the cursor rules of those handles and the grey label of a
 //   reaction without flux (NEW_RULES).
 
-/// Rules of map.css added by d7b2c0e and 7b5aaa0.
+/// Rules of map.css added by d7b2c0e and 7b5aaa0, and the ring a reactions
+/// table puts on the map under its hovered row.
 pub const NEW_RULES: &[&str] = &[
     ".emc-geometry-n, .emc-geometry-s",
     ".emc-geometry-e, .emc-geometry-w",
     ".emc-geometry-corner",
     ".emc-geometry-oval",
     ".emc-label-rxn.is-off",
+    "emc-table-hover",
+    ".is-table-hover",
 ];
 
 /// Whether a written rule is one the references do not know yet.
 pub fn is_new_rule(rule: &str) -> bool {
     NEW_RULES.iter().any(|r| rule.contains(r))
+}
+
+/// A stylesheet written a rule a line, without the new rules, and without an
+/// at-rule block that held only new ones.
+pub fn without_new_rules(css: &str) -> Vec<&str> {
+    let mut out: Vec<&str> = Vec::new();
+    let mut open: Option<(usize, bool)> = None;
+    for line in css.lines() {
+        if line.starts_with('@') && line.trim_end().ends_with('{') {
+            open = Some((out.len(), false));
+            out.push(line);
+        } else if line == "}" && open.is_some() {
+            let (at, kept) = open.take().unwrap_or_default();
+            if kept { out.push(line) } else { out.truncate(at) }
+        } else if !is_new_rule(line) {
+            if let Some((_, kept)) = open.as_mut() {
+                *kept = true;
+            }
+            out.push(line);
+        }
+    }
+    out
 }
 
 /// An SVG as it compares with the references recorded before d7b2c0e.
@@ -59,7 +84,9 @@ pub fn before_shapes(svg: &str) -> String {
         let re = regex::Regex::new(&format!(r"\n[^\n{{}}<>]*{}[^\n{{}}]*\{{[^}}]*\}}", regex::escape(rule))).unwrap();
         svg = re.replace_all(&svg, "").into_owned();
     }
-    svg
+    // An at-rule block that held only new rules.
+    let empty = regex::Regex::new(r"\n@[^\n{}<>]*\{\n\}").unwrap();
+    empty.replace_all(&svg, "").into_owned()
 }
 
 /// `rust/fixtures/render` or `rust/fixtures/large/render`.

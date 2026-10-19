@@ -201,6 +201,8 @@ pub struct ReproStore<'a> {
     pub scenario: Option<Value>,
     pub objective: Value,
     pub product_target: Option<Value>,
+    /// `store.customObjective` (`{sense, coefficients}`), written only when set.
+    pub custom_objective: Option<Value>,
     /// `store.medium`: base metabolite → uptake limit.
     pub medium: Map<String, Value>,
     /// `store.overrides`: merged reaction id → `{lower, upper}`.
@@ -391,16 +393,17 @@ pub fn create_reproducibility_bundle_with(store: &ReproStore, ctx: &BundleContex
     );
     payload.insert("models".into(), Value::Object(js_order(models)));
     payload.insert("modelHashes".into(), Value::Object(js_order(model_hashes)));
-    payload.insert(
-        "community".into(),
-        json!({
-            "scenario": scenario_field("id"),
-            "name": scenario_field("name"),
-            "species": store.species,
-            "objective": store.objective,
-            "productTarget": or_null(&store.product_target),
-        }),
-    );
+    let mut community = json!({
+        "scenario": scenario_field("id"),
+        "name": scenario_field("name"),
+        "species": store.species,
+        "objective": store.objective,
+        "productTarget": or_null(&store.product_target),
+    });
+    if let (Some(custom), Some(c)) = (&store.custom_objective, community.as_object_mut()) {
+        c.insert("customObjective".into(), custom.clone());
+    }
+    payload.insert("community".into(), community);
     payload.insert(
         "constraints".into(),
         json!({
