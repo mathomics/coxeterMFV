@@ -2502,7 +2502,7 @@ function mapAppearanceCard(store, fluxColorDraft = null) {
     <p class="hint">A color set on a reaction in the Inspector is used over its pathway's. Your flux palette is retained.</p>`}
     ${lineToggle('width-by-flux', view.widthByFlux, 'Line width follows flux', '')}
     ${lineToggle('dash-no-flux', view.dashNoFlux !== false, 'Grey dashed lines', 'reactions with no flux in the solution')}
-    ${lineToggle('line-hops', view.lineHops !== false, 'Hop where lines cross', 'the line drawn on top jumps the other')}
+    ${lineToggle('line-hops', view.lineHops !== false, 'Gap where lines cross', 'the line underneath is cut where another passes over it')}
     <p class="hint">Arrowheads show the direction of the solved flux.</p>
     ${nodeStyleControls(store)}
     <label class="view-label-control">Pathway ribbons

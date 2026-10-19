@@ -229,7 +229,7 @@ pub struct View {
     pub flux_color_stops: Option<Vec<FluxColorStop>>,
     pub reaction_color_mode: ReactionColorMode,
     /// How reaction lines are drawn, each its own switch: width by flux,
-    /// grey dashes for what carries none, a hop where one crosses another.
+    /// grey dashes for what carries none, a gap where one passes under another.
     pub width_by_flux: bool,
     pub dash_no_flux: bool,
     pub line_hops: bool,

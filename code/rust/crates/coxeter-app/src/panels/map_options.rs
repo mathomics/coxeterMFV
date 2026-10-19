@@ -400,7 +400,7 @@ pub fn map_appearance_card(ui: &mut Ui, shell: &mut Shell) {
         if let Some(on) = line_toggle(ui, v.dash_no_flux, "Grey dashed lines", "reactions with no flux in the solution") {
             let _ = shell.store.set_view(ViewPatch { dash_no_flux: Some(on), ..Default::default() });
         }
-        if let Some(on) = line_toggle(ui, v.line_hops, "Hop where lines cross", "the line drawn on top jumps the other") {
+        if let Some(on) = line_toggle(ui, v.line_hops, "Gap where lines cross", "the line underneath is cut where another passes over it") {
             let _ = shell.store.set_view(ViewPatch { line_hops: Some(on), ..Default::default() });
         }
         widgets::hint(ui, "Arrowheads show the direction of the solved flux.");

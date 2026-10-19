@@ -197,7 +197,7 @@ export class Store {
       fluxColorStops: null,
       reactionColorMode: 'flux',
       // How reaction lines are drawn, each its own switch: width by flux,
-      // grey dashes for what carries none, a hop where one crosses another.
+      // grey dashes for what carries none, a gap where one passes under another.
       widthByFlux: false,
       dashNoFlux: true,
       lineHops: true,

@@ -1,11 +1,13 @@
 /**
- * Line hops: where two reactions' lines cross, the one drawn over the other
- * jumps it with a small arc, so a crossing reads as two lines passing and not
- * as a junction where they meet.
+ * Line hops, drawn as gaps: where two reactions' lines cross, the line drawn
+ * underneath is cut on both sides of the one on top, which stays whole. A
+ * crossing then reads as one line passing over another and not as a junction
+ * where they meet. On thick, curved lines a gap stays clean where an arc
+ * hopping over the other line would look like a bubble.
  *
  * Works on each segment as drawn (a line or a cubic Bézier, already clipped
  * to its metabolite and arrowhead) and leaves the map's geometry alone: the
- * hop is in the picture only.
+ * gap is in the picture only.
  */
 
 const point = (x, y) => ({ x, y });
@@ -19,8 +21,18 @@ const CURVE_PIECES = 12;
 // Side of the grid squares crossings are looked for in, in map units.
 const CELL = 80;
 // More crossings than this is not a drawing anyone laid out to be read (a
-// genome-scale model drawn whole), and hops all over it only add noise.
+// genome-scale model drawn whole), and gaps all over it only add noise.
 export const MAX_LINE_HOPS = 1500;
+
+// Clear space between each cut end of the lower line and the edge of the line
+// on top, in map units.
+const GAP_CLEAR = 3.5;
+// A line crossing at a shallow angle runs beside the other for longer, so its
+// gap is longer by 1/sin of the angle, which is floored here to cap the gap.
+const GAP_MIN_SINE = 0.3;
+// A gap keeps this far from either end of a line, so it never cuts into the
+// metabolite or arrowhead there.
+const END_MARGIN = 4;
 
 /** The point at `t` on a line (2 points) or a cubic Bézier (4 points). */
 export function curvePoint(curve, t) {
@@ -32,12 +44,13 @@ export function curvePoint(curve, t) {
 }
 
 /**
- * Where the lines cross, and which of each pair hops.
+ * Where the lines cross, and the gap each crossing cuts in the lower line.
  *
  * @param {{curve:{x:number,y:number}[], reactionId:string, width:number}[]} items
- *   segments in drawing order: of two that cross, the later one is on top and
- *   is the one that hops
- * @returns {Map<number, {t:number, radius:number}[]>} hops by item index, empty
+ *   segments in drawing order, widths in map units: of two that cross, the
+ *   earlier one is underneath and is the one that gets the gap
+ * @returns {Map<number, {t:number, half:number}[]>} gaps by item index, each at
+ *   curve parameter `t` and `half` map units long on either side of it. Empty
  *   when there are more than `limit` (default MAX_LINE_HOPS) crossings
  */
 export function findLineHops(items, { limit = MAX_LINE_HOPS } = {}) {
@@ -99,16 +112,19 @@ export function findLineHops(items, { limit = MAX_LINE_HOPS } = {}) {
         if (cellOf(hit.x) !== gx || cellOf(hit.y) !== gy) continue;
 
         const [under, over] = p.index < q.index ? [p, q] : [q, p];
-        const overItem = items[over.index];
-        const underItem = items[under.index];
-        const radius = Math.max(7, (underItem.width ?? 7.5) / 2 + (overItem.width ?? 7.5) / 2 + 2);
+        const overWidth = items[over.index].width ?? 7.5;
+        const underWidth = items[under.index].width ?? 7.5;
+        // The cut has to clear the top line's half width and a gap, measured
+        // along the lower line, plus the round cap each cut end is drawn with.
+        const sine = Math.max(GAP_MIN_SINE, crossingSine(p.a, p.b, q.a, q.b));
+        const half = (overWidth / 2 + GAP_CLEAR) / sine + underWidth / 2;
         // Lines that only meet where they end (at a metabolite they share, at
         // the reaction they both run into) are not crossing each other.
-        if (nearEnd(under, hit, radius) || nearEnd(over, hit, radius)) continue;
-        const s = projection(over.a, over.b, hit);
-        const t = over.t0 + (over.t1 - over.t0) * s;
-        if (!hops.has(over.index)) hops.set(over.index, []);
-        hops.get(over.index).push({ t, radius });
+        if (nearEnd(under, hit, half) || nearEnd(over, hit, underWidth / 2 + GAP_CLEAR)) continue;
+        const s = projection(under.a, under.b, hit);
+        const t = under.t0 + (under.t1 - under.t0) * s;
+        if (!hops.has(under.index)) hops.set(under.index, []);
+        hops.get(under.index).push({ t, half });
         count += 1;
         if (count > limit) return new Map();
       }
@@ -117,9 +133,20 @@ export function findLineHops(items, { limit = MAX_LINE_HOPS } = {}) {
   return hops;
 }
 
-function nearEnd(piece, hit, radius) {
+/** The sine of the angle between segments a–b and c–d, from 0 (parallel) to 1. */
+function crossingSine(a, b, c, d) {
+  const ux = b.x - a.x;
+  const uy = b.y - a.y;
+  const vx = d.x - c.x;
+  const vy = d.y - c.y;
+  const lengths = Math.hypot(ux, uy) * Math.hypot(vx, vy);
+  return lengths > 1e-12 ? Math.abs(ux * vy - uy * vx) / lengths : 0;
+}
+
+/** Whether `hit` lies within `reach` (plus END_MARGIN) of either end of its line. */
+function nearEnd(piece, hit, reach) {
   const along = piece.before + distance(piece.a, hit);
-  const margin = radius * 1.6;
+  const margin = reach + END_MARGIN;
   return along < margin || piece.total - along < margin;
 }
 
@@ -145,11 +172,11 @@ function intersect(a, b, c, d) {
 }
 
 /**
- * The path of a segment with its hops: the same line or curve, broken where it
- * crosses another and joined again over it by a half circle.
+ * The path of a segment with its gaps: the same line or curve, cut where
+ * another passes over it and picked up again on the other side.
  *
  * @param {{x:number,y:number}[]} curve 2 or 4 points
- * @param {{t:number, radius:number}[]} hops
+ * @param {{t:number, half:number}[]} hops the gaps from findLineHops
  * @returns {string} SVG path data
  */
 export function hoppedPath(curve, hops) {
@@ -157,12 +184,12 @@ export function hoppedPath(curve, hops) {
   for (const hop of [...hops].sort((a, b) => a.t - b.t)) {
     const speed = derivativeLength(curve, hop.t);
     if (speed < 1e-9) continue;
-    const dt = hop.radius / speed;
+    const dt = hop.half / speed;
     const from = Math.max(0, hop.t - dt);
     const to = Math.min(1, hop.t + dt);
     if (from <= 0 || to >= 1) continue;
     const last = intervals.at(-1);
-    // Two crossings closer than a hop apart make one longer hop.
+    // Two crossings closer than a gap apart make one longer gap.
     if (last && from <= last.to) last.to = Math.max(last.to, to);
     else intervals.push({ from, to });
   }
@@ -172,22 +199,12 @@ export function hoppedPath(curve, hops) {
   let cursor = 0;
   for (const { from, to } of intervals) {
     parts.push(piecePath(curve, cursor, from));
-    const p1 = curvePoint(curve, from);
-    const p2 = curvePoint(curve, to);
-    const r = distance(p1, p2) / 2;
-    parts.push(`A ${n(r)} ${n(r)} 0 0 ${arcSweep(p1, p2)} ${n(p2.x)} ${n(p2.y)}`);
+    const resume = curvePoint(curve, to);
+    parts.push(`M ${n(resume.x)} ${n(resume.y)}`);
     cursor = to;
   }
   parts.push(piecePath(curve, cursor, 1));
   return parts.join(' ');
-}
-
-/** Hops bulge upward, or to the left on a vertical line, wherever the line runs. */
-function arcSweep(p1, p2) {
-  const dx = p2.x - p1.x;
-  const dy = p2.y - p1.y;
-  if (Math.abs(dx) > Math.abs(dy) * 0.05) return dx > 0 ? 1 : 0;
-  return dy > 0 ? 0 : 1;
 }
 
 /** The stretch of the curve from `a` to `b`, as a path command continuing from its start. */

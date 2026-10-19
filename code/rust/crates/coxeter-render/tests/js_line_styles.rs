@@ -3,7 +3,7 @@
 //! colour over its pathway's but not over flux colours, metabolite circle
 //! colours map-wide and per node, and hover text. On the E. coli map of the
 //! render fixtures; the JS builds its own small model. The line-hop unit tests
-//! are in `src/line_hops.rs`; the Store half, hops on a real map included
+//! are in `src/line_hops.rs`; the Store half, gaps on a real map included
 //! (the fixture maps here have no crossing lines), in
 //! `coxeter-state/tests/js_line_styles.rs`.
 

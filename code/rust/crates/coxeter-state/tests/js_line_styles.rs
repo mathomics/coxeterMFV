@@ -1,6 +1,6 @@
 //! The Store half of `test/line-styles.test.mjs` (7b5aaa0): colour edits are
 //! undoable and travel in the Map JSON, the line switches are kept in the
-//! Scenario JSON, hops on a real map, and the hover text and metadata of an
+//! Scenario JSON, gaps on a real map, and the hover text and metadata of an
 //! exported SVG. The rendering half is in `coxeter-render`.
 
 mod common;
@@ -102,7 +102,7 @@ fn the_line_switches_are_kept_in_the_scenario_json() {
 }
 
 #[test]
-fn on_a_real_map_hops_are_drawn_without_adding_or_losing_a_line() {
+fn on_a_real_map_gaps_are_drawn_without_adding_or_losing_a_line() {
     let mut store = init_store();
     store.use_scenario("solo-levadura").unwrap();
     let count = |svg: &str| svg.matches("<path class=\"emc-seg").count();
@@ -112,9 +112,10 @@ fn on_a_real_map_hops_are_drawn_without_adding_or_losing_a_line() {
     state.line_hops = true;
     let hopped = render_map_svg(store.map.as_ref().unwrap().graph(), &state);
     assert_eq!(count(&hopped), count(&plain));
-    let arcs = regex::Regex::new(r" A [\d.]+ [\d.]+ 0 0 [01] ").unwrap();
-    assert!(arcs.is_match(&hopped), "the yeast core map has crossings");
-    assert!(!arcs.is_match(&plain));
+    // A segment cut by a gap starts again with a second move.
+    let gaps = regex::Regex::new(r#"<path class="emc-seg[^>]* d="M [^"]* M "#).unwrap();
+    assert!(gaps.is_match(&hopped), "the yeast core map has crossings");
+    assert!(!gaps.is_match(&plain));
 }
 
 #[test]

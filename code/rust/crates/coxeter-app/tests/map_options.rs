@@ -853,7 +853,7 @@ fn line_switches_and_circle_colours_of_the_appearance_card() {
     assert_eq!((v.width_by_flux, v.dash_no_flux, v.line_hops), (false, true, true));
     common::click(&mut h, "Line width follows flux");
     common::click(&mut h, "Grey dashed lines");
-    common::click(&mut h, "Hop where lines cross");
+    common::click(&mut h, "Gap where lines cross");
     let v = h.state().store.view.clone();
     assert_eq!((v.width_by_flux, v.dash_no_flux, v.line_hops), (true, false, false));
     let state = h.state().store.map_render_state(Default::default());

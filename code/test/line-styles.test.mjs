@@ -18,29 +18,42 @@ const p = (x, y) => ({ x, y });
 
 // Line hops
 
-test('of two reactions whose lines cross, the one drawn later hops the other', () => {
+test('of two reactions whose lines cross, the one drawn earlier is cut where the later one passes over', () => {
   const items = [
     { curve: [p(0, 50), p(100, 50)], reactionId: 'A', width: 7.5 },
     { curve: [p(50, 0), p(50, 100)], reactionId: 'B', width: 7.5 },
   ];
   const hops = findLineHops(items);
-  assert.deepEqual([...hops.keys()], [1]);
-  const [{ t, radius }] = hops.get(1);
+  assert.deepEqual([...hops.keys()], [0]);
+  const [{ t, half }] = hops.get(0);
   assert.ok(Math.abs(t - 0.5) < 1e-9);
-  assert.ok(radius >= 7);
+  // The cut clears the top line's half width, a gap and its own round cap.
+  assert.ok(half > 7.5 / 2 + 7.5 / 2, `gap half-length ${half}`);
 });
 
-test('a cubic branch crossing a line is found where it crosses', () => {
+test('a shallow crossing gets a longer gap than a square one', () => {
+  const square = findLineHops([
+    { curve: [p(0, 50), p(100, 50)], reactionId: 'A', width: 7.5 },
+    { curve: [p(50, 0), p(50, 100)], reactionId: 'B', width: 7.5 },
+  ]).get(0)[0].half;
+  const shallow = findLineHops([
+    { curve: [p(0, 50), p(200, 50)], reactionId: 'A', width: 7.5 },
+    { curve: [p(0, 0), p(200, 100)], reactionId: 'B', width: 7.5 },
+  ]).get(0)[0].half;
+  assert.ok(shallow > square * 1.5, `${shallow} against ${square}`);
+});
+
+test('a cubic branch under a line is cut where it crosses', () => {
   const curve = [p(0, 0), p(40, 120), p(80, -40), p(120, 80)];
   const hops = findLineHops([
-    { curve: [p(0, 40), p(120, 40)], reactionId: 'A', width: 7.5 },
     { curve, reactionId: 'B', width: 7.5 },
+    { curve: [p(0, 40), p(120, 40)], reactionId: 'A', width: 7.5 },
   ]);
-  assert.ok(hops.get(1)?.length >= 1);
-  for (const { t } of hops.get(1)) assert.ok(Math.abs(curvePoint(curve, t).y - 40) < 2, 'on the line it crosses');
+  assert.ok(hops.get(0)?.length >= 1);
+  for (const { t } of hops.get(0)) assert.ok(Math.abs(curvePoint(curve, t).y - 40) < 2, 'on the line it crosses');
 });
 
-test('lines of one reaction, and lines that only meet where they end, do not hop', () => {
+test('lines of one reaction, and lines that only meet where they end, are not cut', () => {
   assert.equal(findLineHops([
     { curve: [p(0, 50), p(100, 50)], reactionId: 'A', width: 7.5 },
     { curve: [p(50, 0), p(50, 100)], reactionId: 'A', width: 7.5 },
@@ -51,7 +64,7 @@ test('lines of one reaction, and lines that only meet where they end, do not hop
   ]).size, 0, 'two lines ending at one metabolite');
 });
 
-test('past the limit, a map gets no hops at all', () => {
+test('past the limit, a map gets no gaps at all', () => {
   const items = [
     { curve: [p(0, 50), p(100, 50)], reactionId: 'A', width: 7.5 },
     { curve: [p(50, 0), p(50, 100)], reactionId: 'B', width: 7.5 },
@@ -59,12 +72,13 @@ test('past the limit, a map gets no hops at all', () => {
   assert.equal(findLineHops(items, { limit: 0 }).size, 0);
 });
 
-test('a hopped path starts and ends where the line does and jumps with a half circle', () => {
-  const d = hoppedPath([p(0, 50), p(100, 50)], [{ t: 0.5, radius: 10 }]);
-  assert.match(d, /^M 0 50 L 40 50 A 10 10 0 0 1 60 50 L 100 50$/, 'bulging upward on a line running right');
+test('a cut path starts and ends where the line does and leaves a gap where it is crossed', () => {
+  const d = hoppedPath([p(0, 50), p(100, 50)], [{ t: 0.5, half: 10 }]);
+  assert.equal(d, 'M 0 50 L 40 50 M 60 50 L 100 50');
   const curve = [p(0, 0), p(30, 90), p(70, 90), p(100, 0)];
-  const hopped = hoppedPath(curve, [{ t: 0.5, radius: 8 }]);
-  assert.match(hopped, /^M 0 0 C [^A]* A [\d.]+ [\d.]+ 0 0 [01] [\d.]+ [\d.]+ C .*, 100 0$/);
+  const cut = hoppedPath(curve, [{ t: 0.5, half: 8 }]);
+  assert.match(cut, /^M 0 0 C [^M]* M [\d.]+ [\d.]+ C .*, 100 0$/);
+  assert.equal(hoppedPath([p(0, 50), p(100, 50)], [{ t: 0.03, half: 10 }]), 'M 0 50 L 100 50', 'no gap runs off the end');
 });
 
 // A model with a solution
@@ -206,7 +220,7 @@ test('the line switches are kept in the Scenario JSON', async () => {
   assert.deepEqual([store.view.widthByFlux, store.view.dashNoFlux, store.view.lineHops], [true, false, false]);
 });
 
-test('on a real map, hops are drawn without adding or losing a line', async () => {
+test('on a real map, gaps are drawn without adding or losing a line', async () => {
   const store = new Store('.');
   const index = JSON.parse(await readFile(join(root, 'models/index.json'), 'utf8'));
   for (const entry of index.models) {
@@ -218,7 +232,7 @@ test('on a real map, hops are drawn without adding or losing a line', async () =
   const plain = renderMap(store.map, stateFor(store));
   const hopped = renderMap(store.map, stateFor(store, { lineHops: true }));
   assert.equal(count(hopped), count(plain));
-  assert.ok((hopped.match(/ A [\d.]+ [\d.]+ 0 0 [01] /g) ?? []).length > 0, 'the yeast core map has crossings');
+  assert.ok((hopped.match(/<path class="emc-seg[^>]* d="M [^"]* M /g) ?? []).length > 0, 'the yeast core map has crossings');
 });
 
 // SVG export

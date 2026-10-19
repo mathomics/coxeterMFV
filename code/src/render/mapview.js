@@ -52,7 +52,7 @@ const n = (v) => (Math.round(v * 100) / 100).toString();
  *   pointer targets or canvas resize grips
  * @param {boolean} [state.offStyle] draw reactions that carry no flux in the
  *   solution grey and dashed; pass it only when there is a solution
- * @param {boolean} [state.lineHops] a line drawn over another hops it
+ * @param {boolean} [state.lineHops] a line drawn under another is cut where they cross
  * @param {{reaction:(id:string)=>string, node:(id:string)=>string}} [state.tooltips]
  *   hover text for reactions and metabolites, written into the SVG
  */

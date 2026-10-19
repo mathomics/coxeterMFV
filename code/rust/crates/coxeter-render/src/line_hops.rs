@@ -1,10 +1,13 @@
-//! Line hops (`src/render/line-hops.js`): where two reactions' lines cross,
-//! the one drawn over the other jumps it with a small arc, so a crossing reads
-//! as two lines passing and not as a junction where they meet.
+//! Line hops drawn as gaps (`src/render/line-hops.js`): where two reactions'
+//! lines cross, the line drawn underneath is cut on both sides of the one on
+//! top, which stays whole. A crossing then reads as one line passing over
+//! another and not as a junction where they meet. On thick, curved lines a gap
+//! stays clean where an arc hopping over the other line would look like a
+//! bubble.
 //!
 //! Works on each segment as drawn (a line or a cubic Bézier, already clipped
 //! to its metabolite and arrowhead) and leaves the map's geometry alone: the
-//! hop is in the picture only.
+//! gap is in the picture only.
 
 use std::collections::HashMap;
 
@@ -28,8 +31,18 @@ const CURVE_PIECES: usize = 12;
 // Side of the grid squares crossings are looked for in, in map units.
 const CELL: f64 = 80.0;
 /// More crossings than this is not a drawing anyone laid out to be read (a
-/// genome-scale model drawn whole), and hops all over it only add noise.
+/// genome-scale model drawn whole), and gaps all over it only add noise.
 pub const MAX_LINE_HOPS: usize = 1500;
+
+// Clear space between each cut end of the lower line and the edge of the line
+// on top, in map units.
+const GAP_CLEAR: f64 = 3.5;
+// A line crossing at a shallow angle runs beside the other for longer, so its
+// gap is longer by 1/sin of the angle, which is floored here to cap the gap.
+const GAP_MIN_SINE: f64 = 0.3;
+// A gap keeps this far from either end of a line, so it never cuts into the
+// metabolite or arrowhead there.
+const END_MARGIN: f64 = 4.0;
 
 /// `curvePoint(curve, t)`: the point at `t` on a line (2 points) or a cubic
 /// Bézier (4 points).
@@ -52,11 +65,12 @@ pub struct HopItem {
     pub width: f64,
 }
 
-/// Where along a segment it hops, and how wide.
+/// A gap cut in a segment: centred at curve parameter `t`, `half` map units
+/// long on either side.
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct Hop {
     pub t: f64,
-    pub radius: f64,
+    pub half: f64,
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -70,10 +84,11 @@ struct Piece {
     total: f64,
 }
 
-/// `findLineHops(items, { limit })`: where the lines cross, and which of each
-/// pair hops. `items` are the segments in drawing order: of two that cross,
-/// the later one is on top and is the one that hops. Hops by item index;
-/// empty when there are more than `limit` crossings.
+/// `findLineHops(items, { limit })`: where the lines cross, and the gap each
+/// crossing cuts in the lower line. `items` are the segments in drawing
+/// order, widths in map units: of two that cross, the earlier one is
+/// underneath and is the one that gets the gap. Gaps by item index, empty
+/// when there are more than `limit` crossings.
 pub fn find_line_hops(items: &[HopItem], limit: usize) -> HashMap<usize, Vec<Hop>> {
     let mut pieces: Vec<Piece> = Vec::new();
     for (index, item) in items.iter().enumerate() {
@@ -136,16 +151,22 @@ pub fn find_line_hops(items: &[HopItem], limit: usize) -> HashMap<usize, Vec<Hop
                     continue;
                 }
                 let (under, over) = if p.index < q.index { (p, q) } else { (q, p) };
-                let radius = js::max(7.0, items[under.index].width / 2.0 + items[over.index].width / 2.0 + 2.0);
+                let over_width = items[over.index].width;
+                let under_width = items[under.index].width;
+                // The cut has to clear the top line's half width and a gap,
+                // measured along the lower line, plus the round cap each cut
+                // end is drawn with.
+                let sine = js::max(GAP_MIN_SINE, crossing_sine(p.a, p.b, q.a, q.b));
+                let half = (over_width / 2.0 + GAP_CLEAR) / sine + under_width / 2.0;
                 // Lines that only meet where they end (at a metabolite they
                 // share, or at the reaction they both run into) are not crossing
                 // each other.
-                if near_end(under, hit, radius) || near_end(over, hit, radius) {
+                if near_end(under, hit, half) || near_end(over, hit, under_width / 2.0 + GAP_CLEAR) {
                     continue;
                 }
-                let s = projection(over.a, over.b, hit);
-                let t = over.t0 + (over.t1 - over.t0) * s;
-                hops.entry(over.index).or_default().push(Hop { t, radius });
+                let s = projection(under.a, under.b, hit);
+                let t = under.t0 + (under.t1 - under.t0) * s;
+                hops.entry(under.index).or_default().push(Hop { t, half });
                 count += 1;
                 if count > limit {
                     return HashMap::new();
@@ -156,9 +177,18 @@ pub fn find_line_hops(items: &[HopItem], limit: usize) -> HashMap<usize, Vec<Hop
     hops
 }
 
-fn near_end(piece: &Piece, hit: Point, radius: f64) -> bool {
+/// The sine of the angle between segments a–b and c–d, from 0 (parallel) to 1.
+fn crossing_sine(a: Point, b: Point, c: Point, d: Point) -> f64 {
+    let (ux, uy) = (b.x - a.x, b.y - a.y);
+    let (vx, vy) = (d.x - c.x, d.y - c.y);
+    let lengths = js::hypot(ux, uy) * js::hypot(vx, vy);
+    if lengths > 1e-12 { (ux * vy - uy * vx).abs() / lengths } else { 0.0 }
+}
+
+/// Whether `hit` lies within `reach` (plus `END_MARGIN`) of either end of its line.
+fn near_end(piece: &Piece, hit: Point, reach: f64) -> bool {
     let along = piece.before + distance(piece.a, hit);
-    let margin = radius * 1.6;
+    let margin = reach + END_MARGIN;
     along < margin || piece.total - along < margin
 }
 
@@ -188,9 +218,9 @@ fn intersect(a: Point, b: Point, c: Point, d: Point) -> Option<Point> {
     Some(Point::new(a.x + u * rx, a.y + u * ry))
 }
 
-/// `hoppedPath(curve, hops)`: the path of a segment with its hops: the same
-/// line or curve, broken where it crosses another and joined again over it by
-/// a half circle.
+/// `hoppedPath(curve, hops)`: the path of a segment with its gaps: the same
+/// line or curve, cut where another passes over it and picked up again on the
+/// other side.
 pub fn hopped_path(curve: &[Point], hops: &[Hop]) -> String {
     let mut sorted = hops.to_vec();
     sorted.sort_by(|a, b| a.t.partial_cmp(&b.t).unwrap_or(std::cmp::Ordering::Equal));
@@ -200,13 +230,13 @@ pub fn hopped_path(curve: &[Point], hops: &[Hop]) -> String {
         if speed < 1e-9 {
             continue;
         }
-        let dt = hop.radius / speed;
+        let dt = hop.half / speed;
         let from = js::max(0.0, hop.t - dt);
         let to = js::min(1.0, hop.t + dt);
         if from <= 0.0 || to >= 1.0 {
             continue;
         }
-        // Two crossings closer than a hop apart make one longer hop.
+        // Two crossings closer than a gap apart make one longer gap.
         match intervals.last_mut() {
             Some(last) if from <= last.1 => last.1 = js::max(last.1, to),
             _ => intervals.push((from, to)),
@@ -218,24 +248,12 @@ pub fn hopped_path(curve: &[Point], hops: &[Hop]) -> String {
     let mut cursor = 0.0;
     for (from, to) in intervals {
         parts.push(piece_path(curve, cursor, from));
-        let p1 = curve_point(curve, from);
-        let p2 = curve_point(curve, to);
-        let r = distance(p1, p2) / 2.0;
-        parts.push(format!("A {} {} 0 0 {} {} {}", n(r), n(r), arc_sweep(p1, p2), n(p2.x), n(p2.y)));
+        let resume = curve_point(curve, to);
+        parts.push(format!("M {} {}", n(resume.x), n(resume.y)));
         cursor = to;
     }
     parts.push(piece_path(curve, cursor, 1.0));
     parts.join(" ")
-}
-
-/// Hops bulge upward, or to the left on a vertical line, wherever the line runs.
-fn arc_sweep(p1: Point, p2: Point) -> u8 {
-    let dx = p2.x - p1.x;
-    let dy = p2.y - p1.y;
-    if dx.abs() > dy.abs() * 0.05 {
-        return if dx > 0.0 { 1 } else { 0 };
-    }
-    if dy > 0.0 { 0 } else { 1 }
 }
 
 /// The stretch of the curve from `a` to `b`, as a path command continuing
@@ -293,28 +311,36 @@ mod tests {
     }
 
     #[test]
-    fn of_two_reactions_whose_lines_cross_the_one_drawn_later_hops_the_other() {
+    fn of_two_reactions_whose_lines_cross_the_one_drawn_earlier_is_cut_where_the_later_one_passes_over() {
         let items = [item(vec![p(0.0, 50.0), p(100.0, 50.0)], "A"), item(vec![p(50.0, 0.0), p(50.0, 100.0)], "B")];
         let hops = find_line_hops(&items, MAX_LINE_HOPS);
-        assert_eq!(hops.keys().copied().collect::<Vec<_>>(), [1]);
-        let hop = hops[&1][0];
-        assert!((hop.t - 0.5).abs() < 1e-9);
-        assert!(hop.radius >= 7.0);
+        assert_eq!(hops.keys().copied().collect::<Vec<_>>(), [0]);
+        let gap = hops[&0][0];
+        assert!((gap.t - 0.5).abs() < 1e-9);
+        // The cut clears the top line's half width, a gap and its own round cap.
+        assert!(gap.half > 7.5 / 2.0 + 7.5 / 2.0, "gap half-length {}", gap.half);
     }
 
     #[test]
-    fn a_cubic_branch_crossing_a_line_is_found_where_it_crosses() {
+    fn a_shallow_crossing_gets_a_longer_gap_than_a_square_one() {
+        let square = find_line_hops(&[item(vec![p(0.0, 50.0), p(100.0, 50.0)], "A"), item(vec![p(50.0, 0.0), p(50.0, 100.0)], "B")], MAX_LINE_HOPS)[&0][0].half;
+        let shallow = find_line_hops(&[item(vec![p(0.0, 50.0), p(200.0, 50.0)], "A"), item(vec![p(0.0, 0.0), p(200.0, 100.0)], "B")], MAX_LINE_HOPS)[&0][0].half;
+        assert!(shallow > square * 1.5, "{shallow} against {square}");
+    }
+
+    #[test]
+    fn a_cubic_branch_under_a_line_is_cut_where_it_crosses() {
         let curve = vec![p(0.0, 0.0), p(40.0, 120.0), p(80.0, -40.0), p(120.0, 80.0)];
-        let hops = find_line_hops(&[item(vec![p(0.0, 40.0), p(120.0, 40.0)], "A"), item(curve.clone(), "B")], MAX_LINE_HOPS);
-        let found = hops.get(&1).expect("a hop");
+        let hops = find_line_hops(&[item(curve.clone(), "B"), item(vec![p(0.0, 40.0), p(120.0, 40.0)], "A")], MAX_LINE_HOPS);
+        let found = hops.get(&0).expect("a gap");
         assert!(!found.is_empty());
-        for hop in found {
-            assert!((curve_point(&curve, hop.t).y - 40.0).abs() < 2.0, "on the line it crosses");
+        for gap in found {
+            assert!((curve_point(&curve, gap.t).y - 40.0).abs() < 2.0, "on the line it crosses");
         }
     }
 
     #[test]
-    fn lines_of_one_reaction_and_lines_that_only_meet_where_they_end_do_not_hop() {
+    fn lines_of_one_reaction_and_lines_that_only_meet_where_they_end_are_not_cut() {
         let own = [item(vec![p(0.0, 50.0), p(100.0, 50.0)], "A"), item(vec![p(50.0, 0.0), p(50.0, 100.0)], "A")];
         assert!(find_line_hops(&own, MAX_LINE_HOPS).is_empty(), "a reaction's own branches meet at its centre");
         let ends = [item(vec![p(0.0, 0.0), p(100.0, 100.0)], "A"), item(vec![p(100.0, 101.0), p(200.0, 0.0)], "B")];
@@ -322,18 +348,19 @@ mod tests {
     }
 
     #[test]
-    fn past_the_limit_a_map_gets_no_hops_at_all() {
+    fn past_the_limit_a_map_gets_no_gaps_at_all() {
         let items = [item(vec![p(0.0, 50.0), p(100.0, 50.0)], "A"), item(vec![p(50.0, 0.0), p(50.0, 100.0)], "B")];
         assert!(find_line_hops(&items, 0).is_empty());
     }
 
     #[test]
-    fn a_hopped_path_starts_and_ends_where_the_line_does_and_jumps_with_a_half_circle() {
-        let d = hopped_path(&[p(0.0, 50.0), p(100.0, 50.0)], &[Hop { t: 0.5, radius: 10.0 }]);
-        assert_eq!(d, "M 0 50 L 40 50 A 10 10 0 0 1 60 50 L 100 50", "bulging upward on a line running right");
+    fn a_cut_path_starts_and_ends_where_the_line_does_and_leaves_a_gap_where_it_is_crossed() {
+        let d = hopped_path(&[p(0.0, 50.0), p(100.0, 50.0)], &[Hop { t: 0.5, half: 10.0 }]);
+        assert_eq!(d, "M 0 50 L 40 50 M 60 50 L 100 50");
         let curve = [p(0.0, 0.0), p(30.0, 90.0), p(70.0, 90.0), p(100.0, 0.0)];
-        let hopped = hopped_path(&curve, &[Hop { t: 0.5, radius: 8.0 }]);
-        let re = regex::Regex::new(r"^M 0 0 C [^A]* A [\d.]+ [\d.]+ 0 0 [01] [\d.]+ [\d.]+ C .*, 100 0$").unwrap();
-        assert!(re.is_match(&hopped), "{hopped}");
+        let cut = hopped_path(&curve, &[Hop { t: 0.5, half: 8.0 }]);
+        let re = regex::Regex::new(r"^M 0 0 C [^M]* M [\d.]+ [\d.]+ C .*, 100 0$").unwrap();
+        assert!(re.is_match(&cut), "{cut}");
+        assert_eq!(hopped_path(&[p(0.0, 50.0), p(100.0, 50.0)], &[Hop { t: 0.03, half: 10.0 }]), "M 0 50 L 100 50", "no gap runs off the end");
     }
 }

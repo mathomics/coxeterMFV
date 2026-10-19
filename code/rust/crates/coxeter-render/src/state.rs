@@ -153,7 +153,7 @@ pub struct RenderState {
     /// Draw reactions that carry no flux in the solution grey and dashed;
     /// set it only when there is a solution.
     pub off_style: bool,
-    /// A line drawn over another hops it.
+    /// A line drawn under another is cut where they cross.
     pub line_hops: bool,
     /// Hover text for reactions and metabolites, written into the SVG.
     pub tooltips: Option<Arc<Tooltips>>,
