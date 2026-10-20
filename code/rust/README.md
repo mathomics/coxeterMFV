@@ -11,9 +11,10 @@ against outputs of the JavaScript modules themselves (see *Testing*).
 
 ## Prebuilt
 
-`bin/coxeter-mfv.exe` is a release build for Windows x64 with the bundled
-models compiled in: it runs on its own, no Rust needed. Rebuild it with
-`cargo build --release -p coxeter-app` and copy `target/release/coxeter.exe`.
+`cargo build --release -p coxeter-app` writes `target/release/coxeter.exe`, a
+Windows x64 build with the bundled models compiled in: it runs on its own, no
+Rust needed. The build is not kept in this repository; the published Windows
+application is `app/windows/coxeter-mfv.exe` in the coxeterMFV repository.
 
 ## Build and run
 
