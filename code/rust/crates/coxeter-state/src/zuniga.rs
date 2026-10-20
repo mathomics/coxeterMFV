@@ -294,6 +294,7 @@ impl Store {
         let scenario_id = scenario_id.unwrap_or("mutant-coculture").to_string();
         self.invalidate_steady_com();
         self.reset_zuniga_study();
+        self.solution_cleared = false;
         let generation = self.zuniga.generation;
         self.published_community_id = Some(ZUNIGA_ID.into());
         let name = self
@@ -431,6 +432,7 @@ impl Store {
         self.custom_objective = None;
         self.parsimonious = false;
         self.loopless = false;
+        self.cycle_free = false;
         self.fva_enabled = false;
         self.cancel_fva(true, false);
         self.medium = IndexMap::new();

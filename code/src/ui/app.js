@@ -225,6 +225,7 @@ function mapRenderState() {
     showCurrency: store.view.showCurrency,
     currencyLabels: store.view.currencyLabels || store.mapMode === 'core-overview',
     showCrossFeeding: store.view.showCrossFeeding,
+    crossFeedingWidth: store.view.crossFeedingWidth,
     crossFeeding: store.crossFeeding,
     crossFeedingBases: store.view.showCrossFeeding ? store.crossFeedingVisibleBases() : null,
     crossFeedingExplorer: { enabled:store.crossFeedingExplorer.enabled, visibleEvents:store.crossFeedingExplorerEvents(), selectedEvent:store.crossFeedingExplorer.index?.events.find(e=>e.id===store.crossFeedingExplorer.selectedId)??null, selectedAt:store.crossFeedingExplorer.selectedAt??null },
@@ -848,13 +849,14 @@ function paintShell() {
   if (els.activeToolLabel) els.activeToolLabel.textContent = {select:'Select',pan:'Pan',edit:'Edit',reaction:'Add Reaction',metabolite:'Metabolite',text:'Text',cell:'Cell',compartment:'Compartment'}[ui.tool];
   const optimal = store.solution?.status === 'optimal';
   if (els.resultsSummary) paintRunSummary(optimal);
+  els.app.querySelectorAll('[data-action="clear-solution"]').forEach((button) => { button.disabled = !store.solution; });
   els.app.querySelectorAll('[data-action="run-fva"]').forEach((button) => {
     button.disabled = Boolean(store.solution?.steadyCom || store.isZunigaStudy);
     if (store.isZunigaStudy) button.title = 'The Zuñiga case preserves the original source-model FBA method';
     else if (button.disabled) button.title = 'Run FBA, pFBA or Loopless before FVA';
     else if (button.title === 'Run FBA, pFBA or Loopless before FVA') button.removeAttribute('title');
   });
-  els.app.querySelectorAll('[data-action="run-pfba"], [data-action="run-loopless"]').forEach(button => {
+  els.app.querySelectorAll('[data-action="run-pfba"], [data-action="run-loopless"], [data-action="run-cyclefree"]').forEach(button => {
     button.disabled = Boolean(store.isZunigaStudy);
     if (button.disabled) button.title = 'The Zuñiga case preserves the original source-model FBA method';
     else if (button.title === 'The Zuñiga case preserves the original source-model FBA method') button.removeAttribute('title');
@@ -1146,14 +1148,15 @@ function paintStatus() {
  * panels open lands, so a "completed" said only there would go unseen. A run
  * that has just ended flashes once.
  */
-const RUN_MODE = { fba: 'FBA', pfba: 'pFBA', fva: 'FVA', loopless: 'Loopless' };
+const RUN_MODE = { fba: 'FBA', pfba: 'pFBA', fva: 'FVA', loopless: 'Loopless', cyclefree: 'CycleFreeFlux' };
 const runFlash = { finishedAt: 0, timer: null };
 
 function paintRunSummary(optimal) {
   const el = els.resultsSummary;
-  const mode = store.solution?.steadyCom ? 'SteadyCom fixed µ' : store.loopless ? 'Loopless' : store.parsimonious ? 'pFBA' : store.fvaEnabled ? 'FVA' : 'FBA';
+  const mode = store.solution?.steadyCom ? 'SteadyCom fixed µ' : store.loopless ? 'Loopless' : store.cycleFree ? 'CycleFreeFlux' : store.parsimonious ? 'pFBA' : store.fvaEnabled ? 'FVA' : 'FBA';
   const run = store.lastRun;
-  let text = `${mode} · ${store.solution?.status || 'Not run'}${optimal ? ` · ${formatFlux(store.solution.objectiveValue, 5)}` : ''}`;
+  const notRun = store.solutionCleared ? 'Solution cleared' : 'Not run';
+  let text = `${mode} · ${store.solution?.status || notRun}${optimal ? ` · ${formatFlux(store.solution.objectiveValue, 5)}` : ''}`;
   let state = '';
   if (run?.phase === 'running') {
     const fva = run.method === 'fva' && store.fvaProgress?.running
@@ -3472,6 +3475,15 @@ function onSidebarInput(event) {
       // Only once the number is settled: a repaint on every keystroke would take the field away.
       if (event.type === 'change') store.setCrossFeedingTop(el.value);
       break;
+    case 'crossfeed-width':
+      // The repaint replaces the slider, so the width is taken when it is let go.
+      if (event.type === 'input') {
+        const output = el.closest('label')?.querySelector('[data-crossfeed-width-output]');
+        if (output) output.textContent = `${Math.round(Number(el.value) * 100)}%`;
+      } else {
+        store.setView({ crossFeedingWidth: Number(el.value) });
+      }
+      break;
     case 'crossfeed-metabolite': store.toggleCrossFeedingMetabolite(el.dataset.base, el.checked); break;
     case 'community-omics-condition-a': store.setCommunityOmics({conditionA:el.value}); break;
     case 'community-omics-condition-b': store.setCommunityOmics({conditionB:el.value}); break;
@@ -4115,10 +4127,12 @@ async function onSidebarClick(event) {
     case 'close-crossfeeding-explorer': store.setCrossFeedingExplorer({enabled:false,selectedId:null}); break;
     case 'select-crossfeeding-event': store.crossFeedingExplorer.selectedAt = null; store.selectCrossFeedingEvent(button.dataset.crossfeedId); break;
     case 'clear-crossfeeding-filters': store.setCrossFeedingExplorer({query:'',metabolite:'',producer:'',consumer:'',minFlux:0,selectedId:null}); break;
+    case 'clear-solution': store.clearSolution(); break;
     case 'run-fba':
     case 'run-pfba':
     case 'run-fva':
     case 'run-loopless':
+    case 'run-cyclefree':
       store.runAnalysis(action.slice('run-'.length)).catch((error) => {
         store.status = { ...store.status, state: 'error', message: error.message };
         store.emit('status');

@@ -29,7 +29,7 @@ Coxeter-MFV was built for researchers who work with genome-scale metabolic model
 
 - **Compartment-aware maps.** Cells, organelles and membranes are first-class objects that can be drawn, nested, resized, reshaped and moved with everything they contain.
 - **Microbial communities.** Several species in one map, each with its own abundance, exchanging metabolites through a shared medium.
-- **Flux analysis.** FBA, parsimonious FBA, loopless FBA, flux variability analysis and SteadyCom community FBA, with live recalculation when bounds, medium or abundances change.
+- **Flux analysis.** FBA, parsimonious FBA, loopless FBA, CycleFreeFlux, flux variability analysis and SteadyCom community FBA, with live recalculation when bounds, medium or abundances change.
 - **Reactions and bounds.** Every reaction of the model in one table, grouped by type, compartment, species or pathway, with a slider and an exact value for each bound, any objective to maximise or minimise, gene knockouts evaluated through the gene rules, bulk edits, undo for every change and bounds exported to and imported from CSV.
 - **Omics integration.** Gene expression and metatranscriptomics overlays, condition comparisons and GIMME context-specific models.
 - **Cross-feeding explorer.** Every metabolite exchanged between species, filterable by producer, consumer and flux, drawn as routes on the map.

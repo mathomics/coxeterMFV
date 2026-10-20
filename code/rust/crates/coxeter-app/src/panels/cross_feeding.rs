@@ -8,8 +8,9 @@
 
 use coxeter_core::js;
 use coxeter_core::mapdata::NodeKind;
+use coxeter_render::crossfeed_routes::CROSSFEED_WIDTH_RANGE;
 use coxeter_render::theme::format_flux;
-use coxeter_state::Store;
+use coxeter_state::{Store, ViewPatch};
 use coxeter_state::cross_feeding::ExplorerPatch;
 use egui::{CornerRadius, Frame, Margin, RichText, Sense, Stroke, Ui, Vec2};
 use indexmap::IndexMap;
@@ -290,6 +291,42 @@ pub fn cross_feeding_top_control(ui: &mut Ui, shell: &mut Shell) {
             ui.close();
         }
     });
+}
+
+/// `crossFeedingWidthControl(store)`: the cross-feeding line width slider, as
+/// a share of the default width (in the View menu). As in the browser, the
+/// width is taken when the slider is let go; while it is dragged only the
+/// read-out follows.
+pub fn cross_feeding_width_control(ui: &mut Ui, shell: &mut Shell) {
+    if shell.store.cross_feeding_metabolites().is_empty() {
+        return;
+    }
+    let p = shell.palette();
+    let range = &CROSSFEED_WIDTH_RANGE;
+    let draft_id = egui::Id::new("crossfeed-width-draft");
+    let value = ui.data(|d| d.get_temp::<f64>(draft_id)).unwrap_or(shell.store.view.cross_feeding_width);
+    let mut commit = None;
+    ui.add_space(10.0);
+    ui.horizontal(|ui| {
+        ui.spacing_mut().item_spacing.x = 8.0;
+        ui.label(RichText::new("Cross-feeding line width").size(12.5).color(p.ink_2)).on_hover_text(
+            "Thickness of the cross-feeding lines. At 100% a line is about as thick as a cell's boundary with the whole map in view; lines side by side keep apart at any width",
+        );
+        ui.spacing_mut().slider_width = 110.0;
+        let (_, event) = widgets::slider(ui, value, range.min, range.max, range.step, true, "Cross-feeding line width");
+        match event {
+            FieldEvent::Input(v) => ui.data_mut(|d| { d.insert_temp(draft_id, v); }),
+            FieldEvent::Change(v) => {
+                ui.data_mut(|d| d.remove::<f64>(draft_id));
+                commit = Some(v);
+            }
+            FieldEvent::None => {}
+        }
+        ui.label(RichText::new(format!("{}%", js::number_to_string(js::round(value * 100.0)))).size(12.0).color(p.ink_2));
+    });
+    if let Some(v) = commit {
+        let _ = shell.store.set_view(ViewPatch { cross_feeding_width: Some(v), ..Default::default() });
+    }
 }
 
 /// `crossFeedingMetabolitePicker(store)`: one checkbox per exchanged

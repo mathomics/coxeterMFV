@@ -209,3 +209,18 @@ fn a_reaction_of_the_results_table_is_selected_and_shown() {
     assert!(h.state().store.selected_reaction.is_some(), "select-result-reaction");
     assert!(!h.state().ui.inspector_collapsed, "the inspector shows it");
 }
+
+#[test]
+fn clear_solution_in_the_header_takes_the_solution_off_until_a_run() {
+    let mut h = common::harness(None);
+    assert!(h.state().store.solution.is_some());
+    assert!(!common::disabled(&h, "Clear solution"));
+    common::click(&mut h, "Clear solution");
+    common::settle(&mut h);
+    assert!(h.state().store.solution.is_none(), "the map is back to a plain map");
+    assert!(common::disabled(&h, "Clear solution"), "nothing left to clear");
+    assert!(common::shows(&h, "Solution cleared"));
+    h.state_mut().run_analysis("fba");
+    common::settle(&mut h);
+    assert!(h.state().store.solution.as_ref().is_some_and(|s| s.is_optimal()), "a run solves again");
+}

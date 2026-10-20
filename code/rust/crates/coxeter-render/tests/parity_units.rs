@@ -7,7 +7,7 @@ mod common;
 use coxeter_core::js;
 use coxeter_core::mapdata::{Node, Point};
 use coxeter_core::testkit::assert_json_eq;
-use coxeter_render::crossfeed_routes::{medium_endpoints, route_anchor, route_cross_feeding, route_grid, rounded_path};
+use coxeter_render::crossfeed_routes::{cross_feeding_line_width, medium_endpoints, route_anchor, route_cross_feeding, route_grid, rounded_path};
 use coxeter_render::reaction_colors::{build_reaction_coloring, category_color, normalize_reaction_color_mode, reaction_category};
 use coxeter_render::reaction_path::{endpoint_node_radius, reaction_endpoint_geometry};
 use coxeter_render::theme::{
@@ -230,7 +230,7 @@ fn cross_feeding_routes_match_on_the_gut9_map() {
     for set in u["routeSets"].as_array().unwrap() {
         assert_eq!(route_grid(&map), num(&set["grid"]));
         let links: Vec<_> = set["links"].as_array().unwrap().iter().map(common::link).collect();
-        let routes = route_cross_feeding(&map, &links);
+        let routes = route_cross_feeding(&map, &links, cross_feeding_line_width(&map, 1.0));
         let mut actual = serde_json::Map::new();
         for (key, r) in routes.iter() {
             let pts: Vec<Value> = r.points.iter().map(|p| json!({"x": p.x, "y": p.y})).collect();

@@ -825,6 +825,7 @@ impl Store {
         self.refresh_composition_problem()?;
         self.parsimonious = false;
         self.loopless = false;
+        self.cycle_free = false;
         self.omics.gimme_enabled = false;
         self.omics.gimme_result = None;
         let _ = self.set_fva(false);

@@ -144,6 +144,8 @@ pub struct Store {
     pub pfba_biomass_percent: f64,
     /// Exact loopless FBA (MILP).
     pub loopless: bool,
+    /// CycleFreeFlux: the FBA optimum without its cycles (one LP).
+    pub cycle_free: bool,
     pub fva_enabled: bool,
     pub fva_ranges: IndexMap<String, FvaRange>,
     pub fva_progress: FvaProgress,
@@ -174,6 +176,8 @@ pub struct Store {
     /// `{ context, scenario, shared }`: see `unsaved_work()`.
     pub saved_work: Option<SavedWork>,
     pub solution: Option<Arc<Solution>>,
+    /// Set by `clear_solution`: inputs no longer re-solve until an analysis is run.
+    pub solution_cleared: bool,
     pub scale: Option<FluxScale>,
     pub cross_feeding: CrossFeeding,
     pub cross_feeding_explorer: CrossFeedingExplorer,
@@ -273,6 +277,7 @@ impl Store {
             parsimonious: false,
             pfba_biomass_percent: 100.0,
             loopless: false,
+            cycle_free: false,
             fva_enabled: false,
             fva_ranges: IndexMap::new(),
             fva_progress: FvaProgress::default(),
@@ -292,6 +297,7 @@ impl Store {
             model_edits_saved: EditCounts::new(),
             saved_work: None,
             solution: None,
+            solution_cleared: false,
             scale: None,
             cross_feeding: CrossFeeding::default(),
             cross_feeding_explorer: CrossFeedingExplorer::default(),

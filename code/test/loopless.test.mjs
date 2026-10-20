@@ -86,6 +86,32 @@ test('loopless FBA preserves a feasible acyclic pathway optimum', () => {
   assert.equal(loopless.provenOptimal, true);
 });
 
+// A -> B -> C -> A, all irreversible, beside the pathway A -> P that carries the objective.
+function idleIrreversibleCycleModel() {
+  return new Model({
+    id: 'irrev_cycle',
+    compartments: { c: 'cytosol' },
+    metabolites: ['a_c', 'b_c', 'c_c', 'p_c'].map((id) => ({ id, compartment: 'c' })),
+    reactions: [
+      { id: 'EX_a', metabolites: { a_c: -1 }, lower_bound: -10, upper_bound: 1000 },
+      { id: 'R_AB', metabolites: { a_c: -1, b_c: 1 }, lower_bound: 0, upper_bound: 1000 },
+      { id: 'R_BC', metabolites: { b_c: -1, c_c: 1 }, lower_bound: 0, upper_bound: 1000 },
+      { id: 'R_CA', metabolites: { c_c: -1, a_c: 1 }, lower_bound: 0, upper_bound: 1000 },
+      { id: 'R_AP', metabolites: { a_c: -1, p_c: 1 }, lower_bound: 0, upper_bound: 1000 },
+      { id: 'DM_p', metabolites: { p_c: -1 }, lower_bound: 0, upper_bound: 1000, objective_coefficient: 1 },
+    ],
+  });
+}
+
+test('loopless FBA switches off an idle cycle of irreversible reactions instead of failing', () => {
+  const problem = new FluxProblem(idleIrreversibleCycleModel());
+  const result = problem.loopless({ nodeLimit: 1000, timeLimitMs: 2000 });
+  assert.equal(result.status, 'optimal');
+  assert.ok(Math.abs(result.objectiveValue - 10) < 1e-6);
+  assert.equal(result.binaryVariables, 4);
+  for (const rid of ['R_AB', 'R_BC', 'R_CA']) assert.ok(Math.abs(result.fluxes.get(rid)) < 1e-6, rid);
+});
+
 test('reversible internal reactions create MILP binary direction variables', () => {
   const model = feasiblePathwayModel();
   const r = model.reactions.get('R1');

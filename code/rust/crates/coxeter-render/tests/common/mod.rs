@@ -301,6 +301,9 @@ pub fn state_from_spec(spec: &Value) -> RenderState {
     if let Some(v) = get("crossFeedingBases") {
         s.cross_feeding_bases = v.as_array().map(|_| str_set(v));
     }
+    if let Some(v) = get("crossFeedingWidth").filter(|v| v.is_number()) {
+        s.cross_feeding_width = num(v);
+    }
     if let Some(v) = flag("omicsEnabled") {
         s.omics_enabled = v;
     }

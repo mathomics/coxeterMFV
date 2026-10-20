@@ -6,6 +6,8 @@
  * of eight equidistant directions to commit the insertion.
  */
 
+import { formatFlux } from '../render/theme.js';
+
 const esc = (value) => String(value ?? '')
   .replace(/&/g, '&amp;')
   .replace(/</g, '&lt;')
@@ -218,7 +220,8 @@ export function primaryMetabolitesForSide(store, reactionId, side = 'product') {
  * HTML of the Add Reaction panel: a filterable list of `reactionIds` (merged
  * ids), the terminal-metabolite chooser for the selected reaction and the
  * eight-way direction wheel. Position and size are stage pixels, usually from
- * panelPlacement.
+ * panelPlacement. With `fluxes` (reaction id -> flux of the current solution)
+ * every row also shows its reaction's flux.
  */
 export function renderAddReactionPanel({
   store,
@@ -231,6 +234,7 @@ export function renderAddReactionPanel({
   width = ADD_REACTION_PANEL_WIDTH,
   maxHeight = PANEL_HEIGHT,
   terminalMetaboliteId = null,
+  fluxes = null,
 }) {
   const selected = reactionIds.includes(selectedReactionId) ? selectedReactionId : null;
 
@@ -239,15 +243,19 @@ export function renderAddReactionPanel({
         const { label, detail } = reactionListing(store, reactionId);
         const selectedClass = reactionId === selected ? ' is-selected' : '';
         const equation = reactionStoichiometry(store, reactionId);
+        const flux = fluxes
+          ? `<span class="add-reaction-flux" title="Flux in the current solution">${esc(formatFlux(Number(fluxes.get(reactionId) ?? 0), 4))}</span>`
+          : '';
         return `
           <button class="add-reaction-choice${selectedClass}"
             data-select-add-rxn="${esc(reactionId)}"
             data-search="${esc(reactionSearchText(store, reactionId))}"
             type="button"
             aria-pressed="${reactionId === selected ? 'true' : 'false'}">
-            <span class="add-reaction-choice-head">
+            <span class="add-reaction-choice-head${fluxes ? ' has-flux' : ''}">
               <strong>${esc(label)}</strong>
               <span>${esc(detail)}</span>
+              ${flux}
             </span>
             <code class="add-reaction-stoich">${esc(equation)}</code>
           </button>`;

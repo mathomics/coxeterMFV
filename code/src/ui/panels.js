@@ -9,6 +9,7 @@ import {
   compartmentColors, cellCompartmentName, cellCompartmentVisualId,
 } from '../core/compartments.js';
 import { formatFlux } from '../render/theme.js';
+import { CROSSFEED_WIDTH_RANGE } from '../render/crossfeed-routes.js';
 import { COMPARTMENT_SHAPES, compartmentShape } from '../layout/geometry.js';
 import { normalizeHexColor } from '../core/colors.js';
 import { TEXT_FONTS, TEXT_SIZE, DEFAULT_TEXT_FONT } from '../core/text-style.js';
@@ -102,6 +103,7 @@ export function renderTaskPanel(store, ui = {}) {
     const parameters = fixedMu ? 'Abundances are outputs of this solve' : store.omics?.gimmeEnabled
       ? `Objective target: ${Math.round(100 * (store.omics.gimmeObjectiveFraction ?? 0.9))}%`
       : store.loopless ? 'Internal cycles excluded'
+        : store.cycleFree ? 'Internal cycles removed from the FBA optimum'
         : store.parsimonious ? `Biomass target: ${formatPercent(store.pfbaBiomassPercent)}% of optimum`
           : 'Community objective maximisation';
     return `<section class="task-deck task-hub" data-task-hub="analysis">
@@ -114,6 +116,7 @@ export function renderTaskPanel(store, ui = {}) {
         <button data-action="run-pfba" type="button"><strong>pFBA</strong><small>Minimum total flux</small></button>
         <button data-action="run-fva" type="button"${fixedMu ? ' disabled title="Run an ordinary analysis before FVA"' : ''}><strong>FVA</strong><small>Flux ranges</small></button>
         <button data-action="run-loopless" type="button"><strong>Loopless</strong><small>Exclude internal cycles</small></button>
+        <button data-action="run-cyclefree" type="button"><strong>CycleFreeFlux</strong><small>Remove cycles with one LP</small></button>
       </div>
       <nav class="task-links" aria-label="Analysis tools">
         ${link('analysis', '⚙', 'Simulation settings', 'Objective and solver options')}
@@ -151,7 +154,8 @@ function currentAnalysisMethod(store) {
   if (store.solution?.steadyCom) return 'SteadyCom fixed µ';
   const method = store.solution?.gimme || store.omics?.gimmeEnabled ? 'GIMME'
     : store.loopless ? 'Loopless FBA'
-      : store.parsimonious ? 'pFBA' : 'FBA';
+      : store.cycleFree ? 'CycleFreeFlux'
+        : store.parsimonious ? 'pFBA' : 'FBA';
   return store.fvaEnabled && !store.loopless ? `${method} + FVA` : method;
 }
 
@@ -215,6 +219,7 @@ export function renderViewControls(store) {
       ${toggle('toggle-crossfeed', v.showCrossFeeding, 'Highlight cross-feeding', 'Dim the metabolic network and highlight active metabolite transfers between cells')}
     </div>
     ${crossFeedingTopControl(store)}
+    ${crossFeedingWidthControl(store)}
     <label class="view-label-control">Labels
       <select data-action="labels" aria-label="Map labels">
         <option value="auto"${v.labels === 'auto' ? ' selected' : ''}>Major fluxes</option>
@@ -289,7 +294,7 @@ export function renderInspector(store) {
 export function renderResults(store, analysisTab = 'flux', { table = null } = {}) {
   const solution = store.solution;
   const optimal = solution?.status === 'optimal';
-  const mode = solution?.steadyCom ? 'SteadyCom fixed µ' : (solution?.gimme ? 'GIMME' : (store.loopless ? 'Loopless FBA' : (store.parsimonious ? 'pFBA' : (store.fvaEnabled ? 'FVA' : 'FBA'))));
+  const mode = solution?.steadyCom ? 'SteadyCom fixed µ' : (solution?.gimme ? 'GIMME' : (store.loopless ? 'Loopless FBA' : (store.cycleFree ? 'CycleFreeFlux' : (store.parsimonious ? 'pFBA' : (store.fvaEnabled ? 'FVA' : 'FBA')))));
   const statusLabel = optimal ? 'Optimal' : (solution?.status ?? 'Not run');
   const progress = store.fvaProgress ?? {};
   const replayAvailable = Boolean(store.reproducibilityReplay?.replay);
@@ -373,7 +378,7 @@ function tableViewPane(store, table, state) {
 function solverLabel(store) {
   const reported = store.solution?.backend ?? store.solution?.solver;
   if (reported) return reported === 'glpk' ? 'GLPK (WebAssembly)' : reported === 'simplex' ? 'Local simplex.js' : String(reported);
-  if (store.loopless) return 'Local MILP';
+  if (store.loopless) return store.problem?.backend?.() === 'glpk' ? 'GLPK MILP (WebAssembly)' : 'Local MILP';
   const backend = store.problem?.backend?.();
   return backend === 'glpk' ? 'GLPK (WebAssembly)' : backend === 'simplex' ? 'Local simplex.js' : '—';
 }
@@ -696,8 +701,9 @@ function looplessProgressLine(store) {
   if (!solution) return '<p class="hint">Loopless enabled.</p>';
 
   if (solution.status === 'optimal') {
-    return `<p class="hint">Loopless MILP optimal · <strong>${solution.binaryVariables ?? 0}</strong> binaries ·
-      <strong>${solution.nodes ?? 0}</strong> branch-and-bound nodes.</p>`;
+    const nodes = Number.isFinite(solution.nodes)
+      ? ` · <strong>${solution.nodes}</strong> branch-and-bound nodes` : '';
+    return `<p class="hint">Loopless MILP optimal · <strong>${solution.binaryVariables ?? 0}</strong> binaries${nodes}.</p>`;
   }
 
   return `<p class="hint">Loopless: ${esc(solution.message || solution.status)}.</p>`;
@@ -2328,6 +2334,19 @@ function crossFeedingTopControl(store) {
       <span class="hint">of ${all.length}${custom ? ' · picked by hand' : ''}</span>
       <button type="button" data-action="crossfeed-choose" title="Pick the metabolites one by one">Choose…</button>
     </div>`;
+}
+
+/** The cross-feeding line width slider, as a share of the default width. */
+function crossFeedingWidthControl(store) {
+  if (!store.crossFeedingMetabolites().length) return '';
+  const { min, max, step } = CROSSFEED_WIDTH_RANGE;
+  const value = store.view.crossFeedingWidth ?? CROSSFEED_WIDTH_RANGE.default;
+  return `<label class="view-label-control crossfeed-width-control" title="Thickness of the cross-feeding lines. At 100% a line is about as thick as a cell's boundary with the whole map in view; lines side by side keep apart at any width">Cross-feeding line width
+      <span class="crossfeed-width-row">
+        <input class="grow" type="range" min="${min}" max="${max}" step="${step}" data-action="crossfeed-width" value="${esc(value)}" aria-label="Cross-feeding line width">
+        <span data-crossfeed-width-output>${Math.round(value * 100)}%</span>
+      </span>
+    </label>`;
 }
 
 /** One checkbox per exchanged metabolite, grouped, with its lines and flux. */

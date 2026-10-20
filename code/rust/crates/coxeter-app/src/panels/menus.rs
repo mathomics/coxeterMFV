@@ -269,11 +269,18 @@ pub fn show(ctx: &egui::Context, shell: &mut Shell) {
 
 /// The reactions an Add Reaction panel lists, worked out again when the
 /// store has changed.
-fn reaction_listing<'m>(menu: &'m mut MenuState, store: &Store, revision: u64, list: impl FnOnce() -> Vec<String>) -> (&'m [String], &'m [ReactionRow]) {
+fn reaction_listing<'m>(
+    menu: &'m mut MenuState,
+    store: &Store,
+    revision: u64,
+    with_flux: bool,
+    list: impl FnOnce() -> Vec<String>,
+) -> (&'m [String], &'m [ReactionRow]) {
     let fresh = matches!(&menu.cache, Some((r, Listing::Reactions(..))) if *r == revision);
     if !fresh {
         let ids = list();
         let rows = add_reaction::reaction_rows(store, &ids);
+        let rows = if with_flux { add_reaction::with_fluxes(store, rows) } else { rows };
         menu.cache = Some((revision, Listing::Reactions(ids, rows)));
     }
     match &menu.cache {
@@ -301,12 +308,13 @@ fn add_reaction_panel(
     stage: Rect,
     revision: u64,
     subtitle: &str,
+    with_flux: bool,
     list: impl FnOnce() -> Vec<String>,
 ) -> Result<Option<&'static add_reaction::Direction>, ()> {
     if store.community.is_none() {
         return Ok(None);
     }
-    let (ids, rows) = reaction_listing(menu, store, revision, list);
+    let (ids, rows) = reaction_listing(menu, store, revision, with_flux, list);
     let ids = ids.to_vec();
     let rows = rows.to_vec();
     revalidate_selection(menu, &ids);
@@ -367,7 +375,8 @@ fn metabolite_menu(ctx: &egui::Context, store: &Store, menu: &mut MenuState, sta
         .or_else(|| node.merged_id.clone().filter(|l| !l.is_empty()))
         .unwrap_or_else(|| "Selected metabolite".into());
     let subtitle = format!("From {label} · selected metabolite will be reused");
-    match add_reaction_panel(ctx, store, menu, stage, revision, &subtitle, || store.reactions_available_from_metabolite(node_id)) {
+    // The list is ordered by these fluxes (see Store::order_by_flux).
+    match add_reaction_panel(ctx, store, menu, stage, revision, &subtitle, true, || store.reactions_available_from_metabolite(node_id)) {
         Err(()) => Outcome::Close,
         Ok(None) => Outcome::Keep,
         Ok(Some(direction)) => {
@@ -387,7 +396,7 @@ fn metabolite_menu(ctx: &egui::Context, store: &Store, menu: &mut MenuState, sta
 /// `CompartmentMenuController`: `render()` and `handleClick`.
 fn compartment_menu(ctx: &egui::Context, store: &Store, menu: &mut MenuState, stage: Rect, revision: u64, cell_id: &str, compartment_id: &str) -> Outcome {
     let subtitle = format!("{} · all metabolites will be new visual instances", menu.label);
-    match add_reaction_panel(ctx, store, menu, stage, revision, &subtitle, || store.reactions_available_in_compartment(cell_id, compartment_id)) {
+    match add_reaction_panel(ctx, store, menu, stage, revision, &subtitle, false, || store.reactions_available_in_compartment(cell_id, compartment_id)) {
         Err(()) => Outcome::Close,
         Ok(None) => Outcome::Keep,
         Ok(Some(direction)) => {
@@ -410,7 +419,7 @@ fn compartment_menu(ctx: &egui::Context, store: &Store, menu: &mut MenuState, st
 fn boundary_menu(ctx: &egui::Context, store: &Store, menu: &mut MenuState, stage: Rect, revision: u64, boundary_id: &str) -> Outcome {
     let (Some(map), Some(_)) = (store.map.as_ref(), store.community.as_ref()) else { return Outcome::Keep };
     let Some(boundary) = map.boundary(boundary_id) else { return Outcome::Keep };
-    let (ids, _) = reaction_listing(menu, store, revision, || available_for_boundary(store, boundary_id));
+    let (ids, _) = reaction_listing(menu, store, revision, false, || available_for_boundary(store, boundary_id));
     let ids = ids.to_vec();
     let p = Palette::current(ctx);
     let (stage_w, stage_h) = (stage.width() as f64, stage.height() as f64);

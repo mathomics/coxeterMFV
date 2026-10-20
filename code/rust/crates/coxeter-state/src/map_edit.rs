@@ -1713,17 +1713,33 @@ impl Store {
     }
 
     /// `reactionsAvailableFromMetabolite(nodeId)`: reactions of the model
-    /// that touch a drawn metabolite but are not drawn yet.
+    /// that touch a drawn metabolite but are not drawn yet, in the order of
+    /// [`Store::order_by_flux`].
     pub fn reactions_available_from_metabolite(&self, node_id: &str) -> Vec<String> {
         let (Some(map), Some(community)) = (self.map.as_ref(), self.community.as_ref()) else { return Vec::new() };
         let Some(merged) = map.node(node_id).and_then(|n| n.merged_id.clone()).filter(|m| !m.is_empty()) else { return Vec::new() };
-        community
+        let out = community
             .merged
             .reactions
             .iter()
             .filter(|(rid, r)| !map.has_reaction(rid) && r.metabolites.contains_key(&merged))
             .map(|(rid, _)| rid.clone())
-            .collect()
+            .collect();
+        self.order_by_flux(out)
+    }
+
+    /// `orderByFlux(reactionIds)`: those that carry flux in the current
+    /// optimal solution first, largest |flux| first. The others keep their
+    /// order behind them, and without a solution the list is returned as it is.
+    pub fn order_by_flux(&self, mut reaction_ids: Vec<String>) -> Vec<String> {
+        let Some(solution) = self.solution.as_ref().filter(|s| s.is_optimal()) else { return reaction_ids };
+        let size = |id: &String| {
+            let value = solution.fluxes.get(id).copied().unwrap_or(0.0).abs();
+            if value > 1e-9 { value } else { 0.0 }
+        };
+        // A stable sort, so equal sizes, zero among them, keep their order.
+        reaction_ids.sort_by(|a, b| size(b).partial_cmp(&size(a)).unwrap_or(std::cmp::Ordering::Equal));
+        reaction_ids
     }
 
     /// `metabolitesAvailableInCompartment(cellId, compartmentId)`.

@@ -143,6 +143,9 @@ pub struct RenderState {
     pub cross_feeding_explorer: Option<CrossFeedingExplorerView>,
     /// The exchanged metabolites whose lines are drawn (`None`: all).
     pub cross_feeding_bases: Option<HashSet<String>>,
+    /// Cross-feeding line width, as a multiple of the default
+    /// (see [`crate::crossfeed_routes::cross_feeding_line_width`]).
+    pub cross_feeding_width: f64,
     pub omics_enabled: bool,
     pub omics_colors: HashMap<String, String>,
     /// `None`: the scheme's grey (`#475569` dark, `#cbd5e1` light).
@@ -205,6 +208,7 @@ impl Default for RenderState {
             show_cross_feeding: false,
             cross_feeding_explorer: None,
             cross_feeding_bases: None,
+            cross_feeding_width: 1.0,
             omics_enabled: false,
             omics_colors: HashMap::new(),
             omics_fallback_color: None,

@@ -121,6 +121,9 @@ impl Store {
         if let Some(x) = patch.cross_feeding_shown {
             v.cross_feeding_shown = x;
         }
+        if let Some(x) = patch.cross_feeding_width {
+            v.cross_feeding_width = cross_feeding_width_value(x, v.cross_feeding_width);
+        }
         if let Some(x) = patch.dark {
             v.dark = x;
         }
@@ -148,4 +151,11 @@ impl Store {
         self.emit("view");
         Ok(())
     }
+}
+
+/// `crossFeedingWidthValue(value, fallback)`: a cross-feeding line width
+/// multiple inside the slider's range, or `fallback` for one that is not a number.
+pub(crate) fn cross_feeding_width_value(value: f64, fallback: f64) -> f64 {
+    let range = &coxeter_render::crossfeed_routes::CROSSFEED_WIDTH_RANGE;
+    crate::util::clamp_number(value, range.min, range.max, fallback)
 }

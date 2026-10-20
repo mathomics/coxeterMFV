@@ -71,8 +71,16 @@ pub struct LooplessInfo {
     pub proven_optimal: bool,
 }
 
-/// The result of [`FluxProblem::optimize`], [`FluxProblem::parsimonious`] or
-/// [`FluxProblem::loopless`]: the JS result object.
+/// Extra fields of a CycleFreeFlux solve: the total internal flux, Σ |v_j|
+/// over the internal reactions, after the cycles were removed and before.
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct CycleFreeInfo {
+    pub internal_flux: f64,
+    pub internal_flux_before: f64,
+}
+
+/// The result of [`FluxProblem::optimize`], [`FluxProblem::parsimonious`],
+/// [`FluxProblem::cycle_free`] or [`FluxProblem::loopless`]: the JS result object.
 #[derive(Debug, Clone)]
 pub struct FluxResult {
     pub status: LpStatus,
@@ -94,6 +102,8 @@ pub struct FluxResult {
     pub total_flux: Option<f64>,
     /// Loopless FBA only.
     pub loopless: Option<LooplessInfo>,
+    /// CycleFreeFlux only.
+    pub cycle_free: Option<CycleFreeInfo>,
     /// The solver that found it.
     pub solver: SolverKind,
 }
@@ -149,6 +159,21 @@ pub struct PfbaOptions {
 impl Default for PfbaOptions {
     fn default() -> Self {
         PfbaOptions { fraction: 1.0, maximize: true }
+    }
+}
+
+/// Options of [`FluxProblem::cycle_free`].
+#[derive(Debug, Clone)]
+pub struct CycleFreeOptions {
+    pub maximize: bool,
+    /// An FBA optimum to free of its cycles in place of the one the solver
+    /// returns (reaction id → flux).
+    pub fluxes: Option<IndexMap<String, f64>>,
+}
+
+impl Default for CycleFreeOptions {
+    fn default() -> Self {
+        CycleFreeOptions { maximize: true, fluxes: None }
     }
 }
 
@@ -436,15 +461,21 @@ impl FluxProblem {
             message: res.message,
             total_flux: None,
             loopless: None,
+            cycle_free: None,
             solver: self.solver.kind(),
         }
     }
 
-    /// Exact loopless FBA using the standard thermodynamic MILP formulation.
+    /// Exact loopless FBA using the standard thermodynamic MILP formulation
+    /// (ll-FBA, Schellenberger, Lewis & Palsson 2011).
     ///
-    /// Internal reversible reactions receive a binary direction variable.
-    /// Chemical potential variables enforce a feasible sign of ΔG for every
-    /// active internal direction. Boundary exchanges, sinks, biomass and the
+    /// Every internal reaction that can carry flux receives a binary direction
+    /// variable a: a = 1 allows forward flux and requires ΔG ≤ -ε, a = 0 allows
+    /// reverse flux and requires ΔG ≥ ε. Irreversible reactions get one too,
+    /// because a fixed sign of ΔG would make any cycle of them infeasible even
+    /// when the cycle carries no flux; with the binary, a = 0 (or a = 1 for a
+    /// reverse-only reaction) switches the flux off instead. Chemical potential
+    /// variables carry the ΔG. Boundary exchanges, sinks, biomass and the
     /// virtual community growth link are excluded from the thermodynamic
     /// constraints.
     ///
@@ -496,22 +527,21 @@ impl FluxProblem {
                 loopless_internal_reactions: built.internal_count,
                 proven_optimal: result.proven_optimal,
             }),
+            cycle_free: None,
             solver: self.solver.kind(),
         }
     }
 
     /// `_looplessProblem`: fluxes, then one potential per metabolite, then one
-    /// binary per reversible internal reaction, then one slack per inequality.
+    /// binary per internal reaction that can carry flux.
+    ///
+    /// The inequalities are ranged rows, where the JS adds a slack column to
+    /// each: on the slack form of a five-species community HiGHS can search for
+    /// minutes, on this one it finds the optimum at the root node.
     pub fn loopless_problem(&self, maximize: bool, epsilon: f64, big_m: f64) -> LooplessProblem {
-        #[derive(PartialEq)]
-        enum Dir {
-            Reversible,
-            Forward,
-            Reverse,
-        }
         let n = self.rxn_ids.len();
         let m = self.met_ids.len();
-        let mut internal: Vec<(usize, f64, f64, Dir)> = Vec::new();
+        let mut internal: Vec<(usize, f64, f64)> = Vec::new();
         for j in 0..n {
             if !self.internal[j] {
                 continue;
@@ -520,28 +550,25 @@ impl FluxProblem {
             if lower.abs() < 1e-12 && upper.abs() < 1e-12 {
                 continue;
             }
-            let dir = if lower < 0.0 && upper > 0.0 {
-                Dir::Reversible
-            } else if upper > 0.0 {
-                Dir::Forward
-            } else if lower < 0.0 {
-                Dir::Reverse
-            } else {
+            if upper <= 0.0 && lower >= 0.0 {
                 continue;
-            };
-            internal.push((j, lower, upper, dir));
+            }
+            internal.push((j, lower, upper));
         }
-        let inequality_rows: usize = internal.iter().map(|x| if x.3 == Dir::Reversible { 4 } else { 1 }).sum();
+        // Two ΔG rows per reaction, plus a flux row for each direction it can run.
+        let inequality_rows: usize = internal
+            .iter()
+            .map(|&(_, lower, upper)| 2 + usize::from(upper > 0.0) + usize::from(lower < 0.0))
+            .sum();
         let rows = m + inequality_rows;
-        let reversible_count = internal.iter().filter(|x| x.3 == Dir::Reversible).count();
         let flux_offset = 0;
         let mu_offset = n;
         let binary_offset = mu_offset + m;
-        let slack_offset = binary_offset + reversible_count;
-        let cols = slack_offset + inequality_rows;
+        let cols = binary_offset + internal.len();
 
         let mut a = SparseColumns::new(rows, cols);
-        let mut b = vec![0.0; rows];
+        let mut row_lower = vec![0.0; rows];
+        let mut row_upper = vec![0.0; rows];
         let mut c = vec![0.0; cols];
         let mut lb = vec![0.0; cols];
         let mut ub = vec![0.0; cols];
@@ -557,78 +584,60 @@ impl FluxProblem {
             lb[mu_offset + i] = -big_m;
             ub[mu_offset + i] = big_m;
         }
-        let mut binary_indices = Vec::new();
-        let mut binary_by_reaction: HashMap<usize, usize> = HashMap::new();
-        for (index, item) in internal.iter().filter(|x| x.3 == Dir::Reversible).enumerate() {
+        let mut binary_indices = Vec::with_capacity(internal.len());
+        for index in 0..internal.len() {
             let col = binary_offset + index;
             binary_indices.push(col);
-            binary_by_reaction.insert(item.0, col);
             lb[col] = 0.0;
             ub[col] = 1.0;
         }
 
         let mut row = m;
-        let mut slack = slack_offset;
         let add_potential = |a: &mut SparseColumns, target_row: usize, reaction: usize| {
             for &(met_row, v) in self.a.column(reaction) {
                 a.add(target_row, mu_offset + met_row, v);
             }
         };
-        let mut add_slack = |a: &mut SparseColumns, lb: &mut [f64], ub: &mut [f64], target_row: usize, sign: f64| {
-            a.add(target_row, slack, sign);
-            lb[slack] = 0.0;
-            ub[slack] = f64::INFINITY;
-            slack += 1;
+        let mut at_most = |row: &mut usize, bound: f64| {
+            row_lower[*row] = f64::NEG_INFINITY;
+            row_upper[*row] = bound;
+            *row += 1;
         };
-
-        for (j, lower, upper, dir) in &internal {
-            let j = *j;
-            match dir {
-                Dir::Reversible => {
-                    let y = binary_by_reaction[&j];
-                    // v <= U y
-                    a.add(row, flux_offset + j, 1.0);
-                    a.add(row, y, -upper.max(0.0));
-                    add_slack(&mut a, &mut lb, &mut ub, row, 1.0);
-                    b[row] = 0.0;
-                    row += 1;
-                    // v >= L (1-y)  =>  v + L y - s = L
-                    a.add(row, flux_offset + j, 1.0);
-                    a.add(row, y, *lower);
-                    add_slack(&mut a, &mut lb, &mut ub, row, -1.0);
-                    b[row] = *lower;
-                    row += 1;
-                    // ΔG <= M - (M+eps)y
-                    add_potential(&mut a, row, j);
-                    a.add(row, y, big_m + epsilon);
-                    add_slack(&mut a, &mut lb, &mut ub, row, 1.0);
-                    b[row] = big_m;
-                    row += 1;
-                    // ΔG >= eps - (M+eps)y
-                    add_potential(&mut a, row, j);
-                    a.add(row, y, big_m + epsilon);
-                    add_slack(&mut a, &mut lb, &mut ub, row, -1.0);
-                    b[row] = epsilon;
-                    row += 1;
-                }
-                Dir::Forward => {
-                    // Fixed forward direction: ΔG <= -eps.
-                    add_potential(&mut a, row, j);
-                    add_slack(&mut a, &mut lb, &mut ub, row, 1.0);
-                    b[row] = -epsilon;
-                    row += 1;
-                }
-                Dir::Reverse => {
-                    // Fixed reverse direction: ΔG >= eps.
-                    add_potential(&mut a, row, j);
-                    add_slack(&mut a, &mut lb, &mut ub, row, -1.0);
-                    b[row] = epsilon;
-                    row += 1;
-                }
+        for (&(j, lower, upper), &y) in internal.iter().zip(&binary_indices) {
+            // v <= U y; for a reverse-only reaction U = 0 and the bound already says it.
+            if upper > 0.0 {
+                a.add(row, flux_offset + j, 1.0);
+                a.add(row, y, -upper);
+                at_most(&mut row, 0.0);
             }
+            // v >= L (1-y), as -v - L y <= -L; for a forward-only reaction L = 0.
+            if lower < 0.0 {
+                a.add(row, flux_offset + j, -1.0);
+                a.add(row, y, -lower);
+                at_most(&mut row, -lower);
+            }
+            // ΔG <= M - (M+eps)y
+            add_potential(&mut a, row, j);
+            a.add(row, y, big_m + epsilon);
+            at_most(&mut row, big_m);
+            // ΔG >= eps - (M+eps)y, as -ΔG - (M+eps)y <= -eps
+            for &(met_row, v) in self.a.column(j) {
+                a.add(row, mu_offset + met_row, -v);
+            }
+            a.add(row, y, -(big_m + epsilon));
+            at_most(&mut row, -epsilon);
         }
         LooplessProblem {
-            problem: LpProblem::equality(a, &b, c, lb, ub, maximize),
+            problem: LpProblem {
+                a,
+                row_lower,
+                row_upper,
+                cost: c,
+                col_lower: lb,
+                col_upper: ub,
+                maximize,
+                integer: Vec::new(),
+            },
             binary_indices,
             internal_count: internal.len(),
         }
@@ -704,6 +713,92 @@ impl FluxProblem {
             message: String::new(),
             total_flux: Some(res.objective),
             loopless: None,
+            cycle_free: None,
+            solver: self.solver.kind(),
+        }
+    }
+
+    /// CycleFreeFlux (Desouki, Jarre, Gelius-Dietrich & Lercher 2015): the FBA
+    /// optimum v* with its internal cycles removed, by one LP instead of the
+    /// loopless MILP.
+    ///
+    /// Every boundary reaction (what loopless leaves out: exchanges, sinks,
+    /// biomass, the community growth link) and every reaction in the objective
+    /// is held at v*. Every internal reaction stays between 0 and v*_j, inside
+    /// its own bounds, and the LP minimises the internal flux Σ sign(v*_j) v_j,
+    /// which is Σ |v_j| there. A cycle carries flux without changing any
+    /// exchange, so the least total flux runs none, and the objective and the
+    /// exchanges are those of v*.
+    ///
+    /// The result is an optimum of the FBA LP too, so the duals of the FBA
+    /// solved first are reported for it. `opts.fluxes` is an FBA optimum to
+    /// free of its cycles in place of the one the solver returns.
+    pub fn cycle_free(&self, opts: &CycleFreeOptions) -> FluxResult {
+        let first = self.optimize_with(opts.maximize);
+        if first.status != LpStatus::Optimal {
+            return first;
+        }
+        let start = opts.fluxes.as_ref().unwrap_or(&first.fluxes);
+        let n = self.rxn_ids.len();
+        let mut lb = vec![0.0; n];
+        let mut ub = vec![0.0; n];
+        let mut c = vec![0.0; n];
+        let mut internal = vec![false; n];
+        let mut internal_flux_before = 0.0;
+        for (j, rid) in self.rxn_ids.iter().enumerate() {
+            let v = start.get(rid).copied().unwrap_or(0.0);
+            if self.c[j] == 0.0 && self.internal[j] {
+                internal[j] = true;
+                internal_flux_before += v.abs();
+                lb[j] = js::max(self.lb[j], js::min(0.0, v));
+                ub[j] = js::min(self.ub[j], js::max(0.0, v));
+                c[j] = if v > 0.0 { 1.0 } else if v < 0.0 { -1.0 } else { 0.0 };
+            } else {
+                lb[j] = v;
+                ub[j] = v;
+            }
+        }
+        let res = self.solver.solve(&LpProblem::equality(self.a.clone(), &self.b, c, lb, ub, false), &SolveOptions::default());
+        if res.status != LpStatus::Optimal {
+            let status = res.status;
+            return FluxResult {
+                message: format!("CycleFreeFlux could not remove the cycles ({}); the FBA solution is shown.", status.as_str()),
+                ..first
+            };
+        }
+        let x = res.x.as_deref().unwrap_or(&[]);
+        let mut fluxes = IndexMap::new();
+        let mut internal_flux = 0.0;
+        for (j, rid) in self.rxn_ids.iter().enumerate() {
+            let v = if x[j].abs() < 1e-9 { 0.0 } else { x[j] };
+            fluxes.insert(rid.clone(), v);
+            if internal[j] {
+                internal_flux += v.abs();
+            }
+        }
+        let mut objective_value = 0.0;
+        for (j, rid) in self.rxn_ids.iter().enumerate() {
+            objective_value += self.c[j] * fluxes[rid];
+        }
+        FluxResult {
+            status: LpStatus::Optimal,
+            objective_value,
+            fluxes,
+            shadow_prices: first.shadow_prices,
+            reduced_costs: first.reduced_costs,
+            scaled_reduced_costs: first.scaled_reduced_costs,
+            reduced_cost_scale: first.reduced_cost_scale,
+            dual_analysis: DualAnalysis {
+                available: true,
+                source: Some("primary FBA optimum".into()),
+                interpretation: Some("primary objective before the cycles were removed".into()),
+                reason: None,
+            },
+            iterations: first.iterations + res.iterations,
+            message: String::new(),
+            total_flux: None,
+            loopless: None,
+            cycle_free: Some(CycleFreeInfo { internal_flux, internal_flux_before }),
             solver: self.solver.kind(),
         }
     }
@@ -912,6 +1007,11 @@ pub fn fba(model: &Model) -> FluxResult {
 /// One-shot pFBA.
 pub fn pfba(model: &Model, opts: PfbaOptions) -> FluxResult {
     FluxProblem::new(model).parsimonious(opts)
+}
+
+/// One-shot CycleFreeFlux.
+pub fn cycle_free_flux(model: &Model, opts: &CycleFreeOptions) -> FluxResult {
+    FluxProblem::new(model).cycle_free(opts)
 }
 
 /// One-shot loopless FBA.

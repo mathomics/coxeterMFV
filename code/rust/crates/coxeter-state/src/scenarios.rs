@@ -88,6 +88,7 @@ impl Store {
     /// `useScenario(id)`: load a named scenario and rebuild everything.
     pub fn use_scenario(&mut self, id: &str) -> Result<()> {
         self.reset_zuniga_study();
+        self.solution_cleared = false;
         self.invalidate_steady_com();
         self.steady_com_config = SteadyComConfig::default();
         self.published_community_id = None;
@@ -115,10 +116,11 @@ impl Store {
         };
         self.pfba_biomass_percent = normalize_pfba_percent(percent);
         self.loopless = flag(&scenario, &["loopless", "looplessFba"]);
-        if self.loopless {
+        self.cycle_free = !self.loopless && flag(&scenario, &["cycleFree"]);
+        if self.loopless || self.cycle_free {
             self.parsimonious = false;
         }
-        self.fva_enabled = !self.loopless && flag(&scenario, &["fvaEnabled", "fva"]);
+        self.fva_enabled = !self.loopless && !self.cycle_free && flag(&scenario, &["fvaEnabled", "fva"]);
         self.fva_ranges = IndexMap::new();
         self.fva_progress = FvaProgress::default();
         self.medium = medium_of(scenario.get("medium"));
@@ -170,6 +172,7 @@ impl Store {
 
     fn install_imported_models(&mut self, prepared: PreparedImport) -> Result<ImportReport> {
         self.reset_zuniga_study();
+        self.solution_cleared = false;
         for key in std::mem::take(&mut self.uploaded_model_keys) {
             self.models.remove(&key);
         }
@@ -215,6 +218,7 @@ impl Store {
         self.parsimonious = false;
         self.pfba_biomass_percent = 100.0;
         self.loopless = false;
+        self.cycle_free = false;
         self.fva_enabled = false;
         self.fva_ranges = IndexMap::new();
         self.fva_progress = FvaProgress::default();
@@ -303,6 +307,7 @@ impl Store {
     /// fetcher, then [`Store::install_yeast9`].
     pub fn use_yeast9_scenario(&mut self, scenario: Value) -> Result<ImportReport> {
         self.reset_zuniga_study();
+        self.solution_cleared = false;
         self.set_status_message(StatusState::Busy, format!("Downloading official Yeast9 {}…", YEAST9_SOURCE.version));
         self.emit("status");
         let response = self.fetcher.fetch(YEAST9_SOURCE.url)?;
@@ -322,6 +327,7 @@ impl Store {
     /// against a scenario opened meanwhile: the download was asked for.
     pub fn start_yeast9_scenario(&mut self, scenario: Value) {
         self.reset_zuniga_study();
+        self.solution_cleared = false;
         self.set_status_message(StatusState::Busy, format!("Downloading official Yeast9 {}…", YEAST9_SOURCE.version));
         self.emit("status");
         let fetcher = self.fetcher.clone();
@@ -357,6 +363,7 @@ impl Store {
     /// that downloads it itself calls this directly).
     pub fn install_yeast9(&mut self, scenario: Value, text: &str) -> Result<ImportReport> {
         self.reset_zuniga_study();
+        self.solution_cleared = false;
         let prepared = prepare_imported_models(&[ImportFile { name: YEAST9_SOURCE.filename.into(), text: text.into() }])?;
         let Some(entry) = prepared.entries.into_iter().next() else {
             return Err(StoreError::msg("Yeast9 import produced no model."));
@@ -382,6 +389,7 @@ impl Store {
         self.pfba_biomass_percent =
             normalize_pfba_percent(field(&scenario, "pfbaBiomassPercent").map_or(100.0, |p| js::to_number(&p)));
         self.loopless = false;
+        self.cycle_free = false;
         self.fva_enabled = false;
         self.fva_ranges = IndexMap::new();
         self.fva_progress = FvaProgress::default();
@@ -510,6 +518,7 @@ impl Store {
             return self.use_zuniga_study(None, None);
         }
         self.reset_zuniga_study();
+        self.solution_cleared = false;
         self.invalidate_steady_com();
         self.steady_com_config = SteadyComConfig::default();
         let Some(community) = self.published_communities.iter().find(|c| c.get("id").and_then(Value::as_str) == Some(id)).cloned()
@@ -562,6 +571,7 @@ impl Store {
         self.parsimonious = false;
         self.pfba_biomass_percent = 100.0;
         self.loopless = false;
+        self.cycle_free = false;
         self.fva_enabled = false;
         self.fva_ranges = IndexMap::new();
         self.fva_progress = FvaProgress::default();

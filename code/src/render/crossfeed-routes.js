@@ -45,6 +45,33 @@ export function routeGrid(layout) {
 }
 
 /**
+ * The slider's range for the cross-feeding line width, as a multiple of the
+ * default. Wider than 1.5 the lanes no longer fit the corridors between the
+ * cells of a crowded map, and lines are pushed into each other's lanes.
+ */
+export const CROSSFEED_WIDTH_RANGE = Object.freeze({ min: 0.25, max: 1.5, step: 0.05, default: 1 });
+
+/**
+ * How wide a cross-feeding line is drawn, in map units, at `scale` times the
+ * default. The default is 0.8 of the routing grid, which with the whole map in
+ * view is about as thick on screen as a cell's boundary.
+ */
+export function crossFeedingLineWidth(layout, scale = CROSSFEED_WIDTH_RANGE.default) {
+  const s = Number(scale);
+  const k = Number.isFinite(s) ? Math.max(CROSSFEED_WIDTH_RANGE.min, Math.min(CROSSFEED_WIDTH_RANGE.max, s)) : 1;
+  return 0.8 * routeGrid(layout) * k;
+}
+
+/**
+ * Distance between neighbouring lanes, in map units: half a line's width of
+ * gap between two lines side by side, and never closer than 0.6 grid, so thin
+ * lines keep the bundles they always had.
+ */
+export function laneSpacing(grid, lineWidth) {
+  return Math.round(Math.max(0.6 * grid, 1.5 * (Number(lineWidth) || 0)));
+}
+
+/**
  * The medium node each cell exchanges a metabolite through, keyed
  * `${cellId}|${base}`, with the outward normal of the membrane it faces and
  * how far out from it the node sits.
@@ -90,12 +117,14 @@ function outwardNormal(rect, p) {
  *
  * @param {object} layout the map being drawn
  * @param {{from: string, to: string, base: string}[]} links
+ * @param {{lineWidth?: number}} [options] width the lines are drawn at, in map
+ *   units (default crossFeedingLineWidth), which sets how far apart lanes are
  * @returns {Map<string, {points: {x:number,y:number}[], start: object, end: object}>}
  *   keyed `${from}|${base}|${to}`. `points` runs from node centre to node
  *   centre through the corners, and `start` and `end` are the nodes with their
  *   outward normals. A link left out could not be routed.
  */
-export function routeCrossFeeding(layout, links) {
+export function routeCrossFeeding(layout, links, { lineWidth = crossFeedingLineWidth(layout) } = {}) {
   const endpoints = mediumEndpoints(layout);
   const cells = (layout.cells ?? []).filter((c) => c.rect);
   const wanted = [];
@@ -107,11 +136,12 @@ export function routeCrossFeeding(layout, links) {
     wanted.push({ key: `${link.from}|${link.base}|${link.to}`, a, b });
   }
   wanted.sort((p, q) => (p.key < q.key ? -1 : p.key > q.key ? 1 : 0));
-  const key = layout.width + 'x' + layout.height + ';'
+  const lane = laneSpacing(routeGrid(layout), lineWidth);
+  const key = layout.width + 'x' + layout.height + ';' + lane + ';'
     + cells.map((c) => `${c.id}:${c.rect.x},${c.rect.y},${c.rect.w},${c.rect.h}`).join(';') + ';'
     + wanted.map((w) => `${w.key}@${Math.round(w.a.x)},${Math.round(w.a.y)},${Math.round(w.b.x)},${Math.round(w.b.y)}`).join(';');
   if (cache.key === key) return cache.routes;
-  const routes = computeRoutes(layout, cells, wanted, endpoints);
+  const routes = computeRoutes(layout, cells, wanted, endpoints, lane);
   cache = { key, routes };
   return routes;
 }
@@ -249,11 +279,10 @@ function search(grid, buf, start, startDir, goal, goalDir, extra) {
   return null;
 }
 
-function computeRoutes(layout, cells, wanted, endpoints) {
+function computeRoutes(layout, cells, wanted, endpoints, lane) {
   const routes = new Map();
   if (!wanted.length) return routes;
   const G = routeGrid(layout);
-  const LANE = Math.round(0.6 * G);
   // How far out the medium nodes sit. The lines keep further out than that.
   const gaps = [...endpoints.values()].map((e) => e.gap).filter((x) => x > 0).sort((p, q) => p - q);
   const nodeGap = gaps.length ? gaps[Math.floor(gaps.length / 2)] : 0;
@@ -267,7 +296,7 @@ function computeRoutes(layout, cells, wanted, endpoints) {
   // Lines through each coarse cell, per axis, against the lanes there is room
   // for. Later lines spread to quieter corridors and leave full ones alone.
   const crowd = [new Uint16Array(coarse.n), new Uint16Array(coarse.n)];
-  const sections = crossSections(coarse, margin, LANE);
+  const sections = crossSections(coarse, margin, lane);
   const used = [new Uint16Array(sections.lanes[0].length), new Uint16Array(sections.lanes[1].length)];
   const price = (c, d) => {
     const a = d & 1;
@@ -350,7 +379,7 @@ function computeRoutes(layout, cells, wanted, endpoints) {
   };
   const placed = [[], []];
   const clashes = (r, coord, lo, hi) => placed[r.axis].filter((e) => e.run !== r
-    && Math.abs(e.coord - coord) < LANE * 0.95 && e.lo < hi + LANE / 2 && lo < e.hi + LANE / 2).length;
+    && Math.abs(e.coord - coord) < lane * 0.95 && e.lo < hi + lane / 2 && lo < e.hi + lane / 2).length;
   const conflicts = (r, coord, lo, hi) => clashes(r, coord, lo, hi) > 0;
   const open = (axis, coord, lo, hi) => {
     for (let t = lo; t <= hi + 1e-6; t += G / 2) {
@@ -392,7 +421,7 @@ function computeRoutes(layout, cells, wanted, endpoints) {
     let fallback = null;
     let fewest = Infinity;
     for (let k = 0; k <= 2 * MAX_LANE && best === null; k++) {
-      const coord = r.want + offset(k) * LANE;
+      const coord = r.want + offset(k) * lane;
       if (!open(r.axis, coord, lo, hi)) continue;
       const n = clashes(r, coord, lo, hi);
       if (n === 0) best = coord;

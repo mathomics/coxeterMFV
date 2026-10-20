@@ -10,7 +10,9 @@ use std::sync::{Arc, Mutex};
 use coxeter_core::community::CrossFeedingLink;
 use coxeter_core::mapdata::{MapData, MapGraph, Node, NodeKind, Point};
 use coxeter_core::testkit::repo_root;
-use coxeter_render::crossfeed_routes::{is_drawn_cross_feeding_base, medium_endpoints, route_cross_feeding};
+use coxeter_render::crossfeed_routes::{
+    CROSSFEED_WIDTH_RANGE, cross_feeding_line_width, is_drawn_cross_feeding_base, medium_endpoints, route_cross_feeding,
+};
 use coxeter_render::reaction_colors::{ReactionColorMode, build_reaction_coloring, reaction_category};
 use coxeter_render::reaction_path::{endpoint_node_radius, reaction_endpoint_geometry};
 use coxeter_render::theme::{FluxColorStop, FluxScale, FluxScaleOptions, normalize_flux_color_stops, normalize_flux_color_stops_value};
@@ -273,7 +275,7 @@ fn a_cross_feeding_line_runs_from_the_producers_medium_node_to_the_consumers_out
         &m,
         &[("Bt", "ac", "Fp"), ("St", "lac-L", "Bt"), ("Kp", "nh4", "St"), ("Ef", "gln-L", "Lc"), ("Ec", "asp-L", "Ef"), ("Bt", "h", "Fp")],
     );
-    let routes = route_cross_feeding(&m, &links);
+    let routes = route_cross_feeding(&m, &links, cross_feeding_line_width(&m, 1.0));
     assert!(!routes.contains_key("Bt|h|Fp"), "no line for protons");
     let inside = |p: Point, r: &coxeter_core::mapdata::Rect| p.x > r.x && p.x < r.x + r.w && p.y > r.y && p.y < r.y + r.h;
     for link in links.iter().filter(|l| l.base != "h") {
@@ -306,9 +308,48 @@ fn routes_are_reused_while_the_same_links_exist() {
     let _turn = ROUTING.lock().unwrap_or_else(|e| e.into_inner());
     let m = gut9();
     let links = links_of(&m, &[("Bt", "ac", "Fp"), ("St", "lac-L", "Bt")]);
-    let first = route_cross_feeding(&m, &links);
-    let again = route_cross_feeding(&m, &links.iter().map(|l| CrossFeedingLink { flux: 7.0, ..l.clone() }).collect::<Vec<_>>());
+    let width = cross_feeding_line_width(&m, 1.0);
+    let first = route_cross_feeding(&m, &links, width);
+    let again = route_cross_feeding(&m, &links.iter().map(|l| CrossFeedingLink { flux: 7.0, ..l.clone() }).collect::<Vec<_>>(), width);
     assert!(Arc::ptr_eq(&first, &again), "a new flux does not re-route");
+}
+
+#[test]
+fn lanes_spread_with_the_chosen_line_width_so_bundled_lines_never_overlap() {
+    let _turn = ROUTING.lock().unwrap_or_else(|e| e.into_inner());
+    let m = gut9();
+    let links = links_of(
+        &m,
+        &[
+            ("Bt", "ac", "Fp"), ("St", "lac-L", "Bt"), ("Kp", "nh4", "St"), ("Ef", "gln-L", "Lc"), ("Ec", "asp-L", "Ef"),
+            ("Bt", "succ", "Er"), ("Fp", "but", "Ec"), ("Lc", "lac-L", "Er"),
+        ],
+    );
+    for scale in [CROSSFEED_WIDTH_RANGE.min, CROSSFEED_WIDTH_RANGE.default, CROSSFEED_WIDTH_RANGE.max] {
+        let width = cross_feeding_line_width(&m, scale);
+        let routes = route_cross_feeding(&m, &links, width);
+        assert_eq!(routes.len(), links.len(), "every link is routed at {scale}×");
+        // the runs between the first and last corners: the ends sit on their nodes
+        let mut runs = Vec::new();
+        for (key, route) in routes.iter() {
+            let p = &route.points;
+            for i in 1..p.len().saturating_sub(2) {
+                let (a, b) = (p[i], p[i + 1]);
+                let horizontal = (a.y - b.y).abs() < 1e-6;
+                let (at, lo, hi) = if horizontal { (a.y, a.x.min(b.x), a.x.max(b.x)) } else { (a.x, a.y.min(b.y), a.y.max(b.y)) };
+                runs.push((key.clone(), horizontal, at, lo, hi));
+            }
+        }
+        for a in &runs {
+            for b in &runs {
+                if a.0 >= b.0 || a.1 != b.1 || a.4.min(b.4) - a.3.max(b.3) <= width {
+                    continue;
+                }
+                assert!((a.2 - b.2).abs() >= width, "{} and {} overlap at {scale}×", a.0, b.0);
+            }
+        }
+    }
+    assert_eq!(cross_feeding_line_width(&m, 9.0), cross_feeding_line_width(&m, CROSSFEED_WIDTH_RANGE.max), "the width stays in range");
 }
 
 // flux-color-stops

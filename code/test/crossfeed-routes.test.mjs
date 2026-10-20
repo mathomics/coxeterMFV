@@ -3,7 +3,9 @@ import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { isDrawnCrossFeedingBase, mediumEndpoints, routeAnchor, routeCrossFeeding } from '../src/render/crossfeed-routes.js';
+import {
+  CROSSFEED_WIDTH_RANGE, crossFeedingLineWidth, isDrawnCrossFeedingBase, mediumEndpoints, routeAnchor, routeCrossFeeding,
+} from '../src/render/crossfeed-routes.js';
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..');
 
@@ -77,4 +79,30 @@ test("a picked line's name is pinned where it was clicked, or mid-way along its 
   assert.deepEqual(routeAnchor(line, { x: 250, y: 130 }), { x: 250, y: 100 });
   assert.deepEqual(routeAnchor(line, { x: -20, y: 40 }), { x: 0, y: 40 });
   assert.deepEqual(routeAnchor(line), { x: 200, y: 100 });
+});
+
+test('lanes spread with the chosen line width, so bundled lines never overlap', async () => {
+  const layout = await gut9();
+  const links = linksOf(layout, [
+    ['Bt', 'ac', 'Fp'], ['St', 'lac-L', 'Bt'], ['Kp', 'nh4', 'St'], ['Ef', 'gln-L', 'Lc'], ['Ec', 'asp-L', 'Ef'],
+    ['Bt', 'succ', 'Er'], ['Fp', 'but', 'Ec'], ['Lc', 'lac-L', 'Er'],
+  ]);
+  for (const scale of [CROSSFEED_WIDTH_RANGE.min, CROSSFEED_WIDTH_RANGE.default, CROSSFEED_WIDTH_RANGE.max]) {
+    const lineWidth = crossFeedingLineWidth(layout, scale);
+    const routes = routeCrossFeeding(layout, links, { lineWidth });
+    assert.equal(routes.size, links.length, `every link is routed at ${scale}×`);
+    // The runs between the first and last corners: the ends sit on their nodes.
+    const runs = [...routes].flatMap(([key, { points }]) => points.slice(1, -1).slice(0, -1).map((p, i) => {
+      const q = points[i + 2];
+      const horizontal = Math.abs(p.y - q.y) < 1e-6;
+      return { key, horizontal, at: horizontal ? p.y : p.x, lo: Math.min(horizontal ? p.x : p.y, horizontal ? q.x : q.y), hi: Math.max(horizontal ? p.x : p.y, horizontal ? q.x : q.y) };
+    }));
+    for (const a of runs) {
+      for (const b of runs) {
+        if (a.key >= b.key || a.horizontal !== b.horizontal || Math.min(a.hi, b.hi) - Math.max(a.lo, b.lo) <= lineWidth) continue;
+        assert.ok(Math.abs(a.at - b.at) >= lineWidth, `${a.key} and ${b.key} overlap at ${scale}×`);
+      }
+    }
+  }
+  assert.equal(crossFeedingLineWidth(layout, 9), crossFeedingLineWidth(layout, CROSSFEED_WIDTH_RANGE.max), 'the width stays in range');
 });

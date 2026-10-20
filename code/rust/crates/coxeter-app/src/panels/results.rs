@@ -118,6 +118,7 @@ fn run_mode(method: coxeter_state::AnalysisMethod) -> &'static str {
         coxeter_state::AnalysisMethod::Pfba => "pFBA",
         coxeter_state::AnalysisMethod::Fva => "FVA",
         coxeter_state::AnalysisMethod::Loopless => "Loopless",
+        coxeter_state::AnalysisMethod::CycleFree => "CycleFreeFlux",
     }
 }
 
@@ -139,6 +140,8 @@ pub fn run_summary_text(shell: &Shell) -> (String, &'static str) {
         "SteadyCom fixed µ"
     } else if store.loopless {
         "Loopless"
+    } else if store.cycle_free {
+        "CycleFreeFlux"
     } else if store.parsimonious {
         "pFBA"
     } else if store.fva_enabled {
@@ -146,7 +149,8 @@ pub fn run_summary_text(shell: &Shell) -> (String, &'static str) {
     } else {
         "FBA"
     };
-    let status = store.solution.as_ref().map_or_else(|| "Not run".to_string(), |s| s.status.as_str().to_string());
+    let not_run = if store.solution_cleared { "Solution cleared" } else { "Not run" };
+    let status = store.solution.as_ref().map_or_else(|| not_run.to_string(), |s| s.status.as_str().to_string());
     let objective = if optimal { format!(" · {}", format_flux(store.solution.as_ref().map(|s| s.objective_value), 5)) } else { String::new() };
     let mut text = format!("{mode} · {status}{objective}");
     let mut state = "";
@@ -226,6 +230,8 @@ fn results_mode(shell: &Shell) -> &'static str {
         "GIMME"
     } else if store.loopless {
         "Loopless FBA"
+    } else if store.cycle_free {
+        "CycleFreeFlux"
     } else if store.parsimonious {
         "pFBA"
     } else if store.fva_enabled {

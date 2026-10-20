@@ -186,6 +186,8 @@ pub fn current_analysis_method(shell: &Shell) -> String {
         "GIMME"
     } else if store.loopless {
         "Loopless FBA"
+    } else if store.cycle_free {
+        "CycleFreeFlux"
     } else if store.parsimonious {
         "pFBA"
     } else {
@@ -337,6 +339,8 @@ fn analysis_hub(ui: &mut Ui, shell: &mut Shell, p: &Palette) {
         format!("Objective target: {}%", coxeter_core::js::round(100.0 * store.omics.gimme_objective_fraction))
     } else if store.loopless {
         "Internal cycles excluded".into()
+    } else if store.cycle_free {
+        "Internal cycles removed from the FBA optimum".into()
     } else if store.parsimonious {
         format!("Biomass target: {}% of optimum", format_percent(store.pfba_biomass_percent))
     } else {
@@ -350,7 +354,13 @@ fn analysis_hub(ui: &mut Ui, shell: &mut Shell, p: &Palette) {
         ui.add(egui::Label::new(RichText::new(&parameters).size(11.0).color(p.ink_3)).wrap());
         ui.add(egui::Label::new(RichText::new(&solver).size(11.0).color(p.ink_3)).wrap());
     });
-    let methods = [("fba", "FBA", "Flux balance"), ("pfba", "pFBA", "Minimum total flux"), ("fva", "FVA", "Flux ranges"), ("loopless", "Loopless", "Exclude internal cycles")];
+    let methods = [
+        ("fba", "FBA", "Flux balance"),
+        ("pfba", "pFBA", "Minimum total flux"),
+        ("fva", "FVA", "Flux ranges"),
+        ("loopless", "Loopless", "Exclude internal cycles"),
+        ("cyclefree", "CycleFreeFlux", "Remove cycles with one LP"),
+    ];
     for pair in methods.chunks(2) {
         widgets::grow_row(ui, pair.len(), |ui, i| {
             let (method, name, small) = pair[i];

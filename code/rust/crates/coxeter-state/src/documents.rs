@@ -250,6 +250,7 @@ impl Store {
         let method = match &self.last_run {
             Some(run) => run.label.to_string(),
             None if self.loopless => "Loopless FBA".into(),
+            None if self.cycle_free => "CycleFreeFlux".into(),
             None if self.parsimonious => "pFBA".into(),
             None => "FBA".into(),
         };
@@ -568,12 +569,14 @@ impl Store {
             "parsimonious": self.parsimonious,
             "pfbaBiomassPercent": num_json(self.pfba_biomass_percent),
             "loopless": self.loopless,
+            "cycleFree": self.cycle_free,
             "fvaEnabled": self.fva_enabled,
             "layoutSettings": layout_settings_json(&self.layout_settings),
             "reactionColorMode": self.view.reaction_color_mode.as_str(),
             "widthByFlux": self.view.width_by_flux,
             "dashNoFlux": self.view.dash_no_flux,
             "lineHops": self.view.line_hops,
+            "crossFeedingWidth": num_json(self.view.cross_feeding_width),
             "fluxColorStops": flux_color_stops_json(self.view.flux_color_stops.as_deref()),
             "pathwayRibbonMode": self.view.pathway_ribbon_mode.as_str(),
             "pathwayRibbonWidth": num_json(self.view.pathway_ribbon_width),
@@ -594,6 +597,7 @@ impl Store {
     /// recomputed in the background (see `poll_jobs`).
     pub fn load_state(&mut self, text: &str) -> Result<()> {
         let doc: Value = serde_json::from_str(text)?;
+        self.solution_cleared = false;
         let flux_color_stops = normalize_flux_color_stops_value(doc.get("fluxColorStops").unwrap_or(&Value::Null))?;
         let study_id = doc.get("study").and_then(|s| s.get("id")).and_then(Value::as_str);
         if study_id == Some(ZUNIGA_ID) || doc.get("scenario").and_then(Value::as_str) == Some(&format!("published:{ZUNIGA_ID}")) {
@@ -665,10 +669,11 @@ impl Store {
         };
         self.pfba_biomass_percent = normalize_pfba_percent(percent);
         self.loopless = get("loopless").or_else(|| get("looplessFba")).is_some_and(js::truthy);
-        if self.loopless {
+        self.cycle_free = !self.loopless && get("cycleFree").is_some_and(js::truthy);
+        if self.loopless || self.cycle_free {
             self.parsimonious = false;
         }
-        self.fva_enabled = !self.loopless && get("fvaEnabled").or_else(|| get("fva")).is_some_and(js::truthy);
+        self.fva_enabled = !self.loopless && !self.cycle_free && get("fvaEnabled").or_else(|| get("fva")).is_some_and(js::truthy);
         self.fva_ranges = IndexMap::new();
         self.fva_progress = FvaProgress::default();
         let layout = match get("layoutSettings") {
@@ -688,6 +693,10 @@ impl Store {
         }
         if let Some(Value::Bool(b)) = get("lineHops") {
             self.view.line_hops = *b;
+        }
+        if let Some(w) = get("crossFeedingWidth") {
+            let value = if w.is_null() || w.as_str() == Some("") { f64::NAN } else { js::to_number(w) };
+            self.view.cross_feeding_width = crate::view::cross_feeding_width_value(value, self.view.cross_feeding_width);
         }
         self.view.flux_color_stops = flux_color_stops;
         if let Some(mode) = get("pathwayRibbonMode") {
@@ -834,6 +843,7 @@ impl Store {
             parsimonious: self.parsimonious,
             pfba_biomass_percent: num_json(self.pfba_biomass_percent),
             loopless: self.loopless,
+            cycle_free: self.cycle_free,
             fva_enabled: self.fva_enabled,
             fva_ranges: self.fva_ranges.iter().map(|(k, r)| (k.clone(), json!({"min": num_json(r.min), "max": num_json(r.max)}))).collect(),
             growth: self.growth.iter().map(|(k, v)| (k.clone(), num_json(*v))).collect(),
@@ -874,6 +884,7 @@ impl Store {
         if !check.valid {
             return Err(StoreError::msg("The bundle fails SHA-256 verification; it may have been modified or be corrupt."));
         }
+        self.solution_cleared = false;
         if bundle.get("study").and_then(|s| s.get("id")).and_then(Value::as_str) == Some(ZUNIGA_ID) {
             return self.import_zuniga_bundle(bundle);
         }
@@ -925,6 +936,7 @@ impl Store {
         self.parsimonious = get(analysis, "parsimonious").is_some_and(|v| js::truthy(&v));
         self.pfba_biomass_percent = get(analysis, "pfbaBiomassPercent").map_or(100.0, |v| js::to_number(&v));
         self.loopless = get(analysis, "loopless").is_some_and(|v| js::truthy(&v));
+        self.cycle_free = !self.loopless && get(analysis, "cycleFree").is_some_and(|v| js::truthy(&v));
         // FVA is replayed only after the primary numerical solution has been
         // compared; its ranges are restored from the archive below.
         self.fva_enabled = false;

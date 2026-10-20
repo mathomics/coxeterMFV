@@ -1,7 +1,7 @@
 //! The header (`header.topbar` of `index.html`): the brand, the model's
 //! name and kind (`paintShell`, `modelKindLabel`), the save badge
 //! (`paintSaveState`), the status line (`paintStatus`), Find reaction, the
-//! theme button, and the File and Simulate menus.
+//! theme button, the File and Simulate menus and Clear solution.
 
 use egui::{Color32, CornerRadius, Frame, Margin, RichText, Stroke, Ui, Vec2};
 
@@ -26,6 +26,7 @@ pub fn show(ui: &mut Ui, shell: &mut Shell) {
                 model_identity(ui, shell, &p);
                 ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
                     ui.spacing_mut().item_spacing.x = 10.0;
+                    clear_solution_button(ui, shell);
                     simulate_menu(ui, shell, &p);
                     file_menu(ui, shell, &p);
                     theme_button(ui, shell);
@@ -271,8 +272,23 @@ pub fn run_button_state(shell: &Shell, method: &str) -> (bool, &'static str) {
     match method {
         "fva" if zuniga => (false, ZUNIGA),
         "fva" if steady => (false, "Run FBA, pFBA or Loopless before FVA"),
-        "pfba" | "loopless" if zuniga => (false, ZUNIGA),
+        "pfba" | "loopless" | "cyclefree" if zuniga => (false, ZUNIGA),
         _ => (true, ""),
+    }
+}
+
+/// `[data-action="clear-solution"]`, disabled while there is no solution.
+fn clear_solution_button(ui: &mut Ui, shell: &mut Shell) {
+    let clicked = Btn::new("✕ Clear solution")
+        .look(Look::Secondary)
+        .enabled(shell.store.solution.is_some())
+        .title("Remove the solution from the map. Changes to bounds or medium are not solved again until an analysis is run")
+        .aria("Clear solution")
+        .height(34.0)
+        .show(ui)
+        .clicked();
+    if clicked {
+        shell.store.clear_solution();
     }
 }
 
@@ -291,6 +307,7 @@ fn simulate_menu(ui: &mut Ui, shell: &mut Shell, p: &Palette) {
             ("pfba", "pFBA", "Parsimonious FBA"),
             ("fva", "FVA", "Flux variability analysis"),
             ("loopless", "Loopless FBA", "Exclude internal cycles"),
+            ("cyclefree", "CycleFreeFlux", "Remove internal cycles with one LP"),
         ] {
             let (enabled, title) = run_button_state(shell, method);
             let mut job = egui::text::LayoutJob::default();

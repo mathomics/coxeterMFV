@@ -16,7 +16,7 @@
  * installed.
  */
 
-import { SparseColumns, solveLP, LP_OPTIMAL } from './simplex.js';
+import { SparseColumns, solveLP, LP_OPTIMAL, LP_INFEASIBLE } from './simplex.js';
 import { glpkAvailable, solveWithGLPK } from './glpk.js';
 import { solveBinaryMILP } from './milp.js';
 
@@ -173,14 +173,21 @@ export class FluxProblem {
   }
 
   /**
-   * Exact loopless FBA using the standard thermodynamic MILP formulation.
+   * Exact loopless FBA using the standard thermodynamic MILP formulation
+   * (ll-FBA, Schellenberger, Lewis & Palsson 2011).
    *
-   * Internal reversible reactions receive a binary direction variable. Chemical
-   * potential variables enforce a feasible sign of ΔG for every active internal
-   * direction. Boundary exchanges, sinks, biomass and the virtual community
-   * growth link are excluded from the thermodynamic constraints.
+   * Every internal reaction that can carry flux receives a binary direction
+   * variable a: a = 1 allows forward flux and requires ΔG ≤ -ε, a = 0 allows
+   * reverse flux and requires ΔG ≥ ε. Irreversible reactions get one too,
+   * because a fixed sign of ΔG would make any cycle of them infeasible even
+   * when the cycle carries no flux; with the binary, a = 0 (or a = 1 for a
+   * reverse-only reaction) switches the flux off instead. Chemical potential
+   * variables carry the ΔG. Boundary exchanges, sinks, biomass and the virtual
+   * community growth link are excluded from the thermodynamic constraints.
    *
-   * This is substantially more expensive than LP FBA because it is a MILP.
+   * This is substantially more expensive than LP FBA because it is a MILP. The
+   * GLPK backend solves it with GLPK's branch and cut; the bundled simplex uses
+   * the small branch and bound of milp.js, which alone honours `nodeLimit`.
    */
   loopless({
     maximize = true,
@@ -195,11 +202,9 @@ export class FluxProblem {
       thermodynamicBigM,
     });
 
-    const result = solveBinaryMILP(
-      built.problem,
-      built.binaryIndices,
-      { nodeLimit, timeLimitMs },
-    );
+    const result = this.backend() === 'glpk'
+      ? solveLooplessWithGLPK(built, timeLimitMs)
+      : solveBinaryMILP(built.problem, built.binaryIndices, { nodeLimit, timeLimitMs });
 
     const fluxes = new Map();
     if (result.x) {
@@ -225,7 +230,7 @@ export class FluxProblem {
       reducedCostScale: null,
       dualAnalysis: { available:false, reason:'Dual values are not reported for the loopless MILP solution.' },
       iterations: result.iterations ?? 0,
-      nodes: result.nodes ?? 0,
+      nodes: result.nodes ?? null,
       binaryVariables: built.binaryIndices.length,
       looplessInternalReactions: built.internalCount,
       provenOptimal: result.provenOptimal === true,
@@ -245,26 +250,19 @@ export class FluxProblem {
       const lower = this.lb[j];
       const upper = this.ub[j];
       if (Math.abs(lower) < 1e-12 && Math.abs(upper) < 1e-12) continue;
-
-      const direction = lower < 0 && upper > 0
-        ? 'reversible'
-        : upper > 0
-          ? 'forward'
-          : lower < 0
-            ? 'reverse'
-            : 'blocked';
-      if (direction !== 'blocked') internal.push({ j, rid, lower, upper, direction });
+      if (upper <= 0 && lower >= 0) continue;
+      internal.push({ j, rid, lower, upper });
     }
 
+    // Two ΔG rows per reaction, plus a flux row for each direction it can run.
     let inequalityRows = 0;
-    for (const item of internal) inequalityRows += item.direction === 'reversible' ? 4 : 1;
+    for (const { lower, upper } of internal) inequalityRows += 2 + (upper > 0 ? 1 : 0) + (lower < 0 ? 1 : 0);
     const rows = m + inequalityRows;
-    const reversible = internal.filter((x) => x.direction === 'reversible');
 
     const fluxOffset = 0;
     const muOffset = n;
     const binaryOffset = muOffset + m;
-    const slackOffset = binaryOffset + reversible.length;
+    const slackOffset = binaryOffset + internal.length;
     const cols = slackOffset + inequalityRows;
 
     const A = new SparseColumns(rows, cols);
@@ -287,11 +285,10 @@ export class FluxProblem {
     }
 
     const binaryIndices = [];
-    const binaryByReaction = new Map();
-    reversible.forEach((item, index) => {
+    internal.forEach((item, index) => {
       const col = binaryOffset + index;
       binaryIndices.push(col);
-      binaryByReaction.set(item.j, col);
+      item.y = col;
       lb[col] = 0;
       ub[col] = 1;
     });
@@ -313,52 +310,38 @@ export class FluxProblem {
       slack += 1;
     };
 
-    for (const item of internal) {
-      const { j, lower, upper, direction } = item;
-
-      if (direction === 'reversible') {
-        const y = binaryByReaction.get(j);
-
-        // v <= U y
+    for (const { j, lower, upper, y } of internal) {
+      // v <= U y; for a reverse-only reaction U = 0 and the bound already says it.
+      if (upper > 0) {
         A.add(row, fluxOffset + j, 1);
-        A.add(row, y, -Math.max(upper, 0));
+        A.add(row, y, -upper);
         addSlack(row, 1);
         b[row] = 0;
         row += 1;
+      }
 
-        // v >= L (1-y)  =>  v + L y - s = L
+      // v >= L (1-y)  =>  v + L y - s = L; for a forward-only reaction L = 0.
+      if (lower < 0) {
         A.add(row, fluxOffset + j, 1);
         A.add(row, y, lower);
         addSlack(row, -1);
         b[row] = lower;
         row += 1;
-
-        // ΔG <= M - (M+eps)y
-        addPotential(row, j);
-        A.add(row, y, thermodynamicBigM + epsilon);
-        addSlack(row, 1);
-        b[row] = thermodynamicBigM;
-        row += 1;
-
-        // ΔG >= eps - (M+eps)y
-        addPotential(row, j);
-        A.add(row, y, thermodynamicBigM + epsilon);
-        addSlack(row, -1);
-        b[row] = epsilon;
-        row += 1;
-      } else if (direction === 'forward') {
-        // Fixed forward direction: ΔG <= -eps.
-        addPotential(row, j);
-        addSlack(row, 1);
-        b[row] = -epsilon;
-        row += 1;
-      } else if (direction === 'reverse') {
-        // Fixed reverse direction: ΔG >= eps.
-        addPotential(row, j);
-        addSlack(row, -1);
-        b[row] = epsilon;
-        row += 1;
       }
+
+      // ΔG <= M - (M+eps)y
+      addPotential(row, j);
+      A.add(row, y, thermodynamicBigM + epsilon);
+      addSlack(row, 1);
+      b[row] = thermodynamicBigM;
+      row += 1;
+
+      // ΔG >= eps - (M+eps)y
+      addPotential(row, j);
+      A.add(row, y, thermodynamicBigM + epsilon);
+      addSlack(row, -1);
+      b[row] = epsilon;
+      row += 1;
     }
 
     return {
@@ -437,6 +420,87 @@ export class FluxProblem {
       iterations: first.iterations + res.iterations,
       message: '',
       totalFlux: res.objective,
+    };
+  }
+
+  /**
+   * CycleFreeFlux (Desouki, Jarre, Gelius-Dietrich & Lercher 2015): the FBA
+   * optimum v* with its internal cycles removed, by one LP instead of the
+   * loopless MILP.
+   *
+   * Every boundary reaction (what loopless leaves out: exchanges, sinks,
+   * biomass, the community growth link) and every reaction in the objective is
+   * held at v*. Every internal reaction stays between 0 and v*_j, inside its
+   * own bounds, and the LP minimises the internal flux Σ sign(v*_j) v_j, which
+   * is Σ |v_j| there. A cycle carries flux without changing any exchange, so
+   * the least total flux runs none, and the objective and the exchanges are
+   * those of v*.
+   *
+   * The result is an optimum of the FBA LP too, so the duals of the FBA solved
+   * first are reported for it. `internalFlux` is Σ |v_j| over the internal
+   * reactions, `internalFluxBefore` the same for v*.
+   *
+   * `fluxes` (reaction id -> flux) is an FBA optimum to free of its cycles in
+   * place of the one the solver returns, which is how a solution known to carry
+   * a cycle is cleaned (solvers rarely return one on a small model).
+   */
+  cycleFree({ maximize = true, fluxes: given = null } = {}) {
+    const first = this.optimize({ maximize });
+    if (first.status !== LP_OPTIMAL) return first;
+    const start = given ?? first.fluxes;
+
+    const n = this.rxnIds.length;
+    const lb = new Float64Array(n);
+    const ub = new Float64Array(n);
+    const c = new Float64Array(n);
+    const internal = new Uint8Array(n);
+    let internalFluxBefore = 0;
+    this.rxnIds.forEach((rid, j) => {
+      const v = start.get(rid) ?? 0;
+      const rxn = this.model.reactions.get(rid);
+      if (!this.c[j] && rxn && isLooplessInternalReaction(rxn, rid)) {
+        internal[j] = 1;
+        internalFluxBefore += Math.abs(v);
+        lb[j] = Math.max(this.lb[j], Math.min(0, v));
+        ub[j] = Math.min(this.ub[j], Math.max(0, v));
+        c[j] = Math.sign(v);
+      } else {
+        lb[j] = v;
+        ub[j] = v;
+      }
+    });
+
+    const res = this._solve({
+      A: this.A, b: this.b, c, lb, ub, maximize: false,
+      rowNames: this.metIds, colNames: this.rxnIds,
+    });
+    if (res.status !== LP_OPTIMAL) {
+      return { ...first, message: `CycleFreeFlux could not remove the cycles (${res.status}); the FBA solution is shown.` };
+    }
+
+    const fluxes = new Map();
+    let internalFlux = 0;
+    this.rxnIds.forEach((rid, j) => {
+      const v = Math.abs(res.x[j]) < 1e-9 ? 0 : res.x[j];
+      fluxes.set(rid, v);
+      if (internal[j]) internalFlux += Math.abs(v);
+    });
+    let objectiveValue = 0;
+    this.rxnIds.forEach((rid, j) => { objectiveValue += this.c[j] * fluxes.get(rid); });
+
+    return {
+      status: LP_OPTIMAL,
+      objectiveValue,
+      fluxes,
+      shadowPrices: first.shadowPrices,
+      reducedCosts: first.reducedCosts,
+      scaledReducedCosts: first.scaledReducedCosts,
+      reducedCostScale: first.reducedCostScale,
+      dualAnalysis: { available:true, source:'primary FBA optimum', interpretation:'primary objective before the cycles were removed' },
+      iterations: first.iterations + res.iterations,
+      message: '',
+      internalFlux,
+      internalFluxBefore,
     };
   }
 
@@ -575,6 +639,25 @@ export class FluxProblem {
   }
 }
 
+/**
+ * The loopless MILP on GLPK, reported in the shape solveBinaryMILP returns.
+ * GLPK does not say how many nodes it explored, so `nodes` is null.
+ */
+function solveLooplessWithGLPK(built, timeLimitMs) {
+  const res = solveWithGLPK({
+    ...built.problem,
+    binaries: built.binaryIndices,
+    timeLimitSeconds: Math.max(1, Math.ceil(timeLimitMs / 1000)),
+  });
+  const proven = res.status === LP_OPTIMAL || res.status === LP_INFEASIBLE;
+  const message = res.status === LP_INFEASIBLE
+    ? 'Loopless MILP has no feasible solution.'
+    : proven ? ''
+      : res.x ? 'A loopless solution was found, but optimality was not proven before the time limit.'
+        : 'Loopless MILP hit the time limit.';
+  return { ...res, iterations: 0, nodes: null, provenOptimal: proven, message };
+}
+
 function isLooplessInternalReaction(reaction, reactionId) {
   if (!reaction) return false;
   if (reactionId === 'COMMUNITY_GROWTH') return false;
@@ -609,6 +692,11 @@ export function fba(model, opts = {}) {
 /** One-shot pFBA wrapper. */
 export function pfba(model, opts = {}) {
   return new FluxProblem(model, opts).parsimonious(opts);
+}
+
+/** One-shot CycleFreeFlux wrapper. */
+export function cycleFreeFlux(model, opts = {}) {
+  return new FluxProblem(model, opts).cycleFree(opts);
 }
 
 /** One-shot loopless FBA wrapper. */

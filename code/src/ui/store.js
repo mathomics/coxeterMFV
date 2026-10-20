@@ -73,7 +73,7 @@ import {
   buildReactionColoring, categoryColor, normalizeReactionColorMode, normalizePathwayRibbonMode,
 } from '../render/reaction-colors.js';
 import { buildCrossFeedingIndex, exchangedMetabolites, filterCrossFeedingIndex } from '../analysis/cross-feeding-explorer.js';
-import { isDrawnCrossFeedingBase } from '../render/crossfeed-routes.js';
+import { CROSSFEED_WIDTH_RANGE, isDrawnCrossFeedingBase } from '../render/crossfeed-routes.js';
 import {
   YEAST9_MODEL_KEY, YEAST9_SCENARIO_ID, YEAST9_SOURCE,
   YEAST9_PREVIEW_COMPARTMENTS, yeast9PreviewSpecs,
@@ -151,6 +151,7 @@ export class Store {
     this.parsimonious = false;    // false = FBA, true = pFBA
     this.pfbaBiomassPercent = 100; // percentage of the primary optimum fixed in pFBA
     this.loopless = false;         // exact loopless FBA (MILP)
+    this.cycleFree = false;        // CycleFreeFlux: the FBA optimum without its cycles (one LP)
     this.fvaEnabled = false;
     this.fvaRanges = new Map();
     this.fvaProgress = { running: false, done: 0, total: 0, ms: 0 };
@@ -168,6 +169,8 @@ export class Store {
     this.modelEditsSaved = new WeakMap(); // Model -> edits written to a file
     this.savedWork = null;        // { context, scenario }: see unsavedWork()
     this.solution = null;
+    // Set by clearSolution: inputs no longer re-solve until an analysis is run.
+    this.solutionCleared = false;
     this.scale = null;
     this.crossFeeding = { links: [], perMetabolite: [] };
     this.crossFeedingExplorer = { enabled:false, index:null, query:'', metabolite:'', producer:'', consumer:'', minFlux:0, selectedId:null, selectedAt:null };
@@ -237,6 +240,8 @@ export class Store {
       // most important (0 = all), unless a list was picked by hand.
       crossFeedingTop: 5,
       crossFeedingShown: null,
+      // Width of the cross-feeding lines, as a multiple of the default.
+      crossFeedingWidth: CROSSFEED_WIDTH_RANGE.default,
       dark: false,
       geometryEdit: false,
       multiSelect: false,
@@ -380,6 +385,7 @@ export class Store {
   /** Download the official yeast-GEM release, build it and draw the curated Yeast9 preview without solving. */
   async useYeast9Scenario(scenario) {
     this.resetZunigaStudy();
+    this.solutionCleared = false;
     this.status = {
       ...this.status,
       state: 'busy',
@@ -409,6 +415,7 @@ export class Store {
     this.parsimonious = Boolean(scenario.parsimonious ?? false);
     this.pfbaBiomassPercent = normalizePfbaPercent(scenario.pfbaBiomassPercent ?? 100);
     this.loopless = false;
+    this.cycleFree = false;
     this.fvaEnabled = false;
     this.fvaRanges = new Map();
     this.fvaProgress = { running: false, done: 0, total: 0, ms: 0 };
@@ -510,6 +517,7 @@ export class Store {
   async importModelFiles(files) {
     const prepared = await prepareModelUploads(files);
     this.resetZunigaStudy();
+    this.solutionCleared = false;
 
     for (const key of this.uploadedModelKeys) this.models.delete(key);
     this.uploadedModelKeys.clear();
@@ -551,6 +559,7 @@ export class Store {
     this.parsimonious = false;
     this.pfbaBiomassPercent = 100;
     this.loopless = false;
+    this.cycleFree = false;
     this.fvaEnabled = false;
     this.fvaRanges = new Map();
     this.fvaProgress = { running: false, done: 0, total: 0, ms: 0 };
@@ -895,6 +904,7 @@ export class Store {
   async importReproducibilityBundle(bundle) {
     const check=await verifyReproducibilityBundle(bundle);
     if(!check.valid) throw new Error('The bundle fails SHA-256 verification; it may have been modified or be corrupt.');
+    this.solutionCleared = false;
     if (bundle.study?.id === ZUNIGA_ID) return this.importZunigaBundle(bundle, check);
     this.resetZunigaStudy();
     for(const key of this.uploadedModelKeys)this.models.delete(key); this.uploadedModelKeys.clear();
@@ -911,6 +921,7 @@ export class Store {
     this.medium={...(bundle.constraints?.medium??{})};this.overrides=new Map(Object.entries(bundle.constraints?.reactionOverrides??{}));
     this.parsimonious=Boolean(bundle.analysis?.parsimonious);this.pfbaBiomassPercent=bundle.analysis?.pfbaBiomassPercent??100;
     this.loopless=Boolean(bundle.analysis?.loopless);
+    this.cycleFree=!this.loopless&&Boolean(bundle.analysis?.cycleFree);
     // FVA is replayed only after the primary numerical solution has been
     // compared; its asynchronous ranges are restored from the archive below.
     this.fvaEnabled=false;
@@ -982,6 +993,7 @@ export class Store {
   /** Load a named scenario and rebuild everything. */
   async useScenario(id) {
     this.resetZunigaStudy();
+    this.solutionCleared = false;
     this.invalidateSteadyCom();
     this.steadyComConfig = { fiber: null, parsimonious: false };
     this.publishedCommunityId = null;
@@ -997,8 +1009,9 @@ export class Store {
       ?? (scenario.pfbaFraction !== undefined ? Number(scenario.pfbaFraction) * 100 : 100)
     );
     this.loopless = Boolean(scenario.loopless ?? scenario.looplessFba ?? false);
-    if (this.loopless) this.parsimonious = false;
-    this.fvaEnabled = this.loopless
+    this.cycleFree = !this.loopless && Boolean(scenario.cycleFree ?? false);
+    if (this.loopless || this.cycleFree) this.parsimonious = false;
+    this.fvaEnabled = this.loopless || this.cycleFree
       ? false
       : Boolean(scenario.fvaEnabled ?? scenario.fva ?? false);
     this.fvaRanges = new Map();
@@ -1048,6 +1061,7 @@ export class Store {
   async useZunigaStudy({ study = null, scenarioId = 'mutant-coculture' } = {}) {
     this.invalidateSteadyCom();
     this.resetZunigaStudy();
+    this.solutionCleared = false;
     const generation = this._zunigaGeneration;
     const assertCurrent = () => { if (generation !== this._zunigaGeneration) { const error = new Error('The Zuñiga load was superseded by another scenario.'); error.name = 'AbortError'; throw error; } };
     this.publishedCommunityId = ZUNIGA_ID;
@@ -1085,6 +1099,7 @@ export class Store {
       this.productTarget = null;
       this.parsimonious = false;
       this.loopless = false;
+      this.cycleFree = false;
       this.fvaEnabled = false;
       this.cancelFVA({ clear: true, emit: false });
       this.medium = {};
@@ -1234,6 +1249,7 @@ export class Store {
   async usePublishedCommunity(id) {
     if (id === ZUNIGA_ID) return this.useZunigaStudy();
     this.resetZunigaStudy();
+    this.solutionCleared = false;
     this.invalidateSteadyCom();
     this.steadyComConfig = { fiber: null, parsimonious: false };
     const community = this.publishedCommunities.find((c) => c.id === id);
@@ -1286,6 +1302,7 @@ export class Store {
     this.parsimonious = false;
     this.pfbaBiomassPercent = 100;
     this.loopless = false;
+    this.cycleFree = false;
     this.fvaEnabled = false;
     this.fvaRanges = new Map();
     this.fvaProgress = { running: false, done: 0, total: 0, ms: 0 };
@@ -1519,6 +1536,7 @@ export class Store {
   /** Install a solver result and refresh every state derived from it. */
   applySolution(res, { allowFVA = true } = {}) {
     this.solution = res;
+    if (res) this.solutionCleared = false;
     this.refreshFluxScale();
     if (res?.status === 'optimal') {
       this.crossFeeding = res.steadyCom ? steadyComCrossFeeding(res.steadyCom.spec, res.steadyCom.originalFluxes)
@@ -1543,9 +1561,33 @@ export class Store {
     return res;
   }
 
+  /**
+   * Take the solution off the map and hold the automatic re-solve that input
+   * changes trigger, until an analysis is run again (runAnalysis, SteadyCom,
+   * GIMME) or another case is opened. Map, model and the chosen method are left
+   * as they are, so the next run is the one that was selected. Returns whether
+   * there was a solution to clear.
+   */
+  clearSolution() {
+    if (!this.solution) return false;
+    const steadyCom = Boolean(this.solution.steadyCom);
+    this.cancelSteadyCom({ silent: true });
+    this.applySolution(null);
+    // solve() rebuilds the community's own LP after a fixed-µ solution by
+    // looking at that solution, which is about to be gone.
+    if (steadyCom) this.refreshCompositionProblem();
+    this.solutionCleared = true;
+    this.lastRun = null;
+    this.status = { ...this.status, state: 'ok', message: 'Solution cleared. Run an analysis to solve again.' };
+    this.addLog('ok', 'Solution cleared', { kind: 'solve' });
+    this.emit('solution');
+    return true;
+  }
+
   /** Solve and refresh everything derived from the solution. */
   solve({ parsimonious = null, silent = false } = {}) {
     if (!this.problem) return null;
+    if (this.solutionCleared) return null;
     if (this.isZunigaStudy) {
       const t = performance.now();
       const result = solveZunigaScenario(this.zunigaPrepared);
@@ -1577,7 +1619,9 @@ export class Store {
         // Within a share of a minimum is above it: a target of (2 - f) times
         // the optimum, as FluxProblem itself does when asked to minimise.
         ? this.problem.parsimonious({ fraction: minimise ? 2 - fraction : fraction })
-        : this.problem.optimize();
+        : this.cycleFree
+          ? this.problem.cycleFree()
+          : this.problem.optimize();
     if (minimise) res = minimisedResult(res);
     this.applySolution(res, { allowFVA:true });
     this.noteConstraintOutcome(res);
@@ -1588,7 +1632,7 @@ export class Store {
       layoutMs: this.status.layoutMs ?? 0,
     };
     if (res.status === 'optimal') {
-      const method = this.loopless ? 'Loopless FBA' : (useParsimonious ? 'pFBA' : 'FBA');
+      const method = this.loopless ? 'Loopless FBA' : (useParsimonious ? 'pFBA' : (this.cycleFree ? 'CycleFreeFlux' : 'FBA'));
       const objective = Number.isFinite(this.solution?.objectiveValue) ? this.solution.objectiveValue.toFixed(5) : '—';
       this.addLog('ok', `${method} solved: optimal, objective ${objective}, ${this.status.solveMs} ms`, { kind: 'solve' });
     }
@@ -1607,13 +1651,14 @@ export class Store {
    * `lastRun` for the results bar, and goes to the status line and the log.
    * FVA has finished when its ranges are in, not when it is started.
    *
-   * @param {'fba'|'pfba'|'fva'|'loopless'} method
+   * @param {'fba'|'pfba'|'fva'|'loopless'|'cyclefree'} method
    */
   async runAnalysis(method) {
     const label = ANALYSIS_LABELS[method];
     if (!label) throw new Error(`Unknown analysis "${method}".`);
     if (this.isZunigaStudy && method !== 'fba') return this.solution;
     if (method === 'fva' && this.solution?.steadyCom) return this.solution;
+    this.solutionCleared = false;
     this.lastRun = { method, label, phase: 'running', startedAt: Date.now(), t0: performance.now() };
     this.status = { ...this.status, state: 'busy', message: `Running ${label}…` };
     this.emit('status');
@@ -1625,17 +1670,22 @@ export class Store {
     } else if (method === 'fba') {
       this.parsimonious = false;
       this.loopless = false;
+      this.cycleFree = false;
       this.setFVA(false);
       this.solve();
     } else if (method === 'pfba') {
       this.loopless = false;
+      this.cycleFree = false;
       this.setFVA(false);
       this.setParsimonious(true);
     } else if (method === 'loopless') {
       this.setLoopless(true);
+    } else if (method === 'cyclefree') {
+      this.setCycleFree(true);
     } else {
       this.loopless = false;
       this.parsimonious = false;
+      this.cycleFree = false;
       this.solve();
       this.setFVA(true);
       // Its ranges come in later; runFVA() finishes the run then.
@@ -1682,6 +1732,7 @@ export class Store {
     this.assertPublishedStudyConstraints();
     const next = Boolean(enabled);
     if (next && this.loopless) this.loopless = false;
+    if (next && this.cycleFree) this.cycleFree = false;
     if (this.parsimonious === next && this.solution) return this.solution;
     this.parsimonious = next;
     return this.solve();
@@ -1706,9 +1757,27 @@ export class Store {
 
     if (next) {
       this.parsimonious = false;
+      this.cycleFree = false;
       if (this.fvaEnabled) this.setFVA(false);
     }
 
+    return this.solve();
+  }
+
+  /**
+   * Switch CycleFreeFlux on or off: the FBA optimum with its internal cycles
+   * removed. It replaces pFBA and Loopless, and FVA, as Loopless does.
+   */
+  setCycleFree(enabled) {
+    this.assertPublishedStudyConstraints();
+    const next = Boolean(enabled);
+    if (this.cycleFree === next && this.solution) return this.solution;
+    this.cycleFree = next;
+    if (next) {
+      this.parsimonious = false;
+      this.loopless = false;
+      if (this.fvaEnabled) this.setFVA(false);
+    }
     return this.solve();
   }
 
@@ -1721,8 +1790,9 @@ export class Store {
       return this.fvaRanges;
     }
     const next = Boolean(enabled);
-    if (next && this.loopless) {
+    if (next && (this.loopless || this.cycleFree)) {
       this.loopless = false;
+      this.cycleFree = false;
       this.solve();
     }
     if (this.fvaEnabled === next) return this.fvaRanges;
@@ -2081,7 +2151,7 @@ export class Store {
       for (const sp of this.species) sp.abundance = cleanAbundance(at.abundances.get(sp.id));
       this.community.abundances = new Map([...at.abundances].map(([id, x]) => [id, cleanAbundance(x)]));
       this.refreshCompositionProblem();
-      this.parsimonious = false; this.loopless = false;
+      this.parsimonious = false; this.loopless = false; this.cycleFree = false;
       this.omics.gimmeEnabled = false; this.omics.gimmeResult = null;
       this.setFVA(false);
       Object.assign(state, { phase: null, mu, feasible: true, abundances: at.abundances, totalBiomass: at.total,
@@ -2915,11 +2985,12 @@ export class Store {
       this.applyOverrides();
       this.solve({ silent: true });
     }
+    const lost = changed && this.solution && this.solution.status !== 'optimal';
     this.status = {
       ...this.status,
-      ...(this.solution?.status === 'optimal' || !changed ? { state: skipped ? 'warn' : 'ok' } : {}),
+      ...(lost ? {} : { state: skipped ? 'warn' : 'ok' }),
       message: `${label}: ${changed} changed${skipped ? `, ${skipped} skipped (the lower bound would pass the upper)` : ''}.`
-        + (changed && this.solution?.status !== 'optimal' ? ` The LP has no optimum now (${this.solution?.status}); Revert last change takes it back.` : ''),
+        + (lost ? ` The LP has no optimum now (${this.solution.status}); Revert last change takes it back.` : ''),
     };
     this.emit('constraints');
     return { changed, skipped };
@@ -2996,7 +3067,7 @@ export class Store {
     if (errors.length) parts.push(`${errors.length} line${errors.length === 1 ? '' : 's'} not read (line ${errors[0].line}: ${errors[0].message})`);
     if (unknown.length > 5) this.addLog('warn', `Bounds import from ${name}: unknown reaction ids ${unknown.join(', ')}`);
     if (ambiguous.length > 5) this.addLog('warn', `Bounds import from ${name}: ambiguous reaction ids ${ambiguous.join(', ')}`);
-    const failed = applied > 0 && this.solution?.status !== 'optimal';
+    const failed = applied > 0 && Boolean(this.solution) && this.solution.status !== 'optimal';
     this.status = {
       ...this.status,
       state: failed ? 'error' : (unknown.length || ambiguous.length || errors.length ? 'warn' : 'ok'),
@@ -3199,11 +3270,12 @@ export class Store {
       parsimonious: this.parsimonious,
       pfbaBiomassPercent: this.pfbaBiomassPercent,
       loopless: this.loopless,
+      cycleFree: this.cycleFree,
       fvaEnabled: this.fvaEnabled,
       steadyComConfig: this.steadyComConfig ?? null,
       layoutSettings: this.layoutSettings,
       reactionColorMode: this.view.reactionColorMode,
-      lines: [this.view.widthByFlux, this.view.dashNoFlux, this.view.lineHops],
+      lines: [this.view.widthByFlux, this.view.dashNoFlux, this.view.lineHops, this.view.crossFeedingWidth],
       ribbons: [this.view.pathwayRibbonMode, this.view.pathwayRibbonWidth, this.view.pathwayRibbonOpacity],
       omics: { settings: this.omicsSettings, dataset: objectRevision(this.omicsDataset) },
     });
@@ -4672,7 +4744,23 @@ export class Store {
       if (this.map.hasReaction(reactionId)) continue;
       if (Object.prototype.hasOwnProperty.call(reaction.metabolites, node.mergedId)) out.push(reactionId);
     }
-    return out;
+    return this.orderByFlux(out);
+  }
+
+  /**
+   * Reaction ids with those that carry flux in the current optimal solution
+   * first, largest |flux| first. The others keep their order behind them, and
+   * without a solution the list is returned as it is.
+   */
+  orderByFlux(reactionIds) {
+    const fluxes = this.solution?.status === 'optimal' ? this.solution.fluxes : null;
+    if (!fluxes) return reactionIds;
+    const size = (id) => {
+      const value = Math.abs(Number(fluxes.get(id)) || 0);
+      return value > 1e-9 ? value : 0;
+    };
+    // Array#sort is stable, so equal sizes, zero among them, keep their order.
+    return [...reactionIds].sort((a, b) => size(b) - size(a));
   }
 
   /** The model's metabolites in one compartment of a species, labelled as the map labels them, with how often each is drawn. */
@@ -5228,6 +5316,9 @@ export class Store {
     if ('pathwayRibbonOpacity' in patch) {
       patch = { ...patch, pathwayRibbonOpacity: clampNumber(patch.pathwayRibbonOpacity, 0.04, 0.45, 0.18) };
     }
+    if ('crossFeedingWidth' in patch) {
+      patch = { ...patch, crossFeedingWidth: crossFeedingWidthValue(patch.crossFeedingWidth, this.view.crossFeedingWidth) };
+    }
     Object.assign(this.view, patch);
     if ('geometryEdit' in patch && !patch.geometryEdit) this.selectedGeometry = null;
     if ('geometryEdit' in patch && patch.geometryEdit) {
@@ -5323,7 +5414,7 @@ export class Store {
         abundance: sp.abundance ?? null,
       })),
       analysis: {
-        method: this.lastRun?.label ?? (this.loopless ? 'Loopless FBA' : this.parsimonious ? 'pFBA' : 'FBA'),
+        method: this.lastRun?.label ?? (this.loopless ? 'Loopless FBA' : this.cycleFree ? 'CycleFreeFlux' : this.parsimonious ? 'pFBA' : 'FBA'),
         status: this.solution?.status ?? null,
         objective: this.objective,
         objectiveValue: Number.isFinite(this.solution?.objectiveValue) ? this.solution.objectiveValue : null,
@@ -5604,12 +5695,14 @@ export class Store {
       parsimonious: this.parsimonious,
       pfbaBiomassPercent: this.pfbaBiomassPercent,
       loopless: this.loopless,
+      cycleFree: this.cycleFree,
       fvaEnabled: this.fvaEnabled,
       layoutSettings: { ...this.layoutSettings },
       reactionColorMode: this.view.reactionColorMode,
       widthByFlux: this.view.widthByFlux,
       dashNoFlux: this.view.dashNoFlux,
       lineHops: this.view.lineHops,
+      crossFeedingWidth: this.view.crossFeedingWidth,
       fluxColorStops: this.view.fluxColorStops,
       pathwayRibbonMode: this.view.pathwayRibbonMode,
       pathwayRibbonWidth: this.view.pathwayRibbonWidth,
@@ -5626,6 +5719,7 @@ export class Store {
   /** Open a Scenario file: restore its context and settings, rebuild and solve again. */
   async loadState(text) {
     const doc = JSON.parse(text);
+    this.solutionCleared = false;
     const fluxColorStops = normalizeFluxColorStops(doc.fluxColorStops ?? null);
     if (doc.study?.id === ZUNIGA_ID || doc.scenario === `published:${ZUNIGA_ID}`) {
       if (!this.isZunigaStudy) await this.useZunigaStudy({ scenarioId: doc.study?.scenarioId ?? 'mutant-coculture' });
@@ -5663,8 +5757,9 @@ export class Store {
       ?? (doc.pfbaFraction !== undefined ? Number(doc.pfbaFraction) * 100 : 100)
     );
     this.loopless = Boolean(doc.loopless ?? doc.looplessFba ?? false);
-    if (this.loopless) this.parsimonious = false;
-    this.fvaEnabled = this.loopless
+    this.cycleFree = !this.loopless && Boolean(doc.cycleFree ?? false);
+    if (this.loopless || this.cycleFree) this.parsimonious = false;
+    this.fvaEnabled = this.loopless || this.cycleFree
       ? false
       : Boolean(doc.fvaEnabled ?? doc.fva ?? false);
     this.fvaRanges = new Map();
@@ -5675,6 +5770,7 @@ export class Store {
     for (const key of ['widthByFlux', 'dashNoFlux', 'lineHops']) {
       if (typeof doc[key] === 'boolean') this.view[key] = doc[key];
     }
+    if (doc.crossFeedingWidth !== undefined) this.view.crossFeedingWidth = crossFeedingWidthValue(doc.crossFeedingWidth, this.view.crossFeedingWidth);
     this.view.fluxColorStops = fluxColorStops;
     this.view.pathwayRibbonMode = normalizePathwayRibbonMode(doc.pathwayRibbonMode ?? this.view.pathwayRibbonMode);
     this.view.pathwayRibbonWidth = clampNumber(doc.pathwayRibbonWidth ?? this.view.pathwayRibbonWidth, 20, 120, 56);
@@ -5796,6 +5892,12 @@ function clampNumber(value, min, max, fallback) {
   const n = Number(value);
   if (!Number.isFinite(n)) return fallback;
   return Math.min(max, Math.max(min, n));
+}
+
+/** A cross-feeding line width multiple inside the slider's range, or `fallback` for one that is not a number. */
+function crossFeedingWidthValue(value, fallback = CROSSFEED_WIDTH_RANGE.default) {
+  const { min, max } = CROSSFEED_WIDTH_RANGE;
+  return clampNumber(value === null || value === '' ? NaN : value, min, max, fallback);
 }
 
 /** Whether a parsed map has the drawing a map is made of, whatever it was drawn over. */
@@ -5940,7 +6042,7 @@ const paintFrame = () => new Promise((resolve) => {
 });
 
 /** The analyses runAnalysis() knows, by the name the Simulate panel shows. */
-const ANALYSIS_LABELS = { fba: 'FBA', pfba: 'pFBA', fva: 'FVA', loopless: 'Loopless FBA' };
+const ANALYSIS_LABELS = { fba: 'FBA', pfba: 'pFBA', fva: 'FVA', loopless: 'Loopless FBA', cyclefree: 'CycleFreeFlux' };
 
 /** `850 ms`, `4.2 s`, `2 min 05 s`. */
 function formatDuration(ms) {

@@ -69,9 +69,11 @@ try {
         <button data-action="run-pfba"><b>pFBA</b><span>Parsimonious FBA</span></button>
         <button data-action="run-fva"><b>FVA</b><span>Flux variability analysis</span></button>
         <button data-action="run-loopless"><b>Loopless FBA</b><span>Exclude internal cycles</span></button>
+        <button data-action="run-cyclefree"><b>CycleFreeFlux</b><span>Remove internal cycles with one LP</span></button>
         <button data-action="open-workspace" data-workspace="analysis">Simulation settings</button>
       </div>
     </details>
+    <button class="clear-solution-button" data-action="clear-solution" title="Remove the solution from the map. Changes to bounds or medium are not solved again until an analysis is run" disabled>✕ <span>Clear solution</span></button>
   </header>
 
   <div class="workspace">

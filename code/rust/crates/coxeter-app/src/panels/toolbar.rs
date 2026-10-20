@@ -174,6 +174,7 @@ pub fn render_view_controls(ui: &mut Ui, shell: &mut Shell) {
         }
     });
     crate::panels::cross_feeding::cross_feeding_top_control(ui, shell);
+    crate::panels::cross_feeding::cross_feeding_width_control(ui, shell);
     labels_select(ui, shell, "view-labels");
     crate::panels::inspector::map_label_control(ui, shell, "metabolite", None);
     crate::panels::inspector::map_label_control(ui, shell, "reaction", None);

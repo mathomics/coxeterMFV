@@ -761,9 +761,10 @@ impl Store {
             self.apply_overrides();
             self.solve_with(None, true);
         }
-        let optimal = self.solution.as_ref().is_some_and(|s| s.is_optimal());
+        // A cleared solution is not a lost optimum.
+        let lost = outcome.changed > 0 && self.solution.as_ref().is_some_and(|s| !s.is_optimal());
         let mut status = self.status().clone();
-        if optimal || outcome.changed == 0 {
+        if !lost {
             status.state = if outcome.skipped > 0 { StatusState::Warn } else { StatusState::Ok };
         }
         let skipped = if outcome.skipped > 0 {
@@ -771,7 +772,7 @@ impl Store {
         } else {
             String::new()
         };
-        let failed = if outcome.changed > 0 && !optimal {
+        let failed = if lost {
             format!(" The LP has no optimum now ({}); Revert last change takes it back.", self.solution_status())
         } else {
             String::new()
@@ -902,7 +903,7 @@ impl Store {
         if report.ambiguous.len() > 5 {
             self.add_log(StatusState::Warn, &format!("Bounds import from {name}: ambiguous reaction ids {}", report.ambiguous.join(", ")), LogKind::Message);
         }
-        let failed = report.applied > 0 && !self.solution.as_ref().is_some_and(|s| s.is_optimal());
+        let failed = report.applied > 0 && self.solution.as_ref().is_some_and(|s| !s.is_optimal());
         let state = if failed {
             StatusState::Error
         } else if !report.unknown.is_empty() || !report.ambiguous.is_empty() || !report.errors.is_empty() {

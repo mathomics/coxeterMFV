@@ -12,8 +12,9 @@ use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Mutex};
 
 use coxeter_core::Model;
+use coxeter_core::model::ReactionKind;
 use coxeter_core::testkit::read_fixture;
-use coxeter_solver::fba::{FluxProblem, FvaOptions, LooplessOptions};
+use coxeter_solver::fba::{CycleFreeOptions, FluxProblem, FvaOptions, LooplessOptions};
 use coxeter_solver::lp::{LpProblem, LpStatus, SolveOptions, SparseColumns, solve_lp};
 use coxeter_solver::milp::{MilpOptions, solve_binary_milp};
 use common::{close, load_model, num};
@@ -209,6 +210,37 @@ fn loopless_fba_preserves_a_feasible_acyclic_pathway_optimum() {
     assert!(loopless.loopless.unwrap().proven_optimal);
 }
 
+// A -> B -> C -> A, all irreversible, beside the pathway A -> P that carries the objective.
+fn idle_irreversible_cycle_model() -> Model {
+    Model::from_value(&json!({
+        "id": "irrev_cycle", "compartments": {"c": "cytosol"},
+        "metabolites": [
+            {"id": "a_c", "compartment": "c"}, {"id": "b_c", "compartment": "c"},
+            {"id": "c_c", "compartment": "c"}, {"id": "p_c", "compartment": "c"}
+        ],
+        "reactions": [
+            {"id": "EX_a", "metabolites": {"a_c": -1}, "lower_bound": -10, "upper_bound": 1000},
+            {"id": "R_AB", "metabolites": {"a_c": -1, "b_c": 1}, "lower_bound": 0, "upper_bound": 1000},
+            {"id": "R_BC", "metabolites": {"b_c": -1, "c_c": 1}, "lower_bound": 0, "upper_bound": 1000},
+            {"id": "R_CA", "metabolites": {"c_c": -1, "a_c": 1}, "lower_bound": 0, "upper_bound": 1000},
+            {"id": "R_AP", "metabolites": {"a_c": -1, "p_c": 1}, "lower_bound": 0, "upper_bound": 1000},
+            {"id": "DM_p", "metabolites": {"p_c": -1}, "lower_bound": 0, "upper_bound": 1000, "objective_coefficient": 1}
+        ]
+    }))
+    .unwrap()
+}
+
+#[test]
+fn loopless_fba_switches_off_an_idle_cycle_of_irreversible_reactions_instead_of_failing() {
+    let r = FluxProblem::new(&idle_irreversible_cycle_model()).loopless(&quick());
+    assert_eq!(r.status, LpStatus::Optimal, "{}", r.message);
+    assert!((r.objective_value - 10.0).abs() < 1e-6, "{}", r.objective_value);
+    for rid in ["R_AB", "R_BC", "R_CA"] {
+        assert!(r.fluxes[rid].abs() < 1e-6, "{rid} = {}", r.fluxes[rid]);
+    }
+    assert_eq!(r.loopless.unwrap().binary_variables, 4);
+}
+
 #[test]
 fn reversible_internal_reactions_create_binary_direction_variables() {
     let r = FluxProblem::new(&feasible_pathway(true)).loopless(&quick());
@@ -281,4 +313,47 @@ fn fva_of_an_infeasible_problem_is_empty() {
     problem.set_bounds("R2", Some(2.0), Some(2.0)).unwrap();
     assert_eq!(problem.optimize().status, LpStatus::Infeasible);
     assert!(problem.variability_all(&FvaOptions::default()).is_empty());
+}
+
+// cycle-free-flux.test.mjs
+
+#[test]
+fn cycle_free_flux_removes_the_cycle_an_fba_optimum_carries_keeping_objective_and_exchanges() {
+    let p = FluxProblem::new(&idle_irreversible_cycle_model());
+    let fba = p.optimize();
+    // The same optimum with 50 running round the cycle: as good an FBA answer.
+    let mut looped = fba.fluxes.clone();
+    for id in ["R_AB", "R_BC", "R_CA"] {
+        *looped.get_mut(id).unwrap() += 50.0;
+    }
+    let free = p.cycle_free(&CycleFreeOptions { fluxes: Some(looped.clone()), ..Default::default() });
+    assert_eq!(free.status, LpStatus::Optimal);
+    assert!((free.objective_value - 10.0).abs() < 1e-9);
+    for id in ["R_AB", "R_BC", "R_CA"] {
+        assert_eq!(free.fluxes[id], 0.0, "{id}");
+    }
+    for id in ["EX_a", "DM_p"] {
+        assert!((free.fluxes[id] - looped[id]).abs() < 1e-9, "{id}");
+    }
+    let info = free.cycle_free.unwrap();
+    assert!((info.internal_flux_before - 160.0).abs() < 1e-9 && (info.internal_flux - 10.0).abs() < 1e-9);
+}
+
+#[test]
+fn cycle_free_flux_on_e_coli_core_keeps_the_fba_objective_and_exchanges_and_never_adds_internal_flux() {
+    let model = load_model("ecoli_core_mc");
+    let p = FluxProblem::new(&model);
+    let fba = p.optimize();
+    let free = p.cycle_free(&CycleFreeOptions::default());
+    assert_eq!(free.status, LpStatus::Optimal);
+    assert!((free.objective_value - fba.objective_value).abs() < 1e-7);
+    for (id, rxn) in &model.reactions {
+        if matches!(rxn.kind, ReactionKind::Metabolic | ReactionKind::Transport) {
+            continue;
+        }
+        assert!((free.fluxes[id] - fba.fluxes[id]).abs() < 1e-7, "{id}");
+    }
+    let info = free.cycle_free.unwrap();
+    assert!(info.internal_flux <= info.internal_flux_before + 1e-7);
+    assert_eq!(free.shadow_prices, fba.shadow_prices, "the duals of the FBA solved first");
 }

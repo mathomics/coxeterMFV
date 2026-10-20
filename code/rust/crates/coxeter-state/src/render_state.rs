@@ -120,6 +120,7 @@ impl Store {
                 selected_at: explorer.selected_at,
             }),
             cross_feeding_bases: self.view.show_cross_feeding.then(|| self.visible_bases_set()),
+            cross_feeding_width: self.view.cross_feeding_width,
             omics_enabled: omics_overlay.enabled || community_omics,
             omics_colors,
             omics_fallback_color: Some(omics_overlay.fallback_color),

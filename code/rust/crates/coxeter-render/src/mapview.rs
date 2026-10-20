@@ -23,7 +23,9 @@ use coxeter_core::metabolite_label::{is_secondary_node, metabolite_label_positio
 use coxeter_core::text_style::{DEFAULT_TEXT_FONT, text_box_of, text_font_stack};
 use serde_json::Value;
 
-use crate::crossfeed_routes::{is_drawn_cross_feeding_base, route_anchor, route_cross_feeding, route_grid, rounded_path, Endpoint};
+use crate::crossfeed_routes::{
+    cross_feeding_line_width, is_drawn_cross_feeding_base, route_anchor, route_cross_feeding, route_grid, rounded_path, Endpoint,
+};
 use crate::format::{esc, js_trim, n, utf16_len};
 use crate::reaction_colors::{PathwayRibbonMode, ReactionColorMode, is_missing_group};
 use crate::line_hops::{HopItem, MAX_LINE_HOPS, find_line_hops, hopped_path};
@@ -2465,7 +2467,9 @@ fn link_key(from: &str, base: &str, to: &str) -> String {
 
 /// One line per metabolite a species passes to another, from the producer's
 /// medium node to the consumer's, in the producer's colour, ending in an arrow.
-/// Protons and water get none. Returns the arcs for links that could not be
+/// Protons and water get none. The routed lines all have one width,
+/// `cross_feeding_width` times the default, and the flux is in their hover
+/// text. Returns the arcs for links that could not be
 /// routed (drawn behind the cells), the routed lines, and the name tag of the
 /// picked line.
 fn render_cross_feeding(cx: &Ctx, links: &[CrossFeedingLink]) -> (Element, Element, Option<Element>) {
@@ -2497,10 +2501,11 @@ fn render_cross_feeding(cx: &Ctx, links: &[CrossFeedingLink]) -> (Element, Eleme
         })
         .cloned()
         .collect();
-    let routes = route_cross_feeding(map, &links);
+    let line_width = cross_feeding_line_width(map, cx.s.cross_feeding_width);
+    // The lanes are spaced for this width, so lines side by side never overlap.
+    let routes = route_cross_feeding(map, &links, line_width);
     let grid = route_grid(map);
-    // Thinnest first, so a thick line never hides a thin one that shares its
-    // lane; the picked line last, over all of them.
+    // Smallest flux first and the picked line last, over all of them.
     let mut ordered: Vec<&CrossFeedingLink> = links.iter().collect();
     ordered.sort_by(|p, q| {
         let picked = (is_picked(p) as i32) - (is_picked(q) as i32);
@@ -2520,10 +2525,7 @@ fn render_cross_feeding(cx: &Ctx, links: &[CrossFeedingLink]) -> (Element, Eleme
         let (Some(a), Some(b)) = (cell_by_id.get(from), cell_by_id.get(to)) else { continue };
         let is_selected = is_picked(link);
         if let Some(route) = routes.get(&key) {
-            // lanes are 0.6 grid apart: the widest line leaves a gap to the next
-            let widest = grid * 0.27;
-            let base = js::min(widest, js::max(grid * 0.08, cx.scale.width(link.flux) * 1.4));
-            let w = if is_selected { js::min(widest * 1.3, base * 1.6) } else { base };
+            let w = if is_selected { line_width * 1.4 } else { line_width };
             let opacity = if is_selected {
                 1.0
             } else if explorer.is_some_and(|e| e.enabled) && selected.is_some() {
@@ -2535,7 +2537,7 @@ fn render_cross_feeding(cx: &Ctx, links: &[CrossFeedingLink]) -> (Element, Eleme
             // stop short of the node so the arrow tip touches its rim
             let end = &route.end;
             let tip = Point::new(end.x + end.nx * (end.r + 2.0), end.y + end.ny * (end.r + 2.0));
-            let head = js::max(w * 2.4, grid * 0.38);
+            let head = js::max(w * 1.6, grid * 0.38);
             let neck = Point::new(tip.x + end.nx * head, tip.y + end.ny * head);
             let start = &route.start;
             let line_from = Point::new(start.x + start.nx * start.r, start.y + start.ny * start.r);
@@ -2575,7 +2577,7 @@ fn render_cross_feeding(cx: &Ctx, links: &[CrossFeedingLink]) -> (Element, Eleme
                 .child(
                     Element::new("polygon")
                         .with("class", "emc-crossfeed-arrow")
-                        .with("points", arrow_head(tip, end, head, js::max(w * 1.9, grid * 0.3)))
+                        .with("points", arrow_head(tip, end, head, js::max(w * 1.2, grid * 0.3)))
                         .with("fill", a.color.clone()),
                 )
                 .child(
@@ -2584,7 +2586,7 @@ fn render_cross_feeding(cx: &Ctx, links: &[CrossFeedingLink]) -> (Element, Eleme
                         .with("d", d)
                         .with("fill", "none")
                         .with("stroke", "transparent")
-                        .with("stroke-width", n(grid * 0.55))
+                        .with("stroke-width", n(js::max(grid * 0.55, w)))
                         .with("pointer-events", "stroke"),
                 );
             routed_out.push(g);

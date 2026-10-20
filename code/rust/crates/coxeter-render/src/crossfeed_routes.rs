@@ -51,6 +51,36 @@ pub fn route_grid(map: &MapGraph) -> f64 {
     js::max(24.0, js::min(120.0, js::round(js::max(map.width(), map.height()) / 280.0)))
 }
 
+/// `CROSSFEED_WIDTH_RANGE`: the slider's range for the cross-feeding line
+/// width, as a multiple of the default. Wider than 1.5 the lanes no longer fit
+/// the corridors between the cells of a crowded map, and lines are pushed into
+/// each other's lanes.
+pub struct CrossFeedWidthRange {
+    pub min: f64,
+    pub max: f64,
+    pub step: f64,
+    pub default: f64,
+}
+
+pub const CROSSFEED_WIDTH_RANGE: CrossFeedWidthRange = CrossFeedWidthRange { min: 0.25, max: 1.5, step: 0.05, default: 1.0 };
+
+/// `crossFeedingLineWidth(layout, scale)`: how wide a cross-feeding line is
+/// drawn, in map units, at `scale` times the default. The default is 0.8 of the
+/// routing grid, which with the whole map in view is about as thick on screen
+/// as a cell's boundary.
+pub fn cross_feeding_line_width(map: &MapGraph, scale: f64) -> f64 {
+    let k = if scale.is_finite() { js::max(CROSSFEED_WIDTH_RANGE.min, js::min(CROSSFEED_WIDTH_RANGE.max, scale)) } else { 1.0 };
+    0.8 * route_grid(map) * k
+}
+
+/// `laneSpacing(grid, lineWidth)`: distance between neighbouring lanes, in map
+/// units: half a line's width of gap between two lines side by side, and never
+/// closer than 0.6 grid, so thin lines keep the bundles they always had.
+pub fn lane_spacing(grid: f64, line_width: f64) -> f64 {
+    let w = if line_width.is_nan() { 0.0 } else { line_width };
+    js::round(js::max(0.6 * grid, 1.5 * w))
+}
+
 /// Where a line starts or ends: a medium node (or a point beside a cell),
 /// with the outward normal of the membrane it faces and how far out from it
 /// it sits.
@@ -140,12 +170,14 @@ struct Cache {
 
 static CACHE: LazyLock<Mutex<Option<Cache>>> = LazyLock::new(|| Mutex::new(None));
 
-/// `routeCrossFeeding(layout, links)`: a route for every link that can be
-/// routed, keyed `from|base|to`; a link left out could not be routed.
+/// `routeCrossFeeding(layout, links, { lineWidth })`: a route for every link
+/// that can be routed, keyed `from|base|to`; a link left out could not be
+/// routed. `line_width` is what the lines are drawn at, in map units (the JS
+/// default is [`cross_feeding_line_width`] at 1), and sets how far apart lanes are.
 ///
-/// The last result is kept: asked again with the same geometry and links, the
-/// same routes come back (the same `Arc`), whatever the fluxes now are.
-pub fn route_cross_feeding(map: &MapGraph, links: &[CrossFeedingLink]) -> Arc<Routes> {
+/// The last result is kept: asked again with the same geometry, links and
+/// width, the same routes come back (the same `Arc`), whatever the fluxes now are.
+pub fn route_cross_feeding(map: &MapGraph, links: &[CrossFeedingLink], line_width: f64) -> Arc<Routes> {
     let endpoints = medium_endpoints(map);
     let cells: Vec<&MapCell> = map.cells.iter().collect();
     let mut wanted = Vec::new();
@@ -160,7 +192,13 @@ pub fn route_cross_feeding(map: &MapGraph, links: &[CrossFeedingLink]) -> Arc<Ro
         wanted.push(Wanted { key: format!("{from}|{}|{to}", link.base), a, b });
     }
     wanted.sort_by(|p, q| js::code_unit_compare(&p.key, &q.key));
-    let mut key = format!("{}x{};", js::number_to_string(map.width()), js::number_to_string(map.height()));
+    let lane = lane_spacing(route_grid(map), line_width);
+    let mut key = format!(
+        "{}x{};{};",
+        js::number_to_string(map.width()),
+        js::number_to_string(map.height()),
+        js::number_to_string(lane)
+    );
     key.push_str(
         &cells
             .iter()
@@ -198,7 +236,7 @@ pub fn route_cross_feeding(map: &MapGraph, links: &[CrossFeedingLink]) -> Arc<Ro
     if let Some(c) = cache.as_ref().filter(|c| c.key == key) {
         return c.routes.clone();
     }
-    let routes = Arc::new(compute_routes(map, &cells, &wanted, &endpoints));
+    let routes = Arc::new(compute_routes(map, &cells, &wanted, &endpoints, lane));
     *cache = Some(Cache { key, routes: routes.clone() });
     routes
 }
@@ -645,13 +683,12 @@ impl Lanes<'_> {
     }
 }
 
-fn compute_routes(map: &MapGraph, cells: &[&MapCell], wanted: &[Wanted], endpoints: &IndexMap<String, Endpoint>) -> Routes {
+fn compute_routes(map: &MapGraph, cells: &[&MapCell], wanted: &[Wanted], endpoints: &IndexMap<String, Endpoint>, lane: f64) -> Routes {
     let mut routes = Routes::new();
     if wanted.is_empty() {
         return routes;
     }
     let g = route_grid(map);
-    let lane = js::round(0.6 * g);
     // How far out the medium nodes sit; the lines keep further out than that.
     let mut gaps: Vec<f64> = endpoints.values().map(|e| e.gap).filter(|x| *x > 0.0).collect();
     gaps.sort_by(|p, q| p.partial_cmp(q).unwrap_or(std::cmp::Ordering::Equal));

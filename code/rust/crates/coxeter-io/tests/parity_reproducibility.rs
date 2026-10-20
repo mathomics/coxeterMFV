@@ -81,6 +81,7 @@ fn store<'a>(desc: &Value, models: &'a IndexMap<String, Model>) -> ReproStore<'a
         parsimonious: desc["parsimonious"].as_bool().unwrap(),
         pfba_biomass_percent: desc["pfbaBiomassPercent"].clone(),
         loopless: desc["loopless"].as_bool().unwrap(),
+        cycle_free: desc.get("cycleFree").and_then(serde_json::Value::as_bool).unwrap_or(false),
         fva_enabled: desc["fvaEnabled"].as_bool().unwrap(),
         fva_ranges: entries(&desc["fvaRanges"]),
         growth: entries(&desc["growth"]),

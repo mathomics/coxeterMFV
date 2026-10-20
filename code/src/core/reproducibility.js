@@ -72,9 +72,9 @@ export async function verifyReproducibilityBundle(bundle){
 /** The analysis method, solver and settings of the store's current run, for the bundle and the report. */
 export function analysisProvenance(store){
  if(store.isZunigaStudy)return {method:'Stationary source-model FBA',solver:'GLPK',objective:'authors’ original objective',study:store.zunigaState(),parsimonious:false,loopless:false,fvaEnabled:false,sourceConstraints:'Exact author bounds and stoichiometry; documented Ec PPNDH knockout only.',limitations:'Stationary FBA comparison; not reproduction of dynamic culture trajectories or experimental growth measurements.'};
- let method='FBA'; if(store.omics?.gimmeEnabled)method='GIMME'; else if(store.loopless)method='loopless FBA'; else if(store.parsimonious)method='pFBA';
+ let method='FBA'; if(store.omics?.gimmeEnabled)method='GIMME'; else if(store.loopless)method='loopless FBA'; else if(store.cycleFree)method='CycleFreeFlux'; else if(store.parsimonious)method='pFBA';
  return {method,solver:'Coxeter bounded-variable revised simplex / MILP',objective:store.objective,productTarget:store.productTarget??null,
-  parsimonious:Boolean(store.parsimonious),pfbaBiomassPercent:store.pfbaBiomassPercent,loopless:Boolean(store.loopless),
+  parsimonious:Boolean(store.parsimonious),pfbaBiomassPercent:store.pfbaBiomassPercent,loopless:Boolean(store.loopless),cycleFree:Boolean(store.cycleFree),
   fvaEnabled:Boolean(store.fvaEnabled),gimme:store.omics?.gimmeEnabled?{condition:store.omics.conditionA,threshold:store.omics.gimmeResult?.threshold??store.omics.gimmeThreshold,
    objectiveFraction:store.omics.gimmeObjectiveFraction,inconsistencyScore:store.omics.gimmeResult?.inconsistencyScore??null}:null};
 }
@@ -159,6 +159,7 @@ export function methodsProvenanceReport(bundle){
  a.method==='pFBA'?`pFBA biomass target: ${a.pfbaBiomassPercent??100}% of the primary optimum.`:'',
  a.fvaEnabled?'Flux variability analysis (FVA) was enabled.':'',
  a.loopless?'Loopless constraints were enabled.':'',
+ a.cycleFree?'CycleFreeFlux (Desouki et al. 2015) removed the internal cycles from the FBA optimum with one LP that holds the exchanges and the objective and minimises internal flux.':'',
  a.gimme?`GIMME used condition "${a.gimme.condition??'unspecified'}", expression threshold ${a.gimme.threshold??'auto'}, and required ${Math.round(100*(a.gimme.objectiveFraction??0.9))}% of the unconstrained metabolic objective.`:'',
  '',
  '## Omics',

@@ -16,6 +16,7 @@ use std::sync::Arc;
 use coxeter_state::Store;
 use coxeter_core::js;
 use coxeter_core::mapdata::Point;
+use coxeter_render::theme::format_flux;
 use egui::text::{LayoutJob, TextWrapping};
 use egui::{Color32, CornerRadius, CursorIcon, FontFamily, FontId, Frame, Galley, Margin, Pos2, Rect, Response, RichText, Sense, Shape, Stroke, StrokeKind, Ui, UiBuilder, Vec2};
 
@@ -282,6 +283,9 @@ pub struct ReactionRow {
     pub detail: String,
     pub equation: String,
     pub search: String,
+    /// Its flux in the current solution, shown in the row: set for the panel
+    /// of a metabolite, whose list is ordered by these fluxes.
+    pub flux: Option<f64>,
 }
 
 impl ReactionRow {
@@ -308,9 +312,21 @@ pub fn reaction_rows(store: &Store, reaction_ids: &[String]) -> Vec<ReactionRow>
                 detail,
                 equation: reaction_stoichiometry(store, id, 3),
                 search: reaction_search_text(store, id),
+                flux: None,
             }
         })
         .collect()
+}
+
+/// `renderAddReactionPanel({ fluxes })`: every row with its reaction's flux
+/// in the current optimal solution; the rows as they are without one.
+pub fn with_fluxes(store: &Store, mut rows: Vec<ReactionRow>) -> Vec<ReactionRow> {
+    if let Some(solution) = store.solution.as_ref().filter(|s| s.is_optimal()) {
+        for row in &mut rows {
+            row.flux = Some(solution.fluxes.get(&row.id).copied().unwrap_or(0.0));
+        }
+    }
+    rows
 }
 
 /// `filterReactionButtons(input)`: which rows the query keeps, and the
@@ -649,9 +665,12 @@ fn choice_row(ui: &mut Ui, row: &ReactionRow, selected: bool, p: &Palette) -> Re
     let inner_w = (width - 2.0 * pad.x - 2.0).max(10.0);
     let mono = FontId::new(11.5, FontFamily::Monospace);
     let id_galley = one_line(ui, &row.label, mono.clone(), p.ink, inner_w);
+    // `.has-flux`: `grid-template-columns: minmax(90px, auto) 1fr auto`.
+    let flux_galley = row.flux.map(|v| one_line(ui, &format_flux(Some(v), 4), mono.clone(), p.ink, inner_w / 3.0));
+    let flux_w = flux_galley.as_ref().map_or(0.0, |g| g.size().x + 8.0);
     // `grid-template-columns: minmax(90px, auto) 1fr; gap: 8px`.
-    let id_col = id_galley.size().x.max(90.0).min(inner_w);
-    let name_w = (inner_w - id_col - 8.0).max(1.0);
+    let id_col = id_galley.size().x.max(90.0).min(inner_w - flux_w);
+    let name_w = (inner_w - id_col - 8.0 - flux_w).max(1.0);
     let name_galley = one_line(ui, &row.detail, FontId::proportional(11.5), p.ink_2, name_w);
     let eq_galley = one_line(ui, &row.equation, FontId::new(10.5, FontFamily::Monospace), p.ink_3, inner_w);
     let line_h = id_galley.size().y.max(name_galley.size().y);
@@ -679,6 +698,9 @@ fn choice_row(ui: &mut Ui, row: &ReactionRow, selected: bool, p: &Palette) -> Re
         let center_y = origin.y + line_h / 2.0;
         painter.galley(Pos2::new(origin.x, center_y - id_galley.size().y / 2.0), id_galley, p.ink);
         painter.galley(Pos2::new(origin.x + id_col + 8.0, center_y - name_galley.size().y / 2.0), name_galley, p.ink_2);
+        if let Some(g) = flux_galley {
+            painter.galley(Pos2::new(origin.x + inner_w - g.size().x, center_y - g.size().y / 2.0), g, p.ink);
+        }
         painter.galley(Pos2::new(origin.x, origin.y + line_h + 5.0), eq_galley, p.ink_3);
     }
     if !selected { response.on_hover_cursor(CursorIcon::PointingHand) } else { response }

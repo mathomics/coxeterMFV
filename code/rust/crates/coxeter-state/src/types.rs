@@ -288,6 +288,8 @@ pub struct View {
     /// by hand (`cross_feeding_shown`).
     pub cross_feeding_top: f64,
     pub cross_feeding_shown: Option<Vec<String>>,
+    /// Width of the cross-feeding lines, as a multiple of the default.
+    pub cross_feeding_width: f64,
     pub dark: bool,
     pub geometry_edit: bool,
     pub multi_select: bool,
@@ -314,6 +316,7 @@ impl Default for View {
             show_cross_feeding: false,
             cross_feeding_top: 5.0,
             cross_feeding_shown: None,
+            cross_feeding_width: coxeter_render::crossfeed_routes::CROSSFEED_WIDTH_RANGE.default,
             dark: false,
             geometry_edit: false,
             multi_select: false,
@@ -342,6 +345,7 @@ pub struct ViewPatch {
     pub show_cross_feeding: Option<bool>,
     pub cross_feeding_top: Option<f64>,
     pub cross_feeding_shown: Option<Option<Vec<String>>>,
+    pub cross_feeding_width: Option<f64>,
     pub dark: Option<bool>,
     pub geometry_edit: Option<bool>,
     pub multi_select: Option<bool>,
@@ -459,6 +463,7 @@ pub enum AnalysisMethod {
     Pfba,
     Fva,
     Loopless,
+    CycleFree,
 }
 
 impl AnalysisMethod {
@@ -468,6 +473,7 @@ impl AnalysisMethod {
             "pfba" => Some(AnalysisMethod::Pfba),
             "fva" => Some(AnalysisMethod::Fva),
             "loopless" => Some(AnalysisMethod::Loopless),
+            "cyclefree" => Some(AnalysisMethod::CycleFree),
             _ => None,
         }
     }
@@ -478,6 +484,7 @@ impl AnalysisMethod {
             AnalysisMethod::Pfba => "pfba",
             AnalysisMethod::Fva => "fva",
             AnalysisMethod::Loopless => "loopless",
+            AnalysisMethod::CycleFree => "cyclefree",
         }
     }
 
@@ -488,6 +495,7 @@ impl AnalysisMethod {
             AnalysisMethod::Pfba => "pFBA",
             AnalysisMethod::Fva => "FVA",
             AnalysisMethod::Loopless => "Loopless FBA",
+            AnalysisMethod::CycleFree => "CycleFreeFlux",
         }
     }
 }

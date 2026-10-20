@@ -106,6 +106,7 @@ pub fn view_patch(p: &Value) -> ViewPatch {
         show_cross_feeding: flag("showCrossFeeding"),
         cross_feeding_top: num("crossFeedingTop"),
         cross_feeding_shown: None,
+        cross_feeding_width: num("crossFeedingWidth"),
         dark: flag("dark"),
         geometry_edit: flag("geometryEdit"),
         multi_select: flag("multiSelect"),

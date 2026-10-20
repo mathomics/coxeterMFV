@@ -77,6 +77,8 @@ export class MetaboliteMenuController {
       width,
       maxHeight,
       terminalMetaboliteId: this.state.terminalMetaboliteId,
+      // The list is ordered by these fluxes (see Store#orderByFlux).
+      fluxes: this.store.solution?.status === 'optimal' ? this.store.solution.fluxes : null,
     });
   }
 

@@ -11,7 +11,7 @@ use coxeter_analysis::community_view::CommunityView;
 use coxeter_core::community::{CrossFeeding, community_exchange, split_id};
 use coxeter_core::js;
 use coxeter_solver::backends::{Solver, SolverKind};
-use coxeter_solver::fba::{FluxProblem, FluxResult, FvaOptions, FvaProgress as SolverFvaProgress, LooplessOptions, PfbaOptions};
+use coxeter_solver::fba::{CycleFreeOptions, FluxProblem, FluxResult, FvaOptions, FvaProgress as SolverFvaProgress, LooplessOptions, PfbaOptions};
 use indexmap::IndexMap;
 
 use crate::error::{Result, StoreError};
@@ -22,13 +22,14 @@ use crate::store::{AUTO_DRAW_METABOLITE_LIMIT, AUTO_DRAW_REACTION_LIMIT, Store};
 use crate::types::*;
 use crate::util::{csv, describe_status, format_duration, normalize_pfba_percent};
 
-/// How a solve is posed: plain FBA, pFBA at a biomass percentage, or the
-/// loopless MILP, and whether the problem holds a minimised objective
-/// negated (see `Store::apply_objective`).
+/// How a solve is posed: plain FBA, pFBA at a biomass percentage,
+/// CycleFreeFlux or the loopless MILP, and whether the problem holds a
+/// minimised objective negated (see `Store::apply_objective`).
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct SolvePlan {
     pub loopless: bool,
     pub parsimonious: bool,
+    pub cycle_free: bool,
     pub pfba_percent: f64,
     pub minimise: bool,
 }
@@ -40,6 +41,8 @@ impl SolvePlan {
             "Loopless FBA"
         } else if self.parsimonious {
             "pFBA"
+        } else if self.cycle_free {
+            "CycleFreeFlux"
         } else {
             "FBA"
         }
@@ -60,6 +63,8 @@ pub fn compute_solution(problem: &FluxProblem, plan: SolvePlan, interrupt: Optio
         // the optimum, as FluxProblem itself does when asked to minimise.
         let fraction = if plan.minimise { 2.0 - fraction } else { fraction };
         problem.parsimonious(PfbaOptions { fraction, maximize: true })
+    } else if plan.cycle_free {
+        problem.cycle_free(&CycleFreeOptions::default())
     } else {
         problem.optimize()
     };
@@ -88,6 +93,7 @@ impl Store {
     /// case keeps one per scenario): `store.solution` is that same object.
     pub fn apply_solution_arc(&mut self, res: Arc<Solution>, allow_fva: bool) -> Arc<Solution> {
         self.solution = Some(res.clone());
+        self.solution_cleared = false;
         self.refresh_flux_scale();
         if res.is_optimal() {
             self.cross_feeding = if let Some(sc) = &res.steady_com {
@@ -135,9 +141,41 @@ impl Store {
         SolvePlan {
             loopless: self.loopless,
             parsimonious: parsimonious.unwrap_or(self.parsimonious),
+            cycle_free: self.cycle_free,
             pfba_percent: self.pfba_biomass_percent,
             minimise: self.objective_sense() == ObjectiveSense::Min,
         }
+    }
+
+    /// `clearSolution()`: take the solution off the map and hold the automatic
+    /// re-solve that input changes trigger, until an analysis is run again
+    /// (`run_analysis`, SteadyCom, GIMME) or another case is opened. Map, model
+    /// and the chosen method are left as they are, so the next run is the one
+    /// that was selected. Returns whether there was a solution to clear.
+    pub fn clear_solution(&mut self) -> bool {
+        let Some(solution) = self.solution.take() else { return false };
+        self.cancel_steady_com(true);
+        // A solve still running in the background would put a solution back.
+        self.jobs_solve_generation_bump();
+        self.cross_feeding = CrossFeeding::default();
+        self.growth = IndexMap::new();
+        self.cross_feeding_explorer.index = None;
+        self.cross_feeding_explorer.selected_id = None;
+        self.cancel_fva(true, false);
+        self.refresh_flux_scale();
+        // solve() rebuilds the community's own LP after a fixed-mu solution by
+        // looking at that solution, which is now gone.
+        if solution.steady_com.is_some() {
+            if let Err(error) = self.refresh_composition_problem() {
+                self.set_status_message(StatusState::Error, error.to_string());
+            }
+        }
+        self.solution_cleared = true;
+        self.last_run = None;
+        self.set_status_message(StatusState::Ok, "Solution cleared. Run an analysis to solve again.");
+        self.add_log(StatusState::Ok, "Solution cleared", LogKind::Solve);
+        self.emit("solution");
+        true
     }
 
     /// `solve()`: solve and refresh everything derived from the solution.
@@ -148,6 +186,9 @@ impl Store {
     /// `solve({ parsimonious, silent })`.
     pub fn solve_with(&mut self, parsimonious: Option<bool>, silent: bool) -> Option<Arc<Solution>> {
         self.problem.as_ref()?;
+        if self.solution_cleared {
+            return None;
+        }
         if self.is_zuniga_study() {
             return self.solve_zuniga(silent);
         }
@@ -221,6 +262,7 @@ impl Store {
         if m == AnalysisMethod::Fva && self.solution.as_ref().is_some_and(|s| s.steady_com.is_some()) {
             return Ok(());
         }
+        self.solution_cleared = false;
         self.next_run_serial += 1;
         let serial = self.next_run_serial;
         self.last_run = Some(LastRun {
@@ -248,11 +290,13 @@ impl Store {
             AnalysisMethod::Fba => {
                 self.parsimonious = false;
                 self.loopless = false;
+                self.cycle_free = false;
                 self.set_fva(false)?;
                 self.start_solve_job(false);
             }
             AnalysisMethod::Pfba => {
                 self.loopless = false;
+                self.cycle_free = false;
                 self.set_fva(false)?;
                 self.assert_published_study_constraints()?;
                 if self.parsimonious && self.solution.is_some() {
@@ -269,6 +313,21 @@ impl Store {
                 } else {
                     self.loopless = true;
                     self.parsimonious = false;
+                    self.cycle_free = false;
+                    if self.fva_enabled {
+                        self.set_fva(false)?;
+                    }
+                    self.start_solve_job(false);
+                }
+            }
+            AnalysisMethod::CycleFree => {
+                self.assert_published_study_constraints()?;
+                if self.cycle_free && self.solution.is_some() {
+                    self.finish_run_with_solution();
+                } else {
+                    self.cycle_free = true;
+                    self.parsimonious = false;
+                    self.loopless = false;
                     if self.fva_enabled {
                         self.set_fva(false)?;
                     }
@@ -278,6 +337,7 @@ impl Store {
             AnalysisMethod::Fva => {
                 self.loopless = false;
                 self.parsimonious = false;
+                self.cycle_free = false;
                 self.start_solve_job(true);
             }
         }
@@ -469,6 +529,9 @@ impl Store {
         if enabled && self.loopless {
             self.loopless = false;
         }
+        if enabled && self.cycle_free {
+            self.cycle_free = false;
+        }
         if self.parsimonious == enabled && self.solution.is_some() {
             return Ok(self.solution.clone());
         }
@@ -509,6 +572,25 @@ impl Store {
         self.loopless = enabled;
         if enabled {
             self.parsimonious = false;
+            self.cycle_free = false;
+            if self.fva_enabled {
+                self.set_fva(false)?;
+            }
+        }
+        Ok(self.solve())
+    }
+
+    /// `setCycleFree(enabled)`: the FBA optimum with its internal cycles
+    /// removed. It replaces pFBA and Loopless, and FVA, as Loopless does.
+    pub fn set_cycle_free(&mut self, enabled: bool) -> Result<Option<Arc<Solution>>> {
+        self.assert_published_study_constraints()?;
+        if self.cycle_free == enabled && self.solution.is_some() {
+            return Ok(self.solution.clone());
+        }
+        self.cycle_free = enabled;
+        if enabled {
+            self.parsimonious = false;
+            self.loopless = false;
             if self.fva_enabled {
                 self.set_fva(false)?;
             }
@@ -528,8 +610,9 @@ impl Store {
             self.emit("status");
             return Ok(());
         }
-        if enabled && self.loopless {
+        if enabled && (self.loopless || self.cycle_free) {
             self.loopless = false;
+            self.cycle_free = false;
             self.solve();
         }
         if self.fva_enabled == enabled {

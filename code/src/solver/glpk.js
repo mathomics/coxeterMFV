@@ -116,9 +116,11 @@ function mapStatus(code) {
  * been initialised.
  *
  * @param {object} problem  { A: SparseColumns, b, c, lb, ub, maximize,
- *                            timeLimitSeconds, rowLower, rowUpper, presolve },
- *                          the last three optional: row ranges that replace
- *                          `b`, and presolve (default true)
+ *                            timeLimitSeconds, rowLower, rowUpper, presolve,
+ *                            binaries }, the last four optional: row ranges
+ *                          that replace `b`, presolve (default true), and the
+ *                          column indices restricted to 0 or 1, which make it
+ *                          a MILP solved by GLPK's branch and cut
  * @param {object} [names]  { rows: string[], cols: string[] } for readable duals
  * @returns {{status:string, objective:number, x:Float64Array|null, duals:Float64Array|null, message:string}}
  */
@@ -194,6 +196,8 @@ export function solveWithGLPK(problem, names = {}) {
     subjectTo,
     bounds,
   };
+  const binaries = problem.binaries ?? [];
+  if (binaries.length) lp.binaries = binaries.map((j) => colNames[j]);
 
   // A time limit, because a degenerate LP can cycle in the simplex and never come
   // back, and one such LP should not hang the whole program. GLPK returns
@@ -207,13 +211,17 @@ export function solveWithGLPK(problem, names = {}) {
   // badly scaled one it gives up and reports GLP_UNDEF, "no solution", which is
   // not the same as "infeasible" and must never be read as one. The plain simplex
   // usually gets through, so retry once without the presolver before believing it.
+  // A MILP that ran out of time without an integer point is also GLP_UNDEF, and
+  // retrying it would only double the wait.
   let result = glpk.solve(lp, options);
-  if (result?.result?.status === glpk.GLP_UNDEF) {
+  if (result?.result?.status === glpk.GLP_UNDEF && !binaries.length) {
     result = glpk.solve(lp, { ...options, presol: false });
   }
 
   const status = mapStatus(result?.result?.status);
-  if (status !== LP_OPTIMAL) {
+  // A MILP stopped by its time limit keeps the best integer point it found.
+  const incumbent = binaries.length > 0 && result?.result?.status === glpk.GLP_FEAS;
+  if (status !== LP_OPTIMAL && !incumbent) {
     return { status, objective: NaN, x: null, duals: null, message: `GLPK status ${result?.result?.status}` };
   }
 
