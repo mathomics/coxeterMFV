@@ -423,7 +423,7 @@ impl Solution {
             objective_value: result.objective_value,
             fluxes: result.fluxes.clone(),
             message: result.message.clone(),
-            solver: "highs".into(),
+            solver: result.solver.id().into(),
             result: Some(result),
             steady_com: None,
             extra: None,

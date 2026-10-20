@@ -914,6 +914,7 @@ dependencies = [
  "coxeter-core",
  "highs-sys",
  "indexmap",
+ "libloading",
  "rayon",
  "regex",
  "serde",

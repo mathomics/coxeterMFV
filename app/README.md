@@ -17,7 +17,7 @@ This file bundles the GLPK solver and is therefore distributed under GPL-3.0.
 [`windows/coxeter-mfv.exe`](windows/coxeter-mfv.exe) is a native build for 64-bit Windows 10 and 11.
 
 - Double-click it to start. The bundled models are compiled into the program, so no other files are needed.
-- It draws the map on the GPU, solves flux problems with the HiGHS solver and spreads flux variability analysis over all processor cores.
+- It draws the map on the GPU, solves flux problems with the HiGHS solver, or with Gurobi or CPLEX when they are installed (`coxeter-mfv.exe --solvers` lists them), and spreads flux variability analysis over all processor cores.
 - Model and map files given on the command line are opened at start.
 
 ```powershell

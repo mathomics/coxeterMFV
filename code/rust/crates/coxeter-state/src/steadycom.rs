@@ -24,7 +24,8 @@ use std::time::{Duration, Instant};
 
 use coxeter_core::community::{CrossFeeding, CrossFeedingLink, FluxShare, MetaboliteExchange, community_exchange, split_id};
 use coxeter_core::js;
-use coxeter_solver::lp::LpStatus;
+use coxeter_solver::backends::Solver;
+use coxeter_solver::lp::{LpBackend, LpStatus};
 use coxeter_solver::steadycom::{
     AtOptions, AtResult, BiomassTerm, Constraint, ExchangeBounds, Fiber, SteadyComOptions, SteadyComProgress, SteadyComResult,
     SteadyComSpec, SteadyComStatus, max_total_biomass_at, parsimonious_at, steady_com,
@@ -72,12 +73,14 @@ pub enum SteadyComTaskResult {
     At(AtResult),
 }
 
-/// `{ signal, timeoutMs, onProgress }`.
+/// `{ signal, timeoutMs, onProgress }`, and the solver to run on.
 pub struct TaskControls<'a> {
     /// Set when the request is cancelled (`signal.aborted`).
     pub cancel: Arc<AtomicBool>,
     pub timeout: Duration,
     pub on_progress: &'a (dyn Fn(SteadyComProgress) + Send + Sync),
+    /// The store's solver.
+    pub solver: Solver,
 }
 
 /// `runSteadyComTask(spec, request, controls)`. Runs on a job thread. The
@@ -86,11 +89,12 @@ pub trait SteadyComRunner: Send + Sync {
     fn run(&self, spec: &SteadyComSpec, task: &SteadyComTask, controls: &TaskControls<'_>) -> Result<SteadyComTaskResult>;
 }
 
-/// The runner on HiGHS (`coxeter_solver::steadycom`), with the task timeout.
+/// The runner on the store's solver (`coxeter_solver::steadycom`), with the
+/// task timeout.
 #[derive(Debug, Clone, Copy, Default)]
-pub struct HighsSteadyComRunner;
+pub struct SolverSteadyComRunner;
 
-impl SteadyComRunner for HighsSteadyComRunner {
+impl SteadyComRunner for SolverSteadyComRunner {
     fn run(&self, spec: &SteadyComSpec, task: &SteadyComTask, controls: &TaskControls<'_>) -> Result<SteadyComTaskResult> {
         if controls.cancel.load(Ordering::SeqCst) {
             return Err(StoreError::aborted("SteadyCom was cancelled."));
@@ -108,11 +112,12 @@ impl SteadyComRunner for HighsSteadyComRunner {
                 }
             })
         };
+        let backend: &dyn LpBackend = &controls.solver;
         let at = |time: f64| AtOptions {
             biomass_cap: None,
             time_limit_seconds: Some(time),
             cancel: Some(controls.cancel.clone()),
-            backend: None,
+            backend: Some(backend),
         };
         let result = match task {
             SteadyComTask::Range { upper_guess, tolerance, biomass_cap, time_limit_seconds } => {
@@ -126,6 +131,7 @@ impl SteadyComRunner for HighsSteadyComRunner {
                         time_limit_seconds: *time_limit_seconds,
                         on_progress: Some(Box::new(move |p: &SteadyComProgress| progress(*p))),
                         cancel: Some(controls.cancel.clone()),
+                        backend: Some(backend),
                         ..SteadyComOptions::default()
                     },
                 )
@@ -667,6 +673,7 @@ impl Store {
 
     fn spawn_steady_com(&mut self, job: SteadyComJob, timeout: Duration) {
         let runner = self.steady_com_runner.clone();
+        let solver = self.solver.clone();
         let spec = job.spec.clone();
         let task = job.task.clone();
         let label = format!("steadycom-{}", task.kind());
@@ -678,7 +685,7 @@ impl Store {
                     let _ = tx.send(JobMessage::SteadyComProgress { id, progress });
                 }
             };
-            let controls = TaskControls { cancel, timeout, on_progress: &on_progress };
+            let controls = TaskControls { cancel, timeout, on_progress: &on_progress, solver };
             let result = runner.run(&spec, &task, &controls);
             let _ = tx.send(JobMessage::Done { id, payload: JobPayload::SteadyCom(Box::new(result)) });
         });
@@ -840,7 +847,7 @@ impl Store {
             objective_value: mu,
             fluxes,
             message: String::new(),
-            solver: "glpk".into(),
+            solver: self.solver.kind().id().into(),
             result: None,
             steady_com: Some(SteadyComSolution {
                 mu,

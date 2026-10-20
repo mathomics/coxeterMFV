@@ -1,10 +1,11 @@
-//! Binary MILP on HiGHS.
+//! Binary MILP on HiGHS, Gurobi or CPLEX.
 //!
 //! Ports `src/solver/milp.js`. The JS module is a small depth-first
-//! branch-and-bound over its own simplex. Here HiGHS' MIP solver does the
-//! search, and this module keeps the JS contract: the problem is an LP in the
-//! `A x = b` shape plus a list of binary columns, the safeguards are a node
-//! limit and a time limit, and the result says whether optimality was proven.
+//! branch-and-bound over its own simplex. Here the MIP solver of the chosen
+//! backend does the search (HiGHS unless the caller picks another), and this
+//! module keeps the JS contract: the problem is an LP in the `A x = b` shape
+//! plus a list of binary columns, the safeguards are a node limit and a time
+//! limit, and the result says whether optimality was proven.
 //!
 //! As in the JS: an exhausted search with an incumbent returns that incumbent
 //! with status `iteration_limit` and `proven_optimal = false`, so a caller can
@@ -13,9 +14,10 @@
 use std::sync::Arc;
 use std::sync::atomic::AtomicBool;
 
-use crate::lp::{Highs, LpProblem, LpStatus, SolveOptions, solve_lp};
+use crate::backends::Solver;
+use crate::lp::{LpProblem, LpStatus, ModelStatus, SolveOptions};
 
-/// `solveBinaryMILP` options. The defaults are the JS ones.
+/// `solveBinaryMILP` options. The defaults are the JS ones, on HiGHS.
 #[derive(Debug, Clone)]
 pub struct MilpOptions {
     /// Most branch-and-bound nodes to explore (20 000).
@@ -29,6 +31,8 @@ pub struct MilpOptions {
     pub objective_tolerance: f64,
     /// Set from any thread to stop the search.
     pub interrupt: Option<Arc<AtomicBool>>,
+    /// The solver that searches.
+    pub solver: Solver,
 }
 
 impl Default for MilpOptions {
@@ -39,6 +43,7 @@ impl Default for MilpOptions {
             integrality_tolerance: 1e-7,
             objective_tolerance: 1e-8,
             interrupt: None,
+            solver: Solver::highs(),
         }
     }
 }
@@ -92,21 +97,26 @@ pub fn solve_binary_milp(problem: &LpProblem, binary: &[usize], options: &MilpOp
         interrupt: options.interrupt.clone(),
         ..Default::default()
     };
-    let mut highs = Highs::new();
-    highs.apply(&solve_options);
-    if let Err(message) = highs.pass_problem(&mip) {
-        return MilpResult {
-            status: LpStatus::IterationLimit,
-            objective: f64::NAN,
-            x: None,
-            iterations: 0,
-            nodes: 0,
-            proven_optimal: false,
-            incumbent_objective: None,
-            message,
-        };
+    let unfinished = |message: String| MilpResult {
+        status: LpStatus::IterationLimit,
+        objective: f64::NAN,
+        x: None,
+        iterations: 0,
+        nodes: 0,
+        proven_optimal: false,
+        incumbent_objective: None,
+        message,
+    };
+    let mut instance = match options.solver.instance() {
+        Ok(instance) => instance,
+        Err(message) => return unfinished(message),
+    };
+    instance.apply(&solve_options);
+    if let Err(message) = instance.pass_problem(&mip) {
+        return unfinished(message);
     }
-    let res = highs.run();
+    let res = instance.run();
+    drop(instance);
     let nodes = res.nodes;
 
     match res.status {
@@ -130,7 +140,7 @@ pub fn solve_binary_milp(problem: &LpProblem, binary: &[usize], options: &MilpOp
             if ambiguous {
                 let mut relaxation = mip.clone();
                 relaxation.integer.clear();
-                let root = solve_lp(&relaxation, &SolveOptions { time_limit: solve_options.time_limit, ..Default::default() });
+                let root = options.solver.solve(&relaxation, &SolveOptions { time_limit: solve_options.time_limit, ..Default::default() });
                 match root.status {
                     LpStatus::Unbounded => {
                         return MilpResult {
@@ -169,7 +179,13 @@ pub fn solve_binary_milp(problem: &LpProblem, binary: &[usize], options: &MilpOp
                     nodes,
                     proven_optimal: false,
                     incumbent_objective: None,
-                    message: format!("Loopless MILP hit the search limit ({nodes} nodes)."),
+                    // A solver that refused the problem (a licence's size
+                    // limit, an error) never searched: say why instead.
+                    message: if res.model_status == ModelStatus::NOT_SET && !res.message.is_empty() {
+                        res.message
+                    } else {
+                        format!("Loopless MILP hit the search limit ({nodes} nodes).")
+                    },
                 },
             }
         }

@@ -4,12 +4,15 @@
 //! implement in the JavaScript app (the problem shape, the four status codes
 //! and their meaning) onto HiGHS. The bundled dense simplex of the JS app is
 //! not ported as a solver: HiGHS is linked statically and always available,
-//! so there is no fallback to choose.
+//! so there is no fallback to choose. Gurobi and CPLEX, when the user has
+//! them, implement the same interface ([`LpInstance`], see
+//! [`crate::backends`]).
 //!
-//! This is the only module that touches FFI. Everything else in the crate
-//! builds an [`LpProblem`] and reads an [`LpSolution`], or keeps a [`Highs`]
-//! instance alive to re-solve it after changing the objective or the bounds
-//! (HiGHS then starts from the previous basis).
+//! This module, [`crate::gurobi`] and [`crate::cplex`] are the only ones that
+//! touch FFI. Everything else in the crate builds an [`LpProblem`] and reads
+//! an [`LpSolution`], or keeps an [`LpInstance`] alive to re-solve it after
+//! changing the objective or the bounds (the solver then starts from the
+//! previous basis).
 //!
 //! Status semantics, as glpk.js maps GLPK's:
 //!
@@ -30,6 +33,8 @@ use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, Ordering};
 
 use highs_sys as ffi;
+
+use crate::backends::SolverKind;
 
 /// `LP_OPTIMAL` of simplex.js.
 pub const LP_OPTIMAL: &str = "optimal";
@@ -84,11 +89,27 @@ impl fmt::Display for LpStatus {
     }
 }
 
-/// HiGHS' own model status, kept for diagnostics.
+/// The solver's own account of how a solve ended, kept for diagnostics, in
+/// HiGHS' numbering: Gurobi and CPLEX map their statuses onto it.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct ModelStatus(pub i32);
 
 impl ModelStatus {
+    pub const NOT_SET: ModelStatus = ModelStatus(ffi::MODEL_STATUS_NOTSET);
+    pub const SOLVE_ERROR: ModelStatus = ModelStatus(ffi::MODEL_STATUS_SOLVE_ERROR);
+    pub const OPTIMAL: ModelStatus = ModelStatus(ffi::MODEL_STATUS_OPTIMAL);
+    pub const INFEASIBLE: ModelStatus = ModelStatus(ffi::MODEL_STATUS_INFEASIBLE);
+    pub const UNBOUNDED_OR_INFEASIBLE: ModelStatus = ModelStatus(ffi::MODEL_STATUS_UNBOUNDED_OR_INFEASIBLE);
+    pub const UNBOUNDED: ModelStatus = ModelStatus(ffi::MODEL_STATUS_UNBOUNDED);
+    pub const OBJECTIVE_BOUND: ModelStatus = ModelStatus(ffi::MODEL_STATUS_OBJECTIVE_BOUND);
+    pub const TIME_LIMIT: ModelStatus = ModelStatus(ffi::MODEL_STATUS_REACHED_TIME_LIMIT);
+    pub const ITERATION_LIMIT: ModelStatus = ModelStatus(ffi::MODEL_STATUS_REACHED_ITERATION_LIMIT);
+    pub const UNKNOWN: ModelStatus = ModelStatus(ffi::MODEL_STATUS_UNKNOWN);
+    /// Also a MILP's node limit, as HiGHS reports it.
+    pub const SOLUTION_LIMIT: ModelStatus = ModelStatus(ffi::MODEL_STATUS_REACHED_SOLUTION_LIMIT);
+    pub const INTERRUPTED: ModelStatus = ModelStatus(ffi::MODEL_STATUS_REACHED_INTERRUPT);
+    pub const MEMORY_LIMIT: ModelStatus = ModelStatus(ffi::MODEL_STATUS_REACHED_MEMORY_LIMIT);
+
     /// A readable name of the status, for messages.
     pub fn name(self) -> &'static str {
         match self.0 {
@@ -268,7 +289,7 @@ impl LpProblem {
         self.cost.iter().zip(x).fold(0.0, |s, (c, v)| if *c == 0.0 { s } else { s + c * v })
     }
 
-    fn check(&self) -> Result<(), (LpStatus, String)> {
+    pub(crate) fn check(&self) -> Result<(), (LpStatus, String)> {
         let (m, n) = (self.rows(), self.cols());
         if self.row_lower.len() != m || self.row_upper.len() != m {
             return Err((LpStatus::IterationLimit, format!("row bounds for {} rows, the matrix has {m}", self.row_lower.len())));
@@ -315,25 +336,45 @@ pub enum OptionValue<'a> {
     Str(&'a str),
 }
 
-/// Basis statuses of every column and row, as HiGHS reports them.
+/// Basis statuses of every column and row, in the codes of the solver that
+/// found them. A basis only goes back to that kind of solver.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Basis {
-    col: Vec<ffi::HighsInt>,
-    row: Vec<ffi::HighsInt>,
+    solver: SolverKind,
+    col: Vec<i32>,
+    row: Vec<i32>,
+    /// Columns the backend added itself (Gurobi's slacks of ranged rows).
+    extra: Vec<i32>,
 }
 
 impl Basis {
+    pub(crate) fn new(solver: SolverKind, col: Vec<i32>, row: Vec<i32>, extra: Vec<i32>) -> Basis {
+        Basis { solver, col, row, extra }
+    }
+    /// The solver whose codes these are.
+    pub fn solver(&self) -> SolverKind {
+        self.solver
+    }
     pub fn is_basic_col(&self, j: usize) -> bool {
-        self.col.get(j) == Some(&ffi::kHighsBasisStatusBasic)
+        self.col.get(j) == Some(&self.solver.basic_status())
     }
     pub fn is_basic_row(&self, i: usize) -> bool {
-        self.row.get(i) == Some(&ffi::kHighsBasisStatusBasic)
+        self.row.get(i) == Some(&self.solver.basic_status())
     }
     pub fn cols(&self) -> usize {
         self.col.len()
     }
     pub fn rows(&self) -> usize {
         self.row.len()
+    }
+    pub(crate) fn col_statuses(&self) -> &[i32] {
+        &self.col
+    }
+    pub(crate) fn row_statuses(&self) -> &[i32] {
+        &self.row
+    }
+    pub(crate) fn extra_statuses(&self) -> &[i32] {
+        &self.extra
     }
 }
 
@@ -377,9 +418,20 @@ impl LpSolution {
             iterations: 0,
             nodes: 0,
             message: message.into(),
-            model_status: ModelStatus(ffi::MODEL_STATUS_NOTSET),
+            model_status: ModelStatus::NOT_SET,
         }
     }
+}
+
+/// `A x` for every row.
+pub(crate) fn row_activity(a: &SparseColumns, x: &[f64]) -> Vec<f64> {
+    let mut activity = vec![0.0; a.rows];
+    for (j, xj) in x.iter().enumerate().take(a.cols()) {
+        for (i, v) in a.column(j) {
+            activity[*i] += v * xj;
+        }
+    }
+    activity
 }
 
 /// Settings of one solve.
@@ -421,10 +473,57 @@ impl Default for SolveOptions {
     }
 }
 
-/// Something that solves an [`LpProblem`]. HiGHS ([`HighsBackend`]) is the one
-/// the app uses, and tests substitute their own to exercise status handling.
+/// Something that solves an [`LpProblem`]: HiGHS ([`HighsBackend`]), the
+/// solver the user chose ([`crate::backends::Solver`]), or a test's own to
+/// exercise status handling.
 pub trait LpBackend: Sync {
     fn solve(&self, problem: &LpProblem, options: &SolveOptions) -> LpSolution;
+}
+
+/// One problem loaded into a solver and kept, to solve it again after
+/// changing its objective, its sense or its basis: what flux variability and
+/// the loopless MILP need from any backend. [`Highs`] is one, and
+/// [`crate::backends::Solver::instance`] makes one of the chosen solver.
+///
+/// An instance can move between threads but is not shared by them.
+pub trait LpInstance: Send {
+    /// Apply the settings of one solve.
+    fn apply(&mut self, options: &SolveOptions);
+    /// Register (or clear) a flag that interrupts the solve when set.
+    fn set_interrupt(&mut self, flag: Option<Arc<AtomicBool>>);
+    /// Load a problem, replacing whatever the instance held.
+    fn pass_problem(&mut self, problem: &LpProblem) -> Result<(), String>;
+    /// Replace the whole objective vector.
+    fn set_costs(&mut self, cost: &[f64]);
+    /// Change one objective coefficient.
+    fn set_cost(&mut self, j: usize, c: f64);
+    /// Maximise (`true`) or minimise the objective.
+    fn set_maximize(&mut self, maximize: bool);
+    /// The basis of the last solve, if the solver has a valid one.
+    fn basis(&self) -> Option<Basis>;
+    /// Start the next solve from `basis`.
+    fn set_basis(&mut self, basis: &Basis) -> Result<(), String>;
+    /// Forget the solver state but keep the problem: the next solve is what a
+    /// fresh instance would do, or what it would do from a basis given now.
+    fn clear_solver(&mut self);
+    /// Solve the problem as it stands.
+    fn run(&mut self) -> LpSolution;
+}
+
+/// Solve one problem on `instance`, as [`solve_lp`] does on a fresh HiGHS.
+pub(crate) fn solve_on(instance: &mut dyn LpInstance, problem: &LpProblem, options: &SolveOptions) -> LpSolution {
+    if let Err((status, message)) = problem.check() {
+        return LpSolution::failed(status, message);
+    }
+    instance.apply(options);
+    if let Err(message) = instance.pass_problem(problem) {
+        return LpSolution::failed(LpStatus::IterationLimit, message);
+    }
+    if let Some(basis) = &options.basis {
+        // A basis that does not fit is simply not used.
+        let _ = instance.set_basis(basis);
+    }
+    instance.run()
 }
 
 /// The HiGHS backend: a fresh instance per solve.
@@ -798,12 +897,12 @@ impl Highs {
         }
         // SAFETY: arrays sized to the problem.
         let status = unsafe { ffi::Highs_getBasis(self.ptr.as_ptr(), col.as_mut_ptr(), row.as_mut_ptr()) };
-        (status != ffi::STATUS_ERROR).then_some(Basis { col, row })
+        (status != ffi::STATUS_ERROR).then(|| Basis::new(SolverKind::Highs, col, row, Vec::new()))
     }
 
     /// Start the next solve from `basis`.
     pub fn set_basis(&mut self, basis: &Basis) -> Result<(), String> {
-        if basis.col.len() != self.cols || basis.row.len() != self.rows {
+        if basis.solver != SolverKind::Highs || basis.col.len() != self.cols || basis.row.len() != self.rows {
             return Err("basis does not match the problem".into());
         }
         // SAFETY: arrays sized to the problem.
@@ -889,6 +988,39 @@ impl Highs {
         out.x = Some(x);
         out.row_activity = Some(row_value);
         out
+    }
+}
+
+impl LpInstance for Highs {
+    fn apply(&mut self, options: &SolveOptions) {
+        Highs::apply(self, options)
+    }
+    fn set_interrupt(&mut self, flag: Option<Arc<AtomicBool>>) {
+        Highs::set_interrupt(self, flag)
+    }
+    fn pass_problem(&mut self, problem: &LpProblem) -> Result<(), String> {
+        Highs::pass_problem(self, problem)
+    }
+    fn set_costs(&mut self, cost: &[f64]) {
+        Highs::set_costs(self, cost)
+    }
+    fn set_cost(&mut self, j: usize, c: f64) {
+        Highs::set_cost(self, j, c)
+    }
+    fn set_maximize(&mut self, maximize: bool) {
+        Highs::set_maximize(self, maximize)
+    }
+    fn basis(&self) -> Option<Basis> {
+        Highs::basis(self)
+    }
+    fn set_basis(&mut self, basis: &Basis) -> Result<(), String> {
+        Highs::set_basis(self, basis)
+    }
+    fn clear_solver(&mut self) {
+        Highs::clear_solver(self)
+    }
+    fn run(&mut self) -> LpSolution {
+        Highs::run(self)
     }
 }
 

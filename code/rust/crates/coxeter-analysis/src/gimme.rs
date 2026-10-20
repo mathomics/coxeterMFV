@@ -11,12 +11,13 @@
 //! Absolute flux is linearised as v = v+ - v-.
 //!
 //! The JS solves the GIMME LP with its bundled simplex (`solveLP`). This port
-//! solves the same LP, row for row and column for column, with HiGHS through
+//! solves the same LP, row for row and column for column, on the flux
+//! problem's solver (HiGHS, or the user's Gurobi or CPLEX) through
 //! `coxeter_solver::lp`, whose duals follow the simplex.js conventions.
 
 use coxeter_core::js;
 use coxeter_solver::fba::{DualAnalysis, FluxProblem, FluxResult};
-use coxeter_solver::lp::{LpProblem, LpStatus, SolveOptions, SparseColumns, solve_lp};
+use coxeter_solver::lp::{LpProblem, LpStatus, SolveOptions, SparseColumns};
 use indexmap::{IndexMap, IndexSet};
 use serde_json::{Map, Value, json};
 
@@ -255,7 +256,7 @@ pub fn run_gimme(problem: &FluxProblem, expression_scores: &IndexMap<String, f64
     ub[slack] = f64::INFINITY;
     let required = base.objective_value * fraction;
     b[m] = required;
-    let res = solve_lp(&LpProblem::equality(a, &b, c, lb, ub, false), &SolveOptions::default());
+    let res = problem.solver().solve(&LpProblem::equality(a, &b, c, lb, ub, false), &SolveOptions::default());
 
     if res.status != LpStatus::Optimal {
         return Ok(GimmeResult {
@@ -272,6 +273,7 @@ pub fn run_gimme(problem: &FluxProblem, expression_scores: &IndexMap<String, f64
                 message: res.message,
                 total_flux: None,
                 loopless: None,
+                solver: problem.solver().kind(),
             },
             reason: None,
             threshold: Some(cutoff),
@@ -352,6 +354,7 @@ pub fn run_gimme(problem: &FluxProblem, expression_scores: &IndexMap<String, f64
             message: String::new(),
             total_flux: None,
             loopless: None,
+            solver: problem.solver().kind(),
         },
         reason: None,
         threshold: Some(cutoff),

@@ -37,6 +37,7 @@ use coxeter_core::model::Model;
 use coxeter_map::editable_map::EditableMap;
 use coxeter_map::multi_selection::empty_selection;
 use coxeter_io::reproducibility::{Tolerances, compare_replayed_solution, verify_reproducibility_bundle};
+use coxeter_solver::backends::Solver;
 use indexmap::IndexMap;
 use serde_json::{Map, Value, json};
 
@@ -453,7 +454,7 @@ impl Store {
                 return Err(StoreError::aborted("The Zuñiga load was superseded by another scenario."));
             }
             let prepared = create_zuniga_scenario(&study, scenario.id)?;
-            let solution = zuniga_solution(&prepared);
+            let solution = zuniga_solution(&prepared, &self.solver);
             if !solution.is_optimal() {
                 let why = if solution.message.is_empty() { solution.status.as_str().to_string() } else { solution.message.clone() };
                 return Err(StoreError::msg(format!("{}: {why}", scenario.name)));
@@ -518,7 +519,7 @@ impl Store {
                 }
                 s
             }
-            None => zuniga_solution(&prepared),
+            None => zuniga_solution(&prepared, &self.solver),
         };
         let solution = Arc::new(solution);
         self.zuniga.solutions.insert(id.to_string(), solution.clone());
@@ -533,11 +534,24 @@ impl Store {
         Ok(solution)
     }
 
+    /// Solve every scenario the case keeps again on the store's solver, after
+    /// a change of solver: the difference view compares with the WT one.
+    pub(crate) fn resolve_zuniga_scenarios(&mut self) -> Result<()> {
+        let Some(study) = self.zuniga.study.clone() else { return Ok(()) };
+        let ids: Vec<String> = self.zuniga.solutions.keys().cloned().collect();
+        for id in ids {
+            let prepared = create_zuniga_scenario(&study, &id)?;
+            let solution = zuniga_solution(&prepared, &self.solver);
+            self.zuniga.solutions.insert(id, Arc::new(solution));
+        }
+        Ok(())
+    }
+
     /// The `solve()` of the case: the open scenario again, on its exact LP.
     pub(crate) fn solve_zuniga(&mut self, silent: bool) -> Option<Arc<Solution>> {
         let prepared = self.zuniga.prepared.clone()?;
         let t = Instant::now();
-        let solution = Arc::new(zuniga_solution(&prepared));
+        let solution = Arc::new(zuniga_solution(&prepared, &self.solver));
         let id = self.zuniga.scenario_id.clone().unwrap_or_default();
         self.zuniga.solutions.insert(id.clone(), solution.clone());
         self.apply_solution_arc(solution.clone(), false);
@@ -717,14 +731,19 @@ impl Store {
     }
 }
 
-/// `solveZunigaScenario(prepared)` with the growth and cross-feeding the
-/// store records on it.
-fn zuniga_solution(prepared: &ZunigaPrepared) -> Solution {
-    let solved = solve_zuniga_scenario(prepared);
+/// `solveZunigaScenario(prepared)` on `solver`, with the growth and
+/// cross-feeding the store records on it.
+fn zuniga_solution(prepared: &ZunigaPrepared, solver: &Solver) -> Solution {
+    let solved = if prepared.problem.solver().same_as(solver) {
+        solve_zuniga_scenario(prepared)
+    } else {
+        let mut on_solver = prepared.clone();
+        on_solver.problem.set_solver(solver.clone());
+        solve_zuniga_scenario(&on_solver)
+    };
     let growth = prepared.community.growth_rates(&solved.result.fluxes);
     let cross_feeding = prepared.community.cross_feeding(&solved.result.fluxes, 1e-6);
     let mut solution = Solution::from_result(solved.result);
-    solution.solver = "glpk".into();
     solution.zuniga = Some(Arc::new(ZunigaRecord { run: solved.zuniga, growth, cross_feeding }));
     solution
 }

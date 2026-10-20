@@ -30,6 +30,7 @@ use coxeter_core::model::Model;
 use coxeter_map::editable_map::EditableMap;
 use coxeter_map::layout::LayoutOptions;
 use coxeter_map::place_reaction::PlaceOptions;
+use coxeter_solver::backends::SolverKind;
 use coxeter_solver::steadycom::{Fiber, SteadyComProgress};
 use coxeter_state::zuniga::{ZUNIGA_ID, zuniga_community_model};
 use coxeter_state::{MemoryAssets, NoFetcher, StatusState, SteadyComState, Store};
@@ -739,4 +740,45 @@ fn the_case_before_its_sources_are_downloaded_says_so() {
     assert!(common::disabled(&h, "Download Ec as COBRA JSON"));
     assert!(common::disabled(&h, "Download Se as SBML"));
     assert!(!common::has(&h, "Zuñiga case scenario"));
+}
+
+// The Solver block (the native app's own)
+
+/// Frames until the background check of the solvers has finished.
+fn solvers_checked(h: &mut H) {
+    for _ in 0..1200 {
+        let _ = h.try_run();
+        if h.state().solvers.checked && !h.state().solvers.checking() {
+            break;
+        }
+        std::thread::sleep(std::time::Duration::from_millis(50));
+    }
+    common::settle(h);
+}
+
+#[test]
+fn the_solver_block_lists_the_solvers_and_switches_every_analysis() {
+    let mut h = common::harness(None);
+    open(&mut h, Workspace::Analysis);
+    solvers_checked(&mut h);
+    let highs = format!("{} · built in", h.state().store.solver.label());
+    assert_eq!(value(&h, "Solver"), highs);
+    assert!(common::shows(&h, "Every analysis runs on it"));
+    assert!(common::has(&h, "Check the solvers again"));
+    assert!(common::has(&h, "Locate the Gurobi library"));
+    assert!(common::has(&h, "Locate the CPLEX library"));
+    // Each solver this computer can use takes over the analyses: the
+    // solution, the select and the summary of the Simulate tab say so.
+    let usable: Vec<SolverKind> =
+        h.state().solvers.infos.iter().filter(|i| i.usable() && i.kind != SolverKind::Highs).map(|i| i.kind).collect();
+    for kind in usable {
+        h.state_mut().choose_solver(kind);
+        common::settle(&mut h);
+        assert_eq!(h.state().store.solver.kind(), kind);
+        assert_eq!(h.state().store.solution.as_ref().unwrap().solver, kind.id(), "{} solved it", kind.name());
+        assert!(value(&h, "Solver").starts_with(kind.name()), "{}", value(&h, "Solver"));
+    }
+    choose(&mut h, "Solver", &highs);
+    assert_eq!(h.state().store.solver.kind(), SolverKind::Highs);
+    assert_eq!(h.state().store.solution.as_ref().unwrap().solver, "highs");
 }

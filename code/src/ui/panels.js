@@ -616,9 +616,20 @@ function scenarioCard(store, steadyComUI = {}) {
       <div class="sc-col sc-objective">
         <h2>Objective</h2>
         ${objectiveControls(store)}
+        ${solverNote(store)}
       </div>
     </div>
   </section>`;
+}
+
+/**
+ * The solver, read only: a browser cannot use a licence installed on the
+ * computer. The desktop app offers a choice here between HiGHS and the
+ * Gurobi or CPLEX the computer has.
+ */
+function solverNote(store) {
+  return `<h2 class="sc-solver-title">Solver</h2>
+    <p class="hint"><strong>${esc(solverLabel(store))}</strong> in the browser. The desktop app can also run on the Gurobi or CPLEX installed on a computer, with its licence.</p>`;
 }
 
 function objectiveControls(store) {

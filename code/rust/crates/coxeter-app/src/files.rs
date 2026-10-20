@@ -28,6 +28,17 @@ pub mod filter {
     pub const SVG: Filter = Filter { name: "SVG image", extensions: &["svg"] };
     pub const PNG: Filter = Filter { name: "PNG image", extensions: &["png"] };
     pub const MARKDOWN: Filter = Filter { name: "Markdown", extensions: &["md"] };
+    /// A solver's C library (Gurobi's, CPLEX's).
+    pub const SOLVER_LIBRARY: Filter = Filter {
+        name: "Solver library",
+        extensions: if cfg!(windows) {
+            &["dll"]
+        } else if cfg!(target_os = "macos") {
+            &["dylib"]
+        } else {
+            &["so"]
+        },
+    };
 }
 
 /// The dialogs the interface opens.

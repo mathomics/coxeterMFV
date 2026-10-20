@@ -223,6 +223,10 @@ pub struct ReproStore<'a> {
     pub solution: Option<SolutionState>,
     /// Set when the store shows the Zuñiga published case.
     pub zuniga: Option<ZunigaStudyState>,
+    /// The solver that produced the solution, as the methods text cites it
+    /// (`HiGHS 1.11.0`, `Gurobi 12.0.1`). `None` writes the JavaScript app's
+    /// own solver.
+    pub solver: Option<String>,
 }
 
 /// When and where a bundle is made (`new Date()`, `navigator.userAgent`).
@@ -271,7 +275,7 @@ pub fn analysis_provenance(store: &ReproStore) -> Value {
     if let Some(z) = &store.zuniga {
         return json!({
             "method": "Stationary source-model FBA",
-            "solver": "GLPK",
+            "solver": store.solver.as_deref().unwrap_or("GLPK"),
             "objective": "authors’ original objective",
             "study": z.state,
             "parsimonious": false,
@@ -307,7 +311,7 @@ pub fn analysis_provenance(store: &ReproStore) -> Value {
     };
     json!({
         "method": method,
-        "solver": "Coxeter bounded-variable revised simplex / MILP",
+        "solver": store.solver.as_deref().unwrap_or("Coxeter bounded-variable revised simplex / MILP"),
         "objective": store.objective,
         "productTarget": or_null(&store.product_target),
         "parsimonious": store.parsimonious,

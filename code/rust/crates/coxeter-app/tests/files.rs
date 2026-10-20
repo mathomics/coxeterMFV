@@ -30,6 +30,7 @@ fn exports_write_their_files_under_the_names_the_js_gives_them() {
     file_menu(&mut h, "Export model JSON");
     file_menu(&mut h, "Export reproducibility bundle");
     file_menu(&mut h, "Export methods / provenance report");
+    file_menu(&mut h, "Export model SBML");
     let saved = common::saved(&dialogs);
     let names: Vec<&str> = saved.iter().map(|(n, _)| n.as_str()).collect();
     assert_eq!(&names[..6], &[
@@ -51,6 +52,8 @@ fn exports_write_their_files_under_the_names_the_js_gives_them() {
     assert_eq!(classify(&dir.join(&saved[5].0), &text(5)), Some(FileKind::Model));
     assert_eq!(classify(&dir.join(&saved[6].0), &text(6)), Some(FileKind::Bundle));
     assert!(text(7).contains("#"), "a Markdown report");
+    assert_eq!(names[8], "lactobacillus_core_mc_model.xml");
+    assert!(text(8).contains("<sbml") && text(8).contains("fbc:"), "an SBML model with the fbc package");
     // What was written is what is now saved: the badge says Saved.
     let work = h.state().store.unsaved_work();
     assert!(!work.map && !work.scenario, "map-save and export-state mark their part saved");
@@ -113,7 +116,7 @@ fn saved_files_open_again_through_the_file_menu() {
 fn models_open_from_the_file_menu() {
     let (mut h, dialogs, dir) = common::harness_saving("models", None);
     queue_open(&dialogs, vec![common::repo_root().join("models").join("ecoli_core_mc.json")]);
-    file_menu(&mut h, "Import model (JSON / SBML)");
+    file_menu(&mut h, "Import model (JSON / SBML / MAT / XLSX)");
     let store = &h.state().store;
     assert_eq!(store.species.len(), 1, "one file, one species");
     assert!(store.community.is_some());

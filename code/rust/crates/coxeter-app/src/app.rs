@@ -80,8 +80,11 @@ pub struct Shell {
     /// The map's box and widget id last frame (keys over the map are the canvas's).
     pub map_rect: Option<egui::Rect>,
     pub map_id: Option<egui::Id>,
-    /// Where the theme choice is kept (`localStorage['coxeter-theme']`); none in tests.
+    /// Where the theme choice is kept (`localStorage['coxeter-theme']`), and
+    /// the solver's; none in tests.
     pub settings_path: Option<PathBuf>,
+    /// The solvers of this computer (the Solver block of Simulation settings).
+    pub solvers: crate::solvers::Solvers,
     /// Messages for a terminal (`--screenshot` prints them).
     pub boot_error: Option<String>,
     applied_dark: Option<bool>,
@@ -111,6 +114,7 @@ impl Shell {
             map_rect: None,
             map_id: None,
             settings_path: None,
+            solvers: crate::solvers::Solvers::found(IndexMap::new()),
             boot_error: None,
             applied_dark: None,
             fonts_installed: false,
@@ -288,6 +292,12 @@ impl Shell {
     fn before_frame(&mut self, ctx: &egui::Context) {
         for outcome in self.store.poll_jobs() {
             self.on_job_finished(outcome);
+        }
+        if self.solvers.poll() {
+            self.on_solvers_checked();
+        }
+        if self.solvers.checking() {
+            ctx.request_repaint_after(std::time::Duration::from_millis(100));
         }
         if self.pending_solve {
             self.pending_solve = false;

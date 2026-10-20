@@ -36,7 +36,7 @@ Coxeter-MFV was built for researchers who work with genome-scale metabolic model
 - **Map editor.** Add and remove reactions, metabolites, compartments and cells, adjust curves with control points, align and distribute, annotate with text, colour pathways, and undo any step.
 - **Model editor.** Create metabolites and reactions in the biological model, separately from the drawing.
 - **Open formats.** Models in SBML, COBRA JSON and the COBRA Toolbox MATLAB and Excel formats. Maps, scenarios and reproducibility bundles in JSON. Figures in SVG and PNG, fluxes in CSV, and a methods and provenance report for each analysis.
-- **Two front ends, one behaviour.** A single HTML file that runs offline in any modern browser, and a native desktop application written in Rust with GPU rendering and the HiGHS solver.
+- **Two front ends, one behaviour.** A single HTML file that runs offline in any modern browser, and a native desktop application written in Rust with GPU rendering and the HiGHS solver, or Gurobi or CPLEX when they are installed.
 
 ## Gallery
 
@@ -129,7 +129,7 @@ When you use one of the examples, please also cite the work it comes from. The r
 
 The source code of Coxeter-MFV is released under the [MIT License](LICENSE).
 
-The single-file web application bundles the GLPK solver (glpk.js), which is licensed under the GNU General Public License version 3, so that file is distributed under GPL-3.0. The Windows application uses the HiGHS solver, which is MIT licensed.
+The single-file web application bundles the GLPK solver (glpk.js), which is licensed under the GNU General Public License version 3, so that file is distributed under GPL-3.0. The Windows application uses the HiGHS solver, which is MIT licensed. Gurobi and CPLEX are not bundled. The application opens them from the user's own licensed installation.
 
 Models and datasets keep the licences of their original authors. Their sources and terms are listed in [`data/README.md`](data/README.md) and in each example folder.
 

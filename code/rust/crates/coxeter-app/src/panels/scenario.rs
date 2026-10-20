@@ -12,9 +12,14 @@
 //! in `ui.steadyComDraft`; here the panel is drawn each frame from the store
 //! and the same draft (`shell.ui.steady_com_draft`), so what
 //! `patchSteadyComControls` patches in place is simply drawn as it is.
+//!
+//! The Solver block under the objective (`solver_controls`) has no JS
+//! counterpart: only the native app can use the Gurobi or CPLEX a computer
+//! has a licence for.
 
 use coxeter_core::js;
 use coxeter_render::format_flux;
+use coxeter_solver::backends::SolverKind;
 use coxeter_state::store::objectives;
 use coxeter_state::zuniga::{ZUNIGA_ID, ZUNIGA_SCENARIOS};
 use coxeter_state::{JobKind, SteadyComRequest, Store, StoreError};
@@ -261,10 +266,72 @@ fn scenario_column(ui: &mut Ui, shell: &mut Shell) {
     }
 }
 
-/// `.sc-objective`.
+/// `.sc-objective`, and the solver under it.
 fn objective_column(ui: &mut Ui, shell: &mut Shell) {
     column_title(ui, "Objective");
     objective_controls(ui, shell);
+    ui.add_space(16.0);
+    solver_controls(ui, shell);
+}
+
+// The solver (the native app's own: the browser has no local licence to use)
+
+/// Which solver every analysis runs on: HiGHS, built in, or the Gurobi or
+/// CPLEX this computer has with a licence. One that is missing or cannot
+/// solve is listed, disabled, with the reason under the select.
+fn solver_controls(ui: &mut Ui, shell: &mut Shell) {
+    // Opening the libraries and checking their licences waits until the
+    // page is first shown, and runs in the background.
+    if !shell.solvers.checked && !shell.solvers.checking() {
+        shell.solvers.check();
+    }
+    column_title(ui, "Solver");
+    let current = shell.store.solver.kind();
+    let option = |kind: SolverKind| {
+        let usable = shell.solvers.info(kind).is_some_and(|i| i.usable());
+        (kind.id().to_string(), shell.solvers.option_label(kind), usable || kind == current)
+    };
+    let groups = vec![
+        ("Built in".to_string(), vec![option(SolverKind::Highs)]),
+        ("On this computer".to_string(), vec![option(SolverKind::Gurobi), option(SolverKind::Cplex)]),
+    ];
+    let width = ui.available_width() - 8.0;
+    let picked = widgets::select_grouped_enabled(ui, "solver-select", current.id(), &groups, width, true, "Solver");
+    if let Some(kind) = picked.as_deref().and_then(SolverKind::parse) {
+        shell.choose_solver(kind);
+    }
+    ui.add_space(4.0);
+    widgets::hint(
+        ui,
+        "Every analysis runs on it: FBA, pFBA, FVA, Loopless, SteadyCom and GIMME. Where the optimum is not unique, two solvers can return different fluxes for the same objective value.",
+    );
+    for kind in [SolverKind::Gurobi, SolverKind::Cplex] {
+        widgets::hint(ui, shell.solvers.detail(kind));
+    }
+    if let Some(failure) = shell.solvers.failure.clone() {
+        widgets::hint(ui, failure);
+    }
+    ui.add_space(4.0);
+    ui.horizontal_wrapped(|ui| {
+        ui.spacing_mut().item_spacing.x = 6.0;
+        let checking = shell.solvers.checking();
+        let check = Btn::new(if checking { "Checking…" } else { "Check again" })
+            .enabled(!checking)
+            .title("Look for Gurobi and CPLEX again and check their licences")
+            .aria("Check the solvers again")
+            .show(ui);
+        if check.clicked() {
+            shell.solvers.check();
+        }
+        for kind in [SolverKind::Gurobi, SolverKind::Cplex] {
+            let label = format!("Locate {}…", kind.name());
+            let title = format!("Choose the {} library by hand, when it is installed where it was not found", kind.name());
+            let aria = format!("Locate the {} library", kind.name());
+            if Btn::new(label).enabled(!checking).title(&title).aria(&aria).show(ui).clicked() {
+                shell.locate_solver_library(kind);
+            }
+        }
+    });
 }
 
 // `objectiveControls`
@@ -288,7 +355,13 @@ fn objective_controls(ui: &mut Ui, shell: &mut Shell) {
             ui,
             "The documented medium, reaction bounds and population coefficients are fixed for this case. Choose a case scenario to compare the WT, mutant and coculture. The drawing remains editable.",
         );
-        widgets::hint(ui, "Stationary FBA · GLPK. This comparison does not reproduce dynamic culture trajectories or measured experimental growth rates.");
+        widgets::hint(
+            ui,
+            format!(
+                "Stationary FBA · {}. This comparison does not reproduce dynamic culture trajectories or measured experimental growth rates.",
+                shell.store.solver.label()
+            ),
+        );
         return;
     }
     let fixed_mu = shell.store.solution.as_ref().is_some_and(|s| s.steady_com.is_some());

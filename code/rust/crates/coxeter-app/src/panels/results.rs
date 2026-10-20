@@ -235,13 +235,13 @@ fn results_mode(shell: &Shell) -> &'static str {
     }
 }
 
-/// `solverLabel(store)`: the solver that produced the solution.
+/// `solverLabel(store)`: the solver that produced the solution, with its
+/// version when it is the one in use.
 fn solver_label(shell: &Shell) -> String {
     match shell.store.solution.as_ref().map(|s| s.solver.as_str()) {
-        Some("highs") => "HiGHS".into(),
         Some("glpk") => "GLPK (WebAssembly)".into(),
         Some("simplex") => "Local simplex.js".into(),
-        Some(other) if !other.is_empty() => other.into(),
+        Some(other) if !other.is_empty() => shell.store.solution_solver_label().unwrap_or_else(|| other.into()),
         _ if shell.store.loopless => "Local MILP".into(),
         _ => "—".into(),
     }

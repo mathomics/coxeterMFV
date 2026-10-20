@@ -53,7 +53,7 @@ use coxeter_core::model::Model;
 use coxeter_core::testkit::repo_root;
 use coxeter_solver::lp::LpStatus;
 use coxeter_solver::steadycom::{AtResult, SteadyComResult, SteadyComSpec, SteadyComStatus};
-use coxeter_state::steadycom::HighsSteadyComRunner;
+use coxeter_state::steadycom::SolverSteadyComRunner;
 use coxeter_state::{
     Assets, DirAssets, JobKind, LogKind, MemoryAssets, Result, SteadyComRequest, SteadyComRunner, SteadyComTask, SteadyComTaskResult,
     Store, StoreError, TaskControls, UserNumber,
@@ -176,7 +176,7 @@ struct Recording {
 impl SteadyComRunner for Recording {
     fn run(&self, spec: &SteadyComSpec, task: &SteadyComTask, controls: &TaskControls<'_>) -> Result<SteadyComTaskResult> {
         self.requests.lock().unwrap().push(task.kind().to_string());
-        HighsSteadyComRunner.run(spec, task, controls)
+        SolverSteadyComRunner.run(spec, task, controls)
     }
 }
 

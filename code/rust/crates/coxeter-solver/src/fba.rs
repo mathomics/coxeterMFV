@@ -6,11 +6,12 @@
 //! exactly the same path.
 //!
 //! The JS module sits on two LP backends (its bundled simplex and GLPK). This
-//! port has one, HiGHS, behind [`crate::lp`]. The formulations (FBA, the
+//! port runs on HiGHS, or on the Gurobi or CPLEX the user has, behind
+//! [`crate::lp`] ([`FluxProblem::set_solver`]). The formulations (FBA, the
 //! split-variable pFBA, the thermodynamic loopless MILP and FVA with the
 //! objective held in a range) are the JS ones, row for row.
 //!
-//! Flux variability runs in parallel: one HiGHS instance per worker, each
+//! Flux variability runs in parallel: one solver instance per worker, each
 //! loaded once with the FVA problem and re-solved with a different objective
 //! per reaction, starting every solve from the basis of the primary optimum.
 //! Because every solve starts from that same state, the ranges are identical
@@ -25,7 +26,8 @@ use coxeter_core::model::{Model, ReactionKind};
 use coxeter_core::js;
 use indexmap::IndexMap;
 
-use crate::lp::{Basis, Highs, LpProblem, LpSolution, LpStatus, SolveOptions, SparseColumns, solve_lp};
+use crate::backends::{Solver, SolverKind};
+use crate::lp::{Basis, LpInstance, LpProblem, LpSolution, LpStatus, SolveOptions, SparseColumns};
 use crate::milp::{MilpOptions, solve_binary_milp};
 
 /// Replaces ±Infinity in bounds: a large finite number the simplex is
@@ -92,6 +94,8 @@ pub struct FluxResult {
     pub total_flux: Option<f64>,
     /// Loopless FBA only.
     pub loopless: Option<LooplessInfo>,
+    /// The solver that found it.
+    pub solver: SolverKind,
 }
 
 /// The minimum and maximum of one reaction's flux.
@@ -209,6 +213,8 @@ pub struct FluxProblem {
     objective: IndexMap<String, f64>,
     /// `isLooplessInternalReaction` of each reaction, as the model said.
     internal: Vec<bool>,
+    /// The solver every analysis of this problem runs on (HiGHS by default).
+    solver: Solver,
 }
 
 /// The objective `fba.js` falls back on: the model's objective reactions, else
@@ -270,6 +276,7 @@ impl FluxProblem {
             b: vec![0.0; m],
             objective: IndexMap::new(),
             internal,
+            solver: Solver::highs(),
         };
         match objective {
             Some(o) => problem.set_objective(o),
@@ -351,10 +358,21 @@ impl FluxProblem {
         &self.a
     }
 
-    /// Which backend solves this problem. The JS chooses between its simplex
-    /// and GLPK. The port always uses HiGHS.
+    /// Which backend solves this problem (`highs`, `gurobi`, `cplex`). The
+    /// JS chooses between its simplex and GLPK.
     pub fn backend(&self) -> &'static str {
-        "highs"
+        self.solver.kind().id()
+    }
+
+    /// The solver every analysis of this problem runs on.
+    pub fn solver(&self) -> &Solver {
+        &self.solver
+    }
+
+    /// Run every analysis of this problem on `solver`.
+    pub fn set_solver(&mut self, solver: Solver) -> &mut Self {
+        self.solver = solver;
+        self
     }
 
     /// The FBA LP: `S v = 0`, `lb ≤ v ≤ ub`, `max/min cᵀv`.
@@ -369,7 +387,7 @@ impl FluxProblem {
 
     /// Solve the current problem in either sense.
     pub fn optimize_with(&self, maximize: bool) -> FluxResult {
-        let res = solve_lp(&self.lp(maximize), &SolveOptions::default());
+        let res = self.solver.solve(&self.lp(maximize), &SolveOptions::default());
         self.wrap(res)
     }
 
@@ -418,6 +436,7 @@ impl FluxProblem {
             message: res.message,
             total_flux: None,
             loopless: None,
+            solver: self.solver.kind(),
         }
     }
 
@@ -439,6 +458,7 @@ impl FluxProblem {
                 node_limit: opts.node_limit,
                 time_limit_ms: opts.time_limit_ms,
                 interrupt: opts.interrupt.clone(),
+                solver: self.solver.clone(),
                 ..Default::default()
             },
         );
@@ -476,6 +496,7 @@ impl FluxProblem {
                 loopless_internal_reactions: built.internal_count,
                 proven_optimal: result.proven_optimal,
             }),
+            solver: self.solver.kind(),
         }
     }
 
@@ -651,7 +672,7 @@ impl FluxProblem {
 
         // The objective row is an equality at `target`. With fraction < 1 that
         // is a deliberate choice (hit exactly that share of the optimum).
-        let res = solve_lp(&LpProblem::equality(a, &b, c, lb, ub, false), &SolveOptions::default());
+        let res = self.solver.solve(&LpProblem::equality(a, &b, c, lb, ub, false), &SolveOptions::default());
         if res.status != LpStatus::Optimal {
             return first;
         }
@@ -683,6 +704,7 @@ impl FluxProblem {
             message: String::new(),
             total_flux: Some(res.objective),
             loopless: None,
+            solver: self.solver.kind(),
         }
     }
 
@@ -746,7 +768,7 @@ impl FluxProblem {
         // objective on the FVA problem itself, so it is feasible for every
         // reaction's LP.
         let start = {
-            let mut h = Highs::new();
+            let Ok(mut h) = self.solver.instance() else { return IndexMap::new() };
             if h.pass_problem(&problem).is_err() {
                 return IndexMap::new();
             }
@@ -763,7 +785,7 @@ impl FluxProblem {
         let cancelled = || opts.cancel.as_ref().is_some_and(|f| f.load(Ordering::Relaxed));
 
         let work = || {
-            let mut worker = match FvaWorker::new(&problem, start.as_ref(), opts.cancel.clone()) {
+            let mut worker = match FvaWorker::new(&self.solver, &problem, start.as_ref(), opts.cancel.clone()) {
                 Some(w) => w,
                 None => return,
             };
@@ -838,27 +860,27 @@ pub struct LooplessProblem {
     pub internal_count: usize,
 }
 
-/// One HiGHS instance holding the FVA problem.
+/// One solver instance holding the FVA problem.
 struct FvaWorker {
-    highs: Highs,
+    instance: Box<dyn LpInstance>,
     start: Option<Basis>,
     current: Option<usize>,
 }
 
 impl FvaWorker {
-    fn new(problem: &LpProblem, start: Option<&Basis>, cancel: Option<Arc<AtomicBool>>) -> Option<FvaWorker> {
-        let mut highs = Highs::new();
-        highs.pass_problem(problem).ok()?;
-        highs.set_interrupt(cancel);
-        Some(FvaWorker { highs, start: start.cloned(), current: None })
+    fn new(solver: &Solver, problem: &LpProblem, start: Option<&Basis>, cancel: Option<Arc<AtomicBool>>) -> Option<FvaWorker> {
+        let mut instance = solver.instance().ok()?;
+        instance.pass_problem(problem).ok()?;
+        instance.set_interrupt(cancel);
+        Some(FvaWorker { instance, start: start.cloned(), current: None })
     }
 
     /// Both ends of reaction `j`, or `None` if a solve was interrupted.
     fn range(&mut self, j: usize) -> Option<FvaRange> {
         if let Some(prev) = self.current.take() {
-            self.highs.set_cost(prev, 0.0);
+            self.instance.set_cost(prev, 0.0);
         }
-        self.highs.set_cost(j, 1.0);
+        self.instance.set_cost(j, 1.0);
         self.current = Some(j);
         let max = self.solve(true)?;
         let min = self.solve(false)?;
@@ -869,12 +891,12 @@ impl FvaWorker {
         // Every solve starts from the same state (the primary optimum's basis
         // and a freshly seeded solver), so its answer does not depend on which
         // reactions this worker happened to solve before.
-        self.highs.clear_solver();
+        self.instance.clear_solver();
         if let Some(b) = &self.start {
-            let _ = self.highs.set_basis(b);
+            let _ = self.instance.set_basis(b);
         }
-        self.highs.set_maximize(maximize);
-        let r = self.highs.run();
+        self.instance.set_maximize(maximize);
+        let r = self.instance.run();
         if r.model_status.is_interrupt() {
             return None;
         }

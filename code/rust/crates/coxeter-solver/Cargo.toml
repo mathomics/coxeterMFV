@@ -1,6 +1,6 @@
 [package]
 name = "coxeter-solver"
-description = "Flux balance analysis on HiGHS: FBA, pFBA, loopless FBA, parallel FVA and SteadyCom."
+description = "Flux balance analysis on HiGHS, Gurobi or CPLEX: FBA, pFBA, loopless FBA, parallel FVA and SteadyCom."
 version.workspace = true
 edition.workspace = true
 license.workspace = true
@@ -16,3 +16,6 @@ thiserror.workspace = true
 # `lp`, so nothing else in the crate touches FFI.
 highs-sys = "1.15.0"
 rayon = "1.12.0"
+# Gurobi and CPLEX are opened at run time from the user's own installation
+# (`gurobi`, `cplex`): nothing of them is linked or shipped.
+libloading = "0.8.9"

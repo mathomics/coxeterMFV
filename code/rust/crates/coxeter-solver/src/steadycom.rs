@@ -241,7 +241,8 @@ pub struct SteadyComOptions<'a> {
     pub on_progress: Option<Box<dyn FnMut(&SteadyComProgress) + 'a>>,
     /// Set to stop. The solve then returns [`SteadyComError::Cancelled`].
     pub cancel: Option<Arc<AtomicBool>>,
-    /// The LP solver (HiGHS unless a test substitutes one).
+    /// The LP solver: HiGHS unless the caller passes another (the solver the
+    /// user chose, or a test's own).
     pub backend: Option<&'a dyn LpBackend>,
 }
 

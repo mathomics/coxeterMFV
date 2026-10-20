@@ -45,6 +45,7 @@ use coxeter_map::layout_settings::{DEFAULT_LAYOUT_PRESET, LayoutSettings, layout
 use coxeter_map::multi_selection::Selection;
 use coxeter_render::state::GeometrySelection;
 use coxeter_render::theme::FluxScale;
+use coxeter_solver::backends::Solver;
 use coxeter_solver::fba::{BoundsSnapshot, FluxProblem};
 use coxeter_solver::steadycom::SteadyComSpec;
 use coxeter_solver::steadycom_runtime::CommunityExchangeIds;
@@ -59,7 +60,7 @@ use crate::omics::{CommunityOmics, OmicsDataset, OmicsSettings};
 use crate::operation_boundary::{OperationDomain, assert_operation_domain, operation_domain};
 use crate::reactions::{ConstraintCulprits, CulpritCheck, ReactionCaches, ReactionTableState};
 use crate::reactions_explorer::ConstraintHistory;
-use crate::steadycom::{CachedSpec, HighsSteadyComRunner, SteadyComRunner};
+use crate::steadycom::{CachedSpec, SolverSteadyComRunner, SteadyComRunner};
 use crate::types::*;
 use crate::zuniga::{SourceZunigaLoader, ZunigaLoader, ZunigaStudyState};
 
@@ -233,6 +234,9 @@ pub struct Store {
     /// The joint SteadyCom spec of the nine-species example, when open.
     pub joint_projection_spec: Option<Arc<SteadyComSpec>>,
     pub solver_ready: bool,
+    /// The solver every analysis runs on: HiGHS, or the Gurobi or CPLEX the
+    /// user chose ([`Store::set_solver`]).
+    pub solver: Solver,
 
     events: Vec<String>,
     pub(crate) jobs: Jobs,
@@ -255,7 +259,7 @@ impl Store {
             steady_com_generation: 0,
             steady_com_controller: None,
             steady_com_config: SteadyComConfig::default(),
-            steady_com_runner: Arc::new(HighsSteadyComRunner),
+            steady_com_runner: Arc::new(SolverSteadyComRunner),
             next_state_serial: 0,
             zuniga: ZunigaStudyState::default(),
             zuniga_loader: Arc::new(SourceZunigaLoader::default()),
@@ -329,6 +333,7 @@ impl Store {
             next_run_serial: 0,
             joint_projection_spec: None,
             solver_ready: true,
+            solver: Solver::highs(),
             events: Vec::new(),
             jobs: Jobs::new(),
         }
@@ -544,9 +549,14 @@ impl Store {
         self.problem.as_mut().map(Arc::make_mut)
     }
 
-    /// Install a new flux problem built from the community's merged model.
+    /// Install a new flux problem built from the community's merged model,
+    /// solved by the store's solver.
     pub(crate) fn set_problem(&mut self, problem: Option<FluxProblem>) {
-        self.problem = problem.map(Arc::new);
+        let solver = self.solver.clone();
+        self.problem = problem.map(|mut p| {
+            p.set_solver(solver);
+            Arc::new(p)
+        });
         self.problem_serial += 1;
         self.bounds_revision += 1;
     }

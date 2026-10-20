@@ -15,7 +15,9 @@ use std::path::{Path, PathBuf};
 use coxeter_canvas::Tool;
 use coxeter_io::file_names::{self, export_suffix};
 use coxeter_io::model_import::UploadFile;
+use coxeter_solver::backends::SolverKind;
 use coxeter_state::StatusState;
+use indexmap::IndexMap;
 use serde_json::Value;
 
 use crate::app::Shell;
@@ -235,12 +237,7 @@ impl Shell {
     /// `setTheme(dark)`: the scheme, remembered for the next start.
     pub fn set_theme(&mut self, dark: bool) {
         let _ = self.store.set_view(coxeter_state::ViewPatch { dark: Some(dark), ..Default::default() });
-        if let Some(path) = &self.settings_path {
-            if let Some(dir) = path.parent() {
-                let _ = std::fs::create_dir_all(dir);
-            }
-            let _ = std::fs::write(path, serde_json::json!({ "theme": if dark { "dark" } else { "light" } }).to_string());
-        }
+        self.save_settings();
     }
 
     /// The theme remembered by [`Shell::set_theme`], if any.
@@ -252,6 +249,88 @@ impl Shell {
             "light" => Some(false),
             _ => None,
         }
+    }
+
+    /// Write what is remembered between sessions: the theme, the solver and
+    /// the solver libraries located by hand.
+    pub fn save_settings(&self) {
+        let Some(path) = &self.settings_path else { return };
+        if let Some(dir) = path.parent() {
+            let _ = std::fs::create_dir_all(dir);
+        }
+        let libraries: serde_json::Map<String, Value> =
+            self.solvers.libraries.iter().map(|(kind, p)| (kind.id().to_string(), Value::String(p.display().to_string()))).collect();
+        // The solver chosen, even while it is still being opened at start.
+        let solver = self.solvers.wanted.unwrap_or(self.store.solver.kind());
+        let settings = serde_json::json!({
+            "theme": if self.store.view.dark { "dark" } else { "light" },
+            "solver": solver.id(),
+            "solverLibraries": libraries,
+        });
+        let _ = std::fs::write(path, settings.to_string());
+    }
+
+    /// The solver remembered by [`Shell::save_settings`], and the libraries
+    /// located by hand.
+    pub fn saved_solver(path: &Path) -> (Option<SolverKind>, IndexMap<SolverKind, PathBuf>) {
+        let Some(v) = std::fs::read_to_string(path).ok().and_then(|text| serde_json::from_str::<Value>(&text).ok()) else {
+            return (None, IndexMap::new());
+        };
+        let kind = v.get("solver").and_then(Value::as_str).and_then(SolverKind::parse);
+        let libraries = v
+            .get("solverLibraries")
+            .and_then(Value::as_object)
+            .map(|m| m.iter().filter_map(|(k, p)| Some((SolverKind::parse(k)?, PathBuf::from(p.as_str()?)))).collect())
+            .unwrap_or_default();
+        (kind, libraries)
+    }
+
+    // Solver
+
+    /// The Solver select of the Simulation settings page: every analysis
+    /// runs on `kind` from now on, and the current one runs again on it.
+    pub fn choose_solver(&mut self, kind: SolverKind) {
+        let Some(solver) = self.solvers.info(kind).and_then(|i| i.solver.clone()) else { return };
+        self.solvers.wanted = None;
+        if let Err(error) = self.store.set_solver(solver) {
+            self.status_error(error.to_string());
+        }
+        self.save_settings();
+    }
+
+    /// "Locate…": point at a solver's library by hand, check it, and switch
+    /// to it if it can solve.
+    pub fn locate_solver_library(&mut self, kind: SolverKind) {
+        let title = format!("Locate the {} library", kind.name());
+        let Some(path) = self.dialogs.open(&title, &[filter::SOLVER_LIBRARY], false).into_iter().next() else { return };
+        self.solvers.libraries.insert(kind, path);
+        self.solvers.wanted = Some(kind);
+        self.save_settings();
+        self.solvers.check();
+    }
+
+    /// A check of the solvers has finished: switch to the one waiting for it,
+    /// or say why it cannot be used.
+    pub fn on_solvers_checked(&mut self) {
+        if let Some(failure) = self.solvers.failure.clone() {
+            self.status_error(failure);
+        }
+        let Some(kind) = self.solvers.wanted.take() else { return };
+        let info = self.solvers.info(kind).cloned();
+        match info.as_ref().and_then(|i| i.solver.clone()) {
+            Some(solver) => {
+                if let Err(error) = self.store.set_solver(solver) {
+                    self.status_error(error.to_string());
+                }
+            }
+            None if kind != SolverKind::Highs => {
+                let why = info.and_then(|i| i.error).unwrap_or_else(|| format!("{} was not found.", kind.name()));
+                self.store.set_status_message(StatusState::Warn, format!("{why} The analyses run on {}.", self.store.solver.label()));
+                self.store.emit("status");
+            }
+            None => {}
+        }
+        self.save_settings();
     }
 
     // Camera

@@ -204,7 +204,7 @@ fn file_menu(ui: &mut Ui, shell: &mut Shell, p: &Palette) {
     let (response, _) = egui::containers::menu::MenuButton::from_button(button).ui(ui, |ui| {
         ui.set_min_width(250.0);
         menu_heading(ui, "IMPORT");
-        if menu_item(ui, "Model (JSON / SBML)", "Import model (JSON / SBML)", true, "") {
+        if menu_item(ui, "Model (JSON / SBML / MAT / XLSX)", "Import model (JSON / SBML / MAT / XLSX)", true, "") {
             shell.import_models();
         }
         if menu_item(ui, "Metatranscriptomics (CSV / TSV)", "Import metatranscriptomics (CSV / TSV)", true, "") {
@@ -236,6 +236,9 @@ fn file_menu(ui: &mut Ui, shell: &mut Shell, p: &Palette) {
         }
         if menu_item(ui, "Model JSON", "Export model JSON", true, "") {
             shell.export_model(false);
+        }
+        if menu_item(ui, "Model SBML", "Export model SBML", true, "") {
+            shell.export_model(true);
         }
         if menu_item(ui, "SVG map", "Export SVG map", true, "") {
             shell.export_svg();

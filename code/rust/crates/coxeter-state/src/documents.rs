@@ -841,6 +841,7 @@ impl Store {
             omics: Some(omics),
             solution,
             zuniga: self.zuniga_bundle_state(),
+            solver: Some(self.solution_solver_label().unwrap_or_else(|| self.solver.label())),
         }
     }
 
@@ -989,6 +990,11 @@ impl Store {
             .unwrap_or_default();
         let current = self.solution.as_ref().map_or(Value::Null, |s| s.replay_json());
         let replay = compare_replayed_solution(bundle.get("solution").unwrap_or(&Value::Null), &current, tolerances);
+        // Another solver finds the same optimum, but where the optimum is not
+        // unique its fluxes may differ: the replay says which solvers it compares.
+        let archived_solver = get(analysis, "solver").map(|v| js::to_string(&v));
+        let replay_solver = self.solution_solver_label().unwrap_or_else(|| self.solver.label());
+        let other_solver = archived_solver.as_deref().filter(|archived| *archived != replay_solver);
         let fva = get(bundle.get("solution"), "fva");
         if get(analysis, "fvaEnabled").is_some_and(|v| js::truthy(&v)) && fva.as_ref().is_some_and(js::truthy) {
             self.fva_enabled = true;
@@ -1024,8 +1030,20 @@ impl Store {
                 "omicsExpected": archived_omics.is_some(),
                 "omics": archived_omics.is_some() && self.omics.dataset.is_some(),
             },
+            "solver": {
+                "archived": archived_solver,
+                "replayed": replay_solver,
+                "same": other_solver.is_none(),
+            },
         }));
-        let verdict = if replay.pass { "numerical replay OK" } else { "WARNING: numerical differences" };
+        let verdict = match (replay.pass, other_solver) {
+            (true, None) => "numerical replay OK".to_string(),
+            (true, Some(archived)) => format!("numerical replay OK (solved with {archived}, replayed with {replay_solver})"),
+            (false, None) => "WARNING: numerical differences".to_string(),
+            (false, Some(archived)) => {
+                format!("WARNING: numerical differences (solved with {archived}, replayed with {replay_solver}; alternative optima can differ)")
+            }
+        };
         self.settle_opened_work();
         let hash: String = bundle
             .get("integrity")

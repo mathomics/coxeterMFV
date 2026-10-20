@@ -88,6 +88,8 @@ fn store<'a>(desc: &Value, models: &'a IndexMap<String, Model>) -> ReproStore<'a
         omics,
         solution,
         zuniga: None,
+        // The JavaScript app's own solver, as the fixture records it.
+        solver: None,
     }
 }
 

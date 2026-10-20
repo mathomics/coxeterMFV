@@ -10,6 +10,7 @@ use std::time::{Duration, Instant};
 use coxeter_analysis::community_view::CommunityView;
 use coxeter_core::community::{CrossFeeding, community_exchange, split_id};
 use coxeter_core::js;
+use coxeter_solver::backends::{Solver, SolverKind};
 use coxeter_solver::fba::{FluxProblem, FluxResult, FvaOptions, FvaProgress as SolverFvaProgress, LooplessOptions, PfbaOptions};
 use indexmap::IndexMap;
 
@@ -423,6 +424,44 @@ impl Store {
     }
 
     // Switches
+
+    /// Run every analysis on `solver` from now on, and solve again with it.
+    ///
+    /// The problem keeps its numbers; only what solves it changes. The
+    /// solution, its flux ranges and any calculation still running came from
+    /// the previous solver, so the current analysis runs again, as it does
+    /// when the method changes.
+    pub fn set_solver(&mut self, solver: Solver) -> Result<Option<Arc<Solution>>> {
+        if self.solver.same_as(&solver) {
+            return Ok(self.solution.clone());
+        }
+        let label = solver.label();
+        self.solver = solver.clone();
+        if let Some(problem) = self.problem_mut() {
+            problem.set_solver(solver);
+        }
+        self.add_log(StatusState::Ok, &format!("Solver: {label}"), LogKind::Solve);
+        self.emit("solver");
+        if self.problem.is_none() {
+            return Ok(None);
+        }
+        if self.is_zuniga_study() {
+            self.resolve_zuniga_scenarios()?;
+        }
+        Ok(self.solve())
+    }
+
+    /// The solver of the shown solution, as reports cite it: with its version
+    /// when it is the store's solver (`Gurobi 12.0.1`), else by name.
+    pub fn solution_solver_label(&self) -> Option<String> {
+        let id = self.solution.as_ref()?.solver.as_str();
+        Some(match SolverKind::parse(id) {
+            Some(kind) if kind == self.solver.kind() => self.solver.label(),
+            Some(kind) => kind.name().to_string(),
+            None if id == "glpk" => "GLPK".to_string(),
+            None => id.to_string(),
+        })
+    }
 
     /// `setParsimonious(enabled)`.
     pub fn set_parsimonious(&mut self, enabled: bool) -> Result<Option<Arc<Solution>>> {

@@ -342,11 +342,13 @@ fn analysis_hub(ui: &mut Ui, shell: &mut Shell, p: &Palette) {
     } else {
         "Community objective maximisation".into()
     };
+    let solver = format!("Solver: {}", store.solver.label());
     task_context(ui, p, |ui| {
         widgets::section_label(ui, "Current simulation");
         ui.label(RichText::new(&method).family(bold()).color(p.ink));
         ui.add(egui::Label::new(RichText::new(format!("{objective} · {status}")).size(11.5).color(p.ink_2)).wrap());
         ui.add(egui::Label::new(RichText::new(&parameters).size(11.0).color(p.ink_3)).wrap());
+        ui.add(egui::Label::new(RichText::new(&solver).size(11.0).color(p.ink_3)).wrap());
     });
     let methods = [("fba", "FBA", "Flux balance"), ("pfba", "pFBA", "Minimum total flux"), ("fva", "FVA", "Flux ranges"), ("loopless", "Loopless", "Exclude internal cycles")];
     for pair in methods.chunks(2) {

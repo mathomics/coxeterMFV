@@ -27,6 +27,7 @@ pub mod files;
 pub mod fonts;
 pub mod host;
 pub mod panels;
+pub mod solvers;
 pub mod theme;
 pub mod ui_state;
 pub mod widgets;

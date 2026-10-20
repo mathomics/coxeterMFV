@@ -9,6 +9,9 @@
 //!   --scenario ID          the scenario to open (default: the first)
 //!   --dark / --light       the theme
 //!   --models DIR           the folder holding models/ (default: built in, or the repository)
+//!   --solver NAME          solve on highs, gurobi or cplex (default: the one chosen last)
+//!   --solvers              list the solvers found on this computer and exit
+//!   --check-solvers        check each solver found on a battery of problems and exit
 //!   --version              print the version and exit
 //! ```
 
@@ -16,7 +19,10 @@ use std::path::PathBuf;
 use std::time::Duration;
 
 use coxeter_app::files::{FileDialogs, NativeDialogs, ScriptedDialogs};
+use coxeter_app::solvers::Solvers;
 use coxeter_app::{Shell, assets};
+use coxeter_solver::backends::SolverKind;
+use coxeter_solver::selftest::self_test;
 use coxeter_state::{CachedFetcher, Store};
 
 struct Args {
@@ -25,18 +31,31 @@ struct Args {
     scenario: Option<String>,
     theme: Option<bool>,
     models: Option<PathBuf>,
+    solver: Option<SolverKind>,
+    list_solvers: bool,
+    check_solvers: bool,
     files: Vec<PathBuf>,
 }
 
 fn usage() -> ! {
     eprintln!(
-        "usage: coxeter [--screenshot OUT.png] [--size WxH] [--scenario ID] [--dark|--light] [--models DIR] [--version] [files…]"
+        "usage: coxeter [--screenshot OUT.png] [--size WxH] [--scenario ID] [--dark|--light] [--models DIR] [--solver highs|gurobi|cplex] [--solvers] [--check-solvers] [--version] [files…]"
     );
     std::process::exit(2)
 }
 
 fn parse_args() -> Args {
-    let mut args = Args { screenshot: None, size: (1440.0, 900.0), scenario: None, theme: None, models: None, files: Vec::new() };
+    let mut args = Args {
+        screenshot: None,
+        size: (1440.0, 900.0),
+        scenario: None,
+        theme: None,
+        models: None,
+        solver: None,
+        list_solvers: false,
+        check_solvers: false,
+        files: Vec::new(),
+    };
     let mut it = std::env::args_os().skip(1);
     while let Some(arg) = it.next() {
         match arg.to_string_lossy().as_ref() {
@@ -55,6 +74,12 @@ fn parse_args() -> Args {
             "--dark" => args.theme = Some(true),
             "--light" => args.theme = Some(false),
             "--models" => args.models = Some(it.next().map(PathBuf::from).unwrap_or_else(|| usage())),
+            "--solver" => {
+                let name = it.next().unwrap_or_else(|| usage()).to_string_lossy().into_owned();
+                args.solver = Some(SolverKind::parse(&name).unwrap_or_else(|| usage()));
+            }
+            "--solvers" => args.list_solvers = true,
+            "--check-solvers" => args.check_solvers = true,
             s if s.starts_with("--") => usage(),
             _ => args.files.push(PathBuf::from(arg)),
         }
@@ -76,12 +101,31 @@ fn store(args: &Args) -> Store {
     Store::new(assets).with_fetcher(std::sync::Arc::new(fetcher)).with_download_cache(cache.join("zuniga"))
 }
 
-fn shell(args: &Args, dialogs: Box<dyn FileDialogs>, remember_theme: bool) -> Shell {
+fn shell(args: &Args, dialogs: Box<dyn FileDialogs>, remember: bool) -> Shell {
     let mut shell = Shell::new(store(args), dialogs);
     let settings = assets::config_dir().join("settings.json");
     let dark = args.theme.or_else(|| Shell::saved_theme(&settings)).unwrap_or(false);
     shell.store.view.dark = dark;
-    if remember_theme {
+    let (saved, libraries) = Shell::saved_solver(&settings);
+    shell.solvers = Solvers::found(libraries);
+    if let Some(kind) = args.solver.or(saved).filter(|k| *k != SolverKind::Highs) {
+        if args.solver.is_some() || args.screenshot.is_some() {
+            // Asked for by name, or one frame to draw: open it now, so the
+            // first solve already runs on it.
+            shell.solvers.check_now();
+            let info = shell.solvers.info(kind);
+            match info.and_then(|i| i.solver.clone()) {
+                Some(solver) => shell.store.solver = solver,
+                None => eprintln!("{} cannot be used: {}", kind.name(), info.and_then(|i| i.error.clone()).unwrap_or_default()),
+            }
+        } else {
+            // The solver chosen last time: the analyses switch to it once
+            // its licence has been checked, in the background.
+            shell.solvers.wanted = Some(kind);
+            shell.solvers.check();
+        }
+    }
+    if remember {
         shell.settings_path = Some(settings);
     }
     shell.boot(args.scenario.as_deref());
@@ -117,6 +161,38 @@ fn screenshot(args: &Args, out: &std::path::Path) -> Result<(), String> {
     Ok(())
 }
 
+/// `--solvers` and `--check-solvers`: the solvers of this computer, and with
+/// `check`, the self-test battery on each one that opens. The exit code is 1
+/// when a check fails.
+fn solvers_report(check: bool) -> i32 {
+    let (_, libraries) = Shell::saved_solver(&assets::config_dir().join("settings.json"));
+    let mut solvers = Solvers::found(libraries);
+    solvers.check_now();
+    let mut failed = 0;
+    for info in &solvers.infos {
+        let state = match (&info.solver, &info.error) {
+            (Some(solver), _) => solver.limit().map_or_else(|| "ready".to_string(), |limit| format!("ready, {limit}")),
+            (None, Some(error)) => error.clone(),
+            (None, None) => "not found".to_string(),
+        };
+        println!("{:<7} {:<10} {state}", info.kind.name(), info.version.as_deref().unwrap_or("—"));
+        if let Some(library) = &info.library {
+            println!("        {}", library.display());
+        }
+        if let (true, Some(solver)) = (check, &info.solver) {
+            for c in self_test(solver) {
+                let detail = if c.detail.is_empty() { String::new() } else { format!(": {}", c.detail) };
+                println!("        {} {}{detail}", if c.passed { "ok  " } else { "FAIL" }, c.name);
+                failed += usize::from(!c.passed);
+            }
+        }
+    }
+    if check {
+        println!("{}", if failed == 0 { "Every check passed.".to_string() } else { format!("{failed} checks failed.") });
+    }
+    i32::from(failed > 0)
+}
+
 /// The brand mark of the header (`.brand-mark`), as the window's icon: the
 /// path through four metabolites, in the accent blue.
 fn brand_icon() -> egui::IconData {
@@ -150,6 +226,9 @@ fn brand_icon() -> egui::IconData {
 
 fn main() {
     let args = parse_args();
+    if args.list_solvers || args.check_solvers {
+        std::process::exit(solvers_report(args.check_solvers));
+    }
     if let Some(out) = args.screenshot.clone() {
         if let Err(message) = screenshot(&args, &out) {
             eprintln!("{message}");
