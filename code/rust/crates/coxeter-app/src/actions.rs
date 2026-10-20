@@ -14,7 +14,7 @@ use std::path::{Path, PathBuf};
 
 use coxeter_canvas::Tool;
 use coxeter_io::file_names::{self, export_suffix};
-use coxeter_io::model_import::ImportFile;
+use coxeter_io::model_import::UploadFile;
 use coxeter_state::StatusState;
 use serde_json::Value;
 
@@ -545,27 +545,33 @@ impl Shell {
 
     /// `import-models` (the model file input's `change`).
     pub fn import_models(&mut self) {
-        let picked = self.pick_texts("Load model(s)", &[filter::MODEL], true);
+        // MATLAB and Excel files are binary, so every model is read as bytes.
+        let picked: Vec<(String, Result<Vec<u8>, String>)> = self
+            .dialogs
+            .open("Load model(s)", &[filter::MODEL], true)
+            .into_iter()
+            .map(|p| (files::display_name(&p), files::read_bytes(&p)))
+            .collect();
         if picked.is_empty() {
             return;
         }
-        self.import_model_texts(picked);
+        self.import_model_bytes(picked);
     }
 
-    /// Read COBRA JSON / SBML files into a new community.
-    pub fn import_model_texts(&mut self, picked: Vec<(String, Result<String, String>)>) {
+    /// Read model files (COBRA JSON, SBML, COBRA Toolbox .mat or .xlsx) into a new community.
+    pub fn import_model_bytes(&mut self, picked: Vec<(String, Result<Vec<u8>, String>)>) {
         self.close_map_menus();
         self.refit();
-        self.store.set_status_message(StatusState::Busy, format!("Reading {} COBRA JSON/SBML model(s)…", picked.len()));
+        self.store.set_status_message(StatusState::Busy, format!("Reading {} model file(s)…", picked.len()));
         self.store.emit("status");
         let mut files = Vec::new();
-        for (name, text) in picked {
-            match text {
-                Ok(text) => files.push(ImportFile { name, text }),
+        for (name, bytes) in picked {
+            match bytes {
+                Ok(bytes) => files.push(UploadFile { name, bytes }),
                 Err(e) => return self.status_error(format!("Could not load the model: {e}")),
             }
         }
-        if let Err(error) = self.store.import_model_files(&files) {
+        if let Err(error) = self.store.import_model_uploads(&files) {
             self.status_error(format!("Could not load the model: {error}"));
         }
     }
@@ -651,22 +657,23 @@ impl Shell {
         let mut rest = Vec::new();
         for path in paths {
             let name = files::display_name(path);
-            let text = match files::read_text(path) {
-                Ok(t) => t,
+            let bytes = match files::read_bytes(path) {
+                Ok(b) => b,
                 Err(e) => {
                     self.status_error(format!("Could not open {e}"));
                     continue;
                 }
             };
+            let text = String::from_utf8_lossy(&bytes).into_owned();
             match files::classify(path, &text) {
-                Some(files::FileKind::Model) => models.push((name, Ok(text))),
+                Some(files::FileKind::Model) => models.push((name, Ok(bytes))),
                 Some(kind) => rest.push((kind, name, text)),
                 None => self.status_error(format!("Could not tell what {name} is: open it from the File menu.")),
             }
         }
         // Models first: a map or scenario opened with them is drawn over them.
         if !models.is_empty() {
-            self.import_model_texts(models);
+            self.import_model_bytes(models);
         }
         for (kind, name, text) in rest {
             match kind {

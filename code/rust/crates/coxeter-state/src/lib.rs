@@ -26,6 +26,7 @@
 //! | [`work`] | saved / unsaved work |
 //! | [`omics`], [`cross_feeding`], [`zuniga`] | omics overlays and GIMME, the cross-feeding explorer, the Zuñiga case (on `coxeter-analysis`) |
 //! | [`reactions`] | reactions and bounds: medium-controlled exchanges, constraint history, the edited objective, bulk edits, bounds CSV, the Reactions table |
+//! | [`gene_knockouts`] | gene knockouts through the reactions' gene rules |
 //! | [`reactions_explorer`] | `src/ui/reactions-explorer.js` |
 //! | [`model_editor`] | the biological model editor |
 //! | [`render_state`] | `mapRenderState()` of `src/ui/app.js` |
@@ -42,6 +43,7 @@ pub mod assets;
 pub mod cross_feeding;
 pub mod documents;
 pub mod error;
+pub mod gene_knockouts;
 pub mod jobs;
 pub mod map_edit;
 pub mod model_editor;

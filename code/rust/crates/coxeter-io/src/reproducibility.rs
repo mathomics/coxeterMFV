@@ -207,6 +207,8 @@ pub struct ReproStore<'a> {
     pub medium: Map<String, Value>,
     /// `store.overrides`: merged reaction id → `{lower, upper}`.
     pub overrides: Vec<(String, Value)>,
+    /// `store.geneKnockouts`, sorted: written only when there are any.
+    pub gene_knockouts: Vec<String>,
     pub parsimonious: bool,
     pub pfba_biomass_percent: Value,
     pub loopless: bool,
@@ -404,13 +406,14 @@ pub fn create_reproducibility_bundle_with(store: &ReproStore, ctx: &BundleContex
         c.insert("customObjective".into(), custom.clone());
     }
     payload.insert("community".into(), community);
-    payload.insert(
-        "constraints".into(),
-        json!({
-            "medium": Value::Object(js_order(store.medium.clone())),
-            "reactionOverrides": entries_object(&store.overrides),
-        }),
-    );
+    let mut constraints = json!({
+        "medium": Value::Object(js_order(store.medium.clone())),
+        "reactionOverrides": entries_object(&store.overrides),
+    });
+    if let (false, Some(c)) = (store.gene_knockouts.is_empty(), constraints.as_object_mut()) {
+        c.insert("geneKnockouts".into(), json!(store.gene_knockouts));
+    }
+    payload.insert("constraints".into(), constraints);
     payload.insert("analysis".into(), analysis_provenance(store));
     payload.insert("omics".into(), omics_payload(&store.omics));
     payload.insert("map".into(), store.map.clone().unwrap_or(Value::Null));
@@ -755,6 +758,14 @@ pub fn methods_provenance_report(bundle: &Value) -> String {
         key_count(get(cons, "medium")),
         key_count(overrides)
     ));
+    if let Some(Value::Array(genes)) = nullish(get(cons, "geneKnockouts")).filter(|g| g.as_array().is_some_and(|a| !a.is_empty())) {
+        let names: Vec<String> = genes.iter().map(js::to_string).collect();
+        lines.push(format!(
+            "{} gene knockout(s) ({}) closed every reaction whose gene-protein-reaction rule they make false.",
+            names.len(),
+            names.join(", ")
+        ));
+    }
     lines.push(String::new());
     if let Some(study) = get(b, "study").filter(|v| js::truthy(v)) {
         let s = Some(study);

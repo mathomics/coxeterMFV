@@ -124,6 +124,9 @@ function textUnits(element, little) {
 function matrix(element, little, depth) {
   if (element.type !== MI.MATRIX) fail('expected a matrix data element.');
   if (depth > MAX_DEPTH) fail('matrix nesting exceeds the depth limit.');
+  // MATLAB writes an empty array inside a cell or structure (the empty
+  // comments of an AGORA model) as a matrix element with no bytes at all.
+  if (!element.bytes.length) return { name: '', value: shaped(new Float64Array(0), [0, 0]) };
   const cursor = new Cursor(element.bytes, little);
   const flagsTag = cursor.tag();
   if (flagsTag.type !== MI.UINT32 || flagsTag.bytes.length !== 8) fail('invalid array flags.');

@@ -324,7 +324,8 @@ impl Store {
     pub fn steady_com_key(&self) -> String {
         let mut medium: Vec<(&String, &f64)> = self.medium.iter().collect();
         medium.sort_by(|a, b| js::locale_compare(a.0, b.0));
-        let mut overrides: Vec<(&String, &Bounds)> = self.overrides.iter().collect();
+        let effective = self.effective_overrides();
+        let mut overrides: Vec<(&String, &Bounds)> = effective.iter().collect();
         overrides.sort_by(|a, b| js::locale_compare(a.0, b.0));
         js::stringify(
             &json!({
@@ -445,7 +446,7 @@ impl Store {
             )?;
             let disabled: Vec<String> = self.species.iter().filter(|sp| !sp.enabled).map(|sp| sp.id.clone()).collect();
             let medium = self.medium.clone();
-            let overrides = self.overrides.clone();
+            let overrides = self.effective_overrides();
             if let Some(joint) = spec.joint.as_mut() {
                 for id in disabled {
                     joint.constraints.push(Constraint {
@@ -484,7 +485,8 @@ impl Store {
             spec
         } else {
             // Member overrides go on the member's own copy of its model.
-            for (id, b) in &self.overrides {
+            let overrides = self.effective_overrides();
+            for (id, b) in &overrides {
                 let (Some(species), rid) = split_id(id) else { continue };
                 if let Some((_, model)) = members.iter_mut().find(|(mid, _)| mid == species) {
                     if let Some(reaction) = model.reactions.get_mut(rid) {
@@ -497,7 +499,7 @@ impl Store {
             let mut spec = steady_com_spec(&members, &self.medium, 1.0)?;
             let bases: indexmap::IndexSet<String> =
                 spec.members.iter().flat_map(|m| m.exchange_for.keys().cloned()).collect();
-            for (id, b) in &self.overrides {
+            for (id, b) in &overrides {
                 if split_id(id).0.is_some() {
                     continue;
                 }

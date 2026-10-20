@@ -102,6 +102,13 @@ test('uncompressed variables may follow compressed elements without alignment pa
   assert.deepEqual(Array.from(doc.two), [4, 9]);
 });
 
+test('an empty array MATLAB writes as a matrix element without bytes reads as an empty array', async () => {
+  const cell = matrix({ cls: 1, shape: [2, 1], type: 14, raw: new Uint8Array(), extra: matrix({ name: '', shape: [1, 1], values: [5] }) });
+  const { v } = await readMat5(file(cell));
+  assert.deepEqual([v[0].length, v[0].shape], [0, [0, 0]]);
+  assert.deepEqual(Array.from(v[1]), [5]);
+});
+
 test('rejects truncated headers, invalid endian, versions, tags and bounded matrix payloads', async () => {
   await assert.rejects(readMat5('not binary'), /expected an ArrayBuffer/);
   await assert.rejects(readMat5(new Uint8Array(127)), /truncated Level 5 header/);

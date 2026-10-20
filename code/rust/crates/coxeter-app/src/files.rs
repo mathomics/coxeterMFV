@@ -21,7 +21,7 @@ pub struct Filter {
 pub mod filter {
     use super::Filter;
     pub const JSON: Filter = Filter { name: "JSON", extensions: &["json"] };
-    pub const MODEL: Filter = Filter { name: "COBRA JSON or SBML", extensions: &["json", "xml", "sbml"] };
+    pub const MODEL: Filter = Filter { name: "COBRA JSON, SBML, MATLAB or Excel", extensions: &["json", "xml", "sbml", "mat", "xlsx"] };
     pub const SBML: Filter = Filter { name: "SBML", extensions: &["xml", "sbml"] };
     pub const CSV: Filter = Filter { name: "CSV", extensions: &["csv"] };
     pub const TABLE: Filter = Filter { name: "CSV or TSV", extensions: &["csv", "tsv", "txt"] };
@@ -165,11 +165,16 @@ pub fn read_text(path: &Path) -> Result<String, String> {
     std::fs::read(path).map(|b| String::from_utf8_lossy(&b).into_owned()).map_err(|e| format!("{}: {e}", display_name(path)))
 }
 
+/// `file.arrayBuffer()`: a file read as bytes.
+pub fn read_bytes(path: &Path) -> Result<Vec<u8>, String> {
+    std::fs::read(path).map_err(|e| format!("{}: {e}", display_name(path)))
+}
+
 /// What kind of file a path given on the command line is, from its name and
 /// first bytes: what the app should open it as.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum FileKind {
-    /// COBRA JSON or SBML (Model (JSON / SBML)).
+    /// COBRA JSON, SBML, or a COBRA Toolbox MATLAB or Excel file.
     Model,
     /// A map document (Map JSON).
     Map,
@@ -187,7 +192,7 @@ pub enum FileKind {
 pub fn classify(path: &Path, text: &str) -> Option<FileKind> {
     let ext = path.extension().map(|e| e.to_string_lossy().to_ascii_lowercase()).unwrap_or_default();
     match ext.as_str() {
-        "xml" | "sbml" => return Some(FileKind::Model),
+        "xml" | "sbml" | "mat" | "xlsx" | "xlsm" => return Some(FileKind::Model),
         "csv" | "tsv" | "txt" => {
             let header = text.lines().next().unwrap_or("").to_ascii_lowercase();
             let cols: Vec<&str> = header.split([',', '\t', ';']).map(str::trim).collect();

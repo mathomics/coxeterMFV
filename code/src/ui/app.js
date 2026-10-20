@@ -43,6 +43,7 @@ import { saveFile } from './save-file.js';
 import { signLogPosition, signLogValue } from './reactions-explorer.js';
 import { RX_ROW_HEIGHT, formatBound, reactionColumns, renderReactionRows, renderReactionsRegion } from './reactions-panel.js';
 import { OBJECTIVES } from '../core/community.js';
+import { isBinaryModelFile } from '../core/model-import.js';
 
 const els = {
   app: document.getElementById('app-shell'),
@@ -3742,6 +3743,9 @@ function onSidebarInput(event) {
     case 'rx-search':
       if (store.reactionTable.query !== el.value) debounce('rx-search', () => store.setReactionTable({ query: el.value }), 140);
       break;
+    case 'rx-gene-search':
+      if (store.reactionTable.geneQuery !== el.value) debounce('rx-gene-search', () => store.setReactionTable({ geneQuery: el.value }), 140);
+      break;
     case 'rx-group-by':
       if (event.type === 'change') store.setReactionTable({ groupBy: el.value });
       break;
@@ -4275,6 +4279,7 @@ async function onSidebarClick(event) {
       break;
     }
     case 'rx-reset': runConstraintEdit(() => store.resetReaction(button.dataset.rid)); break;
+    case 'gene-ko': runConstraintEdit(() => store.toggleGeneKnockout(button.dataset.gene)); break;
     case 'rx-undo': runConstraintEdit(() => store.undoConstraints()); break;
     case 'rx-redo': runConstraintEdit(() => store.redoConstraints()); break;
     case 'rx-changes-toggle':
@@ -4504,14 +4509,14 @@ els.modelFileInput.addEventListener('change', async () => {
     store.status = {
       ...store.status,
       state: 'busy',
-      message: `Reading ${selected.length} COBRA JSON/SBML model(s)…`,
+      message: `Reading ${selected.length} model file(s)…`,
     };
     store.emit('status');
 
-    const files = await Promise.all(selected.map(async (file) => ({
-      name: file.name,
-      text: await file.text(),
-    })));
+    // MATLAB and Excel files are binary; SBML and COBRA JSON are text.
+    const files = await Promise.all(selected.map(async (file) => (isBinaryModelFile(file.name)
+      ? { name: file.name, bytes: new Uint8Array(await file.arrayBuffer()) }
+      : { name: file.name, text: await file.text() })));
 
     await store.importModelFiles(files);
   } catch (error) {

@@ -434,6 +434,7 @@ impl Store {
         self.cancel_fva(true, false);
         self.medium = IndexMap::new();
         self.overrides.clear();
+        self.gene_knockouts.clear();
         self.manual_pathways.clear();
         self.pathway_settings.clear();
         self.clear_omics(false);
@@ -490,6 +491,7 @@ impl Store {
         self.default_bounds = Some(prepared.problem.snapshot_bounds());
         self.set_problem(Some(prepared.problem.clone()));
         self.overrides.clear();
+        self.gene_knockouts.clear();
         let record_name = self
             .published_communities
             .iter()

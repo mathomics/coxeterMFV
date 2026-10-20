@@ -16,7 +16,7 @@ This folder holds the complete source of Coxeter-MFV. The JavaScript web applica
 
 ## Web application
 
-Requires [Node.js](https://nodejs.org) 18 or later. There are no package dependencies to install.
+Requires [Node.js](https://nodejs.org) 20 or later. There are no package dependencies to install.
 
 ```bash
 cd code

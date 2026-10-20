@@ -36,6 +36,8 @@ pub enum Deferred {
     PfbaPercent(String),
     /// `store.setReactionTable({ query })`: the Reactions page's search.
     ReactionSearch(String),
+    /// `store.setReactionTable({ geneQuery })`: the Genes control's search.
+    GeneSearch(String),
     /// `paintSaveState()` (the badge is brought up to date once changes pause).
     SaveState,
 }
@@ -373,6 +375,11 @@ impl Shell {
             Deferred::ReactionSearch(query) => {
                 if self.store.reaction_table.query != query {
                     self.store.set_reaction_table(ReactionTablePatch { query: Some(query), ..Default::default() });
+                }
+            }
+            Deferred::GeneSearch(query) => {
+                if self.store.reaction_table.gene_query != query {
+                    self.store.set_reaction_table(ReactionTablePatch { gene_query: Some(query), ..Default::default() });
                 }
             }
             Deferred::SaveState => self.save_state = self.store.unsaved_work(),

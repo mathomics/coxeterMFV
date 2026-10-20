@@ -57,6 +57,7 @@ impl Store {
                 "medium": medium,
                 "species": species,
                 "overrides": overrides,
+                "geneKnockouts": self.sorted_gene_knockouts(),
                 "objective": self.objective,
                 "productTarget": self.product_target,
                 "customObjective": self.custom_objective.as_ref().map(crate::types::CustomObjective::to_json),

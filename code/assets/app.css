@@ -2559,6 +2559,28 @@ button.pc-dl { font-family: inherit; }
 .rx-fva-bar b { position: absolute; top: -3px; width: 2px; height: 12px; margin-left: -1px; background: var(--ink); }
 .rx-fva-text { font-size: 11px; font-variant-numeric: tabular-nums; color: var(--ink-2); }
 
+.rx-gene-line {
+  display: flex; flex-wrap: wrap; align-items: flex-start; gap: 6px 10px;
+  padding: 6px 10px; border: 1px solid var(--line); border-radius: 10px; background: var(--panel);
+}
+.rx-gene-search { display: flex; align-items: center; gap: 8px; min-height: 28px; }
+.rx-gene-input { width: 220px; height: 28px; padding: 3px 8px; font-size: 12px; }
+.rx-genes { display: flex; flex: 1 1 320px; flex-wrap: wrap; align-items: center; gap: 6px; min-width: 0; min-height: 28px; }
+.rx-genes:empty { display: none; }
+.rx-gene-chip { border: 0; background: color-mix(in srgb, #db2777 14%, var(--panel)); padding: 1px 8px; font-weight: 650; }
+.rx-gene-results { flex-basis: 100%; display: grid; gap: 4px; margin: 0; padding: 0; list-style: none; font-size: 12px; }
+.rx-gene-result {
+  display: flex; align-items: center; gap: 8px; min-width: 0;
+  padding: 3px 4px 3px 8px; border: 1px solid var(--line); border-radius: 8px; background: var(--panel-2);
+}
+.rx-gene-result small { color: var(--ink-3); }
+.rx-gene-result.is-knocked-out { border-color: color-mix(in srgb, #db2777 40%, var(--line)); }
+.rx-gene-effect { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--ink-2); font-size: 11.5px; }
+.rx-gene-result button { flex: none; height: 26px; padding: 0 9px; font-size: 11.5px; }
+.gene-ko-pair { display: inline-flex; gap: 2px; }
+.chip.gene-ko { padding-inline: 5px; font-size: 10px; font-weight: 750; color: var(--ink-3); }
+.chip.gene-ko.is-on { color: #fff; background: #db2777; border-color: #db2777; }
+
 .rx-changes {
   width: 300px; flex: none; overflow: auto; padding: 10px 12px;
   border: 1px solid var(--line); border-radius: 10px; background: var(--panel);

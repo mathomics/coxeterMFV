@@ -34,7 +34,7 @@ use coxeter_map::layout_settings::RawLayoutSettings;
 use coxeter_render::format_flux;
 use coxeter_state::map_edit::GeometryColors;
 use coxeter_state::{SelectedEntity, Store, UserNumber};
-use egui::{Align, Align2, CornerRadius, FontId, Frame, Id, Label, Layout, Margin, Response, RichText, Sense, Stroke, Ui, Vec2};
+use egui::{Align, Align2, Color32, CornerRadius, FontId, Frame, Id, Label, Layout, Margin, Response, RichText, Sense, Stroke, Ui, Vec2};
 use serde_json::{Map, Value};
 
 use crate::app::Shell;
@@ -64,6 +64,7 @@ enum Act {
     ReactionMirror(String),
     ReactionRotate(String, f64),
     Knockout(String),
+    GeneKo(String),
     ResetReaction(String),
     ShowInReactions(String),
     ResetAll,
@@ -208,6 +209,11 @@ fn apply(shell: &mut Shell, acts: Vec<Act>) {
             }
             Act::ResetReaction(rid) => {
                 if let Err(error) = shell.store.reset_reaction(&rid) {
+                    shell.status_error(error.to_string());
+                }
+            }
+            Act::GeneKo(key) => {
+                if let Err(error) = shell.store.toggle_gene_knockout(&key) {
                     shell.status_error(error.to_string());
                 }
             }
@@ -767,6 +773,16 @@ fn gene_inspector(ui: &mut Ui, store: &Store, p: &Palette, species_id: &str, gen
     widgets::property_row(ui, "Reactions", true, |ui| {
         chips(ui, &reactions, |rid| acts.push(Act::SelectModelReaction(rid.to_string())));
     });
+    let key = if species_id.is_empty() { id.clone() } else { format!("{species_id}@{id}") };
+    if !store.is_zuniga_study() && store.gene_index().genes.contains_key(&key) {
+        ui.add_space(6.0);
+        let on = store.gene_knockouts.contains(&key);
+        let button = Btn::new(if on { "Restore gene" } else { "Knock out gene" }).wide();
+        if (if on { button } else { button.danger() }).show(ui).clicked() {
+            acts.push(Act::GeneKo(key.clone()));
+        }
+        widgets::hint(ui, gene_effect_text(store, &key));
+    }
     let empty = Value::Object(Map::new());
     let annotation = gene.get("annotation").unwrap_or(&empty);
     let notes = gene.get("notes").unwrap_or(&empty);
@@ -1098,7 +1114,37 @@ fn inspector_card(ui: &mut Ui, store: &Store, p: &Palette, focus_lower: bool, ac
     property(ui, "GPR", if merged.gene_reaction_rule.is_empty() { "—".to_string() } else { merged.gene_reaction_rule.clone() });
     widgets::property_row(ui, "Genes", true, |ui| {
         let species = owner_species.clone().unwrap_or_default();
-        chips(ui, &genes, |gene| acts.push(Act::SelectGene { gene: gene.to_string(), species: species.clone() }));
+        if genes.is_empty() {
+            widgets::value_text(ui, "—");
+            return;
+        }
+        let index = store.gene_index();
+        ui.horizontal_wrapped(|ui| {
+            ui.spacing_mut().item_spacing = Vec2::new(3.0, 3.0);
+            for (gene, _) in &genes {
+                if widgets::chip_button(ui, gene, false).clicked() {
+                    acts.push(Act::SelectGene { gene: gene.clone(), species: species.clone() });
+                }
+                // The KO toggle beside each gene the community's rules know.
+                let key = if species.is_empty() { gene.clone() } else { format!("{species}@{gene}") };
+                if store.is_zuniga_study() || !index.genes.contains_key(&key) {
+                    continue;
+                }
+                let on = store.gene_knockouts.contains(&key);
+                let title = gene_effect_text(store, &key);
+                let aria = format!("{} gene {gene}", if on { "Restore" } else { "Knock out" });
+                let label = RichText::new("KO").size(10.0).family(bold()).color(if on { Color32::WHITE } else { p.ink_3 });
+                let r = Btn::new(label).look(if on { Look::Pressed } else { Look::Unpressed }).title(&title).aria(&aria).height(20.0).show(ui);
+                if on {
+                    ui.painter().rect_filled(r.rect, CornerRadius::same(8), GENE_KNOCKED_OUT);
+                    ui.painter().text(r.rect.center(), egui::Align2::CENTER_CENTER, "KO", egui::FontId::new(10.0, bold()), Color32::WHITE);
+                }
+                if r.clicked() {
+                    acts.push(Act::GeneKo(key));
+                }
+                ui.add_space(4.0);
+            }
+        });
     });
     widgets::property_row(ui, "Metabolites", true, |ui| {
         chips(ui, &metabolites, |merged_id| acts.push(Act::SelectModelMetabolite(merged_id.to_string())));
@@ -1118,7 +1164,10 @@ fn inspector_card(ui: &mut Ui, store: &Store, p: &Palette, focus_lower: bool, ac
     });
 
     ui.add_space(8.0);
-    let state = if knocked_out {
+    let gene_closed_by = store.gene_closed_reactions().get(&rid).cloned().unwrap_or_default();
+    let state = if !gene_closed_by.is_empty() {
+        "Gene knockout"
+    } else if knocked_out {
         "Knocked out"
     } else if modified {
         "Modified"
@@ -1167,9 +1216,19 @@ fn inspector_card(ui: &mut Ui, store: &Store, p: &Palette, focus_lower: bool, ac
         widgets::hint(ui, "Source bounds are fixed for this case; select a documented scenario to apply its perturbation.");
     }
     // `<fieldset disabled>` around the bounds of the Zuñiga case.
+    if !gene_closed_by.is_empty() {
+        let names: Vec<String> = gene_closed_by.iter().map(|k| store.gene_title(k)).collect();
+        let (plural, them) = if names.len() == 1 { ("", "it") } else { ("s", "them") };
+        widgets::hint(
+            ui,
+            format!("Closed by the knockout of gene{plural} {}: restore {them} (KO in the gene list above) to reopen the reaction.", names.join(", ")),
+        );
+    }
     ui.add_enabled_ui(!zuniga, |ui| {
-        bound_row(ui, p, &rid, &shown_id, true, bounds.lower, focus_lower && !zuniga, acts);
-        bound_row(ui, p, &rid, &shown_id, false, bounds.upper, false, acts);
+        ui.add_enabled_ui(gene_closed_by.is_empty(), |ui| {
+            bound_row(ui, p, &rid, &shown_id, true, bounds.lower, focus_lower && !zuniga, acts);
+            bound_row(ui, p, &rid, &shown_id, false, bounds.upper, false, acts);
+        });
         ui.add(egui::Label::new(text("Sliders are logarithmic (±0.001 to ±1000, 0 in the middle); type exact values in the boxes.", 10.5, p.ink_3)).wrap());
         ui.add_space(6.0);
         ui.horizontal(|ui| {
@@ -1202,6 +1261,21 @@ fn inspector_card(ui: &mut Ui, store: &Store, p: &Palette, focus_lower: bool, ac
     widgets::hint(ui, "Removing it from the map is not a knockout: the reaction still exists in the model and in the FBA.");
     widgets::hint(ui, format!("Original bounds: [{}, {}]", format_flux(Some(defaults.lower), 3), format_flux(Some(defaults.upper), 3)));
 }
+
+/// What knocking out a gene does, or does now that it is out, in words.
+fn gene_effect_text(store: &Store, key: &str) -> String {
+    let on = store.gene_knockouts.contains(key);
+    let closes: Vec<String> = store.gene_knockout_effect(key).iter().map(|rid| store.reaction_title(rid)).collect();
+    if closes.is_empty() {
+        return if on { "Knocked out; other genes keep its reactions open." } else { "Knocking it out closes nothing: other genes keep its reactions open." }
+            .to_string();
+    }
+    let list = if closes.len() > 6 { format!("{} +{} more", closes[..6].join(", "), closes.len() - 6) } else { closes.join(", ") };
+    if on { format!("Knocked out: closes {list}.") } else { format!("Knocking it out closes {list}.") }
+}
+
+/// The colour of a knocked-out gene's KO toggle (`.chip.gene-ko.is-on`).
+const GENE_KNOCKED_OUT: Color32 = Color32::from_rgb(0xdb, 0x27, 0x77);
 
 /// One `.bound-row`: the label and the shared bound control
 /// (`boundControl`): the sign-log slider (`bound-lower` / `bound-upper`) and

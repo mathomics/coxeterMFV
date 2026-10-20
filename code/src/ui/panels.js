@@ -1204,7 +1204,7 @@ function speciesCard(store) {
       <button class="primary grow" data-action="import-models">Load model(s)</button>
       <button class="grow" data-action="load-yeast9" title="Load the official yeast-GEM 9.1.1 SBML model">Yeast9 9.1.1</button>
     </div>
-    <p class="hint">Accepts COBRApy/BiGG JSON or SBML. You can pick several files at once:
+    <p class="hint">Accepts COBRApy/BiGG JSON, SBML, and COBRA Toolbox MATLAB (.mat) or Excel (.xlsx). You can pick several files at once:
     each becomes one species/cell. Imported models start with an empty compartment map.
     The Yeast9 shortcut loads the official pinned model and preserves all 14 subcellular compartments.</p>
     <p class="hint">Abundances are normalised to 1. They turn each species' per-gDW flux
@@ -1864,10 +1864,31 @@ function geneInspector(store, speciesId, geneId) {
   const reactions=[...model.reactions.values()].filter(r=>genesFromRule(r.geneReactionRule).includes(geneId));
   const rxns=reactions.map(r=>`<button class="chip" data-action="select-model-reaction" data-rxn="${esc(speciesId+'@'+r.id)}">${esc(r.id)}</button>`).join(' ')||'—';
   const fields=Object.entries(gene).filter(([k])=>!['annotation','annotations','notes'].includes(k)).map(([k,v])=>propertyRow(k,esc(formatField(v)))).join('');
+  const key=speciesId?`${speciesId}@${gene.id}`:String(gene.id);
+  const knockout=!store.isZunigaStudy&&store.geneIndex?.().genes.has(key)
+    ?`<div class="row" style="margin-top:10px">${geneKnockoutButton(store,key,{wide:true})}</div><p class="hint">${esc(geneEffectText(store,key))}</p>`:'';
   return `<section class="inspector-detail">
     ${inspectorHeader('Gene',gene.id,gene.name??'')}
     <dl class="property-list">${fields}${propertyRow('Cell / species',esc(model?.cell?.name??speciesId))}${propertyRow('Reactions',rxns,'is-stacked')}${propertyRow('Annotations',provenanceBlock(gene,'gene'),'is-stacked')}${propertyRow('Notes',notesBlock(gene.notes),'is-stacked')}</dl>
+    ${knockout}
   </section>`;
+}
+
+/** What knocking out a gene does, or does now that it is out, in words. */
+function geneEffectText(store, key) {
+  const on = store.geneKnockouts.has(key);
+  const closes = store.geneKnockoutEffect(key).map((rid) => store.reactionTitle(rid));
+  if (!closes.length) return on ? 'Knocked out; other genes keep its reactions open.' : 'Knocking it out closes nothing: other genes keep its reactions open.';
+  const list = closes.length > 6 ? `${closes.slice(0, 6).join(', ')} +${closes.length - 6} more` : closes.join(', ');
+  return on ? `Knocked out: closes ${list}.` : `Knocking it out closes ${list}.`;
+}
+
+/** The KO toggle of one gene (`species@gene`), titled with what it does. */
+function geneKnockoutButton(store, key, { wide = false } = {}) {
+  const on = store.geneKnockouts.has(key);
+  const label = wide ? (on ? 'Restore gene' : 'Knock out gene') : 'KO';
+  return `<button type="button" class="${wide ? `grow${on ? '' : ' danger'}` : `chip gene-ko${on ? ' is-on' : ''}`}" data-action="gene-ko" data-gene="${esc(key)}"
+    aria-pressed="${on}" title="${esc(geneEffectText(store, key))}">${label}</button>`;
 }
 function provenanceBlock(entity,type){
  const links=annotationLinks(entity?.annotation??{},entity?.notes??{},type);
@@ -2079,8 +2100,14 @@ function inspectorCard(store) {
   const localModel = owner.speciesId ? store.models.get(store.species.find((x)=>x.id===owner.speciesId)?.file) : null;
   const localReaction = owner.originalId ? localModel?.reactions.get(owner.originalId) : null;
   const annotations = provenanceBlock(localReaction ?? merged, 'reaction');
-  const geneButtons = genesFromRule(localReaction?.geneReactionRule ?? merged?.geneReactionRule).map((gid) =>
-    `<button class="chip" data-action="select-gene" data-gene="${esc(gid)}" data-species="${esc(owner.speciesId??'')}">${esc(gid)}</button>`).join(' ') || '—';
+  const geneIndex = store.geneIndex?.().genes ?? new Map();
+  const geneClosedBy = store.geneClosedReactions?.().get(rid) ?? [];
+  const geneButtons = genesFromRule(localReaction?.geneReactionRule ?? merged?.geneReactionRule).map((gid) => {
+    const select = `<button class="chip" data-action="select-gene" data-gene="${esc(gid)}" data-species="${esc(owner.speciesId??'')}">${esc(gid)}</button>`;
+    const key = owner.speciesId ? `${owner.speciesId}@${gid}` : gid;
+    if (store.isZunigaStudy || !geneIndex.has(key)) return select;
+    return `<span class="gene-ko-pair">${select}${geneKnockoutButton(store, key)}</span>`;
+  }).join(' ') || '—';
   const metaboliteButtons = Object.keys(localReaction?.metabolites ?? {}).map((mid) => {
     const mergedId=owner.speciesId ? `${owner.speciesId}@${mid}` : mid;
     return `<button class="chip" data-action="select-model-metabolite" data-metabolite="${esc(mergedId)}">${esc(mid)}</button>`;
@@ -2123,7 +2150,7 @@ function inspectorCard(store) {
 
     <dl class="readout">
       <div><dt>Flux</dt><dd>${formatFlux(flux, 4)}</dd></div>
-      <div><dt>State</dt><dd style="font-size:13px">${knockedOut ? 'Knocked out' : modified ? 'Modified' : 'Original'}</dd></div>
+      <div><dt>State</dt><dd style="font-size:13px">${geneClosedBy.length ? 'Gene knockout' : knockedOut ? 'Knocked out' : modified ? 'Modified' : 'Original'}</dd></div>
     </dl>
 
     ${omicsReactionReadout(store, rid)}
@@ -2132,13 +2159,14 @@ function inspectorCard(store) {
     ${store.map?.reactions.has(rid) ? mapLabelControl(store, 'reaction', rid) + reactionColorRow(store, [rid]) : ''}
     <h3 class="inspector-section-title">Bounds</h3>
     ${store.isZunigaStudy ? '<p class="hint">Source bounds are fixed for this case; select a documented scenario to apply its perturbation.</p><fieldset disabled style="border:0;padding:0;margin:0">' : ''}
+    ${geneClosedBy.length ? `<p class="hint">Closed by the knockout of gene${geneClosedBy.length === 1 ? '' : 's'} ${esc(geneClosedBy.map((key) => store.geneTitle(key)).join(', '))}: restore ${geneClosedBy.length === 1 ? 'it' : 'them'} (KO in the gene list above) to reopen the reaction.</p>` : ''}
     <div class="bound-row">
       <label>Lower</label>
-      ${boundControl({ rid, side: 'lower', value: bounds.lower, label: owner.originalId ?? rid })}
+      ${boundControl({ rid, side: 'lower', value: bounds.lower, label: owner.originalId ?? rid, disabled: geneClosedBy.length > 0 })}
     </div>
     <div class="bound-row">
       <label>Upper</label>
-      ${boundControl({ rid, side: 'upper', value: bounds.upper, label: owner.originalId ?? rid })}
+      ${boundControl({ rid, side: 'upper', value: bounds.upper, label: owner.originalId ?? rid, disabled: geneClosedBy.length > 0 })}
     </div>
     <p class="hint bound-scale-note">Sliders are logarithmic (±0.001 to ±1000, 0 in the middle); type exact values in the boxes.</p>
 

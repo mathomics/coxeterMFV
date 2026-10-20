@@ -146,7 +146,7 @@ pub fn species_card(ui: &mut Ui, shell: &mut Shell) {
         }
         widgets::hint(
             ui,
-            "Accepts COBRApy/BiGG JSON or SBML. You can pick several files at once: each becomes one species/cell. Imported models start with an empty compartment map. The Yeast9 shortcut loads the official pinned model and preserves all 14 subcellular compartments.",
+            "Accepts COBRApy/BiGG JSON, SBML, and COBRA Toolbox MATLAB (.mat) or Excel (.xlsx). You can pick several files at once: each becomes one species/cell. Imported models start with an empty compartment map. The Yeast9 shortcut loads the official pinned model and preserves all 14 subcellular compartments.",
         );
         widgets::hint(
             ui,

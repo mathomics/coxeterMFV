@@ -863,6 +863,86 @@ fn monoculture_ghosts_keep_geometry_but_are_not_shown_as_simulated_growing_cells
     assert_eq!(m, before, "renderer never edits shared geometry");
 }
 
+/// Left, top, right, bottom.
+type Box4 = (f64, f64, f64, f64);
+
+/// Where a metabolite's name is drawn, as a box. The width is an estimate, 0.56 em
+/// a character, which the label fonts stay within; the sizes are map.css's.
+fn name_box(node: &Node) -> Box4 {
+    use coxeter_core::metabolite_label::{Anchor, Baseline, is_secondary_node, metabolite_label_position};
+    let size = if node.kind == NodeKind::Medium { 15.0 } else if is_secondary_node(node) { 9.5 } else { 12.5 };
+    let w = node.base.as_deref().unwrap_or("").chars().count() as f64 * size * 0.56;
+    let p = metabolite_label_position(node);
+    let left = match p.anchor {
+        Anchor::Start => p.x,
+        Anchor::End => p.x - w,
+        Anchor::Middle => p.x - w / 2.0,
+    };
+    let top = match p.baseline {
+        Baseline::Auto => p.y - size * 0.8,
+        Baseline::Hanging => p.y,
+        Baseline::Middle => p.y - size / 2.0,
+    };
+    (left, top, left + w, top + size)
+}
+
+fn boxes_overlap(a: Box4, b: Box4) -> bool {
+    a.0 < b.2 && b.0 < a.2 && a.1 < b.3 && b.1 < a.3
+}
+
+fn on_circle(b: Box4, node: &Node) -> bool {
+    let (cx, cy) = (node.x.clamp(b.0, b.2), node.y.clamp(b.1, b.3));
+    (cx - node.x).hypot(cy - node.y) < node.r
+}
+
+#[test]
+fn no_metabolite_name_is_written_over_another_name_or_another_metabolite() {
+    let m = map("zuniga");
+    let nodes: Vec<&Node> = m.nodes.values().collect();
+    let mut clashes = Vec::new();
+    for (i, a) in nodes.iter().enumerate() {
+        for b in &nodes[i + 1..] {
+            if boxes_overlap(name_box(a), name_box(b)) {
+                clashes.push(format!("{} / {}", a.id, b.id));
+            }
+        }
+        for b in &nodes {
+            if a.id != b.id && on_circle(name_box(a), b) {
+                clashes.push(format!("{} on {}", a.id, b.id));
+            }
+        }
+    }
+    assert_eq!(clashes, Vec::<String>::new());
+}
+
+#[test]
+fn every_compartment_name_plate_reaches_full_size_and_at_it_covers_no_metabolite_name() {
+    let m = map("zuniga");
+    let svg = zuniga_render(&m, 1.0, |s| s.labels = LabelMode::All);
+    let plates: Vec<(String, f64, Box4)> = all(
+        r#"data-compartment-label="([^"]+)" transform="translate\(([^ ]+) ([^)]+)\)">\s*<g class="emc-frame-label" style="--fit:([^"]+)">\s*<rect x="([^"]+)" y="([^"]+)" width="([^"]+)" height="([^"]+)""#,
+        &svg,
+    )
+    .into_iter()
+    .map(|c| {
+        let v: Vec<f64> = c[2..].iter().map(|x| x.parse().unwrap()).collect();
+        let (tx, ty, fit, x, y, w, h) = (v[0], v[1], v[2], v[3], v[4], v[5], v[6]);
+        let s = fit.min(1.0);
+        (c[1].clone(), fit, (tx + x * s, ty + y * s, tx + (x + w) * s, ty + (y + h) * s))
+    })
+    .collect();
+    assert_eq!(plates.iter().map(|p| p.0.as_str()).collect::<Vec<_>>(), ["s", "p", "c", "k", "u", "p", "c"]);
+    // k and u are nested closely in S. elongatus: k's plate used to shrink to a third.
+    for (id, fit, _) in &plates {
+        assert!(*fit >= 1.0, "{id} plate fits at {fit}");
+    }
+    let covered: Vec<String> = plates
+        .iter()
+        .flat_map(|(id, _, b)| m.nodes.values().filter(|n| boxes_overlap(*b, name_box(n))).map(move |n| format!("{id}: {}", n.id)))
+        .collect();
+    assert_eq!(covered, Vec::<String>::new());
+}
+
 // ui-audit-fixes (rendering)
 
 fn audit_state(extra: impl FnOnce(&mut RenderState)) -> RenderState {

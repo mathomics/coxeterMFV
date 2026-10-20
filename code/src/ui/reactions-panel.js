@@ -120,6 +120,7 @@ export function renderReactionsPage(store, view = {}) {
       ${region('actions')}
     </div>
     ${region('objective')}
+    <div class="rx-gene-line">${region('gene-search')}${region('genes')}</div>
     ${region('alert')}
     ${region('bulk')}
     <div class="rx-main">
@@ -139,7 +140,7 @@ function colgroup(columns) {
   return `<colgroup>${columns.map((column) => `<col class="rx-col-${column.id}" style="width:${column.width}px">`).join('')}</colgroup>`;
 }
 
-/** The inner HTML of one page region: search, filters, count, actions, objective, alert, bulk, head or changes. */
+/** The inner HTML of one page region: search, filters, count, actions, objective, gene-search, genes, alert, bulk, head or changes. */
 export function renderReactionsRegion(name, store, view) {
   const model = view.model;
   const table = store.reactionTable;
@@ -150,6 +151,8 @@ export function renderReactionsRegion(name, store, view) {
     case 'count': return `<strong>${model.shown}</strong> of ${model.total} reactions${model.modified ? ` · <span class="rx-count-modified">${model.modified} modified</span>` : ''}`;
     case 'actions': return actionsRegion(store, view, locked);
     case 'objective': return objectiveRegion(store, locked);
+    case 'gene-search': return geneSearchRegion(store, locked);
+    case 'genes': return genesRegion(store, locked);
     case 'alert': return alertRegion(store, locked);
     case 'bulk': return locked || !table.selection.size ? '' : bulkRegion(store, view);
     case 'head': return headRow(store, model, 'page');
@@ -179,10 +182,11 @@ function filtersRegion(table) {
 function actionsRegion(store, view, locked) {
   const history = store.constraintHistory;
   const changes = view.changes ?? store.constraintChanges();
+  const listed = changes.filter((change) => !change.genes?.length).length + (store.geneKnockoutChanges?.().length ?? 0);
   const off = locked ? ' disabled' : '';
   return `<button type="button" data-action="rx-undo"${history.canUndo && !locked ? ` title="Undo: ${esc(history.undoLabel)}"` : ' disabled title="No constraint edit to undo"'}>↶ Undo</button>
     <button type="button" data-action="rx-redo"${history.canRedo && !locked ? ` title="Redo: ${esc(history.redoLabel)}"` : ' disabled title="No constraint edit to redo"'}>↷ Redo</button>
-    <button type="button" data-action="rx-changes-toggle" aria-pressed="${Boolean(view.showChanges)}" title="Every reaction whose bounds differ from the model's">Changes (${changes.length + (store.customObjective ? 1 : 0)})</button>
+    <button type="button" data-action="rx-changes-toggle" aria-pressed="${Boolean(view.showChanges)}" title="Every reaction whose bounds differ from the model's, and every gene knocked out">Changes (${listed + (store.customObjective ? 1 : 0)})</button>
     <button type="button" data-action="rx-import-csv" title="Apply a CSV of id, lower, upper"${off}>Import CSV</button>
     <button type="button" data-action="rx-export-csv" title="Every reaction's bounds in force, as CSV">Export CSV</button>
     <button type="button" data-action="rx-split-toggle" aria-pressed="${Boolean(view.split)}" title="Show the map above the table">Map</button>`;
@@ -228,6 +232,42 @@ function objectiveRegion(store, locked) {
   </div>`;
 }
 
+// The gene search has a region of its own for the same reason as the reaction search.
+function geneSearchRegion(store, locked) {
+  const any = store.geneIndex().genes.size > 0;
+  const placeholder = locked ? 'Fixed for this case' : any ? 'Search a gene to knock out…' : 'No gene rules in this model';
+  return `<span class="rx-objective-title" title="A knocked-out gene closes every reaction whose gene rule it makes false; an isozyme left keeps a reaction open">Genes</span>
+    <input type="search" class="rx-gene-input" data-action="rx-gene-search" value="${esc(store.reactionTable.geneQuery ?? '')}"
+      placeholder="${placeholder}" aria-label="Search genes to knock out" autocomplete="off" spellcheck="false"${locked || !any ? ' disabled' : ''}>`;
+}
+
+/** A few reaction titles, then how many more. */
+function reactionList(store, ids, shown = 4) {
+  const names = ids.slice(0, shown).map((id) => store.reactionTitle(id)).join(', ');
+  return ids.length > shown ? `${names} +${ids.length - shown} more` : names;
+}
+
+function genesRegion(store, locked) {
+  if (locked) return '';
+  const knocked = store.geneKnockoutChanges().map((gene) => `<button type="button" class="rx-term rx-gene-chip" data-action="gene-ko" data-gene="${esc(gene.key)}"
+      title="Restore ${esc(gene.title)}: reopens ${esc(reactionList(store, gene.reactions, 8) || 'nothing')}">${esc(gene.title)} <span aria-hidden="true">×</span></button>`).join('');
+  const query = String(store.reactionTable.geneQuery ?? '').trim();
+  const results = query ? store.geneSearch(query) : [];
+  const items = results.map((gene) => {
+    const several = gene.speciesId && store.species.length > 1;
+    const effect = gene.closes.length
+      ? `${gene.knockedOut ? 'closes' : 'would close'} ${reactionList(store, gene.closes)}`
+      : `${gene.knockedOut ? 'closes' : 'would close'} nothing: other genes keep its ${gene.reactions.length} reaction${gene.reactions.length === 1 ? '' : 's'} open`;
+    return `<li class="rx-gene-result${gene.knockedOut ? ' is-knocked-out' : ''}">
+      <code>${esc(gene.gene)}</code>${several ? `<small>${esc(gene.speciesId)}</small>` : ''}${gene.name && gene.name !== gene.gene ? `<span class="rx-sub">${esc(gene.name)}</span>` : ''}
+      <span class="rx-gene-effect">${esc(effect)}</span>
+      <button type="button" class="${gene.knockedOut ? '' : 'danger'}" data-action="gene-ko" data-gene="${esc(gene.key)}" aria-pressed="${gene.knockedOut}">${gene.knockedOut ? 'Restore' : 'Knock out'}</button>
+    </li>`;
+  }).join('');
+  const list = query ? `<ul class="rx-gene-results">${items || '<li class="rx-muted">No gene matches.</li>'}</ul>` : '';
+  return `${knocked ? `<span class="rx-terms">${knocked}</span>` : ''}${list}`;
+}
+
 function alertRegion(store, locked) {
   if (locked) return '<p class="rx-note">Zuñiga case: the source bounds are fixed. Choose a documented case scenario to apply its perturbation.</p>';
   const culprits = store.constraintCulprits;
@@ -265,7 +305,13 @@ function bulkRegion(store, view) {
 }
 
 function changesRegion(store, locked) {
-  const changes = store.constraintChanges();
+  // A reaction a gene knockout closes is listed under its gene.
+  const changes = store.constraintChanges().filter((change) => !change.genes?.length);
+  const genes = store.geneKnockoutChanges().map((gene) => `<li class="rx-change is-knocked-out is-gene">
+      <span class="rx-change-name"><strong>Gene ${esc(gene.title)}</strong> <small>knocked out</small></span>
+      <span class="rx-change-bounds">${gene.reactions.length ? `closes ${gene.reactions.map((id) => `<button type="button" class="rx-term-name" data-action="rx-reveal" data-rid="${esc(id)}">${esc(store.reactionTitle(id))}</button>`).join(', ')}` : 'closes no reaction on its own'}</span>
+      ${locked ? '' : `<button type="button" class="rx-icon" data-action="gene-ko" data-gene="${esc(gene.key)}" title="Restore the gene">↺</button>`}
+    </li>`).join('');
   const bound = (b) => `[${formatBoundText(b.lower)}, ${formatBoundText(b.upper)}]`;
   const objective = store.customObjective
     ? `<li class="rx-change is-objective"><span class="rx-change-name"><strong>Objective</strong></span>
@@ -279,8 +325,8 @@ function changesRegion(store, locked) {
       ${locked ? '' : `<button type="button" class="rx-icon" data-action="rx-reset" data-rid="${esc(change.id)}" title="Reset to the bounds as opened">↺</button>`}
     </li>`).join('');
   return `<div class="rx-changes-head"><h3>Changes</h3>
-      <button type="button" data-action="reset-all"${changes.length && !locked ? '' : ' disabled'} title="Every reaction back to the bounds it was opened with">Reset all</button></div>
-    ${rows || objective ? `<ol class="rx-change-list">${objective}${rows}</ol>` : '<p class="empty">No reaction differs from the bounds it was opened with.</p>'}`;
+      <button type="button" data-action="reset-all"${(changes.length || genes) && !locked ? '' : ' disabled'} title="Every reaction back to the bounds it was opened with, and every gene restored">Reset all</button></div>
+    ${rows || objective || genes ? `<ol class="rx-change-list">${objective}${genes}${rows}</ol>` : '<p class="empty">No reaction differs from the bounds it was opened with.</p>'}`;
 }
 
 function headRow(store, model, mode) {
@@ -358,7 +404,9 @@ function reactionRow(row, context) {
 
 function reactionCell(column, row, { mode, locked, selection, store }) {
   const id = esc(row.id);
-  const editable = !locked && !row.heldOut;
+  const geneClosed = Boolean(row.geneKnockouts?.length);
+  const editable = !locked && !row.heldOut && !geneClosed;
+  const geneNote = geneClosed ? `${geneKnockoutText(row, store)}; restore ${row.geneKnockouts.length === 1 ? 'the gene' : 'the genes'} to reopen it` : '';
   switch (column) {
     case 'select':
       return `<td class="rx-c-select"><input type="checkbox" data-action="rx-select" data-rid="${id}"${selection.has(row.id) ? ' checked' : ''}
@@ -381,7 +429,7 @@ function reactionCell(column, row, { mode, locked, selection, store }) {
     case 'upper': {
       const value = row[column];
       if (mode === 'compact') return `<td class="rx-c-${column} number">${esc(formatBoundText(value))}</td>`;
-      const title = row.heldOut ? ' title="Its species is held out of the simulation"' : '';
+      const title = row.heldOut ? ' title="Its species is held out of the simulation"' : geneClosed ? ` title="${esc(geneNote)}"` : '';
       return `<td class="rx-c-${column}"${title}>${boundControl({ rid: row.id, side: column, value, disabled: !editable, label: row.label })}</td>`;
     }
     case 'flux':
@@ -397,7 +445,7 @@ function reactionCell(column, row, { mode, locked, selection, store }) {
       return `<td class="rx-c-status"><span class="rx-status is-${row.status}" title="${esc(statusTitle(row, store))}">${STATUS_LABELS[row.status]}</span></td>`;
     case 'actions': {
       const ko = `<button type="button" class="rx-icon rx-ko${row.knockedOut ? ' is-on' : ''}" data-action="rx-ko" data-rid="${id}" aria-pressed="${row.knockedOut}"
-        title="${row.knockedOut ? 'Restore: undo the knockout' : 'Knock out: both bounds 0'}"${editable ? '' : ' disabled'}>KO</button>`;
+        title="${geneClosed ? esc(geneNote) : row.knockedOut ? 'Restore: undo the knockout' : 'Knock out: both bounds 0'}"${editable ? '' : ' disabled'}>KO</button>`;
       const locate = `<button type="button" class="rx-icon" data-action="rx-locate" data-rid="${id}" title="${row.onMap ? 'Locate on the map' : 'Not drawn on the map'}"
         aria-label="Locate ${esc(row.label)} on the map"${row.onMap ? '' : ' disabled'}>⌖</button>`;
       if (mode === 'compact') return `<td class="rx-c-actions">${ko}${locate}</td>`;
@@ -427,9 +475,16 @@ function fvaCell(row) {
     <span class="rx-fva-text">${esc(formatFlux(row.fvaMin, 3))} – ${esc(formatFlux(row.fvaMax, 3))}</span>`;
 }
 
+/** "Closed by the knockout of gene g1" (or of genes g1, g2). */
+function geneKnockoutText(row, store) {
+  const genes = row.geneKnockouts.map((key) => store?.geneTitle?.(key) ?? key);
+  return `Closed by the knockout of gene${genes.length === 1 ? '' : 's'} ${genes.join(', ')}`;
+}
+
 function statusTitle(row, store) {
   const original = `As opened: [${formatFlux(row.originalLower, 4)}, ${formatFlux(row.originalUpper, 4)}]`;
   if (row.status === 'culprit') return `This edit left the LP without an optimum (${store?.constraintCulprits?.status ?? 'infeasible'}). ${original}`;
+  if (row.geneKnockouts?.length) return `${geneKnockoutText(row, store)}. ${original}`;
   if (row.status === 'knocked-out' || row.status === 'modified') return original;
   if (row.status === 'blocked') return 'FVA: carries no flux at the optimum';
   return 'The model’s bounds';

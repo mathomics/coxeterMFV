@@ -20,7 +20,7 @@
     "run:figure4": "node tools/run-gut9-figure4.mjs"
   },
   "engines": {
-    "node": ">=18"
+    "node": ">=20"
   },
   "dependencies": {
     "glpk.js": "^5.0.0"

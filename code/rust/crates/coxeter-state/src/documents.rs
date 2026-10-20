@@ -549,7 +549,7 @@ impl Store {
         js::stringify(&self.state_value(), Some(2))
     }
 
-    /// The Scenario file as a value.
+    /// The Scenario file as a value; `geneKnockouts` only when there are any.
     pub fn state_value(&self) -> Value {
         let medium: Map<String, Value> = self.medium.iter().map(|(k, v)| (k.clone(), num_json(*v))).collect();
         let overrides: Vec<Value> = self
@@ -557,7 +557,7 @@ impl Store {
             .iter()
             .map(|(id, b)| json!({"id": id, "lower": num_json(b.lower), "upper": num_json(b.upper)}))
             .collect();
-        json!({
+        let mut state = json!({
             "scenario": self.scenario_id(),
             "study": self.zuniga_state(),
             "steadyComConfig": self.steady_com_config.to_json(),
@@ -583,7 +583,11 @@ impl Store {
             "medium": medium,
             "species": self.species.iter().map(Species::to_json).collect::<Vec<_>>(),
             "overrides": overrides,
-        })
+        });
+        if let (false, Some(doc)) = (self.gene_knockouts.is_empty(), state.as_object_mut()) {
+            doc.insert("geneKnockouts".into(), json!(self.sorted_gene_knockouts()));
+        }
+        state
     }
 
     /// `loadState(text)`: open a Scenario file. A fixed-µ SteadyCom result is
@@ -722,6 +726,7 @@ impl Store {
                     .collect()
             })
             .unwrap_or_default();
+        self.gene_knockouts = self.gene_knockouts_from(doc.get("geneKnockouts"));
         self.custom_objective = self.custom_objective_from(doc.get("customObjective"));
         self.apply_overrides();
         // Before solving, so the repaint that follows already reads "Saved".
@@ -825,6 +830,7 @@ impl Store {
             custom_objective: self.custom_objective.as_ref().map(CustomObjective::to_json),
             medium: self.medium.iter().map(|(k, v)| (k.clone(), num_json(*v))).collect(),
             overrides: self.overrides.iter().map(|(k, b)| (k.clone(), b.to_json())).collect(),
+            gene_knockouts: self.sorted_gene_knockouts(),
             parsimonious: self.parsimonious,
             pfba_biomass_percent: num_json(self.pfba_biomass_percent),
             loopless: self.loopless,
@@ -922,6 +928,7 @@ impl Store {
         // compared; its ranges are restored from the archive below.
         self.fva_enabled = false;
         self.rebuild(RebuildOptions::default())?;
+        self.gene_knockouts = self.gene_knockouts_from(constraints.and_then(|c| c.get("geneKnockouts")));
         self.custom_objective = self.custom_objective_from(community.and_then(|c| c.get("customObjective")));
         self.apply_overrides();
         // Restore the exact archived drawing after the biological model exists.

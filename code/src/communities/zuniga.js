@@ -6,6 +6,7 @@
 import { readMat5 } from '../import/mat5.js';
 import { Model, stripCompartment } from '../core/model.js';
 import { FluxProblem } from '../solver/fba.js';
+import { evaluateGeneRule } from '../core/gene-rules.js';
 
 export const ZUNIGA_ID = 'zuniga-2020-phea-rescue';
 export const ZUNIGA_SCENARIOS = [
@@ -20,40 +21,8 @@ const clone = (value) => JSON.parse(JSON.stringify(value));
 const array = (value) => value == null ? [] : Array.isArray(value) || ArrayBuffer.isView(value) ? Array.from(value) : [value];
 const text = (value) => typeof value === 'string' ? value : array(value).map(text).join('; ');
 
-/**
- * Evaluate a GPR rule against a set of deleted gene ids, parsed without eval.
- * Returns true when the reaction stays functional, so an alternate isozyme keeps
- * it on after a deletion. An empty rule is always functional.
- */
-export function evaluateZunigaGeneRule(rule, deleted = new Set()) {
-  if (!String(rule ?? '').trim()) return true;
-  const tokens = String(rule).match(/\(|\)|[^\s()]+/g) ?? [];
-  let index = 0;
-  const atom = () => {
-    const token = tokens[index++];
-    if (!token) throw new Error('Incomplete gene rule.');
-    if (token === '(') {
-      const value = or();
-      if (tokens[index++] !== ')') throw new Error('Unbalanced gene rule.');
-      return value;
-    }
-    if (token === ')' || /^(and|or)$/i.test(token)) throw new Error('Invalid gene rule.');
-    return !deleted.has(token);
-  };
-  const and = () => {
-    let value = atom();
-    while (/^and$/i.test(tokens[index] ?? '')) { index++; const next = atom(); value = value && next; }
-    return value;
-  };
-  const or = () => {
-    let value = and();
-    while (/^or$/i.test(tokens[index] ?? '')) { index++; const next = and(); value = value || next; }
-    return value;
-  };
-  const result = or();
-  if (index !== tokens.length) throw new Error('Unexpected token in gene rule.');
-  return result;
-}
+/** The general GPR evaluator (src/core/gene-rules.js), under the name the case exports. */
+export const evaluateZunigaGeneRule = evaluateGeneRule;
 
 function sourceGeneRule(raw, index, genes) {
   const original = text(array(raw.grRules)[index] ?? '');

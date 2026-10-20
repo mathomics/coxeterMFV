@@ -77,6 +77,7 @@ fn store<'a>(desc: &Value, models: &'a IndexMap<String, Model>) -> ReproStore<'a
         custom_objective: desc.get("customObjective").and_then(opt),
         medium: desc["medium"].as_object().unwrap().clone(),
         overrides: entries(&desc["overrides"]),
+        gene_knockouts: Vec::new(),
         parsimonious: desc["parsimonious"].as_bool().unwrap(),
         pfba_biomass_percent: desc["pfbaBiomassPercent"].clone(),
         loopless: desc["loopless"].as_bool().unwrap(),

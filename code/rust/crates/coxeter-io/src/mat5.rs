@@ -373,6 +373,12 @@ fn matrix(element: &Element, little: bool, depth: usize) -> Result<(String, MatV
     if depth > MAX_DEPTH {
         return Err(fail("matrix nesting exceeds the depth limit."));
     }
+    // MATLAB writes an empty array inside a cell or structure (the empty
+    // comments of an AGORA model) as a matrix element with no bytes at all.
+    if element.bytes.is_empty() {
+        let data = TypedArray { kind: TypedArrayKind::Float64, values: Vec::new() };
+        return Ok((String::new(), MatValue::Numeric { shape: vec![0, 0], data }));
+    }
     let mut cursor = Cursor::new(element.bytes, little);
     let flags_tag = cursor.tag()?;
     if flags_tag.kind != mi::UINT32 || flags_tag.bytes.len() != 8 {

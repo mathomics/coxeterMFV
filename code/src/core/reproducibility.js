@@ -42,7 +42,8 @@ export async function createReproducibilityBundle(store){
   models,modelHashes,
   community:{scenario:store.scenario?.id??null,name:store.scenario?.name??null,species:store.species.map(x=>({...x})),objective:store.objective,productTarget:store.productTarget??null,
     ...(store.customObjective?{customObjective:store.customObjective}:{})},
-  constraints:{medium:{...store.medium},reactionOverrides:Object.fromEntries(store.overrides??[])},
+  constraints:{medium:{...store.medium},reactionOverrides:Object.fromEntries(store.overrides??[]),
+   ...(store.geneKnockouts?.size?{geneKnockouts:[...store.geneKnockouts].sort()}:{})},
   analysis,omics,map,solution,
   ...(store.isZunigaStudy ? { study: {
     ...store.zunigaState(), manifest: store.zunigaStudy.manifest,
@@ -142,7 +143,8 @@ export function methodsProvenanceReport(bundle){
  ...species.map(sp=>`- ${sp.id}: model ${sp.file??sp.model??'embedded'}; abundance ${sp.abundance??'not specified'}; SHA-256 ${hashes[sp.id]??'not available'}.`),'',
  '## Community and constraints',
  `Community objective: ${c.objective??a.objective??'not specified'}${c.productTarget?`; product target: ${c.productTarget}`:''}.`,
- `Medium contained ${Object.keys(cons.medium??{}).length} explicitly recorded component(s); ${Object.keys(overrides).length} reaction-bound override(s)/knockout(s) were applied.`,'',
+ `Medium contained ${Object.keys(cons.medium??{}).length} explicitly recorded component(s); ${Object.keys(overrides).length} reaction-bound override(s)/knockout(s) were applied.`,
+ cons.geneKnockouts?.length?`${cons.geneKnockouts.length} gene knockout(s) (${cons.geneKnockouts.join(', ')}) closed every reaction whose gene-protein-reaction rule they make false.`:'','',
  ...(bundle.study ? [
  '## Published case adaptation',
  `Case: ${bundle.study.id}; scenario: ${bundle.study.scenarioId}; display: ${bundle.study.comparison}; fixed flux reference: ${bundle.study.fluxReference}.`,

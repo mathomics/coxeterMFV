@@ -78,6 +78,8 @@ pub struct ReactionTableState {
     pub sort: SortSpec,
     pub collapsed: HashSet<String>,
     pub selection: IndexSet<String>,
+    /// The Genes control's search.
+    pub gene_query: String,
 }
 
 /// A change to [`ReactionTableState`] (`setReactionTable(patch)`).
@@ -92,6 +94,8 @@ pub struct ReactionTablePatch {
     pub sort_by: Option<SortKey>,
     /// Fold or unfold a group.
     pub toggle_group: Option<String>,
+    /// The Genes control's search.
+    pub gene_query: Option<String>,
 }
 
 /// One reaction whose bounds differ from the ones it was opened with.
@@ -105,6 +109,8 @@ pub struct ConstraintChange {
     pub knocked_out: bool,
     /// The medium metabolite, when the change is to its supply.
     pub medium: Option<String>,
+    /// The knocked-out genes that close it.
+    pub genes: Vec<String>,
 }
 
 /// One action on many reactions (`bulkReactionAction`).
@@ -331,11 +337,14 @@ impl Store {
     }
 
     /// `constraintChanges()`: every reaction whose bounds differ from the
-    /// ones it was opened with, by label.
+    /// ones it was opened with, by label, with the knocked-out genes that
+    /// close it.
     pub fn constraint_changes(&self) -> Vec<ConstraintChange> {
         let Some(community) = self.community.as_ref() else { return Vec::new() };
         let media = self.medium_reactions();
+        let genes_closing = self.gene_closed_reactions();
         let mut ids: IndexSet<&str> = self.overrides.keys().map(String::as_str).collect();
+        ids.extend(genes_closing.keys().map(String::as_str));
         for (rid, entry) in &media.by_reaction {
             if self.medium.contains_key(&entry.base) || self.base_medium.contains_key(&entry.base) {
                 ids.insert(rid);
@@ -359,6 +368,7 @@ impl Store {
                 original,
                 knocked_out: is_knocked_out(&current, &original),
                 medium: media.by_reaction.get(id).map(|e| e.base.clone()),
+                genes: genes_closing.get(id).cloned().unwrap_or_default(),
             });
         }
         changes.sort_by(|a, b| js::locale_compare(&a.label, &b.label).then_with(|| js::locale_compare(&a.id, &b.id)));
@@ -368,7 +378,7 @@ impl Store {
     // Constraint history
 
     /// `constraintSnapshot()`: what the LP is asked, as plain data in a fixed
-    /// order: overrides, medium and objective.
+    /// order: overrides, gene knockouts, medium and objective.
     pub fn constraint_snapshot(&self) -> ConstraintSnapshot {
         let mut overrides: Vec<(String, Bounds)> = self.overrides.iter().map(|(k, b)| (k.clone(), *b)).collect();
         overrides.sort_by(|a, b| js::code_unit_compare(&a.0, &b.0));
@@ -381,6 +391,7 @@ impl Store {
         });
         ConstraintSnapshot {
             overrides,
+            gene_knockouts: self.sorted_gene_knockouts(),
             medium,
             objective: ObjectiveSnapshot { kind: Some(self.objective.clone()), product_target: self.product_target.clone(), custom },
         }
@@ -448,6 +459,7 @@ impl Store {
         let objective = &snapshot.objective;
         let structural = objective.kind.as_deref() != Some(self.objective.as_str()) || objective.product_target != self.product_target;
         self.overrides = snapshot.overrides.iter().cloned().collect();
+        self.gene_knockouts = snapshot.gene_knockouts.iter().cloned().collect();
         self.medium = snapshot.medium.iter().cloned().collect();
         if let Some(kind) = &objective.kind {
             self.objective = kind.clone();
@@ -649,8 +661,12 @@ impl Store {
         self.assert_published_study_constraints()?;
         let Some(community) = self.community.clone() else { return Ok(BulkOutcome::default()) };
         let ids = ids.unwrap_or_else(|| self.reaction_table.selection.iter().cloned().collect());
-        let targets: Vec<String> =
-            ids.into_iter().filter(|id| community.merged.reactions.contains_key(id) && !self.reaction_held_out(id)).collect();
+        // A reaction a gene knockout closes stays closed whatever its bounds say.
+        let gene_closed = self.gene_closed_reactions();
+        let targets: Vec<String> = ids
+            .into_iter()
+            .filter(|id| community.merged.reactions.contains_key(id) && !self.reaction_held_out(id) && !gene_closed.contains_key(id))
+            .collect();
         let n = targets.len();
         let mut outcome = BulkOutcome::default();
         // A bound pair applied unless it would cross or changes nothing.
@@ -722,7 +738,7 @@ impl Store {
                     .filter_map(|id| media.by_reaction.get(id).map(|e| e.base.clone()).or_else(|| media.transfer_base.get(id).cloned()))
                     .collect();
                 for id in community.merged.reactions.keys() {
-                    if keep.contains(id) || s.reaction_held_out(id) {
+                    if keep.contains(id) || s.reaction_held_out(id) || gene_closed.contains_key(id) {
                         continue;
                     }
                     let current = s.current_reaction_bounds(id);
@@ -935,9 +951,9 @@ impl Store {
 
     /// `reactionTableRows()`: every reaction as a table row: the catalogue
     /// entry with its bounds in force and as opened, flux, FVA range,
-    /// reduced cost, objective coefficient, whether it is drawn, and its
-    /// status (culprit, knocked out, modified, blocked or original, in that
-    /// order of precedence).
+    /// reduced cost, objective coefficient, whether it is drawn, the
+    /// knocked-out genes that close it, and its status (culprit, knocked out,
+    /// modified, blocked or original, in that order of precedence).
     pub fn reaction_table_rows(&self) -> Vec<ReactionRow> {
         let catalog = self.reaction_catalog();
         let fluxes = self.solution.as_ref().filter(|s| s.is_optimal()).map(|s| &s.fluxes);
@@ -945,6 +961,7 @@ impl Store {
         let objective = self.objective_coefficients();
         let culprits = self.constraint_culprits.as_ref().map(|c| &c.ids);
         let held_out: HashSet<&str> = self.species.iter().filter(|sp| self.species_held_out(&sp.id)).map(|sp| sp.id.as_str()).collect();
+        let genes_closing = self.gene_closed_reactions();
         catalog
             .iter()
             .map(|entry| {
@@ -984,6 +1001,7 @@ impl Store {
                     objective: objective.get(id).copied().unwrap_or(0.0),
                     on_map: self.map.as_ref().is_some_and(|m| m.has_reaction(id)),
                     held_out: entry.species_id.as_deref().is_some_and(|sp| held_out.contains(sp)),
+                    gene_knockouts: genes_closing.get(id).cloned().unwrap_or_default(),
                     status,
                 }
             })
@@ -1032,6 +1050,9 @@ impl Store {
         let table = &mut self.reaction_table;
         if let Some(query) = patch.query {
             table.query = query;
+        }
+        if let Some(query) = patch.gene_query {
+            table.gene_query = query;
         }
         if let Some(group_by) = patch.group_by {
             table.group_by = group_by;

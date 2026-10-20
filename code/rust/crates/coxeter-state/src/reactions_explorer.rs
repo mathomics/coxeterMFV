@@ -437,6 +437,8 @@ pub struct ReactionRow {
     pub objective: f64,
     pub on_map: bool,
     pub held_out: bool,
+    /// The knocked-out genes that close it.
+    pub gene_knockouts: Vec<String>,
     pub status: RowStatus,
 }
 
@@ -801,6 +803,8 @@ pub struct ObjectiveSnapshot {
 #[derive(Debug, Clone, PartialEq)]
 pub struct ConstraintSnapshot {
     pub overrides: Vec<(String, Bounds)>,
+    /// Sorted.
+    pub gene_knockouts: Vec<String>,
     pub medium: Vec<(String, f64)>,
     pub objective: ObjectiveSnapshot,
 }
@@ -824,6 +828,7 @@ pub fn same_constraints(a: &ConstraintSnapshot, b: &ConstraintSnapshot) -> bool 
     };
     a.overrides.len() == b.overrides.len()
         && a.overrides.iter().zip(&b.overrides).all(|((i, x), (j, y))| i == j && bounds(x, y))
+        && a.gene_knockouts == b.gene_knockouts
         && a.medium.len() == b.medium.len()
         && a.medium.iter().zip(&b.medium).all(|((i, x), (j, y))| i == j && same_number(*x, *y))
         && a.objective.kind == b.objective.kind
@@ -1228,6 +1233,7 @@ mod tests {
     fn edits_to_the_same_control_in_quick_succession_are_one_undo_step() {
         let snap = |upper: f64| ConstraintSnapshot {
             overrides: vec![("R".into(), Bounds { lower: 0.0, upper })],
+            gene_knockouts: Vec::new(),
             medium: Vec::new(),
             objective: ObjectiveSnapshot { kind: None, product_target: None, custom: None },
         };

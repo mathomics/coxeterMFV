@@ -19,15 +19,19 @@ use serde_json::Value;
 
 // References recorded before d7b2c0e
 
-// The render references (SVGs, browser.json) were recorded before d7b2c0e
-// and 7b5aaa0 and are not regenerated (lean testing). What those commits
-// changed on purpose is taken out of both sides before comparing:
+// The render references (SVGs, browser.json) were recorded before d7b2c0e,
+// 7b5aaa0 and the line hops of 2a6a8ed, and are not regenerated (lean
+// testing); only those of the Zuñiga map were recorded again when the map
+// itself changed. What those commits changed on purpose is taken out of both
+// sides before comparing:
 //
 // - every compartment outline writes `ry` beside `rx` (corners may be
 //   elliptical): an `ry` equal to its `rx` is dropped;
 // - the geometry editor has side handles and shape diamonds and is drawn
 //   after the name plates: its layer is left out (tests/js_compartment_shape.rs
 //   checks it);
+// - a reaction line writes `d` last, once its crossings are known: it is put
+//   back straight after `class`;
 // - map.css has the cursor rules of those handles and the grey label of a
 //   reaction without flux (NEW_RULES).
 
@@ -78,6 +82,8 @@ pub fn before_shapes(svg: &str) -> String {
     });
     let editor = regex::Regex::new(r#"(?s)<g class="emc-layer emc-layer-geometry-editor">.*?</g>"#).unwrap();
     let svg = editor.replace_all(&svg, "");
+    let d_last = regex::Regex::new(r#"<path (class="emc-seg[^"]*")((?: [a-z-]+="[^"]*")*?) d="([^"]*)"(/?>)"#).unwrap();
+    let svg = d_last.replace_all(&svg, r#"<path $1 d="$3"$2$4"#);
     // An exported file carries the stylesheet, a rule a line.
     let mut svg = svg.into_owned();
     for rule in NEW_RULES {

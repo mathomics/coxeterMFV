@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import { EditableMap } from '../src/map/editable-map.js';
 import { renderMap } from '../src/render/mapview.js';
+import { isSecondaryNode, metaboliteLabelPosition } from '../src/map/metabolite-label.js';
 
 const scale={reference:1,width:v=>Math.abs(v)>1?12:2,color:v=>v<0?'#2563eb':'#ef4444'};
 async function fixture() {
@@ -90,4 +91,41 @@ test('monoculture ghosts keep geometry/editability but are not shown as simulate
   const node=map.nodes.get('met:Se@chor_c');
   const previous=node.x; map.moveNode(node.id,node.x+10,node.y);
   assert.equal(node.x,previous+10,'a context cell still uses ordinary editing tools');
+});
+
+// Where a metabolite's name is drawn, as a box. The width is an estimate, 0.56 em
+// a character, which the label fonts stay within; the sizes are map.css's.
+function nameBox(node) {
+  const size=node.kind==='medium'?15:isSecondaryNode(node)?9.5:12.5,w=String(node.base).length*size*0.56;
+  const {x,y,anchor,baseline}=metaboliteLabelPosition(node);
+  const left=anchor==='start'?x:anchor==='end'?x-w:x-w/2;
+  const top=baseline==='auto'?y-size*0.8:baseline==='hanging'?y:y-size/2;
+  return {left,top,right:left+w,bottom:top+size};
+}
+const overlap=(a,b)=>a.left<b.right&&b.left<a.right&&a.top<b.bottom&&b.top<a.bottom;
+const onCircle=(box,node)=>Math.hypot(Math.max(box.left,Math.min(node.x,box.right))-node.x,
+  Math.max(box.top,Math.min(node.y,box.bottom))-node.y)<node.r;
+
+test('no metabolite name is written over another name or another metabolite',async()=>{
+  const map=await fixture(),nodes=[...map.nodes.values()],boxes=new Map(nodes.map(node=>[node.id,nameBox(node)]));
+  const clashes=[];
+  for(const [i,a] of nodes.entries()) for(const b of nodes.slice(i+1)) {
+    if(overlap(boxes.get(a.id),boxes.get(b.id)))clashes.push(`${a.id} / ${b.id}`);
+  }
+  for(const a of nodes) for(const b of nodes) if(a!==b&&onCircle(boxes.get(a.id),b))clashes.push(`${a.id} on ${b.id}`);
+  assert.deepEqual(clashes,[]);
+});
+
+test('every compartment name plate reaches full size and, at it, covers no metabolite name',async()=>{
+  const map=await fixture(),svg=renderMap(map,{scale,labels:'all'});
+  const plates=[...svg.matchAll(/data-compartment-label="([^"]+)" transform="translate\(([^ ]+) ([^)]+)\)">\s*<g class="emc-frame-label" style="--fit:([^"]+)">\s*<rect x="([^"]+)" y="([^"]+)" width="([^"]+)" height="([^"]+)"/g)]
+    .map(([,id,...v])=>{
+      const [tx,ty,fit,x,y,w,h]=v.map(Number),s=Math.min(fit,1);
+      return {id,fit,box:{left:tx+x*s,top:ty+y*s,right:tx+(x+w)*s,bottom:ty+(y+h)*s}};
+    });
+  assert.deepEqual(plates.map(plate=>plate.id),['s','p','c','k','u','p','c']);
+  // k and u are nested closely in S. elongatus: k's plate used to shrink to a third.
+  for(const plate of plates)assert.ok(plate.fit>=1,`${plate.id} plate fits at ${plate.fit}`);
+  const covered=plates.flatMap(plate=>[...map.nodes.values()].filter(node=>overlap(plate.box,nameBox(node))).map(node=>`${plate.id}: ${node.id}`));
+  assert.deepEqual(covered,[]);
 });

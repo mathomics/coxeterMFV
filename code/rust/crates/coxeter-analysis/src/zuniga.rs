@@ -22,6 +22,7 @@ use coxeter_core::community::{CrossFeeding, CrossFeedingLink, FluxShare, Metabol
 use coxeter_core::js;
 use coxeter_core::model::strip_compartment;
 use coxeter_core::Model;
+use coxeter_io::gene_rules::evaluate_gene_rule;
 use coxeter_io::mat5::{MatValue, MatVariables, read_mat5};
 use coxeter_io::reproducibility::sha256_hex;
 use coxeter_solver::fba::{FluxProblem, FluxResult};
@@ -30,7 +31,7 @@ use serde_json::{Map, Value, json};
 
 use crate::community_view::{CommunityView, TransferRef};
 use crate::error::{Error, ErrorKind, Result};
-use crate::jsutil::{is_js_ws, js_trim};
+use crate::jsutil::is_js_ws;
 
 fn fail(message: impl Into<String>) -> Error {
     Error::new(ErrorKind::Zuniga, message)
@@ -71,98 +72,16 @@ pub const ZUNIGA_SCENARIOS: [ZunigaScenario; 3] = [
 
 // Gene rules
 
-/// `String(rule).match(/\(|\)|[^\s()]+/g)`
-fn gene_rule_tokens(rule: &str) -> Vec<&str> {
-    let mut tokens = Vec::new();
-    let mut start: Option<usize> = None;
-    for (i, c) in rule.char_indices() {
-        if c == '(' || c == ')' || is_js_ws(c) {
-            if let Some(s) = start.take() {
-                tokens.push(&rule[s..i]);
-            }
-            if c == '(' || c == ')' {
-                tokens.push(&rule[i..i + 1]);
-            }
-        } else if start.is_none() {
-            start = Some(i);
-        }
-    }
-    if let Some(s) = start {
-        tokens.push(&rule[s..]);
-    }
-    tokens
-}
-
-struct RuleParser<'a, 'd> {
-    tokens: Vec<&'a str>,
-    index: usize,
-    deleted: &'d dyn Fn(&str) -> bool,
-}
-
-impl<'a> RuleParser<'a, '_> {
-    fn next(&mut self) -> Option<&'a str> {
-        let t = self.tokens.get(self.index).copied();
-        self.index += 1;
-        t
-    }
-
-    fn atom(&mut self) -> Result<bool> {
-        let Some(token) = self.next() else { return Err(fail("Incomplete gene rule.")) };
-        if token == "(" {
-            let value = self.or()?;
-            if self.next() != Some(")") {
-                return Err(fail("Unbalanced gene rule."));
-            }
-            return Ok(value);
-        }
-        if token == ")" || token.eq_ignore_ascii_case("and") || token.eq_ignore_ascii_case("or") {
-            return Err(fail("Invalid gene rule."));
-        }
-        Ok(!(self.deleted)(token))
-    }
-
-    fn peek_is(&self, word: &str) -> bool {
-        self.tokens.get(self.index).is_some_and(|t| t.eq_ignore_ascii_case(word))
-    }
-
-    fn and(&mut self) -> Result<bool> {
-        let mut value = self.atom()?;
-        while self.peek_is("and") {
-            self.index += 1;
-            let next = self.atom()?;
-            value = value && next;
-        }
-        Ok(value)
-    }
-
-    fn or(&mut self) -> Result<bool> {
-        let mut value = self.and()?;
-        while self.peek_is("or") {
-            self.index += 1;
-            let next = self.and()?;
-            value = value || next;
-        }
-        Ok(value)
-    }
-}
-
 /// Whether a reaction keeps an enzyme once the `deleted` genes are gone, so
-/// alternate isozymes stay functional. The rule is parsed, never evaluated as
-/// code. An empty rule is always `true`, and a malformed rule is an error.
+/// alternate isozymes stay functional: the general evaluator of
+/// `coxeter_io::gene_rules`, under the name the case exports. An empty rule
+/// is always `true`, and a malformed rule is an error.
 pub fn evaluate_zuniga_gene_rule(rule: &str, deleted: &[&str]) -> Result<bool> {
     evaluate_rule_with(rule, &|gene| deleted.contains(&gene))
 }
 
 fn evaluate_rule_with(rule: &str, deleted: &dyn Fn(&str) -> bool) -> Result<bool> {
-    if js_trim(rule).is_empty() {
-        return Ok(true);
-    }
-    let mut parser = RuleParser { tokens: gene_rule_tokens(rule), index: 0, deleted };
-    let result = parser.or()?;
-    if parser.index != parser.tokens.len() {
-        return Err(fail("Unexpected token in gene rule."));
-    }
-    Ok(result)
+    evaluate_gene_rule(rule, deleted).map_err(|e| fail(e.message))
 }
 
 // Reading the MAT values
@@ -1101,12 +1020,6 @@ pub fn solve_zuniga_scenario(prepared: &ZunigaPrepared) -> ZunigaSolution {
 #[cfg(test)]
 mod tests {
     use super::*;
-
-    #[test]
-    fn tokens_split_on_parentheses_and_javascript_whitespace() {
-        assert_eq!(gene_rule_tokens("(a and b)or\u{FEFF}c"), ["(", "a", "and", "b", ")", "or", "c"]);
-        assert_eq!(gene_rule_tokens("  "), Vec::<&str>::new());
-    }
 
     #[test]
     fn compartment_suffix_is_the_regex_one() {

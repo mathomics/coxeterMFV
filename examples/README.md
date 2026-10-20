@@ -18,6 +18,6 @@ Please cite the original work alongside Coxeter-MFV when you use an example. The
 
 ## Yeast9 reference
 
-The yeast example holds the Yeast9 model, release 9.1.1, in COBRA JSON format, and a map of 134 reactions drawn over it with Coxeter-MFV. The model is yeast-GEM, released by its authors under the [Creative Commons Attribution 4.0 International](https://creativecommons.org/licenses/by/4.0/) license. Its original SBML release is in [`../data/yeast-GEM-9.1.1`](../data/yeast-GEM-9.1.1).
+The yeast example holds the Yeast9 model, release 9.1.1, in COBRA JSON format, and a map of 150 reactions drawn over it with Coxeter-MFV. The model is yeast-GEM, released by its authors under the [Creative Commons Attribution 4.0 International](https://creativecommons.org/licenses/by/4.0/) license. Its original SBML release is in [`../data/yeast-GEM-9.1.1`](../data/yeast-GEM-9.1.1).
 
 Zhang C et al. (2024). Yeast9: a consensus genome-scale metabolic model for *S. cerevisiae* curated by the community. *Molecular Systems Biology* 20(10), 1134–1150. https://doi.org/10.1038/s44320-024-00060-7

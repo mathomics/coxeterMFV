@@ -179,6 +179,10 @@ pub struct Store {
     pub growth: IndexMap<String, f64>,
     /// Merged reaction id → `{ lower, upper }`.
     pub overrides: IndexMap<String, Bounds>,
+    /// Genes knocked out, as `species@gene` (see `gene_index`): every
+    /// reaction whose rule they make false is held at 0 on top of the overrides.
+    pub gene_knockouts: IndexSet<String>,
+    pub(crate) gene_caches: crate::gene_knockouts::GeneCaches,
     /// Undo/redo of bounds, medium and objective, apart from the map's history.
     pub constraint_history: ConstraintHistory,
     /// Set once a change left the LP without an optimum.
@@ -289,6 +293,8 @@ impl Store {
             cross_feeding_explorer: CrossFeedingExplorer::default(),
             growth: IndexMap::new(),
             overrides: IndexMap::new(),
+            gene_knockouts: IndexSet::new(),
+            gene_caches: Default::default(),
             constraint_history: ConstraintHistory::default(),
             constraint_culprits: None,
             culprit_check: None,

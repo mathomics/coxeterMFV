@@ -36,6 +36,7 @@
 
 pub mod error;
 pub mod file_names;
+pub mod gene_rules;
 mod jscompat;
 pub mod mat5;
 pub mod model_edit;
@@ -54,8 +55,12 @@ pub use model_import::parse_model_file;
 pub use model_import::parse_model_json;
 /// Read an SBML Level 3 + FBC model (the upload path).
 pub use model_import::parse_model_sbml;
-/// Read several uploads at once into distinct species with an inferred medium.
-pub use model_import::{ImportFile, ImportSummary, ImportedEntry, PreparedImport, infer_community_medium, prepare_imported_models};
+/// Read several uploads at once into distinct species with an inferred medium;
+/// MATLAB and Excel files come as bytes.
+pub use model_import::{
+    ImportFile, ImportSummary, ImportedEntry, ModelFileKind, PreparedImport, UploadFile, infer_community_medium, is_binary_model_file,
+    model_file_kind, parse_model_mat, parse_model_upload, parse_model_xlsx, prepare_imported_models, prepare_model_uploads,
+};
 
 /// Read a published COBRA SBML file (Level 2 or 3) into a COBRA JSON document.
 pub use sbml::{SbmlReadOptions, UnmangleOptions, load_sbml_model, parse_cobra_sbml, unmangle_id};

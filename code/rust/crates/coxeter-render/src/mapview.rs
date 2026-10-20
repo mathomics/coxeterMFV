@@ -1419,8 +1419,8 @@ fn render_segments(cx: &Ctx, cross_feeding_reactions: &HashSet<&str>) -> Element
             None => item.d,
         };
         let mut path = item.path;
-        // `d` sits after `class`, where the JavaScript markup has it.
-        path.attrs.insert(1, crate::svg::Attr { lead: " ", name: "d", value: Some(d.into()) });
+        // `d` is the last attribute, where the JavaScript markup has it.
+        path.attr("d", d);
         if let Some(title) = cx.reaction_tooltip(&item.reaction_id) {
             path.paired = true;
             path.push(Element::paired("title").text(title.to_string()));

@@ -28,7 +28,7 @@ import { labelSourceName, objectLabel, objectLabelSources } from '../core/label-
 import { OPERATION_DOMAIN, assertOperationDomain, operationDomain } from './operation-boundary.js';
 import { toSBML } from '../core/sbml-write.js';
 import { compareReplayedSolution, createReproducibilityBundle, methodsProvenanceReport, softwareIdentity, verifyReproducibilityBundle } from '../core/reproducibility.js';
-import { prepareImportedModels } from '../core/model-import.js';
+import { prepareImportedModels, prepareModelUploads } from '../core/model-import.js';
 import {
   compareReactionScores, deserializeOmicsDataset, divergingOmicsColors, parseOmicsCSV,
   reactionOmicsScores, sequentialOmicsColors, serializeOmicsDataset,
@@ -41,6 +41,7 @@ import { COMPARTMENT_SHAPES } from '../layout/geometry.js';
 import { localMetaboliteBase } from '../layout/place-reaction.js';
 import { CommunityModel, OBJECTIVES, communityExchange, namespaced, splitId } from '../core/community.js';
 import { FluxProblem, defaultObjective } from '../solver/fba.js';
+import { geneKnockoutReactions, geneRuleGenes } from '../core/gene-rules.js';
 import {
   ConstraintHistory, REACTION_FILTERS, REACTION_GROUPINGS, REACTION_SORT_KEYS, buildReactionCatalog,
   changedReactionIds, classifyReaction, filterReactionRows, formatBoundsCSV, groupReactionRows, isKnockedOut,
@@ -172,6 +173,9 @@ export class Store {
     this.crossFeedingExplorer = { enabled:false, index:null, query:'', metabolite:'', producer:'', consumer:'', minFlux:0, selectedId:null, selectedAt:null };
     this.growth = new Map();
     this.overrides = new Map();   // merged reaction id -> { lower, upper }
+    // Genes knocked out, as `species@gene` (see geneIndex): every reaction
+    // whose rule they make false is held at 0 on top of the overrides.
+    this.geneKnockouts = new Set();
     // Undo/redo of bounds, medium and objective, apart from the map's history.
     this.constraintHistory = new ConstraintHistory(100);
     // { ids:Set, label, status } once a change left the LP without an optimum.
@@ -180,7 +184,7 @@ export class Store {
     // The Reactions page: search, quick filters, sorting, grouping and the rows ticked for bulk actions.
     this.reactionTable = {
       query: '', filters: [], groupBy: 'type', sort: { key: 'reaction', dir: 1 },
-      collapsed: new Set(), selection: new Set(),
+      collapsed: new Set(), selection: new Set(), geneQuery: '',
     };
     this.manualPathways = new Map(); // id -> { id, name, color, visible, reactionIds:Set }
     this.pathwaySettings = new Map(); // model pathway name -> { color?, visible? }
@@ -410,6 +414,7 @@ export class Store {
     this.fvaProgress = { running: false, done: 0, total: 0, ms: 0 };
     this.medium = { ...prepared.medium };
     this.overrides.clear();
+    this.geneKnockouts.clear();
     this.manualPathways.clear();
     this.pathwaySettings.clear();
     this.clearOmics({ emit: false });
@@ -498,11 +503,12 @@ export class Store {
   }
 
   /**
-   * Replace the current community with one built from user-supplied COBRA JSON
-   * files. Multiple files become multiple species/cells.
+   * Replace the current community with one built from user-supplied model
+   * files ({name, text} or {name, bytes}: COBRA JSON, SBML, COBRA Toolbox .mat
+   * or .xlsx). Multiple files become multiple species/cells.
    */
   async importModelFiles(files) {
-    const prepared = prepareImportedModels(files);
+    const prepared = await prepareModelUploads(files);
     this.resetZunigaStudy();
 
     for (const key of this.uploadedModelKeys) this.models.delete(key);
@@ -550,6 +556,7 @@ export class Store {
     this.fvaProgress = { running: false, done: 0, total: 0, ms: 0 };
     this.medium = { ...prepared.medium };
     this.overrides.clear();
+    this.geneKnockouts.clear();
     this.manualPathways.clear();
     this.pathwaySettings.clear();
     this.clearOmics({ emit: false });
@@ -909,6 +916,7 @@ export class Store {
     this.fvaEnabled=false;
 
     await this.rebuild({relayout:true});
+    this.geneKnockouts=this.geneKnockoutsFrom(bundle.constraints?.geneKnockouts);
     this.customObjective=this.customObjectiveFrom(bundle.community?.customObjective);
     this.applyOverrides();
 
@@ -997,6 +1005,7 @@ export class Store {
     this.fvaProgress = { running: false, done: 0, total: 0, ms: 0 };
     this.medium = { ...scenario.medium };
     this.overrides.clear();
+    this.geneKnockouts.clear();
     this.manualPathways.clear();
     this.pathwaySettings.clear();
     this.clearOmics({ emit: false });
@@ -1080,6 +1089,7 @@ export class Store {
       this.cancelFVA({ clear: true, emit: false });
       this.medium = {};
       this.overrides.clear();
+      this.geneKnockouts.clear();
       this.manualPathways.clear();
       this.pathwaySettings.clear();
       this.clearOmics({ emit: false });
@@ -1142,6 +1152,7 @@ export class Store {
     this.problem = this.zunigaPrepared.problem;
     this.defaultBounds = this.problem.snapshotBounds();
     this.overrides.clear();
+    this.geneKnockouts.clear();
     this.scenario = { ...this.scenario, caseScenario: id };
     this.scenario.name = `${this.publishedCommunities.find(c => c.id === ZUNIGA_ID)?.name ?? 'Zuñiga et al. (2020)'} — ${scenario.name}`;
     this.selectedReaction = null;
@@ -1280,6 +1291,7 @@ export class Store {
     this.fvaProgress = { running: false, done: 0, total: 0, ms: 0 };
     this.medium = { ...(manifest.medium ?? {}) };
     this.overrides.clear();
+    this.geneKnockouts.clear();
     this.manualPathways.clear();
     this.pathwaySettings.clear();
     this.clearOmics({ emit: false });
@@ -1458,7 +1470,7 @@ export class Store {
     // must not reopen what holding it out closed: in a joint community its
     // reactions stay in the problem, held at zero.
     const off = new Set(this.species.filter((sp) => this.speciesHeldOut(sp.id)).map((sp) => sp.id));
-    for (const [rid, b] of this.overrides) {
+    for (const [rid, b] of this.effectiveOverrides()) {
       if (!this.problem.rxnIndex.has(rid)) continue;
       if (off.size && off.has(this.community?.reactionOwner?.get(rid)?.speciesId)) continue;
       this.problem.setBounds(rid, b.lower, b.upper);
@@ -1859,7 +1871,7 @@ export class Store {
       revision: this._steadyComRevision,
       members: this.species.map((sp) => [sp.id, sp.file, sp.enabled !== false]),
       medium: Object.entries(this.medium).sort(([a], [b]) => a.localeCompare(b)),
-      overrides: [...this.overrides].sort(([a], [b]) => a.localeCompare(b)),
+      overrides: [...this.effectiveOverrides()].sort(([a], [b]) => a.localeCompare(b)),
       fiber: this.steadyComConfig.fiber,
     });
   }
@@ -1941,7 +1953,7 @@ export class Store {
         const base = spec.metadata.bases.get(mid);
         if (base in this.medium) spec.reactions.get(rid).upperBound = this.medium[base];
       }
-      for (const [id, bounds] of this.overrides) {
+      for (const [id, bounds] of this.effectiveOverrides()) {
         const { id: rid, species } = splitId(id);
         const reaction = spec.reactions.get(rid);
         if (reaction && ((!species && reaction.species === 'comm') || reaction.species === species)) {
@@ -1950,7 +1962,7 @@ export class Store {
       }
     } else {
       spec = steadyComSpec(members, this.medium, 1);
-      for (const [id, bounds] of this.overrides) {
+      for (const [id, bounds] of this.effectiveOverrides()) {
         const { id: rid, species } = splitId(id);
         if (species) {
           const reaction = members.find((member) => member.id === species)?.model.reactions.get(rid);
@@ -2236,8 +2248,9 @@ export class Store {
     return { lower: this.defaultBounds.lb[j], upper: this.defaultBounds.ub[j] };
   }
 
-  /** The bounds in force: an override, else what the medium gives an exchange, else the model's. */
+  /** The bounds in force: 0 when a gene knockout closes it, else an override, else what the medium gives an exchange, else the model's. */
   currentReactionBounds(rid) {
+    if (this.geneClosedReactions().has(rid)) return { lower: 0, upper: 0 };
     return this.overrides.get(rid) ?? this.mediumReactionBounds(rid) ?? this.defaultReactionBounds(rid);
   }
 
@@ -2260,12 +2273,13 @@ export class Store {
     this.solve();
   }
 
-  /** Put every reaction back as opened, the medium included, and solve. The objective is left as it is. */
+  /** Put every reaction back as opened, the medium and gene knockouts included, and solve. The objective is left as it is. */
   resetAllReactions() {
     this.assertPublishedStudyConstraints();
     this.invalidateSteadyCom();
     this._changeConstraints('Reset all reactions', null, () => {
       this.overrides.clear();
+      this.geneKnockouts.clear();
       const medium = { ...this.baseMedium };
       // A metabolite added to the medium since is closed rather than dropped:
       // dropped, its exchange would keep whatever the last rebuild gave it.
@@ -2283,6 +2297,170 @@ export class Store {
     this._changeConstraints(`Knock out ${this.reactionTitle(rid)}`, null, () => this._writeReactionBounds(rid, { lower: 0, upper: 0 }));
     this.applyOverrides();
     return this.solve();
+  }
+
+  // Gene knockouts
+
+  /**
+   * Every gene the community's reaction rules name, keyed `species@gene`
+   * (merged reactions keep their species' own rules, so two strains that
+   * share a gene id are told apart): `{genes: Map<key, {key, gene, speciesId,
+   * name, reactions}>, rules: Map<rid, rule>}`. Cached per built model.
+   */
+  geneIndex() {
+    const community = this.community;
+    const merged = community?.merged;
+    if (!merged || this.isZunigaStudy) return { genes: new Map(), rules: new Map() };
+    const cached = geneIndexCache.get(merged);
+    if (cached?.community === community) return cached.value;
+    const value = { genes: new Map(), rules: new Map() };
+    const names = new Map();
+    for (const sp of this.species) {
+      for (const gene of this.models.get(sp.file)?.genes ?? []) names.set(namespaced(sp.id, String(gene.id)), gene.name);
+    }
+    for (const [rid, reaction] of merged.reactions) {
+      const rule = reaction.geneReactionRule ?? '';
+      if (!rule.trim()) continue;
+      const speciesId = community.reactionOwner?.get(rid)?.speciesId ?? null;
+      value.rules.set(rid, rule);
+      for (const gene of geneRuleGenes(rule)) {
+        const key = speciesId ? namespaced(speciesId, gene) : gene;
+        if (!value.genes.has(key)) value.genes.set(key, { key, gene, speciesId, name: names.get(key) ?? gene, reactions: [] });
+        value.genes.get(key).reactions.push(rid);
+      }
+    }
+    geneIndexCache.set(merged, { community, value });
+    return value;
+  }
+
+  /** The reactions the genes `keys` close, each with the knocked-out genes its rule names: Map<rid, key[]>. */
+  geneClosedReactionsFor(keys) {
+    const index = this.geneIndex();
+    const bySpecies = new Map();
+    for (const key of keys) {
+      const gene = index.genes.get(key);
+      if (!gene) continue;
+      if (!bySpecies.has(gene.speciesId)) bySpecies.set(gene.speciesId, { deleted: new Set(), reactions: new Set() });
+      const entry = bySpecies.get(gene.speciesId);
+      entry.deleted.add(gene.gene);
+      for (const rid of gene.reactions) entry.reactions.add(rid);
+    }
+    const closed = new Map();
+    for (const [speciesId, { deleted, reactions }] of bySpecies) {
+      const rules = [...reactions].map((rid) => [rid, index.rules.get(rid)]);
+      for (const [rid, genes] of geneKnockoutReactions(rules, deleted).closed) {
+        closed.set(rid, genes.map((gene) => (speciesId ? namespaced(speciesId, gene) : gene)));
+      }
+    }
+    return closed;
+  }
+
+  /** The reactions the gene knockouts in force close, as geneClosedReactionsFor. Cached until they or the model change. */
+  geneClosedReactions() {
+    if (!this.geneKnockouts.size) return EMPTY_MAP;
+    const signature = [...this.geneKnockouts].sort().join('\n');
+    const cached = this._geneClosed;
+    if (cached?.community === this.community && cached.signature === signature) return cached.value;
+    const value = this.geneClosedReactionsFor(this.geneKnockouts);
+    this._geneClosed = { community: this.community, signature, value };
+    return value;
+  }
+
+  /** The per-reaction bounds applied over the medium: the overrides, with every reaction a gene knockout closes held at 0. */
+  effectiveOverrides() {
+    const closed = this.geneClosedReactions();
+    if (!closed.size) return this.overrides;
+    const out = new Map(this.overrides);
+    for (const rid of closed.keys()) out.set(rid, { lower: 0, upper: 0 });
+    return out;
+  }
+
+  /** A gene as history entries and messages name it: its id, and its species when there are several. */
+  geneTitle(key) {
+    const gene = this.geneIndex().genes.get(key);
+    if (!gene) return String(key);
+    return gene.speciesId && this.species.length > 1 ? `${gene.gene} (${gene.speciesId})` : gene.gene;
+  }
+
+  /**
+   * What knocking out `key` does on top of the knockouts in force: the
+   * reactions it would close or, when it is out already, the ones it closes.
+   */
+  geneKnockoutEffect(key) {
+    const now = this.geneClosedReactions();
+    if (this.geneKnockouts.has(key)) return [...now].filter(([, keys]) => keys.includes(key)).map(([rid]) => rid);
+    return [...this.geneClosedReactionsFor([...this.geneKnockouts, key]).keys()].filter((rid) => !now.has(rid));
+  }
+
+  /**
+   * Genes matching a search (every word in the id, name or species), the
+   * knocked-out ones first: `{key, gene, speciesId, name, reactions,
+   * knockedOut, closes}`, `closes` as geneKnockoutEffect. An empty query
+   * lists the knocked-out genes.
+   */
+  geneSearch(query = '', { limit = 8 } = {}) {
+    const words = normalizeSearch(query).split(/\s+/).filter(Boolean);
+    const genes = [...this.geneIndex().genes.values()].filter((gene) => (words.length
+      ? words.every((word) => normalizeSearch(`${gene.gene} ${gene.name} ${gene.speciesId ?? ''}`).includes(word))
+      : this.geneKnockouts.has(gene.key)));
+    genes.sort((a, b) => Number(this.geneKnockouts.has(b.key)) - Number(this.geneKnockouts.has(a.key))
+      || a.gene.localeCompare(b.gene) || String(a.speciesId ?? '').localeCompare(String(b.speciesId ?? '')));
+    return genes.slice(0, limit).map((gene) => ({
+      ...gene, reactions: [...gene.reactions], knockedOut: this.geneKnockouts.has(gene.key), closes: this.geneKnockoutEffect(gene.key),
+    }));
+  }
+
+  /**
+   * Knock genes out (`on`) or restore them, as one undoable edit, and solve.
+   * Every reaction whose rule the knocked-out genes make false is held at 0;
+   * an isozyme left keeps it open.
+   */
+  setGeneKnockouts(keys, on = true) {
+    this.assertPublishedStudyConstraints();
+    const index = this.geneIndex();
+    const targets = [...new Set(keys)].filter((key) => index.genes.has(key) && this.geneKnockouts.has(key) !== on);
+    if (!targets.length) return this.solution;
+    this.invalidateSteadyCom();
+    const names = targets.map((key) => this.geneTitle(key));
+    const label = `${on ? 'Knock out' : 'Restore'} gene${targets.length === 1 ? '' : 's'} ${names.slice(0, 3).join(', ')}${names.length > 3 ? ', …' : ''}`;
+    this._changeConstraints(label, null, () => {
+      for (const key of targets) {
+        if (on) this.geneKnockouts.add(key);
+        else this.geneKnockouts.delete(key);
+      }
+    });
+    this.applyOverrides();
+    return this.solve();
+  }
+
+  /** Knock a gene out, or restore it when it is out, and solve. */
+  toggleGeneKnockout(key) {
+    return this.setGeneKnockouts([key], !this.geneKnockouts.has(key));
+  }
+
+  /**
+   * The gene knockouts as the Changes list shows them: `{key, gene, speciesId,
+   * title, reactions}`, `reactions` being the ones closed through that gene.
+   */
+  geneKnockoutChanges() {
+    const closed = this.geneClosedReactions();
+    const index = this.geneIndex();
+    return [...this.geneKnockouts].filter((key) => index.genes.has(key)).sort().map((key) => {
+      const gene = index.genes.get(key);
+      return {
+        key, gene: gene.gene, speciesId: gene.speciesId, title: this.geneTitle(key),
+        reactions: [...closed].filter(([, keys]) => keys.includes(key)).map(([rid]) => rid),
+      };
+    });
+  }
+
+  /** Gene keys read from a file: the ones this community has; the others are reported and left out. */
+  geneKnockoutsFrom(raw) {
+    const index = this.geneIndex();
+    const keys = Array.isArray(raw) ? raw.map(String) : [];
+    const known = keys.filter((key) => index.genes.has(key));
+    if (known.length < keys.length) this.addLog('warn', `${keys.length - known.length} knocked-out gene(s) in the file are not in this model; they were left out.`);
+    return new Set(known);
   }
 
   // Reactions and bounds
@@ -2389,14 +2567,16 @@ export class Store {
 
   /**
    * Every reaction whose bounds differ from the ones it was opened with, by
-   * label: `{id, label, speciesId, current, original, knockedOut, medium}`,
-   * `medium` naming the medium metabolite when the change is to its supply.
+   * label: `{id, label, speciesId, current, original, knockedOut, medium,
+   * genes}`, `medium` naming the medium metabolite when the change is to its
+   * supply and `genes` the knocked-out genes that close it.
    */
   constraintChanges() {
     const merged = this.community?.merged;
     if (!merged) return [];
     const media = this.mediumReactions();
-    const ids = new Set(this.overrides.keys());
+    const genesClosing = this.geneClosedReactions();
+    const ids = new Set([...this.overrides.keys(), ...genesClosing.keys()]);
     for (const [rid, entry] of media.byReaction) {
       if (Object.prototype.hasOwnProperty.call(this.medium, entry.base)
         || Object.prototype.hasOwnProperty.call(this.baseMedium, entry.base)) ids.add(rid);
@@ -2413,6 +2593,7 @@ export class Store {
         current: { ...current }, original: { ...original },
         knockedOut: isKnockedOut(current, original),
         medium: media.byReaction.get(id)?.base ?? null,
+        genes: genesClosing.get(id) ?? [],
       });
     }
     return changes.sort((a, b) => a.label.localeCompare(b.label) || a.id.localeCompare(b.id));
@@ -2420,12 +2601,13 @@ export class Store {
 
   // Constraint history
 
-  /** What the LP is asked, as plain data in a fixed order: overrides, medium and objective. */
+  /** What the LP is asked, as plain data in a fixed order: overrides, gene knockouts, medium and objective. */
   constraintSnapshot() {
     const ordered = (entries) => entries.sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0));
     const custom = this.customObjective;
     return {
       overrides: ordered([...this.overrides].map(([id, b]) => [id, { lower: b.lower, upper: b.upper }])),
+      geneKnockouts: [...this.geneKnockouts].sort(),
       medium: Object.fromEntries(ordered(Object.entries(this.medium ?? {}).map(([base, value]) => [base, Number(value)]))),
       objective: {
         type: this.objective ?? null,
@@ -2489,6 +2671,7 @@ export class Store {
     const structural = (objective.type ?? null) !== (this.objective ?? null)
       || (objective.productTarget ?? null) !== (this.productTarget ?? null);
     this.overrides = new Map((snapshot?.overrides ?? []).map(([id, b]) => [id, { lower: b.lower, upper: b.upper }]));
+    this.geneKnockouts = new Set(snapshot?.geneKnockouts ?? []);
     this.medium = { ...(snapshot?.medium ?? {}) };
     if (objective.type) this.objective = objective.type;
     this.productTarget = objective.productTarget ?? null;
@@ -2659,7 +2842,9 @@ export class Store {
     this.assertPublishedStudyConstraints();
     const merged = this.community?.merged;
     if (!merged) return { changed: 0, skipped: 0 };
-    const targets = ids.filter((id) => merged.reactions.has(id) && !this.reactionHeldOut(id));
+    // A reaction a gene knockout closes stays closed whatever its bounds say.
+    const geneClosed = this.geneClosedReactions();
+    const targets = ids.filter((id) => merged.reactions.has(id) && !this.reactionHeldOut(id) && !geneClosed.has(id));
     let changed = 0;
     let skipped = 0;
     const write = (id, next) => {
@@ -2708,7 +2893,7 @@ export class Store {
       label = `Close all uptakes except ${targets.length} selected`;
       edit = () => {
         for (const id of merged.reactions.keys()) {
-          if (keep.has(id) || this.reactionHeldOut(id)) continue;
+          if (keep.has(id) || this.reactionHeldOut(id) || geneClosed.has(id)) continue;
           const entry = media.byReaction.get(id);
           const current = this.currentReactionBounds(id);
           if (entry) {
@@ -2844,8 +3029,9 @@ export class Store {
   /**
    * Every reaction as a table row: the catalogue entry with its bounds in force
    * and as opened, flux, FVA range, reduced cost, objective coefficient,
-   * whether it is drawn, and its status ('culprit', 'knocked-out', 'modified',
-   * 'blocked' or 'original', in that order of precedence).
+   * whether it is drawn, the knocked-out genes that close it, and its status
+   * ('culprit', 'knocked-out', 'modified', 'blocked' or 'original', in that
+   * order of precedence).
    */
   reactionTableRows() {
     const catalog = this.reactionCatalog();
@@ -2857,6 +3043,7 @@ export class Store {
     const objective = this.objectiveCoefficients();
     const culprits = this.constraintCulprits?.ids ?? null;
     const heldOut = new Set(this.species.filter((sp) => this.speciesHeldOut(sp.id)).map((sp) => sp.id));
+    const genesClosing = this.geneClosedReactions();
     return catalog.map((entry) => {
       const current = this.currentReactionBounds(entry.id);
       const original = this.originalReactionBounds(entry.id);
@@ -2876,6 +3063,7 @@ export class Store {
         objective: objective[entry.id] ?? 0,
         onMap: Boolean(this.map?.hasReaction?.(entry.id)),
         heldOut: Boolean(entry.speciesId) && heldOut.has(entry.speciesId),
+        geneKnockouts: genesClosing.get(entry.id) ?? [],
         status: culprit ? 'culprit' : knockedOut ? 'knocked-out' : modified ? 'modified' : blocked ? 'blocked' : 'original',
       };
     });
@@ -2919,12 +3107,14 @@ export class Store {
   /**
    * Change how the Reactions page lists rows: `query`, `groupBy`, `filters`,
    * `toggleFilter` (one quick filter on or off), `sortBy` (a column; again
-   * reverses it) or `toggleGroup` (fold or unfold a group). Emits
+   * reverses it), `toggleGroup` (fold or unfold a group) or `geneQuery` (the
+   * Genes control's search). Emits
    * 'reaction-table', which repaints the tables only.
    */
   setReactionTable(patch = {}) {
     const table = this.reactionTable;
     if ('query' in patch) table.query = String(patch.query ?? '');
+    if ('geneQuery' in patch) table.geneQuery = String(patch.geneQuery ?? '');
     if ('groupBy' in patch && REACTION_GROUPINGS.some((group) => group.id === patch.groupBy)) {
       table.groupBy = patch.groupBy;
       table.collapsed = new Set();
@@ -3002,6 +3192,7 @@ export class Store {
       medium: this.medium,
       species: this.species.map((sp) => [sp.id, sp.enabled, sp.abundance]),
       overrides: [...this.overrides],
+      geneKnockouts: [...this.geneKnockouts].sort(),
       objective: this.objective,
       productTarget: this.productTarget,
       customObjective: this.customObjective,
@@ -5400,7 +5591,7 @@ export class Store {
     return rows.join('\n');
   }
 
-  /** The Scenario file: species, medium, overrides, analysis settings, display settings, pathways and omics. */
+  /** The Scenario file: species, medium, overrides, gene knockouts, analysis settings, display settings, pathways and omics. */
   stateJSON() {
     return JSON.stringify({
       scenario: this.scenario?.id ?? null,
@@ -5428,6 +5619,7 @@ export class Store {
       medium: this.medium,
       species: this.species,
       overrides: [...this.overrides].map(([id, b]) => ({ id, ...b })),
+      ...(this.geneKnockouts.size ? { geneKnockouts: [...this.geneKnockouts].sort() } : {}),
     }, null, 2);
   }
 
@@ -5493,6 +5685,7 @@ export class Store {
     this.restorePathwayManagerState(doc.pathwayManager);
     this.restoreOmicsState(doc.omics);
     this.overrides = new Map((doc.overrides ?? []).map((o) => [o.id, { lower: o.lower, upper: o.upper }]));
+    this.geneKnockouts = this.geneKnockoutsFrom(doc.geneKnockouts);
     this.customObjective = this.customObjectiveFrom(doc.customObjective);
     this.applyOverrides();
     // Before solving, so the repaint that follows already reads "Saved".
@@ -5502,9 +5695,11 @@ export class Store {
   }
 }
 
-// Per built model: which reactions the medium controls, and the reactions table's catalogue.
+// Per built model: which reactions the medium controls, the reactions table's catalogue and the gene index.
 const mediumReactionCache = new WeakMap();
 const reactionCatalogCache = new WeakMap();
+const geneIndexCache = new WeakMap();
+const EMPTY_MAP = new Map();
 
 /**
  * A result solved as the maximum of the negated objective, read back as the

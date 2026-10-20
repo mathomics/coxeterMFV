@@ -132,6 +132,8 @@ enum Act {
     Ko(String),
     Reset(String),
     ResetAll,
+    GeneSearch(String),
+    GeneKo(String),
     Undo,
     Redo,
     ToggleChanges,
@@ -205,6 +207,11 @@ fn apply(shell: &mut Shell, acts: Vec<Act>) {
             }
             Act::Reset(rid) => shell.store.reset_reaction(&rid),
             Act::ResetAll => shell.store.reset_all_reactions(),
+            Act::GeneSearch(query) => {
+                shell.debounce("rx-gene-search", 0.14, Deferred::GeneSearch(query));
+                Ok(())
+            }
+            Act::GeneKo(key) => shell.store.toggle_gene_knockout(&key),
             Act::Undo => shell.store.undo_constraints().map(|_| ()),
             Act::Redo => shell.store.redo_constraints().map(|_| ()),
             Act::ToggleChanges => {
@@ -481,8 +488,17 @@ fn status_colors(status: RowStatus, p: &Palette) -> (Color32, Color32, Color32) 
     }
 }
 
+/// "Closed by the knockout of gene g1" (or of genes g1, g2).
+fn gene_knockout_text(row: &ReactionRow, store: &Store) -> String {
+    let genes: Vec<String> = row.gene_knockouts.iter().map(|k| store.gene_title(k)).collect();
+    format!("Closed by the knockout of gene{} {}", if genes.len() == 1 { "" } else { "s" }, genes.join(", "))
+}
+
 fn status_title(row: &ReactionRow, store: &Store) -> String {
     let original = format!("As opened: [{}, {}]", format_flux(Some(row.original_lower), 4), format_flux(Some(row.original_upper), 4));
+    if row.status != RowStatus::Culprit && !row.gene_knockouts.is_empty() {
+        return format!("{}. {original}", gene_knockout_text(row, store));
+    }
     match row.status {
         RowStatus::Culprit => format!(
             "This edit left the LP without an optimum ({}). {original}",
@@ -519,6 +535,7 @@ pub fn page(ui: &mut Ui, shell: &mut Shell) {
             ui.add_space(4.0);
             toolbar(ui, shell, &model, &p, &mut acts);
             objective_line(ui, &shell.store, &p, &mut acts);
+            gene_line(ui, shell, &p, &mut acts);
             alert(ui, &shell.store, &p, &mut acts);
             if !shell.store.is_zuniga_study() && !shell.store.reaction_table.selection.is_empty() {
                 bulk_bar(ui, shell, &p, &mut acts);
@@ -617,10 +634,12 @@ fn toolbar(ui: &mut Ui, shell: &Shell, model: &ReactionTableModel, p: &Palette, 
             if Btn::new("Import CSV").title("Apply a CSV of id, lower, upper").enabled(!locked).height(26.0).show(ui).clicked() {
                 acts.push(Act::ImportCsv);
             }
-            let changes = store.constraint_changes().len() + usize::from(store.custom_objective.is_some());
+            // A reaction a gene knockout closes is listed under its gene.
+            let reactions = store.constraint_changes().iter().filter(|c| c.genes.is_empty()).count();
+            let changes = reactions + store.gene_knockout_changes().len() + usize::from(store.custom_objective.is_some());
             let r = Btn::new(format!("Changes ({changes})"))
                 .pressed(shell.ui.rx.show_changes)
-                .title("Every reaction whose bounds differ from the model's")
+                .title("Every reaction whose bounds differ from the model's, and every gene knocked out")
                 .height(26.0)
                 .show(ui);
             if r.clicked() {
@@ -719,6 +738,100 @@ fn objective_line(ui: &mut Ui, store: &Store, p: &Palette, acts: &mut Vec<Act>) 
                 acts.push(Act::ResetObjective);
             }
         });
+    });
+    ui.add_space(4.0);
+}
+
+/// The id of the Genes control's search field.
+pub fn gene_search_id() -> Id {
+    Id::new("rx-gene-search")
+}
+
+/// A few reaction titles, then how many more.
+fn reaction_list(store: &Store, ids: &[String], shown: usize) -> String {
+    let names: Vec<String> = ids.iter().take(shown).map(|id| store.reaction_title(id)).collect();
+    if ids.len() > shown { format!("{} +{} more", names.join(", "), ids.len() - shown) } else { names.join(", ") }
+}
+
+/// `.rx-gene-line`: search a gene, see which reactions it would close, knock
+/// it out or restore it; the genes knocked out stay listed as chips.
+fn gene_line(ui: &mut Ui, shell: &Shell, p: &Palette, acts: &mut Vec<Act>) {
+    let store = &shell.store;
+    let locked = store.is_zuniga_study();
+    let any = !store.gene_index().genes.is_empty();
+    let query = match shell.deferred.get("rx-gene-search") {
+        Some((_, Deferred::GeneSearch(q))) => q.clone(),
+        _ => store.reaction_table.gene_query.clone(),
+    };
+    let placeholder = if locked {
+        "Fixed for this case"
+    } else if any {
+        "Search a gene to knock out…"
+    } else {
+        "No gene rules in this model"
+    };
+    widgets::boxed(ui, |ui| {
+        ui.horizontal_wrapped(|ui| {
+            ui.spacing_mut().item_spacing = vec2(6.0, 4.0);
+            ui.label(RichText::new("Genes").size(12.0).family(bold()).color(p.ink))
+                .on_hover_text("A knocked-out gene closes every reaction whose gene rule it makes false; an isozyme left keeps a reaction open");
+            let field = Field::new().width(220.0).placeholder(placeholder).aria("Search genes to knock out").enabled(!locked && any);
+            let (_, event) = widgets::text_field(ui, gene_search_id(), &query, field);
+            if let Some(q) = event.value() {
+                acts.push(Act::GeneSearch(q));
+            }
+            if locked {
+                return;
+            }
+            for change in store.gene_knockout_changes() {
+                let reopens = reaction_list(store, &change.reactions, 8);
+                let title = format!("Restore {}: reopens {}", change.title, if reopens.is_empty() { "nothing" } else { reopens.as_str() });
+                let aria = format!("{} knocked out: restore it", change.title);
+                let label = RichText::new(format!("{} ×", change.title)).size(11.5).family(bold()).color(KNOCKED_OUT);
+                if Btn::new(label).title(&title).aria(&aria).height(22.0).show(ui).clicked() {
+                    acts.push(Act::GeneKo(change.key.clone()));
+                }
+            }
+        });
+        if locked || query.trim().is_empty() {
+            return;
+        }
+        let results = store.gene_search(&query, 8);
+        if results.is_empty() {
+            widgets::hint(ui, "No gene matches.");
+            return;
+        }
+        let several = store.species.len() > 1;
+        for result in &results {
+            let gene = &result.gene;
+            let verb = if result.knocked_out { "closes" } else { "would close" };
+            let effect = if result.closes.is_empty() {
+                let n = gene.reactions.len();
+                format!("{verb} nothing: other genes keep its {n} reaction{} open", if n == 1 { "" } else { "s" })
+            } else {
+                format!("{verb} {}", reaction_list(store, &result.closes, 4))
+            };
+            ui.horizontal(|ui| {
+                ui.spacing_mut().item_spacing.x = 8.0;
+                ui.label(widgets::code(gene.gene.clone()));
+                if let Some(sp) = gene.species_id.as_ref().filter(|_| several) {
+                    ui.label(RichText::new(sp).size(10.5).color(p.ink_3));
+                }
+                if gene.name != gene.gene {
+                    ui.label(RichText::new(&gene.name).size(11.0).color(p.ink_3));
+                }
+                ui.with_layout(Layout::right_to_left(Align::Center), |ui| {
+                    let label = if result.knocked_out { "Restore" } else { "Knock out" };
+                    let aria = format!("{label} gene {}", gene.gene);
+                    let button = Btn::new(RichText::new(label).size(11.5)).aria(&aria).height(24.0);
+                    let button = if result.knocked_out { button } else { button.danger() };
+                    if button.show(ui).clicked() {
+                        acts.push(Act::GeneKo(gene.key.clone()));
+                    }
+                    ui.add(egui::Label::new(RichText::new(&effect).size(11.0).color(p.ink_2)).truncate()).on_hover_text(&effect);
+                });
+            });
+        }
     });
     ui.add_space(4.0);
 }
@@ -822,7 +935,9 @@ fn bulk_bar(ui: &mut Ui, shell: &mut Shell, p: &Palette, acts: &mut Vec<Act>) {
 /// its reset, and Reset all.
 fn changes_panel(ui: &mut Ui, store: &Store, p: &Palette, acts: &mut Vec<Act>) {
     let locked = store.is_zuniga_study();
-    let changes = store.constraint_changes();
+    // A reaction a gene knockout closes is listed under its gene.
+    let changes: Vec<_> = store.constraint_changes().into_iter().filter(|c| c.genes.is_empty()).collect();
+    let genes = store.gene_knockout_changes();
     Frame::new().fill(p.panel_2).stroke(Stroke::new(1.0, p.line)).corner_radius(CornerRadius::same(10)).inner_margin(Margin::same(10)).show(ui, |ui| {
         ui.set_width(ui.available_width());
         ui.set_height(ui.available_height());
@@ -830,8 +945,8 @@ fn changes_panel(ui: &mut Ui, store: &Store, p: &Palette, acts: &mut Vec<Act>) {
             ui.label(RichText::new("Changes").size(13.0).family(bold()).color(p.ink));
             ui.with_layout(Layout::right_to_left(Align::Center), |ui| {
                 let r = Btn::new("Reset all")
-                    .enabled(!changes.is_empty() && !locked)
-                    .title("Every reaction back to the bounds it was opened with")
+                    .enabled((!changes.is_empty() || !genes.is_empty()) && !locked)
+                    .title("Every reaction back to the bounds it was opened with, and every gene restored")
                     .height(24.0)
                     .show(ui);
                 if r.clicked() {
@@ -840,7 +955,7 @@ fn changes_panel(ui: &mut Ui, store: &Store, p: &Palette, acts: &mut Vec<Act>) {
             });
         });
         ui.separator();
-        if changes.is_empty() && store.custom_objective.is_none() {
+        if changes.is_empty() && genes.is_empty() && store.custom_objective.is_none() {
             widgets::empty(ui, "No reaction differs from the bounds it was opened with.");
             return;
         }
@@ -855,6 +970,33 @@ fn changes_panel(ui: &mut Ui, store: &Store, p: &Palette, acts: &mut Vec<Act>) {
                     }
                 });
                 ui.separator();
+            }
+            for gene in &genes {
+                ui.horizontal_wrapped(|ui| {
+                    ui.spacing_mut().item_spacing.x = 4.0;
+                    ui.label(RichText::new(format!("Gene {}", gene.title)).size(12.0).family(bold()).color(KNOCKED_OUT));
+                    ui.label(RichText::new("knocked out").size(10.5).color(p.ink_3));
+                    ui.with_layout(Layout::right_to_left(Align::Center), |ui| {
+                        let aria = format!("Restore gene {}", gene.title);
+                        if !locked && Btn::new("↺").title("Restore the gene").aria(&aria).height(22.0).show(ui).clicked() {
+                            acts.push(Act::GeneKo(gene.key.clone()));
+                        }
+                    });
+                });
+                ui.horizontal_wrapped(|ui| {
+                    ui.spacing_mut().item_spacing.x = 4.0;
+                    if gene.reactions.is_empty() {
+                        ui.label(RichText::new("closes no reaction on its own").size(11.0).color(p.ink_3));
+                        return;
+                    }
+                    ui.label(RichText::new("closes").size(11.0).color(p.ink_3));
+                    for rid in &gene.reactions {
+                        if widgets::link_button(ui, &store.reaction_title(rid)).clicked() {
+                            acts.push(Act::Reveal(rid.clone()));
+                        }
+                    }
+                });
+                ui.add_space(4.0);
             }
             for change in &changes {
                 ui.horizontal_wrapped(|ui| {
@@ -1106,7 +1248,13 @@ fn reaction_row(ui: &mut Ui, rect: Rect, geo: &Geometry, row: &ReactionRow, ctx:
         ui.painter().rect_stroke(rect.shrink(0.5), CornerRadius::ZERO, Stroke::new(1.0, p.accent), egui::StrokeKind::Inside);
         ui.painter().rect_filled(Rect::from_min_size(rect.min, vec2(3.0, rect.height())), CornerRadius::ZERO, p.accent);
     }
-    let editable = !ctx.locked && !row.held_out;
+    let gene_closed = !row.gene_knockouts.is_empty();
+    let editable = !ctx.locked && !row.held_out && !gene_closed;
+    let gene_note = if gene_closed {
+        format!("{}; restore the gene{} to reopen it", gene_knockout_text(row, store), if row.gene_knockouts.len() == 1 { "" } else { "s" })
+    } else {
+        String::new()
+    };
     let e = &row.entry;
     for (c, cell, clip) in geo.place(rect.min, rect.height()) {
         // The pinned cells hide what scrolls under them.
@@ -1163,6 +1311,8 @@ fn reaction_row(ui: &mut Ui, rect: Rect, geo: &Geometry, row: &ReactionRow, ctx:
                 }
                 if row.held_out {
                     ui.interact(cell, cell_id.with("held-out"), Sense::hover()).on_hover_text("Its species is held out of the simulation");
+                } else if gene_closed {
+                    ui.interact(cell, cell_id.with("gene-closed"), Sense::hover()).on_hover_text(&gene_note);
                 }
                 if let Some(edit) = bound_control(ui, Id::new(("rx-bound", lower, id)), lower, value, editable, &e.label, 60.0, false) {
                     push_bound(acts, id, lower, edit);
@@ -1219,7 +1369,13 @@ fn reaction_row(ui: &mut Ui, rect: Rect, geo: &Geometry, row: &ReactionRow, ctx:
                 let ko = Btn::new(RichText::new("KO").size(11.0).family(bold()).color(if row.knocked_out { Color32::WHITE } else { p.ink }))
                     .look(if row.knocked_out { Look::Pressed } else { Look::Unpressed })
                     .enabled(editable)
-                    .title(if row.knocked_out { "Restore: undo the knockout" } else { "Knock out: both bounds 0" })
+                    .title(if gene_closed {
+                        gene_note.as_str()
+                    } else if row.knocked_out {
+                        "Restore: undo the knockout"
+                    } else {
+                        "Knock out: both bounds 0"
+                    })
                     .aria(&ko_aria)
                     .height(22.0);
                 let r = ko.show(ui);

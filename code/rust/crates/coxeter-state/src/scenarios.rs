@@ -6,7 +6,7 @@ use std::sync::Arc;
 use coxeter_core::community::{CommunityModel, CommunitySpec, MediumLimit, Objective, SpeciesSpec, community_exchange};
 use coxeter_core::js;
 use coxeter_core::model::Model;
-use coxeter_io::model_import::{ImportFile, ImportSummary, prepare_imported_models};
+use coxeter_io::model_import::{ImportFile, ImportSummary, PreparedImport, UploadFile, prepare_imported_models, prepare_model_uploads};
 use coxeter_io::sbml_write::{SbmlWriteOptions, to_sbml};
 use coxeter_map::Contents;
 use coxeter_map::editable_map::EditableMap;
@@ -123,6 +123,7 @@ impl Store {
         self.fva_progress = FvaProgress::default();
         self.medium = medium_of(scenario.get("medium"));
         self.overrides.clear();
+        self.gene_knockouts.clear();
         self.manual_pathways.clear();
         self.pathway_settings.clear();
         self.clear_omics(false);
@@ -157,6 +158,17 @@ impl Store {
     /// become multiple species/cells.
     pub fn import_model_files(&mut self, files: &[ImportFile]) -> Result<ImportReport> {
         let prepared = prepare_imported_models(files)?;
+        self.install_imported_models(prepared)
+    }
+
+    /// `importModelFiles(files)` for files read as bytes: COBRA JSON, SBML,
+    /// COBRA Toolbox MATLAB (.mat) or Excel (.xlsx).
+    pub fn import_model_uploads(&mut self, files: &[UploadFile]) -> Result<ImportReport> {
+        let prepared = prepare_model_uploads(files)?;
+        self.install_imported_models(prepared)
+    }
+
+    fn install_imported_models(&mut self, prepared: PreparedImport) -> Result<ImportReport> {
         self.reset_zuniga_study();
         for key in std::mem::take(&mut self.uploaded_model_keys) {
             self.models.remove(&key);
@@ -208,6 +220,7 @@ impl Store {
         self.fva_progress = FvaProgress::default();
         self.medium = prepared.medium.clone();
         self.overrides.clear();
+        self.gene_knockouts.clear();
         self.manual_pathways.clear();
         self.pathway_settings.clear();
         self.clear_omics(false);
@@ -374,6 +387,7 @@ impl Store {
         self.fva_progress = FvaProgress::default();
         self.medium = prepared.medium.clone();
         self.overrides.clear();
+        self.gene_knockouts.clear();
         self.manual_pathways.clear();
         self.pathway_settings.clear();
         self.clear_omics(false);
@@ -553,6 +567,7 @@ impl Store {
         self.fva_progress = FvaProgress::default();
         self.medium = medium_of(manifest.get("medium"));
         self.overrides.clear();
+        self.gene_knockouts.clear();
         self.manual_pathways.clear();
         self.pathway_settings.clear();
         self.clear_omics(false);
@@ -823,7 +838,7 @@ impl Store {
         } else {
             self.community.as_ref().map(|c| c.reaction_owner.iter().map(|(k, o)| (k.clone(), o.species_id.clone())).collect()).unwrap_or_default()
         };
-        let overrides = self.overrides.clone();
+        let overrides = self.effective_overrides();
         let problem = self.problem_mut().expect("checked");
         problem.restore_bounds(&defaults);
         if zuniga {

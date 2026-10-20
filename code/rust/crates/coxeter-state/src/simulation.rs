@@ -780,9 +780,13 @@ impl Store {
         }
     }
 
-    /// `currentReactionBounds(rid)`: the bounds in force: an override, else
-    /// what the medium gives an exchange, else the model's.
+    /// `currentReactionBounds(rid)`: the bounds in force: 0 when a gene
+    /// knockout closes it, else an override, else what the medium gives an
+    /// exchange, else the model's.
     pub fn current_reaction_bounds(&self, rid: &str) -> Bounds {
+        if !self.gene_knockouts.is_empty() && self.gene_closed_reactions().contains_key(rid) {
+            return Bounds { lower: 0.0, upper: 0.0 };
+        }
         if let Some(b) = self.overrides.get(rid) {
             return *b;
         }
@@ -801,13 +805,14 @@ impl Store {
         Ok(())
     }
 
-    /// `resetAllReactions()`: every reaction back as opened, the medium
-    /// included, and solve. The objective is left as it is.
+    /// `resetAllReactions()`: every reaction back as opened, the medium and
+    /// gene knockouts included, and solve. The objective is left as it is.
     pub fn reset_all_reactions(&mut self) -> Result<()> {
         self.assert_published_study_constraints()?;
         self.invalidate_steady_com();
         self.change_constraints("Reset all reactions", None, |s| {
             s.overrides.clear();
+            s.gene_knockouts.clear();
             let mut medium = s.base_medium.clone();
             // A metabolite added to the medium since is closed rather than
             // dropped: dropped, its exchange would keep whatever the last

@@ -110,6 +110,9 @@ fn same(property: &str, ours: &str, theirs: &str) -> bool {
         }
         "display" => (ours == "none") == (theirs == "none"),
         "filter" => ours.replace('"', "") == theirs.replace('"', ""),
+        // Firefox 158 writes family names without the quotes 157 put around them
+        // (the Zuñiga cases were recorded again with 158).
+        "font-family" => ours.replace('"', "") == theirs.replace('"', ""),
         "transform" => match (parse_transform(ours), parse_transform(theirs)) {
             (Some(a), Some(b)) => a.iter().zip(&b).all(|(x, y)| close(*x, *y, 2e-5) || (x - y).abs() < 2e-5),
             _ => false,
