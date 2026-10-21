@@ -7,9 +7,10 @@ mod common;
 use std::collections::{HashMap, HashSet};
 use std::sync::{Arc, Mutex};
 
-use coxeter_core::community::CrossFeedingLink;
+use coxeter_core::community::{CrossFeeding, CrossFeedingLink};
 use coxeter_core::mapdata::{MapData, MapGraph, Node, NodeKind, Point};
 use coxeter_core::testkit::repo_root;
+use coxeter_render::crossfeed_colors::{cross_feeding_color, cross_feeding_colors};
 use coxeter_render::crossfeed_routes::{
     CROSSFEED_WIDTH_RANGE, cross_feeding_line_width, is_drawn_cross_feeding_base, medium_endpoints, route_cross_feeding,
 };
@@ -350,6 +351,63 @@ fn lanes_spread_with_the_chosen_line_width_so_bundled_lines_never_overlap() {
         }
     }
     assert_eq!(cross_feeding_line_width(&m, 9.0), cross_feeding_line_width(&m, CROSSFEED_WIDTH_RANGE.max), "the width stays in range");
+}
+
+// crossfeed-colors
+
+/// The published gut-nine map with cross-feeding lines for these links drawn
+/// on it: producer|base|consumer and the colour of its line, in drawing order.
+fn draw_gut9(pairs: &[(&str, &str, &str)], dark: bool) -> Vec<(String, String)> {
+    let links = pairs
+        .iter()
+        .map(|(from, base, to)| CrossFeedingLink { base: base.to_string(), from: Some(from.to_string()), to: Some(to.to_string()), flux: 1.0 })
+        .collect();
+    let s = RenderState {
+        scale: Arc::new(TestScale { reference: 1.0, width: |_| 2.0, color: |_| "#64748b".into() }),
+        dark,
+        show_cross_feeding: true,
+        cross_feeding: Some(CrossFeeding { links, per_metabolite: vec![] }),
+        ..Default::default()
+    };
+    let svg = render_map_svg(&gut9(), &s);
+    let re = r#"data-crossfeed="([^"]+)" data-crossfeed-from="([^"]+)" data-crossfeed-to="([^"]+)"><title>[^<]*</title><path class="emc-crossfeed" d="[^"]*" fill="none" stroke="([^"]+)""#;
+    all(re, &svg).into_iter().map(|c| (format!("{}|{}|{}", c[2], c[1], c[3]), c[4].clone())).collect()
+}
+
+#[test]
+fn every_line_of_one_metabolite_has_one_colour_whichever_species_produces_it() {
+    let _turn = ROUTING.lock().unwrap_or_else(|e| e.into_inner());
+    let lines: HashMap<String, String> =
+        draw_gut9(&[("Bt", "ac", "Fp"), ("Ef", "ac", "Lc"), ("Kp", "ac", "St"), ("St", "lac-L", "Bt"), ("Ef", "lac-L", "St")], false)
+            .into_iter()
+            .collect();
+    assert_eq!(lines.len(), 5, "every link is routed");
+    let acetate: HashSet<&String> = ["Bt|ac|Fp", "Ef|ac|Lc", "Kp|ac|St"].iter().map(|k| &lines[*k]).collect();
+    assert_eq!(acetate.len(), 1);
+    assert_eq!(lines["St|lac-L|Bt"], lines["Ef|lac-L|St"]);
+    assert_eq!(cross_feeding_color("lac__L", false), cross_feeding_color("lac-L", false), "BiGG and gut-model spellings are one metabolite");
+}
+
+#[test]
+fn acetate_is_blue_and_glycerol_red_in_either_theme() {
+    let _turn = ROUTING.lock().unwrap_or_else(|e| e.into_inner());
+    assert_eq!(cross_feeding_color("ac", false), "#2563eb");
+    assert_eq!(cross_feeding_color("glyc", false), "#dc2626");
+    assert_eq!(cross_feeding_color("ac", true), "#60a5fa");
+    assert_eq!(cross_feeding_color("glyc", true), "#f87171");
+    let dark: Vec<String> = draw_gut9(&[("Bt", "ac", "Fp"), ("Lc", "glyc", "Kp")], true).into_iter().map(|(_, c)| c).collect();
+    assert_eq!(dark, ["#60a5fa", "#f87171"]);
+}
+
+#[test]
+fn two_metabolites_on_one_map_never_share_a_colour_while_a_free_one_is_left() {
+    let _turn = ROUTING.lock().unwrap_or_else(|e| e.into_inner());
+    let lines = draw_gut9(&[("Bt", "ac", "Fp"), ("St", "lac-L", "Bt"), ("Bt", "succ", "Ef"), ("Fp", "for", "Kp"), ("Bt", "glc-D", "St")], false);
+    assert_eq!(lines.iter().map(|(_, c)| c).collect::<HashSet<_>>().len(), 5);
+    // fructose, maltose and galacturonate all ask for the same shared colour
+    let sugars = cross_feeding_colors(["malt", "galur", "fru"], false);
+    assert_eq!(sugars.values().collect::<HashSet<_>>().len(), 3);
+    assert_eq!(sugars["fru"], cross_feeding_color("fru", false), "the first in id order keeps its colour");
 }
 
 // flux-color-stops

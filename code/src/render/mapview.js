@@ -23,6 +23,7 @@ import { isSecondaryNode, metaboliteLabelPosition } from '../map/metabolite-labe
 import { reactionEndpointGeometry } from './reaction-path.js';
 import { findLineHops, hoppedPath } from './line-hops.js';
 import { crossFeedingLineWidth, isDrawnCrossFeedingBase, roundedPath, routeAnchor, routeCrossFeeding, routeGrid } from './crossfeed-routes.js';
+import { crossFeedingColor, crossFeedingColors } from './crossfeed-colors.js';
 
 const esc = (s) => String(s ?? '')
   .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
@@ -1544,7 +1545,8 @@ function label(x, y, text, cls, halo, dark, rid, anchor = 'middle', extraAttrs =
 
 /**
  * One line per metabolite a species passes to another, from the producer's
- * medium node to the consumer's, in the producer's colour, ending in an arrow.
+ * medium node to the consumer's, ending in an arrow, in the metabolite's colour
+ * (see crossFeedingColors), so every line of one metabolite looks the same.
  * Protons and water get none. The routed lines all have one width,
  * `widthScale` times the default, and the flux is in their hover text. Returns
  * the routed lines and, separately, the arcs for links that could not be routed.
@@ -1561,6 +1563,10 @@ function renderCrossFeeding(layout, crossFeeding, scale, dark, explorer = null, 
   // are worked out for those alone, so fewer lines also run straighter.
   const links = crossFeeding.links.filter((link) => link.from && link.to && isDrawnCrossFeedingBase(link.base)
     && (!bases || bases.has(link.base) || isPicked(link)));
+  // Colours are shared out among the metabolites shown, the ones the panel's
+  // key lists; a picked line of another metabolite keeps its own colour.
+  const colors = crossFeedingColors(links.filter((link) => !bases || bases.has(link.base)).map((link) => link.base), dark);
+  const colorOf = (base) => colors.get(base) ?? crossFeedingColor(base, dark);
   const lineWidth = crossFeedingLineWidth(layout, widthScale);
   // The lanes are spaced for this width, so lines side by side never overlap.
   const routes = routeCrossFeeding(layout, links, { lineWidth });
@@ -1575,6 +1581,7 @@ function renderCrossFeeding(layout, crossFeeding, scale, dark, explorer = null, 
     const b = cellById.get(link.to);
     if (!a || !b) continue;
     const isSelected = selected && selected.from === link.from && selected.to === link.to && selected.base === link.base;
+    const color = colorOf(link.base);
     const route = routes.get(key);
     if (route) {
       const w = isSelected ? lineWidth * 1.4 : lineWidth;
@@ -1596,12 +1603,12 @@ function renderCrossFeeding(layout, crossFeeding, scale, dark, explorer = null, 
       // one-pixel target.
       routedOut.push(`<g class="emc-crossfeed-route${isSelected ? ' is-picked' : ''}" opacity="${n(opacity)}" style="--w: ${n(w)}" ${attrs}>`
         + `<title>${esc(`${what} mmol·gDW⁻¹·h⁻¹ of the whole community, split in proportion`)}</title>`
-        + `<path class="emc-crossfeed" d="${d}" fill="none" stroke="${a.color}" `
+        + `<path class="emc-crossfeed" d="${d}" fill="none" stroke="${color}" `
         + `stroke-width="${n(w)}" stroke-linecap="round" stroke-linejoin="round"/>`
-        + `<polygon class="emc-crossfeed-arrow" points="${arrowHead(tip, end, head, Math.max(w * 1.2, grid * 0.3))}" fill="${a.color}"/>`
+        + `<polygon class="emc-crossfeed-arrow" points="${arrowHead(tip, end, head, Math.max(w * 1.2, grid * 0.3))}" fill="${color}"/>`
         + `<path class="emc-crossfeed-hit" d="${d}" fill="none" stroke="transparent" stroke-width="${n(Math.max(grid * 0.55, w))}" pointer-events="stroke"/>`
         + '</g>');
-      if (isSelected) tag = crossFeedingTag(routeAnchor(line, explorer?.selectedAt ?? null), what, a.color, dark);
+      if (isSelected) tag = crossFeedingTag(routeAnchor(line, explorer?.selectedAt ?? null), what, color, dark);
       continue;
     }
     const ca = { x: a.rect.x + a.rect.w / 2, y: a.rect.y + a.rect.h / 2 };
@@ -1618,7 +1625,7 @@ function renderCrossFeeding(layout, crossFeeding, scale, dark, explorer = null, 
     const cy = my + (dx / len) * bow;
     const w = Math.max(isSelected ? 5 : 2, scale.width(link.flux) * (isSelected ? 1.5 : 0.8));
     out.push(`<path class="emc-crossfeed" d="M ${n(p1.x)} ${n(p1.y)} Q ${n(cx)} ${n(cy)}, ${n(p2.x)} ${n(p2.y)}" `
-      + `fill="none" stroke="${a.color}" stroke-width="${n(w)}" stroke-linecap="round" `
+      + `fill="none" stroke="${color}" stroke-width="${n(w)}" stroke-linecap="round" `
       + `opacity="${isSelected ? 0.9 : (explorer?.enabled ? 0.5 : 0.22)}" data-crossfeed="${esc(link.base)}" data-crossfeed-from="${esc(link.from)}" data-crossfeed-to="${esc(link.to)}"/>`);
   }
 

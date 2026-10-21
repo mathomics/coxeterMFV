@@ -23,6 +23,7 @@ use coxeter_core::metabolite_label::{is_secondary_node, metabolite_label_positio
 use coxeter_core::text_style::{DEFAULT_TEXT_FONT, text_box_of, text_font_stack};
 use serde_json::Value;
 
+use crate::crossfeed_colors::{cross_feeding_color, cross_feeding_colors};
 use crate::crossfeed_routes::{
     cross_feeding_line_width, is_drawn_cross_feeding_base, route_anchor, route_cross_feeding, route_grid, rounded_path, Endpoint,
 };
@@ -2466,8 +2467,9 @@ fn link_key(from: &str, base: &str, to: &str) -> String {
 }
 
 /// One line per metabolite a species passes to another, from the producer's
-/// medium node to the consumer's, in the producer's colour, ending in an arrow.
-/// Protons and water get none. The routed lines all have one width,
+/// medium node to the consumer's, ending in an arrow, in the metabolite's colour
+/// (see [`cross_feeding_colors`]), so every line of one metabolite looks the
+/// same. Protons and water get none. The routed lines all have one width,
 /// `cross_feeding_width` times the default, and the flux is in their hover
 /// text. Returns the arcs for links that could not be
 /// routed (drawn behind the cells), the routed lines, and the name tag of the
@@ -2501,6 +2503,13 @@ fn render_cross_feeding(cx: &Ctx, links: &[CrossFeedingLink]) -> (Element, Eleme
         })
         .cloned()
         .collect();
+    // Colours are shared out among the metabolites shown, the ones the panel's
+    // key lists; a picked line of another metabolite keeps its own colour.
+    let colors = cross_feeding_colors(
+        links.iter().filter(|l| bases.is_none_or(|b| b.contains(&l.base))).map(|l| l.base.as_str()),
+        cx.dark,
+    );
+    let color_of = |base: &str| colors.get(base).copied().unwrap_or_else(|| cross_feeding_color(base, cx.dark));
     let line_width = cross_feeding_line_width(map, cx.s.cross_feeding_width);
     // The lanes are spaced for this width, so lines side by side never overlap.
     let routes = route_cross_feeding(map, &links, line_width);
@@ -2524,6 +2533,7 @@ fn render_cross_feeding(cx: &Ctx, links: &[CrossFeedingLink]) -> (Element, Eleme
         }
         let (Some(a), Some(b)) = (cell_by_id.get(from), cell_by_id.get(to)) else { continue };
         let is_selected = is_picked(link);
+        let color = color_of(&link.base);
         if let Some(route) = routes.get(&key) {
             let w = if is_selected { line_width * 1.4 } else { line_width };
             let opacity = if is_selected {
@@ -2569,7 +2579,7 @@ fn render_cross_feeding(cx: &Ctx, links: &[CrossFeedingLink]) -> (Element, Eleme
                         .with("class", "emc-crossfeed")
                         .with("d", d.clone())
                         .with("fill", "none")
-                        .with("stroke", a.color.clone())
+                        .with("stroke", color)
                         .with("stroke-width", n(w))
                         .with("stroke-linecap", "round")
                         .with("stroke-linejoin", "round"),
@@ -2578,7 +2588,7 @@ fn render_cross_feeding(cx: &Ctx, links: &[CrossFeedingLink]) -> (Element, Eleme
                     Element::new("polygon")
                         .with("class", "emc-crossfeed-arrow")
                         .with("points", arrow_head(tip, end, head, js::max(w * 1.2, grid * 0.3)))
-                        .with("fill", a.color.clone()),
+                        .with("fill", color),
                 )
                 .child(
                     Element::new("path")
@@ -2592,7 +2602,7 @@ fn render_cross_feeding(cx: &Ctx, links: &[CrossFeedingLink]) -> (Element, Eleme
             routed_out.push(g);
             if is_selected {
                 let at = route_anchor(&line, explorer.and_then(|e| e.selected_at));
-                tag = Some(cross_feeding_tag(at, &what, &a.color, cx.dark));
+                tag = Some(cross_feeding_tag(at, &what, color, cx.dark));
             }
             continue;
         }
@@ -2624,7 +2634,7 @@ fn render_cross_feeding(cx: &Ctx, links: &[CrossFeedingLink]) -> (Element, Eleme
                 .with("class", "emc-crossfeed")
                 .with("d", format!("M {} {} Q {} {}, {} {}", n(p1.x), n(p1.y), n(qx), n(qy), n(p2.x), n(p2.y)))
                 .with("fill", "none")
-                .with("stroke", a.color.clone())
+                .with("stroke", color)
                 .with("stroke-width", n(w))
                 .with("stroke-linecap", "round")
                 .with("opacity", opacity)

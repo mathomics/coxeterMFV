@@ -1,6 +1,7 @@
 //! The cross-feeding explorer (port of `crossFeedingCard`,
 //! `crossFeedingTopControl`, `crossFeedingMetabolitePicker`,
-//! `exchangeNames` and `renderCrossFeedingEvents` of `src/ui/panels.js`),
+//! `crossFeedingLegend`, `exchangeNames` and `renderCrossFeedingEvents` of
+//! `src/ui/panels.js`),
 //! with the handlers of `onSidebarClick` / `onSidebarInput`
 //! (`open-crossfeeding-explorer`, `close-crossfeeding-explorer`,
 //! `crossfeeding-*`, `clear-crossfeeding-filters`,
@@ -8,15 +9,16 @@
 
 use coxeter_core::js;
 use coxeter_core::mapdata::NodeKind;
+use coxeter_render::crossfeed_colors::cross_feeding_colors;
 use coxeter_render::crossfeed_routes::CROSSFEED_WIDTH_RANGE;
 use coxeter_render::theme::format_flux;
 use coxeter_state::{Store, ViewPatch};
 use coxeter_state::cross_feeding::ExplorerPatch;
-use egui::{CornerRadius, Frame, Margin, RichText, Sense, Stroke, Ui, Vec2};
+use egui::{Color32, CornerRadius, Frame, Margin, RichText, Sense, Stroke, Ui, Vec2};
 use indexmap::IndexMap;
 
 use crate::app::Shell;
-use crate::theme::{Palette, bold};
+use crate::theme::{Palette, bold, css_color};
 use crate::ui_state::Workspace;
 use crate::widgets::{self, Btn, Field, FieldEvent};
 
@@ -329,8 +331,61 @@ pub fn cross_feeding_width_control(ui: &mut Ui, shell: &mut Shell) {
     }
 }
 
+/// `drawnCrossFeedingColors(store)`: the colour of each metabolite whose
+/// cross-feeding lines are drawn, as the map gives them.
+pub fn drawn_cross_feeding_colors(store: &Store) -> IndexMap<String, &'static str> {
+    let shown = store.cross_feeding_visible_bases();
+    let bases = store.cross_feeding_metabolites().into_iter().map(|m| m.base).filter(|base| shown.contains(base));
+    cross_feeding_colors(bases, store.view.dark)
+}
+
+/// `crossFeedingSwatch(color)`: a short bar in a cross-feeding line's colour;
+/// hollow for a metabolite not drawn.
+fn cross_feeding_swatch(ui: &mut Ui, color: Option<&str>, p: &Palette) {
+    let (rect, _) = ui.allocate_exact_size(Vec2::new(12.0, 5.0), Sense::hover());
+    let fill = color.map_or(Color32::TRANSPARENT, |c| css_color(c, p.ink_3));
+    ui.painter().rect(rect, CornerRadius::same(3), fill, Stroke::new(1.0, p.ink.gamma_multiply(0.3)), egui::StrokeKind::Inside);
+}
+
+/// `crossFeedingLegend(store)`: the key to the cross-feeding lines on the
+/// map, each metabolite drawn with its colour and how many lines it has.
+pub fn cross_feeding_legend(ui: &mut Ui, store: &Store) {
+    let colors = drawn_cross_feeding_colors(store);
+    if colors.is_empty() {
+        return;
+    }
+    let p = Palette::current(ui.ctx());
+    let names = exchange_names(store);
+    ui.add_space(12.0);
+    let top = ui.cursor().top() - 2.0;
+    ui.painter().hline(ui.max_rect().x_range(), top, Stroke::new(1.0, p.line));
+    ui.add_space(8.0);
+    ui.horizontal(|ui| {
+        ui.label(RichText::new("Cross-feeding lines").size(11.5).family(bold()).color(p.ink_2));
+        ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
+            ui.label(RichText::new(colors.len().to_string()).size(10.5).color(p.ink_3));
+        });
+    });
+    for m in store.cross_feeding_metabolites().iter().filter(|m| colors.contains_key(&m.base)) {
+        let label = match names.get(&m.base) {
+            Some(name) if name != &m.base => format!("{name} ({})", m.base),
+            _ => m.base.clone(),
+        };
+        ui.horizontal(|ui| {
+            ui.spacing_mut().item_spacing.x = 7.0;
+            cross_feeding_swatch(ui, colors.get(&m.base).copied(), &p);
+            ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
+                ui.label(RichText::new(m.lines.to_string()).size(10.0).family(bold()).color(p.ink_3));
+                ui.with_layout(egui::Layout::left_to_right(egui::Align::Center), |ui| {
+                    ui.add(egui::Label::new(RichText::new(&label).size(11.0).color(p.ink_2)).truncate()).on_hover_text(&label);
+                });
+            });
+        });
+    }
+}
+
 /// `crossFeedingMetabolitePicker(store)`: one checkbox per exchanged
-/// metabolite, grouped, with its lines and flux.
+/// metabolite, grouped, with its line colour, lines and flux.
 fn cross_feeding_metabolite_picker(ui: &mut Ui, shell: &mut Shell) {
     let all = shell.store.cross_feeding_metabolites();
     if all.is_empty() {
@@ -338,6 +393,7 @@ fn cross_feeding_metabolite_picker(ui: &mut Ui, shell: &mut Shell) {
     }
     let p = shell.palette();
     let shown = shell.store.cross_feeding_visible_bases();
+    let colors = drawn_cross_feeding_colors(&shell.store);
     let names = exchange_names(&shell.store);
     ui.add_space(12.0);
     ui.separator();
@@ -376,8 +432,13 @@ fn cross_feeding_metabolite_picker(ui: &mut Ui, shell: &mut Shell) {
             _ => m.base.clone(),
         };
         ui.horizontal(|ui| {
-            let (_, changed) = widgets::checkbox(ui, shown.contains(&m.base), RichText::new(&label).size(12.0), true, None);
-            if let Some(on) = changed {
+            // The whole row is the checkbox's <label>: the swatch sits between
+            // the box and the name, and the name toggles it too.
+            let checked = shown.contains(&m.base);
+            let (_, changed) = widgets::checkbox(ui, checked, "", true, Some(&label));
+            cross_feeding_swatch(ui, colors.get(&m.base).copied(), &p);
+            let name = ui.add(egui::Label::new(RichText::new(&label).size(12.0).color(p.ink)).sense(Sense::click()));
+            if let Some(on) = changed.or_else(|| name.clicked().then_some(!checked)) {
                 toggled = Some((m.base.clone(), on));
             }
             ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {

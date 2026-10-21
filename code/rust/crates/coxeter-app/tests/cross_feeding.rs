@@ -11,7 +11,7 @@
 mod common;
 
 use coxeter_app::Shell;
-use coxeter_app::panels::cross_feeding::exchange_names;
+use coxeter_app::panels::cross_feeding::{drawn_cross_feeding_colors, exchange_names};
 use coxeter_app::ui_state::Workspace;
 use egui_kittest::Harness;
 
@@ -170,6 +170,25 @@ fn metabolite_picker() {
     assert!(h.state().store.view.cross_feeding_shown.as_ref().unwrap().contains(&first.base));
     let lines = format!("{} line{} · ", first.lines, if first.lines == 1 { "" } else { "s" });
     assert!(common::shows(&h, &lines));
+}
+
+#[test]
+fn the_legend_keys_each_drawn_metabolite_to_its_line_colour() {
+    let mut h = common::harness(None);
+    h.state_mut().store.set_view(coxeter_state::ViewPatch { show_cross_feeding: Some(true), ..Default::default() }).unwrap();
+    open(&mut h, Workspace::Map);
+    assert!(common::shows(&h, "Cross-feeding lines"));
+    let store = &h.state().store;
+    let colors = drawn_cross_feeding_colors(store);
+    assert_eq!(colors.len(), store.cross_feeding_visible_bases().len(), "one colour per metabolite drawn");
+    assert_eq!(colors.values().collect::<std::collections::HashSet<_>>().len(), colors.len(), "no two alike");
+    let names = exchange_names(store);
+    let first = &store.cross_feeding_metabolites()[0];
+    let label = match names.get(&first.base) {
+        Some(name) if name != &first.base => format!("{name} ({})", first.base),
+        _ => first.base.clone(),
+    };
+    assert!(common::shows(&h, &label), "{label} is in the key");
 }
 
 #[test]

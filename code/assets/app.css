@@ -1470,6 +1470,8 @@ body { background: var(--bg); font-size: 13px; }
 .crossfeed-group{margin:8px 0 2px;font-size:11px;font-weight:700;text-transform:uppercase;opacity:.7}
 .crossfeed-pick{display:flex;align-items:center;gap:8px;padding:3px 4px;border-radius:6px;font-size:12px;cursor:pointer}
 .crossfeed-pick:hover{background:var(--hover,rgba(127,127,127,.12))}.crossfeed-pick small{opacity:.7;font-variant-numeric:tabular-nums;white-space:nowrap}
+/* a metabolite's line colour, in the picker and the legend; hollow when it is not drawn */
+.crossfeed-swatch{width:12px;height:5px;border-radius:3px;flex:none;box-shadow:inset 0 0 0 1px color-mix(in srgb,currentColor 30%,transparent)}
 .crossfeed-selected{display:flex;flex-direction:column;gap:3px;margin:8px 0;padding:8px;border:1px solid var(--accent,#2563eb);border-radius:8px}
 .crossfeed-selected small{overflow-wrap:anywhere}
 

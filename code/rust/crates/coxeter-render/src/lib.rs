@@ -10,12 +10,14 @@
 //! - [`theme`] holds the flux scale ([`FluxScale`]) and compartment colours,
 //!   [`reaction_colors`] the categorical colours, [`reaction_path`] where a
 //!   line stops short of its metabolite, and [`crossfeed_routes`] the metro-map
-//!   routing of cross-feeding lines.
+//!   routing of cross-feeding lines, and [`crossfeed_colors`] their colour, one
+//!   per metabolite.
 //! - [`css`] reads `assets/map.css` and works out the computed paint style of
 //!   any element of the tree, in light and dark, for a native front end.
 //! - [`export`] makes the SVG file the app exports ([`exportable_svg`]) and the
 //!   PNG ([`export_png`]), at the scales [`raster_size`] allows.
 
+pub mod crossfeed_colors;
 pub mod crossfeed_routes;
 pub mod css;
 pub mod export;
@@ -29,6 +31,7 @@ pub mod state;
 pub mod svg;
 pub mod theme;
 
+pub use crossfeed_colors::{cross_feeding_color, cross_feeding_colors};
 pub use crossfeed_routes::{Route, Routes, route_cross_feeding};
 pub use css::{ComputedStyle, Paint, ResolveOptions, Rgba, StyleSheet, map_stylesheet};
 pub use export::{ExportError, ExportOptions, InlineOptions, PngExport, export_png, exportable_svg, exportable_tree, inline_styles};

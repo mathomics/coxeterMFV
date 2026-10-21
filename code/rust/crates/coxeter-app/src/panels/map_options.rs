@@ -1175,6 +1175,10 @@ pub fn legend_card(ui: &mut Ui, shell: &mut Shell) {
             }
         }
 
+        if show_cross_feeding {
+            super::cross_feeding::cross_feeding_legend(ui, &shell.store);
+        }
+
         if steady_com {
             ui.add_space(12.0);
             ui.label(RichText::new("Units").size(12.0).family(bold()).color(p.ink));

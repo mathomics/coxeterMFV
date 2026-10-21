@@ -10,6 +10,7 @@ import {
 } from '../core/compartments.js';
 import { formatFlux } from '../render/theme.js';
 import { CROSSFEED_WIDTH_RANGE } from '../render/crossfeed-routes.js';
+import { crossFeedingColors } from '../render/crossfeed-colors.js';
 import { COMPARTMENT_SHAPES, compartmentShape } from '../layout/geometry.js';
 import { normalizeHexColor } from '../core/colors.js';
 import { TEXT_FONTS, TEXT_SIZE, DEFAULT_TEXT_FONT } from '../core/text-style.js';
@@ -2349,11 +2350,24 @@ function crossFeedingWidthControl(store) {
     </label>`;
 }
 
-/** One checkbox per exchanged metabolite, grouped, with its lines and flux. */
+/** The colour of each metabolite whose cross-feeding lines are drawn, as the map gives them. */
+function drawnCrossFeedingColors(store) {
+  const shown = store.crossFeedingVisibleBases();
+  const bases = store.crossFeedingMetabolites().map((m) => m.base).filter((base) => shown.has(base));
+  return crossFeedingColors(bases, store.view.dark);
+}
+
+/** A short bar in a cross-feeding line's colour; hollow for a metabolite not drawn. */
+function crossFeedingSwatch(color) {
+  return `<span class="crossfeed-swatch"${color ? ` style="background:${esc(color)}"` : ''} aria-hidden="true"></span>`;
+}
+
+/** One checkbox per exchanged metabolite, grouped, with its line colour, lines and flux. */
 function crossFeedingMetabolitePicker(store) {
   const all = store.crossFeedingMetabolites();
   if (!all.length) return '';
   const shown = store.crossFeedingVisibleBases();
+  const colors = drawnCrossFeedingColors(store);
   const names = exchangeNames(store);
   let group = '';
   const rows = all.map((m) => {
@@ -2362,6 +2376,7 @@ function crossFeedingMetabolitePicker(store) {
     const name = names.get(m.base);
     return `${head}<label class="crossfeed-pick">
         <input type="checkbox" data-action="crossfeed-metabolite" data-base="${esc(m.base)}"${shown.has(m.base) ? ' checked' : ''}>
+        ${crossFeedingSwatch(colors.get(m.base))}
         <span class="grow">${esc(name && name !== m.base ? `${name} (${m.base})` : m.base)}</span>
         <small>${m.lines} line${m.lines === 1 ? '' : 's'} · ${formatFlux(m.flux, 3)}</small>
       </label>`;
@@ -2376,6 +2391,22 @@ function crossFeedingMetabolitePicker(store) {
       </div>
       <div class="crossfeed-pick-list">${rows}</div>
       <p class="hint">A line between two species splits a metabolite in proportion to what each produces and takes up; FBA does not say which cell feeds which.</p>
+    </div>`;
+}
+
+/** The key to the cross-feeding lines on the map: each metabolite drawn, its colour and how many lines it has. */
+function crossFeedingLegend(store) {
+  const colors = drawnCrossFeedingColors(store);
+  if (!colors.size) return '';
+  const names = exchangeNames(store);
+  const items = store.crossFeedingMetabolites().filter((m) => colors.has(m.base)).map((m) => {
+    const name = names.get(m.base);
+    const label = name && name !== m.base ? `${name} (${m.base})` : m.base;
+    return `<div class="reaction-category-item">${crossFeedingSwatch(colors.get(m.base))}<span title="${esc(label)}">${esc(label)}</span><b>${m.lines}</b></div>`;
+  }).join('');
+  return `<div class="reaction-category-legend crossfeed-legend">
+      <div class="reaction-category-head"><strong>Cross-feeding lines</strong><span>${colors.size}</span></div>
+      ${items}
     </div>`;
 }
 
@@ -2487,6 +2518,7 @@ function legendCard(store) {
       ${extraGroups ? `<p class="hint">+${extraGroups} additional categories.</p>` : ''}
     </div>` : ''}
     ${customFluxColors ? `<div class="flux-color-legend" data-flux-color-preview>${renderFluxColorPreview(store)}</div>` : `<div class="flux-scale" style="margin-top:12px">${bars}</div>${ticks}`}
+    ${store.view.showCrossFeeding ? crossFeedingLegend(store) : ''}
     ${units}
     <p class="hint">${ribbonMode !== 'off'
       ? `The translucent ribbon marks the ${mode === 'pathway' ? 'pathway' : 'subsystem'}; arrow colors ${customFluxColors ? 'use the signed flux palette' : 'encode flux magnitude'}.`
