@@ -128,16 +128,14 @@ test('a blocked community states what is missing and claims nothing', () => {
   }
 });
 
-test('the six benchmark papers are all present', () => {
-  // The set the work was asked for. A missing one should fail loudly rather than
-  // quietly shrink the collection.
+test('the four benchmark papers are all present', () => {
+  // The set that ships models and a map. A missing one should fail loudly rather
+  // than quietly shrink the collection.
   for (const id of [
     'stolyar-2007-syntrophy',
-    'cfba-ecoli-ecotypes',
-    'optcom-cellulose-triculture',
     'steadycom-ecoli-auxotrophs',
     'steadycom-gut-nine',
-    'harcombe-2014-ecoli-salmonella',
+    'zuniga-2020-phea-rescue',
   ]) {
     assert.ok(findCommunity(id), `${id} is not in the registry`);
   }
@@ -302,7 +300,7 @@ test('the four-E. coli published community keeps full models separate from map p
     'published communities must resolve the member file according to the active runtime');
   assert.match(storeSource, /return full \?\? preview/,
     'hosted builds must continue to prefer the full biological model');
-  assert.match(storeSource, /contents: curatedCoreMap \|\| jointMap \? 'none' : 'all'/,
+  assert.match(storeSource, /contents: curatedCoreMap \|\| jointMap \|\| ownMap \? 'none' : 'all'/,
     'the E. coli preview remains a map concern when the full biological model is available');
 });
 

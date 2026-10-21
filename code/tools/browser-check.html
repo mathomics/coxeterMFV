@@ -1246,18 +1246,13 @@ try {
       }
       }
 
-      // A blocked one must say so and must not show a growth rate it does not have.
-      const blocked = registry.find((c) => c.reproduction.status === 'blocked');
-      const blockedText = await choose('pub:' + blocked.id);
-      check('una comunidad bloqueada se marca como bloqueada',
-        blockedText.includes('Blocked') && blockedText.includes('Requirements for reproduction'),
-        blocked.id);
-      check('una comunidad bloqueada no muestra ningún µ',
-        !blockedText.includes('Paper µ:') && !blockedText.includes('Computed µ:'));
-      check('una cita sin verificar se marca como tal',
-        blocked.paper.doiVerifiedFrom !== null
-          || scNow().querySelector('.pc-unverified') !== null,
-        blocked.paper.doi);
+      // A citation that rests on recall alone is marked as such.
+      const unverified = registry.find((c) => c.paper.doiVerifiedFrom === null);
+      if (unverified) {
+        await choose('pub:' + unverified.id);
+        check('una cita sin verificar se marca como tal',
+          scNow().querySelector('.pc-unverified') !== null, unverified.paper.doi);
+      }
 
       // And the teaching scenarios still load from the same list.
       const teaching = app.escherMCMC.store.scenarios[0];

@@ -2,7 +2,7 @@
 //! `reconcileCompartments` and `describeReconciliation` — against the
 //! JavaScript (`rust/tools/fixtures-map.mjs reconcile`): the user's yeast
 //! mitochondrion map over the BiGG-id Yeast9 (every reaction drawn afresh) and
-//! over the native-id one (nothing redrawn), the C. merolae map, and bundled
+//! over the native-id one (nothing redrawn), and bundled
 //! scenarios with what a stale file gets wrong written into them. Exact.
 
 mod common;

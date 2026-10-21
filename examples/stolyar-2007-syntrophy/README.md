@@ -11,6 +11,7 @@ The joint model is read from the four CellNetAnalyzer files of the paper's suppl
 | `manifest.json` | The community, its members and its medium |
 | `joint-model.json` | The joint model of the supplement |
 | `model-Dv.json`, `model-Mm.json` | The two members as separate COBRA models |
+| `map.json` | The curated map of the community, both models drawn whole |
 | `preview-Dv.json`, `preview-Mm.json` | Maps of the two members |
 | `media.csv`, `bounds.csv` | Medium and bounds of the community |
 

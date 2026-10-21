@@ -787,8 +787,9 @@ impl Store {
     /// genome-scale model never is, which would take minutes.
     pub fn keeps_drawing_on_species_toggle(&self) -> bool {
         // Edits waiting in Redo are hand-made too: laying the map out again
-        // would clear the history and lose them.
-        let hand_made = self.map_history.can_undo() || self.map_history.can_redo();
+        // would clear the history and lose them. So is a scenario's curated
+        // map.
+        let hand_made = self.map_history.can_undo() || self.map_history.can_redo() || self.scenario_map_file.is_some();
         self.map.is_some() && (hand_made || self.any_species_too_large_to_auto_draw())
     }
 

@@ -10,6 +10,7 @@ Coxeter-MFV reproduces the maximum community growth rate of 0.73599 h⁻¹ to fi
 | --- | --- |
 | `manifest.json` | The community, its members and its medium |
 | `model-Ec1.json` to `model-Ec4.json` | The four strains, each the iAF1260 model with its knockouts |
+| `map.json` | The curated map of the community, one cell per strain with its knockouts marked |
 | `preview-Ec1.json` to `preview-Ec4.json` | Maps of the strains' central metabolism |
 | `media.csv`, `bounds.csv` | Medium and bounds of the community |
 

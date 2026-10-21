@@ -193,8 +193,8 @@ const PROSE_FIELDS = new Set([
 /**
  * Read a map drawn over one species as a map of another.
  *
- * The species id is in front of every identifier a map holds (`iCme@PGI`,
- * `met:iCme@PGI:iCme@g6p_c`, the boundary `iCme/h`), and for an uploaded model
+ * The species id is in front of every identifier a map holds (`iDemo@PGI`,
+ * `met:iDemo@PGI:iDemo@g6p_c`, the boundary `iDemo/h`), and for an uploaded model
  * that id is whatever the file declares as its model id. Export the next
  * version of a model under a new id and a drawing that took days no longer
  * names anything. The drawing is still good: the reactions are the same

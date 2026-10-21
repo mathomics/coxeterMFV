@@ -458,6 +458,8 @@ async function buildStolyar(sourceDir) {
     bounds: 'bounds.csv',
     joint: 'joint-model.json',
     members,
+    // Drawn by tools/scenario-maps/build-stolyar.mjs; not written by this script.
+    map: 'map.json',
   }, null, 2);
 
   await writeAll(dir, files);

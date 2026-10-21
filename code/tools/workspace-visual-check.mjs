@@ -578,7 +578,7 @@ async function integratedFeatureSmoke() {
     const published = page.locator('[data-action="published-community"]');
     const registry = await page.evaluate(() => window.escherMCMC.store.publishedCommunities);
     check(`${key}: Published Communities is reachable and exposes the complete registry`,
-      await published.isVisible() && await published.locator('option').count() === registry.length && registry.length === 6);
+      await published.isVisible() && await published.locator('option').count() === registry.length && registry.length === 4);
     const gut9 = registry.find(entry => entry.species?.length === 9 && entry.computed?.sweep?.length);
     assert.ok(gut9, 'The reproduced nine-species Figure 4 community is missing');
     await published.selectOption(gut9.id);

@@ -11,6 +11,7 @@
 
 import { compartmentStyle, formatFlux } from './theme.js';
 import { DEFAULT_TEXT_FONT, textFontStack } from '../core/text-style.js';
+import { readableName } from '../core/label-sources.js';
 import { LINK_COMPARTMENT } from '../core/community.js';
 import {
   closestPerimeterPoint, compartmentCorners, compartmentShape, isRoundCompartment,
@@ -1634,8 +1635,9 @@ function renderCrossFeeding(layout, crossFeeding, scale, dark, explorer = null, 
   return { behind: out.join(''), routed: routedOut.join(''), tag };
 }
 
-/** What a cross-feeding line carries: `Acetate (ac) · St → Fp · 0.611`. */
-function crossFeedingText(link, name) {
+/** What a cross-feeding line carries: `Acetate (ac) · St → Fp · 0.611`, one name of the metabolite's synonyms. */
+function crossFeedingText(link, raw) {
+  const name = raw ? readableName(raw, [link.base]) : raw;
   const what = name && name !== link.base ? `${name} (${link.base})` : link.base;
   return `${what} · ${link.from} → ${link.to} · ${formatFlux(link.flux)}`;
 }

@@ -4,7 +4,7 @@ Maps and models that show what Coxeter-MFV draws and computes, from a single euk
 
 | Folder | Organisms | Compartments | Reference |
 | --- | --- | --- | --- |
-| [`yeast9-cytosol-mitochondria-peroxisome`](yeast9-cytosol-mitochondria-peroxisome) | *Saccharomyces cerevisiae* | Eight nested compartments in one cell | Zhang et al. (2024) |
+| [`yeast9-cytosol-mitochondria-peroxisome`](yeast9-cytosol-mitochondria-peroxisome) | *Saccharomyces cerevisiae* | Six nested compartments in one cell | Zhang et al. (2024) |
 | [`stolyar-2007-syntrophy`](stolyar-2007-syntrophy) | *Desulfovibrio vulgaris* and *Methanococcus maripaludis* | Two cells in a shared medium | Stolyar et al. (2007) |
 | [`steadycom-ecoli-auxotrophs`](steadycom-ecoli-auxotrophs) | Four auxotrophic *Escherichia coli* strains | Four cells in a shared medium | Chan et al. (2017) |
 | [`steadycom-gut-nine`](steadycom-gut-nine) | Nine gut bacteria | Nine cells in a shared medium | Chan et al. (2017) |
@@ -18,6 +18,6 @@ Please cite the original work alongside Coxeter-MFV when you use an example. The
 
 ## Yeast9 reference
 
-The yeast example holds the Yeast9 model, release 9.1.1, in COBRA JSON format, and a map of 150 reactions drawn over it with Coxeter-MFV. The model is yeast-GEM, released by its authors under the [Creative Commons Attribution 4.0 International](https://creativecommons.org/licenses/by/4.0/) license. Its original SBML release is in [`../data/yeast-GEM-9.1.1`](../data/yeast-GEM-9.1.1).
+The yeast example holds the Yeast9 model, release 9.1.1, in COBRA JSON format, and a map of 135 reactions drawn over it with Coxeter-MFV. The model is yeast-GEM, released by its authors under the [Creative Commons Attribution 4.0 International](https://creativecommons.org/licenses/by/4.0/) license. Its original SBML release is in [`../data/yeast-GEM-9.1.1`](../data/yeast-GEM-9.1.1).
 
 Zhang C et al. (2024). Yeast9: a consensus genome-scale metabolic model for *S. cerevisiae* curated by the community. *Molecular Systems Biology* 20(10), 1134–1150. https://doi.org/10.1038/s44320-024-00060-7

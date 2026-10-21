@@ -1805,7 +1805,7 @@ pub(crate) fn name_cell_compartments(cells: &mut [MapCell]) {
 
 /// Maps saved before the labels were fixed carry the species in front of
 /// every hand-placed metabolite: `base` is the label, and it was read off the
-/// merged id, so a node of the model `iCme` is named `iCme@g6p`. Mend them on
+/// merged id, so a node of the model `iDemo` is named `iDemo@g6p`. Mend them on
 /// the way in.
 fn strip_species_from_labels(nodes: &mut IndexMap<String, Node>) {
     for node in nodes.values_mut() {

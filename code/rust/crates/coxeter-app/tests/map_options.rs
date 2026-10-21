@@ -670,7 +670,8 @@ fn reaction_search_adds_and_selects() {
     let mut h = common::harness(None);
     open(&mut h, Workspace::Library);
     assert!(common::shows(&h, "Type to search every reaction in the model, drawn or not."));
-    let rid = drawn_reactions(&h, 1).remove(0);
+    // A community exchange: a blank canvas has no cell for any other reaction to go in.
+    let rid = h.state().store.map.as_ref().unwrap().reactions().values().find(|r| r.cell_id.is_none()).expect("a community exchange").id.clone();
     let local = h.state().store.search_reactions(&rid, 30).into_iter().find(|r| r.reaction_id == rid).unwrap().local_id;
 
     // reaction-search: live.

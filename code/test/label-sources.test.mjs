@@ -7,7 +7,9 @@ import { Store } from '../src/ui/store.js';
 import { renderMap } from '../src/render/mapview.js';
 import { renderInspector, renderViewControls } from '../src/ui/panels.js';
 import { parseMapDocument } from '../src/map/map-document.js';
-import { readableBase } from '../src/core/label-sources.js';
+import { readableBase, readableName } from '../src/core/label-sources.js';
+import { FluxScale } from '../src/render/theme.js';
+import { readFile } from 'node:fs/promises';
 
 function fixture() {
   const model = new Model({
@@ -148,4 +150,34 @@ test('a base label reads as a name where the model id does not', () => {
   // plain BiGG bases are left alone
   assert.equal(readableBase('pro-L[c_St]', 'L-Proline'), 'pro-L[c_St]');
   assert.equal(readableBase('ac[e_Ef]', 'Acetate'), 'ac[e_Ef]');
+});
+
+test('a name that lists synonyms reads as one of them', () => {
+  assert.equal(readableName('CELB|Cellobiose|cellobiose', ['cellb[u]']), 'Cellobiose');
+  assert.equal(readableName('6G-alpha-D-galactosylsucrose|M_Raffinose_C18H32O16|Raffinose', ['raffin[u]']), 'Raffinose');
+  assert.equal(readableName('Exchange for Serine|L-Serine', ['ser-L[u]']), 'L-Serine');
+  assert.equal(readableName('Hydrogen sulfide|hydrogen sulfide', ['h2s']), 'Hydrogen sulfide');
+  assert.equal(readableName('Fe3+|fe3', ['fe3[u]']), 'Fe3+');
+  assert.equal(readableName('K+|potassium', ['k']), 'K+');
+  assert.equal(readableName('1,5-Diaminopentane|cadaverine (penta-1,5-diamine)'), '1,5-Diaminopentane');
+  // one name stays as it is, an empty one falls back to the id
+  assert.equal(readableName('D-Glucose', ['glc__D']), 'D-Glucose');
+  assert.equal(readableName('', ['glc__D']), 'glc__D');
+  // a ModelSEED base takes the readable name too
+  assert.equal(readableBase('cpd00222[c_Lc]', 'GLCN|Gluconic Acid'), 'Gluconic Acid');
+});
+
+test('cross-feeding lines and the picked line name the metabolite once', async () => {
+  const doc = JSON.parse(await readFile(new URL('../models/published/steadycom-gut-nine/map.json', import.meta.url), 'utf8'));
+  const layout = EditableMap.fromJSON(doc.map);
+  const link = { from: 'Bt', base: 'ser-L', to: 'Lc', flux: 0.5 };
+  const svg = renderMap(layout, {
+    fluxes: new Map(), scale: new FluxScale([]), showCrossFeeding: true,
+    crossFeeding: { links: [link], perMetabolite: [] },
+    crossFeedingExplorer: { enabled: true, visibleEvents: [link], selectedEvent: link, selectedAt: null },
+  });
+  const title = /<title>([^<]*ser-L[^<]*)<\/title>/.exec(svg)?.[1] ?? '';
+  assert.match(title, /^L-Serine \(ser-L\) · Bt → Lc/);
+  assert.match(svg, /emc-crossfeed-tag[\s\S]*L-Serine \(ser-L\) · Bt → Lc/);
+  assert.doesNotMatch(svg, /Exchange for Serine/);
 });

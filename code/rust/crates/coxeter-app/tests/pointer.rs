@@ -15,6 +15,7 @@ use coxeter_canvas::host::{MapHost, SelectKind};
 use coxeter_canvas::targets::{self, Target};
 use coxeter_canvas::{CanvasEvent, Tool};
 use coxeter_core::mapdata::Point;
+use coxeter_core::metabolite_label::metabolite_label_angle;
 use egui::{Event, Modifiers, PointerButton, Pos2, Vec2};
 
 type H = egui_kittest::Harness<'static, Shell>;
@@ -446,9 +447,37 @@ fn hit_targets_are_generous_at_a_distant_zoom() {
         (0..scene.doc.len()).any(|i| scene.doc.element(i).has_class("emc-hit-node"))
     };
     assert!(scene_has_hits, "the hit layer is drawn");
-    let at = find(&mut h, "data-node", |t, host| targets::draggable_node_at(t, host).is_some()).expect("a node");
-    let near = at + Vec2::new(3.0, 3.0);
-    assert!(at_point(&mut h, near, |t, host| targets::draggable_node_at(t, host).is_some()), "a press beside the circle still finds it");
+    // A press beside a metabolite's circle, on the side away from its label
+    // (a target of its own, drawn over the node's), still finds it: the
+    // primary metabolites well inside the stage, away from the compartments'
+    // name plates.
+    let rect = h.state().map.canvas.rect;
+    let primaries: Vec<(String, Pos2, f64)> = h
+        .state()
+        .store
+        .map
+        .as_ref()
+        .unwrap()
+        .nodes()
+        .values()
+        .filter(|n| n.kind == coxeter_core::mapdata::NodeKind::Metabolite && n.primary != Some(false))
+        .map(|n| (n.id.clone(), screen(&h, Point::new(n.x, n.y)), metabolite_label_angle(n.label_angle)))
+        .filter(|(_, p, _)| {
+            let (x, y) = (p.x as f64, p.y as f64);
+            x > rect.left + 80.0 && y > rect.top + 80.0 && x < rect.left + rect.width - 80.0 && y < rect.top + rect.height - 80.0
+        })
+        .collect();
+    assert!(!primaries.is_empty(), "metabolites in view");
+    let found = primaries
+        .iter()
+        .filter(|(id, at, angle)| {
+            let near = *at - Vec2::new(angle.cos() as f32, angle.sin() as f32) * 4.0;
+            at_point(&mut h, near, |t, host| targets::draggable_node_at(t, host)).as_deref() == Some(id.as_str())
+        })
+        .count();
+    // Where the map is dense a neighbour's halo or label lies there instead,
+    // so it is asked of the metabolites that stand clear.
+    assert!(found > 0, "a press beside the circle still finds it");
 }
 
 #[test]

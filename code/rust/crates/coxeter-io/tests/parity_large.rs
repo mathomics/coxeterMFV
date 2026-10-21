@@ -159,7 +159,7 @@ fn json_models_import_and_export_like_javascript() {
                     json!({"filename": e["filename"], "modelKey": e["modelKey"], "speciesId": e["speciesId"], "abundance": e["abundance"], "summary": e["summary"]})
                 })
                 .collect();
-            assert_json_eq(&json!(summary), &fx["summary"], 0.0, "three real models uploaded together");
+            assert_json_eq(&json!(summary), &fx["summary"], 0.0, "the real models uploaded together");
             assert_json_eq(&json!(prepared.medium), &fx["medium"], 0.0, "their inferred medium");
             checked += 1;
         }

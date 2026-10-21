@@ -11,7 +11,7 @@
 mod common;
 
 use coxeter_app::Shell;
-use coxeter_app::panels::cross_feeding::{drawn_cross_feeding_colors, exchange_names};
+use coxeter_app::panels::cross_feeding::{cross_feeding_label, drawn_cross_feeding_colors, exchange_names};
 use coxeter_app::ui_state::Workspace;
 use egui_kittest::Harness;
 
@@ -71,8 +71,9 @@ fn crossfeeding_filters_and_clear() {
     let visible = h.state().store.cross_feeding_explorer_events();
     assert!(!visible.is_empty() && visible.len() < h.state().store.cross_feeding_explorer.index.as_ref().unwrap().events.len());
     common::type_into(&mut h, "Search metabolite or species", "");
-    // crossfeeding-metabolite
-    common::choose(&mut h, "Metabolite filter", &event.base);
+    // crossfeeding-metabolite: offered by name.
+    let what = cross_feeding_label(&exchange_names(&h.state().store), &event.base);
+    common::choose(&mut h, "Metabolite filter", &what);
     assert_eq!(h.state().store.cross_feeding_explorer.metabolite, event.base);
     assert!(h.state().store.cross_feeding_explorer_events().iter().all(|e| e.base == event.base));
     // crossfeeding-producer
@@ -108,7 +109,8 @@ fn select_and_close_the_explorer() {
     let mut h = common::harness(None);
     explorer(&mut h);
     let event = h.state().store.cross_feeding_explorer_events()[0].clone();
-    let label = format!("{} → {} → {}", name_of(&h, &event.from), event.base, name_of(&h, &event.to));
+    let what = cross_feeding_label(&exchange_names(&h.state().store), &event.base);
+    let label = format!("{} → {what} → {}", name_of(&h, &event.from), name_of(&h, &event.to));
     h.state_mut().store.cross_feeding_explorer.selected_at = Some(coxeter_core::mapdata::Point { x: 1.0, y: 2.0 });
 
     // select-crossfeeding-event: picked from the list, not pinned to a map point.

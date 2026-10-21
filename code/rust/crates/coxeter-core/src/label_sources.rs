@@ -253,6 +253,9 @@ pub fn object_label_sources(object: &LabelObject, entity: Option<&LabelEntity>, 
             .or(entity.and_then(|e| non_empty(e.base)))
             .unwrap_or(&local_id)
             .to_string();
+        // A label shows one name, not the model's whole list of synonyms.
+        let shown = readable_name(&sources["name"], &[&local_id, &base]);
+        sources.insert("name".into(), shown);
         let name = entity_name.or(non_empty(object.name)).unwrap_or("");
         sources.insert("base".into(), readable_base(&base, name));
     }
@@ -287,7 +290,7 @@ pub fn readable_base(base: &str, name: &str) -> String {
     let core = caps.get(1).map_or("", |m| m.as_str());
     let tag = caps.get(2).map_or("", |m| m.as_str());
     if MODELSEED.is_match(core) && !name.is_empty() && !MODELSEED_PREFIX.is_match(name) {
-        return name.to_string();
+        return readable_name(name, &[core]);
     }
     if let Some(esc) = SBML_ESCAPED.captures(core) {
         let letter = &esc[2];
@@ -296,6 +299,73 @@ pub fn readable_base(base: &str, name: &str) -> String {
         }
     }
     base.to_string()
+}
+
+static EXCHANGE_FOR: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"(?i)^exchange for\s+").unwrap());
+static CAPITAL_CODE: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"^[A-Z][A-Z0-9]{1,5}$").unwrap());
+static TRAILING_TAG: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"\[[^\]]*\]$").unwrap());
+
+/// One readable name out of a model name that lists synonyms joined by `|`,
+/// as some reconstructions write them (`CELB|Cellobiose|cellobiose`,
+/// `Exchange for Serine|L-Serine`, `Fe3+|fe3`).
+///
+/// Parts that are codes rather than names are dropped: the metabolite's own
+/// id or base (`ids`, with or without a `[compartment]` tag), short
+/// all-capital codes (`CELB`), escaped SBML ids (`M_Raffinose_C18H32O16`) and
+/// ModelSEED accessions; so are an exchange reaction's "Exchange for ..."
+/// wording and repeats that differ only in case. Of the rest, the first that
+/// starts with a capital letter and carries no bracketed or comma-separated
+/// qualifier wins (`Raffinose`, `L-Serine`, `K+`), then the first that is
+/// capitalised at all (`1,5-Diaminopentane`), then the first. A name without
+/// `|` only loses an "Exchange for" in front; an empty one gives the first id.
+pub fn readable_name(name: &str, ids: &[&str]) -> String {
+    let text = name.trim();
+    if text.is_empty() {
+        return ids.iter().find(|id| !id.is_empty()).map_or_else(String::new, |id| id.to_string());
+    }
+    let unprefixed = |part: &str| {
+        let rest = EXCHANGE_FOR.replace(part, "");
+        if rest.is_empty() { part.to_string() } else { rest.into_owned() }
+    };
+    if !text.contains('|') {
+        return unprefixed(text);
+    }
+    let mut own: Vec<String> = Vec::new();
+    for id in ids.iter().filter(|id| !id.is_empty()) {
+        let lower = id.to_lowercase();
+        own.push(TRAILING_TAG.replace(&lower, "").into_owned());
+        own.push(lower);
+    }
+    let parts: Vec<&str> = text.split('|').map(str::trim).filter(|p| !p.is_empty()).collect();
+    let is_code = |part: &str| {
+        own.contains(&part.to_lowercase())
+            || CAPITAL_CODE.is_match(part)
+            || part.starts_with("M_")
+            || MODELSEED_PREFIX.is_match(part)
+    };
+    let mut seen: Vec<String> = Vec::new();
+    let mut names: Vec<&str> = Vec::new();
+    for part in &parts {
+        let key = part.to_lowercase();
+        if EXCHANGE_FOR.is_match(part) || is_code(part) || seen.contains(&key) {
+            continue;
+        }
+        seen.push(key);
+        names.push(part);
+    }
+    let Some(first) = names.first() else {
+        return parts.first().map_or_else(|| text.to_string(), |p| unprefixed(p));
+    };
+    let capitalised = |part: &str| part.chars().find(char::is_ascii_alphabetic).is_some_and(|c| c.is_ascii_uppercase());
+    let plain_capital = |part: &str| {
+        part.chars().next().is_some_and(|c| c.is_ascii_uppercase()) && !part.contains(['(', ')', ','])
+    };
+    names
+        .iter()
+        .find(|p| plain_capital(p))
+        .or_else(|| names.iter().find(|p| capitalised(p)))
+        .unwrap_or(first)
+        .to_string()
 }
 
 /// The label of a drawn object for one source, or the base/id fallback.
@@ -318,6 +388,21 @@ mod tests {
         assert_eq!(readable_base("cpd00023[c_Er]", "L-Glutamate"), "L-Glutamate");
         assert_eq!(readable_base("M_ival_c[c_Ef]", ""), "ival[c_Ef]");
         assert_eq!(readable_base("glc__D", "D-Glucose"), "glc__D");
+        assert_eq!(readable_base("cpd00222[c_Lc]", "GLCN|Gluconic Acid"), "Gluconic Acid");
+    }
+
+    #[test]
+    fn a_name_that_lists_synonyms_reads_as_one_of_them() {
+        assert_eq!(readable_name("CELB|Cellobiose|cellobiose", &["cellb[u]"]), "Cellobiose");
+        assert_eq!(readable_name("6G-alpha-D-galactosylsucrose|M_Raffinose_C18H32O16|Raffinose", &["raffin[u]"]), "Raffinose");
+        assert_eq!(readable_name("Exchange for Serine|L-Serine", &["ser-L[u]"]), "L-Serine");
+        assert_eq!(readable_name("Hydrogen sulfide|hydrogen sulfide", &["h2s"]), "Hydrogen sulfide");
+        assert_eq!(readable_name("Fe3+|fe3", &["fe3[u]"]), "Fe3+");
+        assert_eq!(readable_name("K+|potassium", &["k"]), "K+");
+        assert_eq!(readable_name("1,5-Diaminopentane|cadaverine (penta-1,5-diamine)", &[]), "1,5-Diaminopentane");
+        // one name stays as it is, an empty one falls back to the id
+        assert_eq!(readable_name("D-Glucose", &["glc__D"]), "D-Glucose");
+        assert_eq!(readable_name("", &["glc__D"]), "glc__D");
     }
 
     #[test]

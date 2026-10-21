@@ -141,7 +141,10 @@ export function objectLabelSources(object, entity, kind) {
     name: entity?.name || object.name || localId,
   };
   if (kind === 'metabolite') {
-    sources.base = readableBase(object.base || entity?.base || localId, entity?.name || object.name);
+    const base = object.base || entity?.base || localId;
+    // A label shows one name, not the model's whole list of synonyms.
+    sources.name = readableName(sources.name, [localId, base]);
+    sources.base = readableBase(base, entity?.name || object.name);
   }
   const alternatives = entity?.labelSources ?? object.labelSources ?? {};
   for (const [source, value] of Object.entries(alternatives)) {
@@ -163,10 +166,59 @@ export function objectLabelSources(object, entity, kind) {
 export function readableBase(base, name = '') {
   const text = String(base ?? '');
   const [, core, tag = ''] = /^(.*?)(\[[^\]]*\])?$/.exec(text);
-  if (/^cpd\d{5}$/.test(core) && name && !/^cpd\d{5}/.test(name)) return name;
+  if (/^cpd\d{5}$/.test(core) && name && !/^cpd\d{5}/.test(name)) return readableName(name, [core]);
   const escaped = /^M_(.+)_([a-z][a-z0-9]?)$/.exec(core);
   if (escaped && (!tag || tag.startsWith(`[${escaped[2]}`))) return escaped[1] + tag;
   return text;
+}
+
+const EXCHANGE_FOR = /^exchange for\s+/i;
+
+/**
+ * One readable name out of a model name that lists synonyms joined by `|`, as
+ * some reconstructions write them (`CELB|Cellobiose|cellobiose`,
+ * `Exchange for Serine|L-Serine`, `Fe3+|fe3`).
+ *
+ * Parts that are codes rather than names are dropped: the metabolite's own id
+ * or base (`ids`, with or without a `[compartment]` tag), short all-capital
+ * codes (`CELB`), escaped SBML ids (`M_Raffinose_C18H32O16`) and ModelSEED
+ * accessions; so are an exchange reaction's "Exchange for ..." wording and
+ * repeats that differ only in case. Of the rest, the first that starts with a
+ * capital letter and carries no bracketed or comma-separated qualifier wins
+ * (`Raffinose`, `L-Serine`, `K+`), then the first that is capitalised at all
+ * (`1,5-Diaminopentane`), then the first. A name without `|` only loses an
+ * "Exchange for" in front; an empty one gives the first id.
+ */
+export function readableName(name, ids = []) {
+  const text = String(name ?? '').trim();
+  if (!text) return String(ids.find((id) => id) ?? '');
+  if (!text.includes('|')) return text.replace(EXCHANGE_FOR, '') || text;
+  const own = new Set();
+  for (const id of ids) {
+    if (!id) continue;
+    const lower = String(id).toLowerCase();
+    own.add(lower);
+    own.add(lower.replace(/\[[^\]]*\]$/, ''));
+  }
+  const parts = text.split('|').map((part) => part.trim()).filter(Boolean);
+  const isCode = (part) => own.has(part.toLowerCase()) || /^[A-Z][A-Z0-9]{1,5}$/.test(part)
+    || /^M_/.test(part) || /^cpd\d{5}/.test(part);
+  const seen = new Set();
+  const names = [];
+  for (const part of parts) {
+    const key = part.toLowerCase();
+    if (EXCHANGE_FOR.test(part) || isCode(part) || seen.has(key)) continue;
+    seen.add(key);
+    names.push(part);
+  }
+  if (!names.length) return parts.length ? parts[0].replace(EXCHANGE_FOR, '') || parts[0] : text;
+  const capitalised = (part) => {
+    const letter = /[A-Za-z]/.exec(part)?.[0];
+    return Boolean(letter) && letter === letter.toUpperCase();
+  };
+  return names.find((part) => /^[A-Z]/.test(part) && !/[(),]/.test(part))
+    ?? names.find(capitalised)
+    ?? names[0];
 }
 
 /** The label of a map object for the chosen source, or its base label (metabolites) or id when that source has none. */

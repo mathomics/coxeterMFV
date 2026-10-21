@@ -189,6 +189,7 @@ function mapRenderState() {
     lineHops: store.view.lineHops !== false,
     disabledReactionIds: new Set([
       ...(store.isZunigaStudy ? store.zunigaPrepared?.knockouts ?? [] : []),
+      ...(store.publishedKnockoutIds?.() ?? []),
       ...changes.filter((change) => change.knockedOut).map((change) => change.id),
     ]),
     modifiedReactionIds: new Set(changes.filter((change) => !change.knockedOut).map((change) => change.id)),

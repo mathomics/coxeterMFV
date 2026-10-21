@@ -425,8 +425,8 @@ fn walk(value: &Value, key: Option<&str>, from: &str, to: &str) -> Value {
 /// `renameMapSpecies(parsed, fromId, toId, {model})`: read a map drawn over
 /// one species as a map of another.
 ///
-/// The species id is in front of every identifier a map holds (`iCme@PGI`,
-/// `met:iCme@PGI:iCme@g6p_c`, the boundary `iCme/h`), and for an uploaded
+/// The species id is in front of every identifier a map holds (`iDemo@PGI`,
+/// `met:iDemo@PGI:iDemo@g6p_c`, the boundary `iDemo/h`), and for an uploaded
 /// model that id is whatever the file declares. This rewrites the id wherever
 /// it stands in front of something, and leaves names, labels and free text
 /// alone. It does not decide whether the result fits.
@@ -474,11 +474,11 @@ mod tests {
 
     #[test]
     fn rename_only_in_front_of_identifiers() {
-        assert_eq!(rename_in_front("iCme@PGI", "iCme", "x"), "x@PGI");
-        assert_eq!(rename_in_front("met:iCme@PGI:iCme@g6p_c", "iCme", "x"), "met:x@PGI:x@g6p_c");
-        assert_eq!(rename_in_front("iCme/h", "iCme", "x"), "x/h");
-        assert_eq!(rename_in_front("aiCme@PGI", "iCme", "x"), "aiCme@PGI");
-        assert_eq!(rename_in_front("iCme", "iCme", "x"), "x");
-        assert_eq!(rename_in_front("iCme2@a", "iCme", "x"), "iCme2@a");
+        assert_eq!(rename_in_front("iDemo@PGI", "iDemo", "x"), "x@PGI");
+        assert_eq!(rename_in_front("met:iDemo@PGI:iDemo@g6p_c", "iDemo", "x"), "met:x@PGI:x@g6p_c");
+        assert_eq!(rename_in_front("iDemo/h", "iDemo", "x"), "x/h");
+        assert_eq!(rename_in_front("aiDemo@PGI", "iDemo", "x"), "aiDemo@PGI");
+        assert_eq!(rename_in_front("iDemo", "iDemo", "x"), "x");
+        assert_eq!(rename_in_front("iDemo2@a", "iDemo", "x"), "iDemo2@a");
     }
 }

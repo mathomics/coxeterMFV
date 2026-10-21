@@ -26,10 +26,8 @@
 //!   authors' constraint specification could not be retrieved, so building it
 //!   would mean guessing. Not attempted.
 //!
-//! Why so many are blocked: the models are the easy half. Several of these
-//! papers publish their communities only as prose plus a supplementary file on
-//! a journal host, and a community is its constraints: which strain lacks
-//! which gene, what the medium supplies, what each member may take up.
+//! The models are the easy half: a community is its constraints, which strain
+//! lacks which gene, what the medium supplies, what each member may take up.
 //!
 //! The catalogue is data, so it is kept as data: `published.json` beside this
 //! file is `JSON.stringify(PUBLISHED_COMMUNITIES)` of the JS module, read into
@@ -48,26 +46,18 @@ use serde_json::Value;
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct Frameworks {
     pub joint_fba: &'static str,
-    pub cfba: &'static str,
     pub optcom: &'static str,
     pub steadycom: &'static str,
-    pub comets: &'static str,
 }
 
 impl Frameworks {
     /// Every framework, in the JS object's order.
-    pub fn all(&self) -> [&'static str; 5] {
-        [self.joint_fba, self.cfba, self.optcom, self.steadycom, self.comets]
+    pub fn all(&self) -> [&'static str; 3] {
+        [self.joint_fba, self.optcom, self.steadycom]
     }
 }
 
-pub const FRAMEWORKS: Frameworks = Frameworks {
-    joint_fba: "Joint-FBA",
-    cfba: "cFBA",
-    optcom: "OptCom",
-    steadycom: "SteadyCom",
-    comets: "COMETS",
-};
+pub const FRAMEWORKS: Frameworks = Frameworks { joint_fba: "Joint-FBA", optcom: "OptCom", steadycom: "SteadyCom" };
 
 /// The paper a community comes from.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]

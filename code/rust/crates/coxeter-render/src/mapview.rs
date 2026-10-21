@@ -18,6 +18,7 @@ use coxeter_core::geometry::{
     is_round_compartment, shape_handle_point,
 };
 use coxeter_core::js;
+use coxeter_core::label_sources::readable_name;
 use coxeter_core::mapdata::{MapCell, MapCompartment, MapGraph, MapReaction, MapText, Node, NodeKind, Point, Rect, Segment, SegmentKind};
 use coxeter_core::metabolite_label::{is_secondary_node, metabolite_label_position};
 use coxeter_core::text_style::{DEFAULT_TEXT_FONT, text_box_of, text_font_stack};
@@ -2646,9 +2647,11 @@ fn render_cross_feeding(cx: &Ctx, links: &[CrossFeedingLink]) -> (Element, Eleme
     (out, routed_out, tag)
 }
 
-/// What a cross-feeding line carries: `Acetate (ac) · St → Fp · 0.611`.
-fn cross_feeding_text(link: &CrossFeedingLink, name: Option<&str>) -> String {
-    let what = match name.filter(|n| !n.is_empty() && *n != link.base) {
+/// What a cross-feeding line carries: `Acetate (ac) · St → Fp · 0.611`, one
+/// name of the metabolite's synonyms.
+fn cross_feeding_text(link: &CrossFeedingLink, raw: Option<&str>) -> String {
+    let name = raw.filter(|n| !n.is_empty()).map(|n| readable_name(n, &[&link.base]));
+    let what = match name.filter(|n| *n != link.base) {
         Some(name) => format!("{name} ({})", link.base),
         None => link.base.clone(),
     };

@@ -207,25 +207,9 @@ fn the_community_list_opens_a_teaching_scenario_and_a_published_one() {
     assert_eq!(value(&h, "Community"), "Aerobic co-culture (E. coli + yeast)");
 
     // A published one is marked by its reproduction status.
-    choose(&mut h, "Community", "— Two E. coli ecotypes (glucose and acetate specialists)");
-    assert_eq!(h.state().store.scenario_published().as_deref(), Some("cfba-ecoli-ecotypes"));
+    choose(&mut h, "Community", "✓ Desulfovibrio vulgaris + Methanococcus maripaludis");
+    assert_eq!(h.state().store.scenario_published().as_deref(), Some("stolyar-2007-syntrophy"));
     assert!(h.state().ui.steady_com_draft.is_none());
-}
-
-#[test]
-fn a_blocked_community_says_what_it_still_needs_and_offers_no_download() {
-    let mut h = common::harness(None);
-    open(&mut h, Workspace::Scenario);
-    choose(&mut h, "Community", "— Two E. coli ecotypes (glucose and acetate specialists)");
-    assert!(common::shows(&h, "BLOCKED"));
-    assert!(common::shows(&h, "CFBA"), "the framework chip");
-    assert!(common::shows(&h, "VERIFIED"), "a citation checked against a retrieved file says so");
-    assert!(common::shows(&h, "Requirements for reproduction (2)"));
-    // The two ecotypes share an organism name: the role tells them apart.
-    assert!(common::shows(&h, "Escherichia coli (ecotype) · "));
-    assert!(!common::has(&h, "Download glu as COBRA JSON"), "no model file is bundled");
-    assert!(!common::shows(&h, "RECORDED PUBLISHED RESULTS"), "nothing was computed");
-    assert_eq!(h.state().store.status().state, StatusState::Warn, "no model files are bundled");
 }
 
 #[test]

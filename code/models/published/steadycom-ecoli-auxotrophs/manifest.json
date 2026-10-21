@@ -50,5 +50,28 @@
       "previewReactions": 122
     }
   ],
-  "previewPurpose": "Semantic pedagogical map: glucose entry, glycolysis, PPP, TCA/anaplerosis and amino-acid families organized by central-carbon precursor, plus the original SteadyCom interaction excerpt."
+  "previewPurpose": "Semantic pedagogical map: glucose entry, glycolysis, PPP, TCA/anaplerosis and amino-acid families organized by central-carbon precursor, plus the original SteadyCom interaction excerpt.",
+  "map": "map.json",
+  "knockouts": {
+    "Ec1": [
+      "DAPDC",
+      "HSST",
+      "PHEt2rpp"
+    ],
+    "Ec2": [
+      "ARGSL",
+      "METt3pp",
+      "PPNDH"
+    ],
+    "Ec3": [
+      "ARGSL",
+      "LYSt3pp",
+      "PPNDH"
+    ],
+    "Ec4": [
+      "ARGt3pp",
+      "DAPDC",
+      "HSST"
+    ]
+  }
 }

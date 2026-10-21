@@ -41,8 +41,8 @@ fn the_registry_is_the_js_registry() {
     assert_json_eq(&published_communities_json(), &fx["communities"], 0.0, "PUBLISHED_COMMUNITIES");
     let f = &fx["frameworks"];
     assert_eq!(
-        [FRAMEWORKS.joint_fba, FRAMEWORKS.cfba, FRAMEWORKS.optcom, FRAMEWORKS.steadycom, FRAMEWORKS.comets],
-        [&f["JOINT_FBA"], &f["CFBA"], &f["OPTCOM"], &f["STEADYCOM"], &f["COMETS"]].map(|v| v.as_str().unwrap())
+        [FRAMEWORKS.joint_fba, FRAMEWORKS.optcom, FRAMEWORKS.steadycom],
+        [&f["JOINT_FBA"], &f["OPTCOM"], &f["STEADYCOM"]].map(|v| v.as_str().unwrap())
     );
     let ids = |v: Vec<&coxeter_analysis::PublishedCommunity>| json!(v.iter().map(|c| c.id.as_str()).collect::<Vec<_>>());
     assert_eq!(ids(reproduced_communities()), fx["reproduced"]);

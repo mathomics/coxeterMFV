@@ -12,7 +12,7 @@ use coxeter_map::Contents;
 use coxeter_map::editable_map::EditableMap;
 use coxeter_map::layout::LayoutOptions;
 use coxeter_map::layout_settings::layout_engine_options;
-use coxeter_map::map_document::parse_map_document;
+use coxeter_map::map_document::{ParsedMapDocument, parse_map_document};
 use coxeter_map::multi_selection::empty_selection;
 use coxeter_map::yeast9::{
     YEAST9_CANVAS, YEAST9_MODEL_KEY, YEAST9_PREVIEW_COMPARTMENTS, YEAST9_SCENARIO_ID, YEAST9_SOURCE, Yeast9Preview,
@@ -26,6 +26,7 @@ use indexmap::IndexMap;
 use serde_json::{Map, Value, json};
 
 use crate::error::{Result, StoreError};
+use crate::steadycom::STEADYCOM_COMMUNITIES;
 use crate::store::{AUTO_DRAW_METABOLITE_LIMIT, AUTO_DRAW_REACTION_LIMIT, AUTO_SOLVE_REACTION_LIMIT, Store, objectives};
 use crate::types::*;
 use crate::util::normalize_pfba_percent;
@@ -46,8 +47,17 @@ pub struct ImportedModel {
 pub struct ImportReport {
     pub entries: Vec<ImportedModel>,
     pub medium: IndexMap<String, f64>,
-    /// Yeast9 only: what the curated preview drew.
+    /// Yeast9 only: what the representative preview drew, `None` when the
+    /// scenario's curated map was drawn instead.
     pub preview: Option<Yeast9Preview>,
+}
+
+/// A scenario's curated map (its `map`, a path under `models/`), read and
+/// parsed.
+#[derive(Debug, Clone)]
+pub struct CuratedMap {
+    pub file: String,
+    pub parsed: ParsedMapDocument,
 }
 
 /// `usesCuratedCoreMap(communityId)`: which community keeps its full member
@@ -423,40 +433,52 @@ impl Store {
         // solve the 4,000-reaction LP automatically. The preview below is
         // map-only.
         self.rebuild(RebuildOptions { relayout: true, contents: Contents::None, solve: false })?;
-        // The generic automatic canvas is sized for all 4,105 reactions. The
-        // curated scenario draws only a representative subset, so use a
-        // compact publication-like canvas where the 14 compartments remain
-        // legible.
-        let community = self.community.clone().ok_or_else(|| StoreError::msg("Yeast9 import produced no community."))?;
-        let opts = LayoutOptions {
-            width: Some(YEAST9_CANVAS.0),
-            height: Some(YEAST9_CANVAS.1),
-            ..layout_engine_options(&(&self.layout_settings).into())
-        };
-        let mut map = EditableMap::empty_from_community(&community, &opts);
-        self.map_history.clear();
-        let model = self.models.arc(YEAST9_MODEL_KEY).expect("just inserted");
-        let preview = populate_yeast9_preview(&mut map, &community, &model, &species_id);
-        self.map = Some(map);
-        self.map_history.clear();
-
-        self.set_status_message(
-            StatusState::Ok,
-            format!(
-                "Loaded Yeast9 {}: {} reactions, {} metabolites, {} compartments · {} representative reactions drawn across {}/{} compartments. Run Analysis when you want FBA.",
-                YEAST9_SOURCE.version,
-                summary.reactions,
-                summary.metabolites,
-                summary.compartments,
-                preview.placed,
-                preview.covered_compartments,
-                YEAST9_PREVIEW_COMPARTMENTS.len()
-            ),
+        let loaded = format!(
+            "Loaded Yeast9 {}: {} reactions, {} metabolites, {} compartments",
+            YEAST9_SOURCE.version, summary.reactions, summary.metabolites, summary.compartments
         );
+        // The scenario's curated map, when it ships one, replaces the preview.
+        let curated = self.scenario_map_document(None);
+        let preview = if curated.is_some_and(|c| self.draw_scenario_map(c)) {
+            let drawn = self.map.as_ref().map_or(0, |m| m.reactions().len());
+            let note = self.map_load_note.clone();
+            self.set_status_message(
+                StatusState::Ok,
+                format!("{loaded} · curated map of {drawn} reactions.{note} Run Analysis when you want FBA."),
+            );
+            None
+        } else {
+            // The generic automatic canvas is sized for all 4,105 reactions.
+            // The curated scenario draws only a representative subset, so use
+            // a compact publication-like canvas where the 14 compartments
+            // remain legible.
+            let community = self.community.clone().ok_or_else(|| StoreError::msg("Yeast9 import produced no community."))?;
+            let opts = LayoutOptions {
+                width: Some(YEAST9_CANVAS.0),
+                height: Some(YEAST9_CANVAS.1),
+                ..layout_engine_options(&(&self.layout_settings).into())
+            };
+            let mut map = EditableMap::empty_from_community(&community, &opts);
+            self.map_history.clear();
+            let model = self.models.arc(YEAST9_MODEL_KEY).expect("just inserted");
+            let preview = populate_yeast9_preview(&mut map, &community, &model, &species_id);
+            self.map = Some(map);
+            self.map_history.clear();
+            self.set_status_message(
+                StatusState::Ok,
+                format!(
+                    "{loaded} · {} representative reactions drawn across {}/{} compartments. Run Analysis when you want FBA.",
+                    preview.placed,
+                    preview.covered_compartments,
+                    YEAST9_PREVIEW_COMPARTMENTS.len()
+                ),
+            );
+            Some(preview)
+        };
         self.settle_opened_work();
         self.draw_waiting_map();
         self.emit("rebuild");
-        Ok(ImportReport { entries: vec![report_entry], medium: prepared.medium, preview: Some(preview) })
+        Ok(ImportReport { entries: vec![report_entry], medium: prepared.medium, preview })
     }
 
     // Published communities
@@ -472,6 +494,23 @@ impl Store {
         let manifest = self.assets.read_json(&format!("models/published/{id}/manifest.json")).ok();
         self.published_manifests.insert(id.to_string(), manifest.clone());
         manifest
+    }
+
+    /// `publishedKnockoutIds()`: the reactions the open published
+    /// community's own member models close, its strains' knockouts, as its
+    /// manifest lists them (`knockouts`). They are the models' bounds, not
+    /// changes to them, so the Changes list leaves them out; the map draws them
+    /// in the knockout style.
+    pub fn published_knockout_ids(&self) -> Vec<String> {
+        let Some(id) = self.scenario_published() else { return Vec::new() };
+        let Some(Some(manifest)) = self.published_manifests.get(&id) else { return Vec::new() };
+        let Some(listed) = manifest.get("knockouts").and_then(Value::as_object) else { return Vec::new() };
+        listed
+            .iter()
+            .flat_map(|(species, ids)| {
+                ids.as_array().into_iter().flatten().filter_map(Value::as_str).map(move |rid| format!("{species}@{rid}"))
+            })
+            .collect()
     }
 
     /// `publishedMemberFileForRuntime(communityId, member)`: which file of a
@@ -616,18 +655,22 @@ impl Store {
             js::js_key_order(&mut medium);
             self.medium = medium;
         }
-        // The four-E. coli benchmark has genome-scale member models plus a
-        // curated central-metabolism map. Start from an empty drawing shell
-        // and populate only that readable overview; the active biological
-        // model remains full iAF1260.
+        // A community whose manifest names a curated map (the four E. coli
+        // strains, the Stolyar pair) starts from an empty drawing shell and
+        // draws that map; the active biological models stay the full member
+        // models. The four-E. coli benchmark without its map file falls back
+        // to the generated glycolysis overview.
         let curated = uses_curated_core_map(id);
         let joint_map = id == "steadycom-gut-nine";
+        let own_map = text_field(&manifest, "map").is_some_and(|m| !m.is_empty()) && !joint_map;
         self.rebuild(RebuildOptions {
             relayout: true,
-            contents: if curated || joint_map { Contents::None } else { Contents::All },
+            contents: if curated || joint_map || own_map { Contents::None } else { Contents::All },
             solve: !joint_map,
         })?;
-        if curated {
+        if own_map {
+            self.draw_published_preview(id)?;
+        } else if curated {
             self.show_core_metabolism_overview(false);
         }
         self.settle_opened_work();
@@ -658,10 +701,15 @@ impl Store {
             let parsed = parse_map_document(&drawing)?;
             self.apply_map_document(parsed)?;
             self.map_history.clear();
-            self.set_status_message(
-                StatusState::Ok,
-                "Full nine-species model loaded with its curated map. Calculate the permitted μ range to run SteadyCom.",
-            );
+            // A curated map is neither the overview nor the automatic full
+            // layout, so neither is laid out again over it, and switching a
+            // member off keeps it (see `keeps_drawing_on_species_toggle`).
+            self.map_mode = "published-case".into();
+            self.scenario_map_file = Some(format!("published/{id}/{map_file}"));
+            let members = manifest.as_ref().and_then(|m| m.get("members")).and_then(Value::as_array).map_or(0, Vec::len);
+            let next = if STEADYCOM_COMMUNITIES.contains(&id) { " Calculate the permitted μ range to run SteadyCom." } else { "" };
+            let note = self.map_load_note.clone();
+            self.set_status_message(StatusState::Ok, format!("Full {members}-member model loaded with its curated map.{note}{next}"));
             self.emit("map");
             return Ok(());
         }
@@ -779,19 +827,27 @@ impl Store {
         self.set_problem(Some(problem));
         self.apply_overrides();
 
+        // A scenario that ships a curated map draws it in place of the
+        // automatic layout, whenever the map is laid out afresh.
+        let curated = if (opts.relayout || self.map.is_none()) && opts.contents != Contents::None {
+            self.scenario_map_document(None)
+        } else {
+            None
+        };
         if opts.relayout || self.map.is_none() {
             let t = std::time::Instant::now();
             // The automatic layout still produces the geometry; the map adopts
             // it and owns it from here on, which is what makes it editable.
             let layout = layout_engine_options(&(&self.layout_settings).into());
             let community = self.community.as_ref().expect("built");
-            let map = if opts.contents == Contents::None || gut_nine {
+            let map = if opts.contents == Contents::None || curated.is_some() || gut_nine {
                 EditableMap::empty_from_community(community, &layout)
             } else {
                 EditableMap::from_community(community, &layout)
             };
             self.map = Some(map);
             self.map_history.clear();
+            self.scenario_map_file = None;
             self.status_mut().layout_ms = js::round(t.elapsed().as_secs_f64() * 1000.0);
         }
 
@@ -815,8 +871,51 @@ impl Store {
         if opts.relayout && gut_nine {
             self.draw_published_preview("steadycom-gut-nine")?;
         }
+        if let Some(curated) = curated {
+            if !self.draw_scenario_map(curated) {
+                let community = self.community.clone().expect("built");
+                self.map = Some(EditableMap::from_community(&community, &layout_engine_options(&(&self.layout_settings).into())));
+                self.map_history.clear();
+            }
+        }
         self.emit("rebuild");
         Ok(())
+    }
+
+    /// `scenarioMapDocument(scenario)`: the curated map a scenario ships
+    /// (`map`, a path under `models/`), parsed, or `None` when it names none
+    /// or the file is not there; then the automatic layout draws the
+    /// scenario, as it always has. `None` for `scenario` reads the open one.
+    pub fn scenario_map_document(&self, scenario: Option<&Value>) -> Option<CuratedMap> {
+        let scenario = scenario.or(self.scenario.as_ref())?;
+        let file = text_field(scenario, "map").filter(|f| !f.is_empty())?;
+        if scenario.get("published").is_some_and(js::truthy) {
+            return None;
+        }
+        let drawing = self.assets.read_json(&format!("models/{file}")).ok()?;
+        let parsed = parse_map_document(&drawing).ok()?;
+        Some(CuratedMap { file, parsed })
+    }
+
+    /// `drawScenarioMap(curated)`: make a scenario's curated map the drawing.
+    /// It is read the way a loaded map file is, so it is checked against the
+    /// active models; one that does not fit is reported and left out. The map
+    /// counts as unedited, so switching a species on or off keeps it (see
+    /// `keeps_drawing_on_species_toggle`). Returns whether it was drawn.
+    pub fn draw_scenario_map(&mut self, curated: CuratedMap) -> bool {
+        self.map_load_note = String::new();
+        if let Err(error) = self.apply_map_document(curated.parsed) {
+            let name = self.scenario_str("name").unwrap_or_else(|| "this scenario".into());
+            self.add_log(StatusState::Warn, &format!("The curated map {} does not fit {name}: {error}", curated.file), LogKind::Message);
+            return false;
+        }
+        self.map_history.clear();
+        if !self.map_load_note.is_empty() {
+            let note = format!("Curated map {}:{}", curated.file, self.map_load_note);
+            self.add_log(StatusState::Warn, &note, LogKind::Message);
+        }
+        self.scenario_map_file = Some(curated.file);
+        true
     }
 
     /// `mediumSpec()`: medium limits in the shape `CommunityModel` expects.

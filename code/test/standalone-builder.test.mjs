@@ -40,6 +40,11 @@ test('standalone packages complete SteadyCom inputs and an independent GLPK Work
       assert.equal(text[`${path}${manifest.bounds}`], await readFile(join(root, path, manifest.bounds), 'utf8'));
     }
     for (const entry of data['models/index.json'].models) assert.ok(data[`models/${entry.file}`]);
+    // A scenario's curated map ships whenever its file is there.
+    for (const scenario of data['models/scenarios.json'].scenarios.filter((s) => s.map)) {
+      const present = await readFile(join(root, 'models', scenario.map)).then(() => true, () => false);
+      assert.equal(Boolean(data[`models/${scenario.map}`]), present, scenario.map);
+    }
     const studyPath = 'models/published/zuniga-2020-phea-rescue/';
     const study = data[`${studyPath}manifest.json`];
     assert.equal(study.runtime, 'zuniga-mat');

@@ -232,6 +232,9 @@ pub struct Store {
     pub map_load_note: String,
     /// A map opened before its model was loaded: see `load_map_document`.
     pub waiting_map: Option<WaitingMap>,
+    /// The scenario's curated map file while it is the drawing: see
+    /// `draw_scenario_map`.
+    pub scenario_map_file: Option<String>,
     /// The analysis the Simulate panel started last.
     pub last_run: Option<LastRun>,
     pub(crate) next_run_serial: u64,
@@ -335,6 +338,7 @@ impl Store {
             reproducibility_replay: None,
             map_load_note: String::new(),
             waiting_map: None,
+            scenario_map_file: None,
             last_run: None,
             next_run_serial: 0,
             joint_projection_spec: None,

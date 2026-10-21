@@ -1149,6 +1149,32 @@ fn a_switched_off_species_is_drawn_dimmed_and_labelled() {
     assert!(render_map_svg(&m, &s).contains("· switched off"));
 }
 
+// label-sources
+
+#[test]
+fn cross_feeding_lines_and_the_picked_line_name_the_metabolite_once() {
+    let _turn = ROUTING.lock().unwrap_or_else(|e| e.into_inner());
+    let m = gut9();
+    let link = CrossFeedingLink { base: "ser-L".into(), from: Some("Bt".into()), to: Some("Lc".into()), flux: 0.5 };
+    let event = CrossFeedingEvent { from: "Bt".into(), to: "Lc".into(), base: "ser-L".into(), flux: 0.5, ..Default::default() };
+    let state = RenderState {
+        show_cross_feeding: true,
+        cross_feeding: Some(CrossFeeding { links: vec![link], per_metabolite: vec![] }),
+        cross_feeding_explorer: Some(CrossFeedingExplorerView {
+            enabled: true,
+            visible_events: vec![event.clone()],
+            selected_event: Some(event),
+            selected_at: None,
+        }),
+        ..RenderState::default()
+    };
+    let svg = render_map_svg(&m, &state);
+    let title = Regex::new(r"<title>([^<]*ser-L[^<]*)</title>").unwrap().captures(&svg).map(|c| c[1].to_string()).unwrap_or_default();
+    assert!(title.starts_with("L-Serine (ser-L) · Bt → Lc"), "{title}");
+    assert!(Regex::new(r"emc-crossfeed-tag[\s\S]*L-Serine \(ser-L\) · Bt → Lc").unwrap().is_match(&svg));
+    assert!(!svg.contains("Exchange for Serine"));
+}
+
 #[test]
 fn an_exported_map_does_not_keep_the_cross_feeding_event_picked_in_the_explorer() {
     let _turn = ROUTING.lock().unwrap_or_else(|e| e.into_inner());

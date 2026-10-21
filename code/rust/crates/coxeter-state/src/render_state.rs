@@ -67,6 +67,7 @@ impl Store {
         // disabled style, the others a badge.
         let changes = self.constraint_changes();
         let mut disabled: HashSet<String> = if zuniga { self.zuniga_knockouts().into_iter().collect() } else { HashSet::new() };
+        disabled.extend(self.published_knockout_ids());
         disabled.extend(changes.iter().filter(|c| c.knocked_out).map(|c| c.id.clone()));
         let modified: HashSet<String> = changes.iter().filter(|c| !c.knocked_out).map(|c| c.id.clone()).collect();
         RenderState {

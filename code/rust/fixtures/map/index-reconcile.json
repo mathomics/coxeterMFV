@@ -30,16 +30,6 @@
   "file": "large/map/reconcile-yeast-cytosol-mito-native.json"
  },
  {
-  "name": "merolae-stage16",
-  "kind": "upload",
-  "model": "large/map/model-merolae-stage16.json",
-  "speciesId": "sbml_model",
-  "modelKey": "upload:iCme_stage16_organelle_reconciled",
-  "input": "Documents/GitHub/Cyanidioschyzon_merolae/results/model_export_stage16/uploaded-models-coxeter-map_stage16.json",
-  "home": true,
-  "file": "large/map/reconcile-merolae-stage16.json"
- },
- {
   "name": "organelle-beside-cell",
   "kind": "scenario",
   "scenario": "solo-levadura",

@@ -26,6 +26,7 @@
 use coxeter_core::colors::normalize_hex_color;
 use coxeter_core::compartments::{Names, compartment_colors};
 use coxeter_core::js;
+use coxeter_core::label_sources::readable_name;
 use coxeter_core::mapdata::NodeKind;
 use coxeter_core::text_style::{DEFAULT_TEXT_FONT, TEXT_FONTS, TEXT_SIZE};
 use coxeter_io::provenance::annotation_links;
@@ -653,9 +654,20 @@ fn metabolite_inspector(ui: &mut Ui, store: &Store, p: &Palette, node_id: &str, 
     let removable = store.can_remove_map_node(node_id);
 
     let title = node.base.clone().or_else(|| metabolite.map(|m| m.id.clone())).unwrap_or_else(|| node.id.clone());
-    inspector_header(ui, p, "Metabolite", &title, metabolite.map_or("", |m| m.name.as_str()), acts);
+    // The heading gives one readable name; a model name that lists synonyms
+    // is shown whole below it.
+    let model_name = metabolite.map_or("", |m| m.name.as_str());
+    let name = if model_name.is_empty() {
+        String::new()
+    } else {
+        readable_name(model_name, &[metabolite.map_or("", |m| m.id.as_str()), node.base.as_deref().unwrap_or("")])
+    };
+    inspector_header(ui, p, "Metabolite", &title, &name, acts);
     property_code(ui, "Map ID", &node.id);
     property_code(ui, "Model ID", &metabolite.map_or_else(|| merged_id.clone(), |m| m.id.clone()));
+    if name != model_name {
+        property(ui, "Model name", model_name);
+    }
     property(ui, "Formula", metabolite.map_or_else(|| "—".to_string(), |m| m.formula.clone()));
     property(ui, "Shadow price", match shadow_price {
         Some(v) if v.is_finite() => format_flux(Some(v), 6),

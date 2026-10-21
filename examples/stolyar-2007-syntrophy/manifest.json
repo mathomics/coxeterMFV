@@ -29,5 +29,6 @@
       "previewReactions": 96,
       "wholeModel": true
     }
-  ]
+  ],
+  "map": "map.json"
 }

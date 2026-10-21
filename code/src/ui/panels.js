@@ -5,6 +5,7 @@
  */
 
 import { annotationLinks } from '../core/provenance.js';
+import { readableName } from '../core/label-sources.js';
 import {
   compartmentColors, cellCompartmentName, cellCompartmentVisualId,
 } from '../core/compartments.js';
@@ -1791,12 +1792,16 @@ function metaboliteInspector(store, nodeId) {
   const copies = store.metaboliteCopies?.(nodeId)
     ?? [...(store.map?.nodes?.values?.() ?? [])].filter((item) => item.mergedId === node.mergedId);
   const removable = Boolean(store.canRemoveMapNode?.(nodeId));
+  // The heading gives one readable name; a model name that lists synonyms is shown whole below it.
+  const modelName = metabolite?.name ?? '';
+  const name = modelName ? readableName(modelName, [metabolite?.id, node.base]) : '';
 
   return `<section class="inspector-detail">
-    ${inspectorHeader('Metabolite', node.base ?? metabolite?.id ?? node.id, metabolite?.name ?? '')}
+    ${inspectorHeader('Metabolite', node.base ?? metabolite?.id ?? node.id, name)}
     <dl class="property-list">
       ${propertyRow('Map ID', `<code>${esc(node.id)}</code>`)}
       ${propertyRow('Model ID', `<code>${esc(metabolite?.id ?? node.mergedId ?? '')}</code>`)}
+      ${name !== modelName ? propertyRow('Model name', esc(modelName)) : ''}
       ${propertyRow('Formula', esc(metabolite?.formula ?? '—'))}
       ${propertyRow('Shadow price', Number.isFinite(shadowPrice) ? formatFlux(shadowPrice, 6) : '—')}
       ${propertyRow('Charge', Number.isFinite(metabolite?.charge) ? esc(metabolite.charge) : '—')}
@@ -2311,16 +2316,22 @@ function reactionDrawingControls(store, rid) {
 
 // Cross-feeding
 
-/** Names of the exchanged metabolites, from the medium nodes of the map. */
+/** Names of the exchanged metabolites, from the medium nodes of the map: one readable name each. */
 function exchangeNames(store) {
   const names = new Map();
   for (const node of store.layout?.nodes?.values?.() ?? []) {
     if (node.kind !== 'medium') continue;
     const m = /^M@(.+)_s$/.exec(node.mergedId ?? '');
     const base = m ? m[1] : node.base;
-    if (base && node.name && !names.has(base)) names.set(base, node.name);
+    if (base && node.name && !names.has(base)) names.set(base, readableName(node.name, [base, node.localId]));
   }
   return names;
+}
+
+/** An exchanged metabolite as the cross-feeding panels name it: `Acetate (ac)`, or its id when it has no other name. */
+function crossFeedingLabel(names, base) {
+  const name = names.get(base);
+  return name && name !== base ? `${name} (${base})` : base;
 }
 
 /** How many exchanged metabolites the map shows: a number in the View menu. */
@@ -2373,11 +2384,10 @@ function crossFeedingMetabolitePicker(store) {
   const rows = all.map((m) => {
     const head = m.group !== group ? `<p class="crossfeed-group">${esc(m.group)}</p>` : '';
     group = m.group;
-    const name = names.get(m.base);
     return `${head}<label class="crossfeed-pick">
         <input type="checkbox" data-action="crossfeed-metabolite" data-base="${esc(m.base)}"${shown.has(m.base) ? ' checked' : ''}>
         ${crossFeedingSwatch(colors.get(m.base))}
-        <span class="grow">${esc(name && name !== m.base ? `${name} (${m.base})` : m.base)}</span>
+        <span class="grow">${esc(crossFeedingLabel(names, m.base))}</span>
         <small>${m.lines} line${m.lines === 1 ? '' : 's'} · ${formatFlux(m.flux, 3)}</small>
       </label>`;
   }).join('');
@@ -2400,8 +2410,7 @@ function crossFeedingLegend(store) {
   if (!colors.size) return '';
   const names = exchangeNames(store);
   const items = store.crossFeedingMetabolites().filter((m) => colors.has(m.base)).map((m) => {
-    const name = names.get(m.base);
-    const label = name && name !== m.base ? `${name} (${m.base})` : m.base;
+    const label = crossFeedingLabel(names, m.base);
     return `<div class="reaction-category-item">${crossFeedingSwatch(colors.get(m.base))}<span title="${esc(label)}">${esc(label)}</span><b>${m.lines}</b></div>`;
   }).join('');
   return `<div class="reaction-category-legend crossfeed-legend">
@@ -2418,7 +2427,8 @@ function crossFeedingCard(store) {
     return `<section class="card"><h2>Cross-Feeding Explorer</h2><p class="hint">${n} active producer→consumer event(s) detected in the current flux solution.</p><button class="grow" data-action="open-crossfeeding-explorer">Explore cross-feeding</button>${crossFeedingMetabolitePicker(store)}</section>`;
   }
   const option=(v,label,selected)=>`<option value="${esc(v)}"${v===selected?' selected':''}>${esc(label)}</option>`;
-  const mets=(idx?.metabolites??[]).map(v=>option(v,v,x.metabolite)).join('');
+  const names=exchangeNames(store);
+  const mets=(idx?.metabolites??[]).map(v=>option(v,crossFeedingLabel(names,v),x.metabolite)).join('');
   const species=(idx?.species??[]).map(v=>option(v,nameOf(v),x.producer)).join('');
   const selected=idx?.events.find(e=>e.id===x.selectedId);
   return `<section class="card crossfeed-explorer"><div class="row"><h2 class="grow">Cross-Feeding Explorer</h2><button data-action="close-crossfeeding-explorer">×</button></div>
@@ -2431,7 +2441,7 @@ function crossFeedingCard(store) {
       <label>Min flux <input type="number" min="0" step="0.001" data-action="crossfeeding-min-flux" value="${esc(x.minFlux)}"></label>
     </div>
     <div class="row"><button data-action="clear-crossfeeding-filters">Clear filters</button><span class="grow"></span><span class="hint">mmol·gDW community⁻¹·h⁻¹</span></div>
-    ${selected?`<div class="crossfeed-selected"><b>${esc(nameOf(selected.from))} → ${esc(selected.base)} → ${esc(nameOf(selected.to))}</b><small>Producer transfer: ${esc(selected.producerTransfer??'—')} · Consumer transfer: ${esc(selected.consumerTransfer??'—')}</small></div>`:''}
+    ${selected?`<div class="crossfeed-selected"><b>${esc(nameOf(selected.from))} → ${esc(crossFeedingLabel(names, selected.base))} → ${esc(nameOf(selected.to))}</b><small>Producer transfer: ${esc(selected.producerTransfer??'—')} · Consumer transfer: ${esc(selected.consumerTransfer??'—')}</small></div>`:''}
     <div class="crossfeed-events">${renderCrossFeedingEvents(store)}</div>
     ${crossFeedingMetabolitePicker(store)}
   </section>`;
@@ -2445,10 +2455,11 @@ export function renderCrossFeedingEvents(store) {
     const species = store.species.find((item) => item.id === id);
     return store.models.get(species?.file)?.cell.name ?? id;
   };
+  const names = exchangeNames(store);
   const rows = events.slice(0, 50).map((event) =>
     `<button class="crossfeed-event${event.id === explorer.selectedId ? ' is-selected' : ''}" data-action="select-crossfeeding-event" data-crossfeed-id="${esc(event.id)}">
       <span><b>${esc(nameOf(event.from))}</b> → <b>${esc(nameOf(event.to))}</b></span>
-      <span class="crossfeed-met">${esc(event.base)}</span><strong>${formatFlux(event.flux, 3)}</strong>
+      <span class="crossfeed-met">${esc(crossFeedingLabel(names, event.base))}</span><strong>${formatFlux(event.flux, 3)}</strong>
     </button>`
   ).join('');
   return (rows || '<p class="empty">No events match these filters.</p>')

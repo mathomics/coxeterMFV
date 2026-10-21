@@ -104,6 +104,11 @@ fn the_line_switches_are_kept_in_the_scenario_json() {
 #[test]
 fn on_a_real_map_gaps_are_drawn_without_adding_or_losing_a_line() {
     let mut store = init_store();
+    // The automatic layout, which the JS test draws (its Store reads no
+    // curated map): the scenario's curated map has no crossings to hop.
+    for scenario in store.scenarios.iter_mut().filter(|s| s["id"] == "solo-levadura") {
+        scenario.as_object_mut().unwrap().remove("map");
+    }
     store.use_scenario("solo-levadura").unwrap();
     let count = |svg: &str| svg.matches("<path class=\"emc-seg").count();
     let mut state = store.map_render_state(Default::default());

@@ -220,6 +220,11 @@ for (const id of publishedIds) {
   }
 }
 
+// The scenarios' curated maps (a scenario's `map`), or this build would fall
+// back to the automatic layout for every one of them.
+const mapNames = await readdir(join(root, 'models', 'maps')).catch(() => []);
+for (const name of mapNames.filter((n) => n.endsWith('.json')).sort()) dataFiles.push(`models/maps/${name}`);
+
 const data = {};
 for (const file of new Set(dataFiles)) data[file] = JSON.parse(await readFile(join(root, file), 'utf8'));
 const text = {};

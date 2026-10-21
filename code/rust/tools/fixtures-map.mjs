@@ -105,8 +105,6 @@ async function savedMaps() {
       if (f.includes('coxeter-map') && f.endsWith('.json')) out.push({ path: join(downloads, f), large: true });
     }
   }
-  const merolae = join(homedir(), 'Documents/GitHub/Cyanidioschyzon_merolae/results/model_export_stage16/uploaded-models-coxeter-map_stage16.json');
-  if (existsSync(merolae)) out.push({ path: merolae, large: true });
   return out;
 }
 
@@ -596,7 +594,6 @@ if (want('reconcile')) {
     // The native ids the map was drawn on: nothing is redrawn.
     { name: 'yeast-mito-native', model: join(home, 'Documents/GitHub/pc_model_porcine/other_models/yeast9/yeast-GEM.xml'), modelName: 'yeast9-native', map: mito },
     { name: 'yeast-cytosol-mito-native', model: join(home, 'Documents/GitHub/pc_model_porcine/other_models/yeast9/yeast-GEM.xml'), modelName: 'yeast9-native', map: join(home, 'Downloads/yeast-GEM-cytosol-mito-coxeter-map.json') },
-    { name: 'merolae-stage16', model: join(home, 'Documents/GitHub/Cyanidioschyzon_merolae/results/model_export_stage16/iCme_stage16_organelle_reconciled.json'), modelName: 'merolae-stage16', map: join(home, 'Documents/GitHub/Cyanidioschyzon_merolae/results/model_export_stage16/uploaded-models-coxeter-map_stage16.json') },
   ];
   const loaded = new Map();
   for (const c of userCases) {

@@ -8,7 +8,7 @@
 //! previews". That test also matches three lines of `store.js` with regular
 //! expressions; here the behaviour those lines guard is asserted on the
 //! Rust store instead (which file a member runs on, and that the curated
-//! overview, not the full models, is what is drawn).
+//! map, not the full models, is what is drawn).
 
 mod common;
 
@@ -38,11 +38,12 @@ fn the_four_e_coli_published_community_keeps_full_models_separate_from_map_previ
     for sp in &store.species {
         assert!(community.merged.reactions.contains_key(&format!("{}@ACALD", sp.id)), "{}: full model is missing ACALD", sp.id);
     }
-    // `contents: curatedCoreMap || jointMap ? 'none' : 'all'`: the E. coli
-    // preview remains a map concern when the full biological model is
-    // available.
+    // `contents: curatedCoreMap || jointMap || ownMap ? 'none' : 'all'`: the
+    // E. coli map remains a map concern when the full biological model is
+    // available; the community's manifest names its curated map.
     let map = store.map.as_ref().expect("a curated map");
-    assert_eq!(store.map_mode, "core-overview");
+    assert_eq!(store.map_mode, "published-case");
+    assert_eq!(store.map_load_note, "", "the curated map fits the full models");
     assert!(map.reaction_ids().len() < community.merged.reactions.len());
     assert!(!map.reaction_ids().iter().any(|r| r.ends_with("@ACALD")), "ACALD is in the model, not in the overview");
 }

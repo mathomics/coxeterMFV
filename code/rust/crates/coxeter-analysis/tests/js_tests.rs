@@ -1181,17 +1181,10 @@ fn a_blocked_community_states_what_is_missing_and_claims_nothing() {
     }
 }
 
-/// 'the six benchmark papers are all present'
+/// 'the four benchmark papers are all present'
 #[test]
-fn the_six_benchmark_papers_are_all_present() {
-    for id in [
-        "stolyar-2007-syntrophy",
-        "cfba-ecoli-ecotypes",
-        "optcom-cellulose-triculture",
-        "steadycom-ecoli-auxotrophs",
-        "steadycom-gut-nine",
-        "harcombe-2014-ecoli-salmonella",
-    ] {
+fn the_four_benchmark_papers_are_all_present() {
+    for id in ["stolyar-2007-syntrophy", "steadycom-ecoli-auxotrophs", "steadycom-gut-nine", "zuniga-2020-phea-rescue"] {
         assert!(find_community(id).is_some(), "{id} is not in the registry");
     }
 }

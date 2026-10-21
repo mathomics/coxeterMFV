@@ -255,6 +255,8 @@ export class Store {
     this.mapLoadNote = '';
     // A map opened before its model was loaded: see loadMapDocument().
     this.waitingMap = null;
+    // The scenario's curated map file while it is the drawing: see drawScenarioMap().
+    this.scenarioMapFile = null;
     this.listeners = new Set();
   }
 
@@ -382,7 +384,7 @@ export class Store {
     return this.useYeast9Scenario(scenario);
   }
 
-  /** Download the official yeast-GEM release, build it and draw the curated Yeast9 preview without solving. */
+  /** Download the official yeast-GEM release, build it and draw the scenario's curated map, or the representative preview, without solving. */
   async useYeast9Scenario(scenario) {
     this.resetZunigaStudy();
     this.solutionCleared = false;
@@ -446,22 +448,33 @@ export class Store {
     // Build the biological model and its 14-compartment shell, but do not solve
     // the 4,000-reaction LP automatically. The preview below is map-only.
     await this.rebuild({ relayout: true, contents: 'none', solve: false });
-    // The generic automatic canvas is sized for all 4,105 reactions. The
-    // curated scenario draws only a representative subset, so use a compact
-    // publication-like canvas where the 14 compartments remain legible.
-    this.map = EditableMap.emptyFromCommunity(this.community, {
-      width: 2100,
-      height: 1550,
-      ...layoutEngineOptions(this.layoutSettings),
-    });
-    this.mapHistory.clear();
-    const preview = this.populateYeast9Preview(entry.model, speciesId);
-
-    this.status = {
-      ...this.status,
-      state: 'ok',
-      message: `Loaded Yeast9 ${YEAST9_SOURCE.version}: ${entry.summary.reactions} reactions, ${entry.summary.metabolites} metabolites, ${entry.summary.compartments} compartments · ${preview.placed} representative reactions drawn across ${preview.coveredCompartments}/${YEAST9_PREVIEW_COMPARTMENTS.length} compartments. Run Analysis when you want FBA.`,
-    };
+    const loaded = `Loaded Yeast9 ${YEAST9_SOURCE.version}: ${entry.summary.reactions} reactions, ${entry.summary.metabolites} metabolites, ${entry.summary.compartments} compartments`;
+    // The scenario's curated map, when it ships one, replaces the preview.
+    const curated = await this.scenarioMapDocument(scenario);
+    let preview = null;
+    if (curated && this.drawScenarioMap(curated)) {
+      this.status = {
+        ...this.status,
+        state: 'ok',
+        message: `${loaded} · curated map of ${this.map.reactions.size} reactions.${this.mapLoadNote} Run Analysis when you want FBA.`,
+      };
+    } else {
+      // The generic automatic canvas is sized for all 4,105 reactions. The
+      // curated scenario draws only a representative subset, so use a compact
+      // publication-like canvas where the 14 compartments remain legible.
+      this.map = EditableMap.emptyFromCommunity(this.community, {
+        width: 2100,
+        height: 1550,
+        ...layoutEngineOptions(this.layoutSettings),
+      });
+      this.mapHistory.clear();
+      preview = this.populateYeast9Preview(entry.model, speciesId);
+      this.status = {
+        ...this.status,
+        state: 'ok',
+        message: `${loaded} · ${preview.placed} representative reactions drawn across ${preview.coveredCompartments}/${YEAST9_PREVIEW_COMPARTMENTS.length} compartments. Run Analysis when you want FBA.`,
+      };
+    }
     this.settleOpenedWork();
     this.drawWaitingMap();
     this.emit('rebuild');
@@ -1057,6 +1070,19 @@ export class Store {
     return manifest;
   }
 
+  /**
+   * The reactions the open published community's own member models close: its
+   * strains' knockouts, as its manifest lists them (`knockouts`). They are the
+   * models' bounds, not changes to them, so the Changes list leaves them out;
+   * the map draws them in the knockout style.
+   */
+  publishedKnockoutIds() {
+    const id = this.scenario?.published;
+    const listed = id ? this.publishedManifests.get(id)?.knockouts : null;
+    if (!listed) return [];
+    return Object.entries(listed).flatMap(([speciesId, ids]) => ids.map((rid) => `${speciesId}@${rid}`));
+  }
+
   /** Author models are fetched privately; the drawing never becomes the LP. */
   async useZunigaStudy({ study = null, scenarioId = 'mutant-coculture' } = {}) {
     this.invalidateSteadyCom();
@@ -1337,13 +1363,18 @@ export class Store {
       this.medium = Object.fromEntries([...joint.metadata.communityUptake].map(([mid, rid]) =>
         [joint.metadata.bases.get(mid), joint.reactions.get(rid).upperBound]).filter(([, value]) => value > 0));
     }
-    // The four-E. coli benchmark has genome-scale member models plus a curated
-    // central-metabolism map. Start from an empty drawing shell and populate only
-    // that readable overview; the active biological model remains full iAF1260.
+    // A community whose manifest names a curated map (the four E. coli
+    // strains, the Stolyar pair) starts from an empty drawing shell and draws
+    // that map; the active biological models stay the full member models. The
+    // four-E. coli benchmark without its map file falls back to the generated
+    // glycolysis overview.
     const curatedCoreMap = usesCuratedCoreMap(id);
     const jointMap = id === 'steadycom-gut-nine';
-    await this.rebuild({ relayout: true, contents: curatedCoreMap || jointMap ? 'none' : 'all', solve: !jointMap });
-    if (curatedCoreMap) {
+    const ownMap = Boolean(manifest.map) && !jointMap;
+    await this.rebuild({ relayout: true, contents: curatedCoreMap || jointMap || ownMap ? 'none' : 'all', solve: !jointMap });
+    if (ownMap) {
+      await this.drawPublishedPreview(id);
+    } else if (curatedCoreMap) {
       this.showCoreMetabolismOverview({ recordHistory: false });
     }
     this.settleOpenedWork();
@@ -1361,7 +1392,14 @@ export class Store {
       this.mapLoadNote = '';
       this.applyMapDocument(parseMapDocument(drawing));
       this.mapHistory.clear();
-      this.status = { ...this.status, state: 'ok', message: 'Full nine-species model loaded with its curated map. Calculate the permitted μ range to run SteadyCom.' };
+      // A curated map is neither the overview nor the automatic full layout,
+      // so neither is laid out again over it, and switching a member off keeps
+      // it (see keepsDrawingOnSpeciesToggle).
+      this.mapMode = 'published-case';
+      this.scenarioMapFile = `published/${id}/${manifest.map}`;
+      const members = manifest.members?.length ?? 0;
+      const next = STEADYCOM_COMMUNITIES.has(id) ? ' Calculate the permitted μ range to run SteadyCom.' : '';
+      this.status = { ...this.status, state: 'ok', message: `Full ${members}-member model loaded with its curated map.${this.mapLoadNote}${next}` };
       this.emit('map');
       return;
     }
@@ -1424,15 +1462,19 @@ export class Store {
     this.defaultBounds = this.problem.snapshotBounds();
     this.applyOverrides();
 
+    // A scenario that ships a curated map draws it in place of the automatic
+    // layout, whenever the map is laid out afresh.
+    const curated = (relayout || !this.map) && contents !== 'none' ? await this.scenarioMapDocument() : null;
     if (relayout || !this.map) {
       const t = performance.now();
       // The automatic layout still produces the geometry; the map adopts it and
       // owns it from here on, which is what makes it editable.
       const layoutOptions = layoutEngineOptions(this.layoutSettings);
-      this.map = contents === 'none' || this.scenario?.published === 'steadycom-gut-nine'
+      this.map = contents === 'none' || curated || this.scenario?.published === 'steadycom-gut-nine'
         ? EditableMap.emptyFromCommunity(this.community, layoutOptions)
         : EditableMap.fromCommunity(this.community, layoutOptions);
       this.mapHistory.clear();
+      this.scenarioMapFile = null;
       this.status.layoutMs = Math.round(performance.now() - t);
     }
 
@@ -1453,7 +1495,48 @@ export class Store {
       };
     }
     if (relayout && this.scenario?.published === 'steadycom-gut-nine') await this.drawPublishedPreview(this.scenario.published);
+    if (curated && !this.drawScenarioMap(curated)) {
+      this.map = EditableMap.fromCommunity(this.community, layoutEngineOptions(this.layoutSettings));
+      this.mapHistory.clear();
+    }
     this.emit('rebuild');
+  }
+
+  /**
+   * The curated map a scenario ships (`map`, a path under models/), parsed, or
+   * null when it names none or the file is not there; then the automatic
+   * layout draws the scenario, as it always has.
+   */
+  async scenarioMapDocument(scenario = this.scenario) {
+    if (!scenario?.map || scenario.published) return null;
+    try {
+      const parsed = parseMapDocument(await fetchJSON(`${this.base}/models/${scenario.map}`));
+      return { file: scenario.map, parsed };
+    } catch {
+      return null;
+    }
+  }
+
+  /**
+   * Make a scenario's curated map the drawing. It is read the way a loaded map
+   * file is, so it is checked against the active models; one that does not fit
+   * is reported and left out. The map counts as unedited, so switching a
+   * species on or off keeps it (see keepsDrawingOnSpeciesToggle).
+   *
+   * @returns {boolean} whether it was drawn
+   */
+  drawScenarioMap(curated) {
+    try {
+      this.mapLoadNote = '';
+      this.applyMapDocument(curated.parsed);
+    } catch (error) {
+      this.addLog('warn', `The curated map ${curated.file} does not fit ${this.scenario?.name ?? 'this scenario'}: ${error.message}`);
+      return false;
+    }
+    this.mapHistory.clear();
+    this.scenarioMapFile = curated.file;
+    if (this.mapLoadNote) this.addLog('warn', `Curated map ${curated.file}:${this.mapLoadNote}`);
+    return true;
   }
 
   /** Medium limits in the shape CommunityModel expects. */
@@ -2217,8 +2300,8 @@ export class Store {
    */
   keepsDrawingOnSpeciesToggle() {
     // Edits waiting in Redo are hand-made too: laying the map out again would
-    // clear the history and lose them.
-    const handMade = this.mapHistory.canUndo || this.mapHistory.canRedo;
+    // clear the history and lose them. So is a scenario's curated map.
+    const handMade = this.mapHistory.canUndo || this.mapHistory.canRedo || Boolean(this.scenarioMapFile);
     return Boolean(this.map) && (handMade || this.anySpeciesTooLargeToAutoDraw());
   }
 
@@ -5559,7 +5642,7 @@ export class Store {
    * Open a map that was drawn over the same model under another id.
    *
    * An uploaded model's species id is the model id its file declares, and that
-   * changes from one export of a model to the next (`iCme_stage15` one day,
+   * changes from one export of a model to the next (`iDemo_stage15` one day,
    * `sbml_model` the next). A map saved in between names every reaction by the
    * old one, so on its own it looks like "a different set of species". With
    * one species in the file and one in the session there is no doubt which is

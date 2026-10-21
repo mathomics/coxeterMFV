@@ -933,11 +933,9 @@ async function jsonCase(key, path) {
   });
   largeIndex.json.push({ key, input: path });
 }
-await jsonCase('merolae-stage16', join(home, 'Documents/GitHub/Cyanidioschyzon_merolae/results/model_export_stage16/iCme_stage16_organelle_reconciled.json'));
 await jsonCase('yeastgem-9.1.1', join(home, 'Downloads/yeastgem_v9.1.1-17.40.json'));
-// All three real models uploaded together, as one community.
+// Both real models uploaded together, as one community.
 const together = [
-  join(home, 'Documents/GitHub/Cyanidioschyzon_merolae/results/model_export_stage16/iCme_stage16_organelle_reconciled.json'),
   join(home, 'Documents/GitHub/pc_model_porcine/other_models/yeast9/yeast-GEM.xml'),
   join(home, 'Downloads/yeastgem_v9.1.1-17.40.json'),
 ];

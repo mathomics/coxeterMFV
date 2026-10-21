@@ -81,7 +81,7 @@ try {
     `backend ${result.backend}, estado ${result.status}`);
   check('la tarjeta única ofrece Scenario y Objective', result.mergedCard,
     result.mergedCard ? 'dos columnas' : 'no se encontró .sc-grid con ambas columnas');
-  check('trae las seis comunidades publicadas', result.publishedCount === 6,
+  check('trae las cuatro comunidades publicadas', result.publishedCount === 4,
     `${result.publishedCount}`);
   check('las publicadas encabezan la lista de comunidades', result.publishedFirst,
     result.optionGroups);

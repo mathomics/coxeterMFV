@@ -1389,7 +1389,7 @@ function nameCellCompartments(cells) {
 /**
  * Maps saved by earlier builds carry the species in front of every
  * hand-placed metabolite: `base` is the label, and it was read off the merged id,
- * so a node of the model `iCme` is named `iCme@g6p`. Mend them on the way in,
+ * so a node of the model `iDemo` is named `iDemo@g6p`. Mend them on the way in,
  * so an old file does not have to be edited by hand to be readable.
  */
 function stripSpeciesFromLabels(nodes) {

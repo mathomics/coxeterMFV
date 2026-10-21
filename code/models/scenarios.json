@@ -5,6 +5,7 @@
       "name": "Anaerobic consortium (4 species)",
       "description": "Glucose feeds the lactic acid bacterium; its fermentation products pass to E. coli, which releases H2 and CO2 that the methanogen turns into methane. The yeast competes for the glucose and ferments it to ethanol.",
       "objective": "equal-growth",
+      "map": "maps/consorcio-anaerobio.json",
       "species": [
         {
           "id": "lla",
@@ -42,6 +43,7 @@
       "name": "Aerobic co-culture (E. coli + yeast)",
       "description": "Two heterotrophs with limited oxygen compete for glucose. As O2 falls, acetate and ethanol appear: both switch to fermentation rather than give up growth.",
       "objective": "equal-growth",
+      "map": "maps/aerobio-mixto.json",
       "species": [
         {
           "id": "eco",
@@ -69,6 +71,7 @@
       "name": "Phototroph-heterotroph mutualism",
       "description": "The cyanobacterium fixes CO2 in the light and releases O2; the heterotrophs consume that O2 and give back CO2. The only oxygen in the system is the one the light produces.",
       "objective": "equal-growth",
+      "map": "maps/fototrofo-heterotrofo.json",
       "species": [
         {
           "id": "syn",
@@ -103,6 +106,7 @@
       "name": "Digester: E. coli + methanogen",
       "description": "A minimal syntrophic pair. E. coli ferments glucose to formate, which formate hydrogen lyase converts into H2 and CO2; the methanogen consumes both and releases methane.",
       "objective": "equal-growth",
+      "map": "maps/metanogenesis.json",
       "species": [
         {
           "id": "eco",
@@ -130,6 +134,7 @@
       "name": "All five species",
       "description": "Every organism in the catalogue in one medium, with light and no external oxygen: the only O2 available is what the cyanobacterium produces.",
       "objective": "equal-growth",
+      "map": "maps/todas.json",
       "species": [
         {
           "id": "lla",
@@ -174,6 +179,7 @@
       "name": "A single cell: E. coli",
       "description": "One organism on its own, to see the three boundaries of a Gram-negative bacterium clearly: outer membrane, periplasm and plasma membrane.",
       "objective": "sum-biomass",
+      "map": "maps/solo-ecoli.json",
       "species": [
         {
           "id": "eco",
@@ -196,6 +202,7 @@
       "name": "A single cell: yeast",
       "description": "A eukaryote with a mitochondrion: cytosol, intermembrane space and matrix, each with its own boundary and its own transporters.",
       "objective": "sum-biomass",
+      "map": "maps/solo-levadura.json",
       "species": [
         {
           "id": "sce",
@@ -216,9 +223,10 @@
     {
       "id": "yeast9-9-1-1",
       "name": "Yeast9 9.1.1 — S. cerevisiae genome-scale",
-      "description": "Official yeast-GEM 9.1.1 model of Saccharomyces cerevisiae. Coxeter loads the pinned upstream SBML, preserves all 14 compartments, and opens a curated representative map spanning glycolysis, cell wall, ER/Golgi, lipid particles, mitochondria, nucleus, peroxisome and vacuole.",
+      "description": "Official yeast-GEM 9.1.1 model of Saccharomyces cerevisiae. Coxeter loads the pinned upstream SBML, keeps all 14 compartments in the model, and opens a hand-drawn map of central carbon and energy metabolism across the cytoplasm, mitochondrion and peroxisome.",
       "loader": "yeast9",
       "objective": "sum-biomass",
+      "map": "maps/yeast9-9-1-1.json",
       "parsimonious": false,
       "fvaEnabled": false,
       "species": [
@@ -529,118 +537,6 @@
         "lpCount": 15,
         "seconds": 0.1,
         "at": "2026-10-04"
-      }
-    },
-    {
-      "id": "cfba-ecoli-ecotypes",
-      "name": "Two E. coli ecotypes (glucose and acetate specialists)",
-      "paper": {
-        "title": "Community flux balance analysis for microbial consortia at balanced growth",
-        "authors": "Khandelwal RA, Olivier BG, Röling WFM, Teusink B, Bruggeman FJ",
-        "year": 2013,
-        "journal": "PLoS ONE",
-        "citation": "PLoS ONE 8(5): e64567",
-        "doi": "10.1371/journal.pone.0064567",
-        "doiVerifiedFrom": "cobra-tutorials/analysis/steadyCom/tutorial_steadyCom.m, which cites it",
-        "framework": "cFBA"
-      },
-      "description": "cFBA asks what a consortium looks like at balanced growth, where every member grows at one common rate and the population composition is therefore fixed. The demonstration splits E. coli into two ecotypes that have specialised: one lives on glucose and secretes acetate, the other lives on the acetate. The composition is not assumed, it comes out of the optimisation.",
-      "species": [
-        {
-          "id": "glu",
-          "name": "Glucose specialist",
-          "organism": "Escherichia coli (ecotype)",
-          "role": "Takes up glucose, secretes acetate.",
-          "model": null,
-          "abundance": null
-        },
-        {
-          "id": "ace",
-          "name": "Acetate specialist",
-          "organism": "Escherichia coli (ecotype)",
-          "role": "Lives on the acetate its partner secretes.",
-          "model": null,
-          "abundance": null
-        }
-      ],
-      "conditions": null,
-      "exchanges": [
-        {
-          "metabolite": "ac",
-          "from": "glu",
-          "to": "ace",
-          "verified": false
-        }
-      ],
-      "reproduction": {
-        "status": "blocked",
-        "reproduces": [],
-        "adaptations": [],
-        "expected": null,
-        "needs": [
-          "The paper's supporting information, which defines the two ecotypes: which reactions each one keeps and the medium. Served from journals.plos.org, unreachable here.",
-          "Without that file the split is guesswork — \"a glucose specialist\" is a description, not a set of bounds, and there are many ways to build one."
-        ]
-      }
-    },
-    {
-      "id": "optcom-cellulose-triculture",
-      "name": "Cellulolytic tri-culture (OptCom)",
-      "paper": {
-        "title": "OptCom: a multi-level optimization framework for the metabolic modeling and analysis of microbial communities",
-        "authors": "Zomorrodi AR, Maranas CD",
-        "year": 2012,
-        "journal": "PLoS Computational Biology",
-        "citation": "PLoS Comput Biol 8(2): e1002363",
-        "doi": "10.1371/journal.pcbi.1002363",
-        "doiVerifiedFrom": null,
-        "framework": "OptCom"
-      },
-      "description": "OptCom gives each member its own objective and the community another, nesting the two so that individual fitness and community function are optimised together rather than one standing in for the other. The tri-culture degrades cellulose: a fermenter opens the polymer, and two respirers consume its products.",
-      "species": [
-        {
-          "id": "ccel",
-          "name": "C. cellulolyticum",
-          "organism": "Clostridium cellulolyticum",
-          "role": "Degrades cellulose and ferments it, releasing organic acids and H2.",
-          "model": null,
-          "abundance": null
-        },
-        {
-          "id": "dvh",
-          "name": "D. vulgaris",
-          "organism": "Desulfovibrio vulgaris",
-          "role": "Consumes fermentation products.",
-          "model": null,
-          "abundance": null
-        },
-        {
-          "id": "gsu",
-          "name": "G. sulfurreducens",
-          "organism": "Geobacter sulfurreducens",
-          "role": "Respires with an external electron acceptor.",
-          "model": {
-            "id": "iRM588",
-            "reference": "Mahadevan R et al. (2006) Appl Environ Microbiol 72(2):1558-1568. doi:10.1128/AEM.72.2.1558-1568.2006",
-            "file": "iRM588.xml",
-            "source": "opencobra/m_model_collection, sbml/iRM588.xml",
-            "note": "On disk. Whether this is the reconstruction OptCom used is not established here — the paper would have to say so."
-          },
-          "abundance": null
-        }
-      ],
-      "conditions": null,
-      "exchanges": [],
-      "reproduction": {
-        "status": "blocked",
-        "reproduces": [],
-        "adaptations": [],
-        "expected": null,
-        "needs": [
-          "The paper's supporting information: which reconstruction stands for each organism, the medium, and the per-member objectives. Served from journals.plos.org, unreachable.",
-          "Reconstructions for C. cellulolyticum and D. vulgaris. Neither is in the m_model_collection on disk. Note that iSR432 there is Clostridium thermocellum, a different organism, and iMB745 is Methanosarcina acetivorans — both were checked against model_key.md rather than guessed from the identifier.",
-          "OptCom itself: a bilevel program, which Coxeter does not implement. SteadyCom and OptCom answer different questions and one is not a substitute for the other."
-        ]
       }
     },
     {
@@ -1157,78 +1053,6 @@
         },
         "seconds": 8764,
         "at": "2026-10-04"
-      }
-    },
-    {
-      "id": "harcombe-2014-ecoli-salmonella",
-      "name": "E. coli + S. enterica (COMETS)",
-      "paper": {
-        "title": "Metabolic resource allocation in individual microbes determines ecosystem interactions and spatial dynamics",
-        "authors": "Harcombe WR, Riehl WJ, Dukovski I, Granger BR, Betts A, Lang AH, Bonilla G, Kar A, Leiby N, Mehta P, Marx CJ, Segrè D",
-        "year": 2014,
-        "journal": "Cell Reports",
-        "citation": "Cell Rep 7(4):1104-1115",
-        "doi": "10.1016/j.celrep.2014.03.070",
-        "doiVerifiedFrom": null,
-        "framework": "COMETS"
-      },
-      "description": "The paper that introduced COMETS, which runs FBA on a lattice over time so that colonies grow, metabolites diffuse and spatial structure emerges. Its core pair is an obligate mutualism: a methionine-auxotrophic E. coli ferments its sugar to acetate, S. enterica lives on that acetate and releases methionine the E. coli needs. A three-member variant adds Methylobacterium extorquens.",
-      "species": [
-        {
-          "id": "eco",
-          "name": "E. coli",
-          "organism": "Escherichia coli K-12 MG1655, methionine auxotroph",
-          "role": "Ferments sugar to acetate; needs methionine from its partner.",
-          "model": {
-            "id": "iJO1366",
-            "reference": "Orth JD et al. (2011) Mol Syst Biol 7:535. doi:10.1038/msb.2011.65",
-            "file": "iJO1366.xml",
-            "source": "opencobra/m_model_collection, sbml/iJO1366.xml",
-            "note": "On disk."
-          },
-          "abundance": null
-        },
-        {
-          "id": "sen",
-          "name": "S. enterica",
-          "organism": "Salmonella enterica serovar Typhimurium LT2",
-          "role": "Consumes acetate; releases methionine.",
-          "model": {
-            "id": "STM_v1_0",
-            "reference": "Thiele I et al. (2011) BMC Syst Biol 5:8. doi:10.1186/1752-0509-5-8",
-            "file": "STM_v1.0.xml",
-            "source": "opencobra/m_model_collection, sbml/STM_v1.0.xml",
-            "note": "On disk."
-          },
-          "abundance": null
-        }
-      ],
-      "conditions": null,
-      "exchanges": [
-        {
-          "metabolite": "ac",
-          "from": "eco",
-          "to": "sen",
-          "verified": false
-        },
-        {
-          "metabolite": "met-L",
-          "from": "sen",
-          "to": "eco",
-          "verified": false
-        }
-      ],
-      "reproduction": {
-        "status": "blocked",
-        "reproduces": [],
-        "adaptations": [],
-        "expected": null,
-        "needs": [
-          "Both reconstructions are on disk, so this one is blocked on the specification rather than the models — which is why it is not attempted. What is missing is the paper's supplementary: which reactions are knocked out to make the E. coli a methionine auxotroph and the S. enterica a methionine releaser, and what the medium supplies. Served from www.cell.com, unreachable here.",
-          "Guessing the knockouts would be exactly the invention this registry forbids. \"Methionine auxotroph\" names a phenotype; a reproduction needs the reaction ids.",
-          "A model of Methylobacterium extorquens AM1 for the three-member variant. Not in the m_model_collection on disk.",
-          "COMETS is dynamic and spatial: biomass grows over time across a lattice, with diffusion. Coxeter solves community steady state. Even with the constraints in hand the paper's spatial results are out of reach; what would be reproducible is the interaction structure and whether the mutualism is viable at all."
-        ]
       }
     },
     {

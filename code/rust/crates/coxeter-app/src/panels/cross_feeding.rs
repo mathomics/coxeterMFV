@@ -8,6 +8,7 @@
 //! `select-crossfeeding-event`, `crossfeed-*`).
 
 use coxeter_core::js;
+use coxeter_core::label_sources::readable_name;
 use coxeter_core::mapdata::NodeKind;
 use coxeter_render::crossfeed_colors::cross_feeding_colors;
 use coxeter_render::crossfeed_routes::CROSSFEED_WIDTH_RANGE;
@@ -36,7 +37,7 @@ fn name_of(store: &Store, id: &str) -> String {
 }
 
 /// `exchangeNames(store)`: the names the map gives the shared-medium
-/// metabolites, by base id.
+/// metabolites, by base id, one readable name each.
 pub fn exchange_names(store: &Store) -> IndexMap<String, String> {
     let mut names = IndexMap::new();
     let Some(map) = store.layout() else { return names };
@@ -51,10 +52,22 @@ pub fn exchange_names(store: &Store) -> IndexMap<String, String> {
             None => node.base.clone(),
         };
         if let (Some(base), Some(name)) = (base.filter(|b| !b.is_empty()), node.name.as_ref().filter(|n| !n.is_empty())) {
-            names.entry(base).or_insert_with(|| name.clone());
+            let local = node.local_id.clone().unwrap_or_default();
+            let readable = readable_name(name, &[&base, &local]);
+            names.entry(base).or_insert(readable);
         }
     }
     names
+}
+
+/// `crossFeedingLabel(names, base)`: an exchanged metabolite as the
+/// cross-feeding panels name it, `Acetate (ac)`, or its id when it has no
+/// other name.
+pub fn cross_feeding_label(names: &IndexMap<String, String>, base: &str) -> String {
+    match names.get(base) {
+        Some(name) if !name.is_empty() && name != base => format!("{name} ({base})"),
+        _ => base.to_string(),
+    }
 }
 
 /// `crossFeedingCard(store)`.
@@ -121,7 +134,11 @@ fn explorer(ui: &mut Ui, shell: &mut Shell, p: &Palette) {
     let with_all = |all: &str, values: Vec<(String, String)>| -> Vec<(String, String)> {
         std::iter::once((String::new(), all.to_string())).chain(values).collect()
     };
-    let metabolites = with_all("All metabolites", x.index.as_ref().map(|i| i.metabolites.iter().map(|m| (m.clone(), m.clone())).collect()).unwrap_or_default());
+    let names = exchange_names(&shell.store);
+    let metabolites = with_all(
+        "All metabolites",
+        x.index.as_ref().map(|i| i.metabolites.iter().map(|m| (m.clone(), cross_feeding_label(&names, m))).collect()).unwrap_or_default(),
+    );
     let producers = with_all("All producers", species.iter().map(|s| (s.clone(), name_of(&shell.store, s))).collect());
     let consumers = with_all("All consumers", species.iter().map(|s| (s.clone(), name_of(&shell.store, s))).collect());
     ui.add_space(8.0);
@@ -186,7 +203,12 @@ fn explorer(ui: &mut Ui, shell: &mut Shell, p: &Palette) {
         Frame::new().stroke(Stroke::new(1.0, p.accent)).corner_radius(CornerRadius::same(8)).inner_margin(Margin::same(8)).show(ui, |ui| {
             ui.set_width(ui.available_width());
             ui.spacing_mut().item_spacing.y = 3.0;
-            let title = format!("{} → {} → {}", name_of(&shell.store, &selected.from), selected.base, name_of(&shell.store, &selected.to));
+            let title = format!(
+                "{} → {} → {}",
+                name_of(&shell.store, &selected.from),
+                cross_feeding_label(&names, &selected.base),
+                name_of(&shell.store, &selected.to)
+            );
             ui.add(egui::Label::new(RichText::new(title).family(bold()).color(p.ink)).wrap());
             let small = format!(
                 "Producer transfer: {} · Consumer transfer: {}",
@@ -208,10 +230,12 @@ fn render_cross_feeding_events(ui: &mut Ui, shell: &mut Shell, p: &Palette) {
         widgets::empty(ui, "No events match these filters.");
     }
     let mut picked = None;
+    let names = exchange_names(&shell.store);
     ui.spacing_mut().item_spacing.y = 4.0;
     for event in events.iter().take(EVENT_LIMIT) {
         let from = name_of(&shell.store, &event.from);
         let to = name_of(&shell.store, &event.to);
+        let what = cross_feeding_label(&names, &event.base);
         let is_selected = selected_id.as_deref() == Some(event.id.as_str());
         let response = Frame::new()
             .fill(p.panel)
@@ -232,14 +256,14 @@ fn render_cross_feeding_events(ui: &mut Ui, shell: &mut Shell, p: &Palette) {
                             job.append(" → ", 0.0, plain);
                             job.append(&to, 0.0, strong);
                             ui.add(egui::Label::new(job).wrap());
-                            ui.label(RichText::new(&event.base).size(11.0).color(p.ink.gamma_multiply(0.72)));
+                            ui.label(RichText::new(&what).size(11.0).color(p.ink.gamma_multiply(0.72)));
                         });
                     });
                 });
             })
             .response;
         let response = ui.interact(response.rect, ui.id().with(("crossfeed-event", &event.id)), Sense::click());
-        let label = format!("{from} → {} → {to}", event.base);
+        let label = format!("{from} → {what} → {to}");
         response.widget_info(|| egui::WidgetInfo::labeled(egui::WidgetType::Button, true, &label));
         if response.hovered() {
             ui.painter().rect_stroke(response.rect, CornerRadius::same(7), Stroke::new(1.0, p.accent_line), egui::StrokeKind::Inside);
@@ -367,10 +391,7 @@ pub fn cross_feeding_legend(ui: &mut Ui, store: &Store) {
         });
     });
     for m in store.cross_feeding_metabolites().iter().filter(|m| colors.contains_key(&m.base)) {
-        let label = match names.get(&m.base) {
-            Some(name) if name != &m.base => format!("{name} ({})", m.base),
-            _ => m.base.clone(),
-        };
+        let label = cross_feeding_label(&names, &m.base);
         ui.horizontal(|ui| {
             ui.spacing_mut().item_spacing.x = 7.0;
             cross_feeding_swatch(ui, colors.get(&m.base).copied(), &p);
@@ -427,10 +448,7 @@ fn cross_feeding_metabolite_picker(ui: &mut Ui, shell: &mut Shell) {
             ui.label(RichText::new(m.group.to_uppercase()).size(11.0).family(bold()).color(p.ink.gamma_multiply(0.7)));
         }
         group = m.group;
-        let label = match names.get(&m.base) {
-            Some(name) if name != &m.base => format!("{name} ({})", m.base),
-            _ => m.base.clone(),
-        };
+        let label = cross_feeding_label(&names, &m.base);
         ui.horizontal(|ui| {
             // The whole row is the checkbox's <label>: the swatch sits between
             // the box and the name, and the name toggles it too.
