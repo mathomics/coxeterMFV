@@ -11,7 +11,7 @@
 import { Template } from './lib.mjs';
 
 const E = 120;
-const CW = 1300, CH = 1060;
+const CW = 1180, CH = 1000;
 const P = (x, y) => [E + x, E + y];
 
 export default function methanogen(model) {
@@ -52,9 +52,9 @@ export default function methanogen(model) {
   t.column({ edge: 'bottom', along: E + 810, chain: ['CO2t', 'EX_co2_e'], mets: ['co2_c', 'co2_e'] });
 
   // Biomass, and the ATP spent on upkeep beside it
-  t.rxn('BIOMASS_Mb_core', { at: at(330, 880), dir: [1, 0], fan: { r: 140, rp: 120 } });
-  t.rxn('ATPM', { at: at(330, 760), dir: [1, 0], cof: 'N' });
-  title('biomass', 'Biomass and maintenance', 'Acetyl-CoA and ATP into new cells; ATP for upkeep', 40, 1010);
+  t.rxn('BIOMASS_Mb_core', { at: at(330, 830), dir: [0, 1], stack: {} });
+  t.rxn('ATPM', { at: at(330, 700), dir: [1, 0], cof: 'N' });
+  title('biomass', 'Biomass and maintenance', 'Acetyl-CoA and ATP into new cells; ATP for upkeep', 40, 955);
 
   // Water, NH4+, phosphate and protons
   for (const [b, x, tr] of [['h2o', 200, 'H2Ot'], ['nh4', 340, 'NH4t'], ['pi', 480, 'PIt'], ['h', 620, 'Ht']]) {

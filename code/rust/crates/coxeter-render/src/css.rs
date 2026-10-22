@@ -1729,10 +1729,14 @@ mod tests {
     }
 
     fn tree() -> Element {
-        // A miniature of what render_map draws.
+        tree_of("emc-map")
+    }
+
+    /// A miniature of what render_map draws, its root of class `map_class`.
+    fn tree_of(map_class: &'static str) -> Element {
         let label = |cls: &str| Element::paired("text").with("class", format!("emc-label {cls}")).with("fill", "#1e293b").text("x");
         Element::paired("svg")
-            .with("class", "emc-map")
+            .with("class", map_class)
             .child(
                 Element::paired("g")
                     .with("class", "emc-layer emc-layer-text")
@@ -1803,7 +1807,17 @@ mod tests {
             }
         }
         let important = sheet.flat.iter().flat_map(|r| &r.declarations).filter(|d| d.important).count();
-        assert_eq!(important, 9);
+        assert_eq!(important, 10);
+    }
+
+    #[test]
+    fn a_quiet_map_draws_its_cofactors_lighter_with_smaller_names() {
+        let full = styles(&tree(), &ResolveOptions::default());
+        let light = styles(&tree_of("emc-map emc-quiet-cofactors"), &ResolveOptions::default());
+        assert_eq!(find(&full, "emc-label-currency").font_size(), 9.5);
+        assert_eq!(find(&light, "emc-label-currency").font_size(), 7.5);
+        assert!(find(&light, "emc-node-secondary").opacity() < find(&full, "emc-node-secondary").opacity());
+        assert_eq!(find(&light, "emc-label-met").font_size(), 12.5, "primary names keep their size");
     }
 
     #[test]

@@ -9,7 +9,7 @@
 import { Template } from './lib.mjs';
 
 const E = 120;
-const CW = 1400, CH = 1900;
+const CW = 1250, CH = 1900;
 const P = (x, y) => [E + x, E + y];
 
 export default function lactobacillus(model) {
@@ -92,14 +92,14 @@ export default function lactobacillus(model) {
   t.column({ edge: 'bottom', along: E + 800, chain: ['ETOHt', 'EX_etoh_e'], mets: ['etoh_c', 'etoh_e'] });
 
   // Biomass, and the ATP spent on upkeep beside it
-  t.rxn('BIOMASS_Lb_core', { at: at(1080, 1080), dir: [1, 0], fan: { r: 200, rp: 160 } });
-  title('biomass', 'Biomass and maintenance', 'Precursors into new cells; ATP for upkeep', 790, 840);
-  t.rxn('ATPM', { at: at(1080, 1280), dir: [1, 0], cof: 'S' });
+  t.rxn('BIOMASS_Lb_core', { at: at(1100, 930), dir: [0, 1], stack: {} });
+  title('biomass', 'Biomass and maintenance', 'Precursors into new cells; ATP for upkeep', 560, 900);
+  t.rxn('ATPM', { at: at(1100, 1170), dir: [1, 0], cof: 'S' });
 
   // CO2, NH4+, phosphate, water and protons
-  for (const [b, x, tr] of [['co2', 960, 'CO2t'], ['nh4', 1070, 'NH4t'], ['pi', 1180, 'PIt2r'], ['h2o', 1290, 'H2Ot']]) {
+  for (const [b, x, tr] of [['co2', 890, 'CO2t'], ['nh4', 980, 'NH4t'], ['pi', 1070, 'PIt2r'], ['h2o', 1160, 'H2Ot']]) {
     t.column({ edge: 'bottom', along: E + x, chain: [tr, `EX_${b}_e`], mets: [`${b}_c`, `${b}_e`] });
   }
-  t.column({ edge: 'top', along: E + 1240, chain: ['Ht', 'EX_h_e'], mets: ['h_c', 'h_e'] });
+  t.column({ edge: 'top', along: E + 1120, chain: ['Ht', 'EX_h_e'], mets: ['h_c', 'h_e'] });
   return t;
 }

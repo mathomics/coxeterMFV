@@ -25,10 +25,14 @@ export function isSecondaryNode(node) {
     && (node.kind === 'currency' || node.primary === false);
 }
 
-/** Position and align an unrotated label just outside the visible circle. */
-export function metaboliteLabelPosition(node) {
+/**
+ * Position and align an unrotated label just outside the visible circle.
+ * `secondaryRadius` is how large a secondary node is drawn (smaller on a map
+ * with quiet cofactors).
+ */
+export function metaboliteLabelPosition(node, { secondaryRadius = SIZES.currencyRadius } = {}) {
   const secondary = isSecondaryNode(node);
-  const radius = secondary ? SIZES.currencyRadius : SIZES.primaryRadius;
+  const radius = secondary ? secondaryRadius : SIZES.primaryRadius;
   const distance = radius + (secondary ? 3.5 : 5);
   const angle = metaboliteLabelAngle(node);
   // Snap near-zero components so cardinal directions land on exact coordinates,

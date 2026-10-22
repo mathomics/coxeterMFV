@@ -2,7 +2,7 @@
  * Synechocystis core with thylakoid (models/cyano_core_mc.json): all 61
  * reactions. Light comes in at the top onto the thylakoid membrane, where the
  * two photosystems, the respiratory complexes that share their plastoquinone
- * pool, and the ATP synthase stand facing the stroma, ATP maintenance beside
+ * pool, and the ATP synthase stand facing the stroma, ATP maintenance below
  * the synthase. Below it the Calvin-Benson-Bassham cycle is a ring, fed from
  * the left by the carbon-concentrating mechanism. The co-substrates of its
  * carbon shuffle are small nodes outside the ring beside the steps that use
@@ -11,12 +11,13 @@
  * returns to ribulose 5-phosphate. The oxidative pentose phosphate pathway
  * arcs over the ring from F6P back to Ru5P; lower glycolysis leaves the ring
  * at 3-PGA, and the incomplete TCA cycle (no 2-oxoglutarate dehydrogenase) is
- * drawn as its two open branches.
+ * drawn as its two open branches. Phosphate and water cross the right
+ * membranes, beside the nitrogen assimilation that NH4+ feeds from below.
  */
 import { Template, onCircle } from './lib.mjs';
 
 const BAND = 100;
-const CW = 1950, CH = 2100;
+const CW = 1750, CH = 2100;
 const O = 2 * BAND;
 const P = (x, y) => [O + x, O + y];
 
@@ -83,7 +84,7 @@ export default function cyano(model) {
   });
   t.arcRxn('GND', 'oppp', -125, -1, { cof: 'N' });
   t.rxn('PGI', { line: ['g6p_c', 'f6p_c'] });
-  title('oppp', 'Oxidative pentose phosphate pathway', 'NADPH in the dark', 1300, 640);
+  title('oppp', 'Oxidative pentose phosphate pathway', 'NADPH in the dark', 30, 560);
 
   // Carbon-concentrating mechanism, on the left of the ring
   met('co2_c', 300, 1140, 'N');
@@ -127,16 +128,16 @@ export default function cyano(model) {
   title('nitrogen', 'Nitrogen assimilation', 'NH4+ onto 2-oxoglutarate', 1380, 1560);
 
   // Biomass: precursors on one arc, what it gives back on the other
-  t.rxn('BIOMASS_Syn_core', { at: at(1700, 1180), dir: [1, 0], fan: { r: 220, rp: 170 } });
-  title('biomass', 'Biomass', 'Precursors into new cells', 1290, 950);
-  // ATP maintenance beside the thylakoid ATP synthase
-  t.rxn('ATPM', { at: at(1720, 200), dir: [0, 1], cof: 'E' });
+  t.rxn('BIOMASS_Syn_core', { at: at(1460, 1140), dir: [0, 1], stack: {} });
+  title('biomass', 'Biomass', 'Precursors into new cells', 1340, 1340);
+  // ATP maintenance under the thylakoid ATP synthase
+  t.rxn('ATPM', { at: at(1600, 520), dir: [0, 1], cof: 'W' });
 
   // Exchange of O2, NH4+, phosphate, water and protons
   t.column({ edge: 'top', along: O + 300, chain: ['O2tpp', 'O2tex', 'EX_o2_e'], mets: ['o2_c', 'o2_p', 'o2_e'] });
-  t.column({ edge: 'bottom', along: O + 1600, chain: ['NH4tpp', 'NH4tex', 'EX_nh4_e'], mets: ['nh4_c', 'nh4_p', 'nh4_e'] });
-  t.column({ edge: 'bottom', along: O + 1740, chain: ['PIt2rpp', 'PItex', 'EX_pi_e'], mets: ['pi_c', 'pi_p', 'pi_e'] });
-  t.column({ edge: 'bottom', along: O + 1880, chain: ['H2Otpp', 'H2Otex', 'EX_h2o_e'], mets: ['h2o_c', 'h2o_p', 'h2o_e'] });
+  t.column({ edge: 'bottom', along: O + 1580, chain: ['NH4tpp', 'NH4tex', 'EX_nh4_e'], mets: ['nh4_c', 'nh4_p', 'nh4_e'] });
+  t.column({ edge: 'right', along: O + 1640, chain: ['PIt2rpp', 'PItex', 'EX_pi_e'], mets: ['pi_c', 'pi_p', 'pi_e'] });
+  t.column({ edge: 'right', along: O + 1780, chain: ['H2Otpp', 'H2Otex', 'EX_h2o_e'], mets: ['h2o_c', 'h2o_p', 'h2o_e'] });
   t.column({ edge: 'top', along: O + 150, chain: ['Htex', 'EX_h_e'], mets: ['h_p', 'h_e'], depth: BAND / 2 });
   return t;
 }

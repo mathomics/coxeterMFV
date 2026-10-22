@@ -3,13 +3,20 @@
  * The curated maps of the seven teaching scenarios, models/maps/<scenario>.json.
  *
  * Each species has one cell template (tools/scenario-maps/teaching/*.mjs) that
- * draws every reaction of its core model; a scenario's map puts its species'
- * cells side by side in the shared medium. A cell's exchanges stand on its
- * outer boundary with a medium node of its own just outside, where the app's
- * cross-feeding lines start; the medium pools themselves, with their community
- * exchanges (supply and washout), stand in a row along the bottom. A scenario
- * with one species has no lines to draw, so its cell's medium nodes are the
- * pools and carry the community exchanges themselves.
+ * draws every reaction of its core model; a scenario's map sets its species'
+ * cells out in columns in the shared medium, the same distance apart
+ * everywhere, on a canvas no larger than what it holds. A cell's exchanges
+ * stand on its outer boundary with a medium node just outside, in the medium
+ * between the cells, where the app's cross-feeding lines start. One of those
+ * nodes per metabolite is the shared pool itself and carries the community
+ * exchange (supply and washout): the one with the most open medium in front of
+ * it, so the exchange points out of the community rather than at a
+ * neighbouring cell. The others are drawings of the same pool beside each
+ * other cell that trades it. A scenario with one species has no lines to
+ * draw, so every medium node of its cell is a pool.
+ *
+ * The maps draw their cofactors quiet (cofactorStyle 'quiet'), which View ▸
+ * Quiet cofactors switches off; stoichiometry is complete either way.
  *
  * Equations, bounds and names are read from the bundled models through the
  * app's own CommunityModel, built with each scenario's medium, so every map
@@ -21,10 +28,11 @@ import { readFile, writeFile, mkdir } from 'node:fs/promises';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { Model } from '../../src/core/model.js';
-import { CommunityModel, sharedMetabolite, communityExchange } from '../../src/core/community.js';
+import { CommunityModel, sharedMetabolite } from '../../src/core/community.js';
 import { EditableMap } from '../../src/map/editable-map.js';
 import { MAP_DOCUMENT_FORMAT, MAP_DOCUMENT_VERSION } from '../../src/map/map-document.js';
-import { instantiate, communityExchangeGeometry, PRIMARY_R } from './teaching/lib.mjs';
+import { routeGrid } from '../../src/render/crossfeed-routes.js';
+import { instantiate, communityExchangeGeometry } from './teaching/lib.mjs';
 import ecoli from './teaching/ecoli.mjs';
 import yeast from './teaching/yeast.mjs';
 import cyano from './teaching/cyano.mjs';
@@ -36,19 +44,26 @@ const TEMPLATES = {
   ecoli_core_mc: ecoli, yeast_core_mc: yeast, cyano_core_mc: cyano,
   methanogen_core_mc: methanogen, lactobacillus_core_mc: lactobacillus,
 };
-// Rows of cells, left to right, in the order the scenario's story runs.
+// Columns of cells, left to right, each listed top to bottom, in the order
+// the scenario's story runs.
 const ARRANGEMENT = {
-  'consorcio-anaerobio': [['sce', 'lla'], ['eco', 'mba']],
-  'aerobio-mixto': [['eco', 'sce']],
-  'fototrofo-heterotrofo': [['syn', 'eco', 'sce']],
-  metanogenesis: [['eco', 'mba']],
-  todas: [['lla', 'eco', 'mba'], ['syn', 'sce']],
+  'consorcio-anaerobio': [['lla', 'mba'], ['eco'], ['sce']],
+  'aerobio-mixto': [['eco'], ['sce']],
+  'fototrofo-heterotrofo': [['syn'], ['eco'], ['sce']],
+  metanogenesis: [['eco'], ['mba']],
+  todas: [['lla', 'mba'], ['eco', 'syn'], ['sce']],
   'solo-ecoli': [['eco']],
   'solo-levadura': [['sce']],
 };
-const GAP = 440;         // medium between two cells: room for the cross-feeding lines
-const MARGIN = 300;      // medium between the cells and the edge of the system
-const POOL_STEP = 150;   // spacing of the medium pools in their row
+// Medium between two cells: room for both cells' medium nodes and a corridor
+// for the cross-feeding lines. Their router works on squares of four grid
+// steps (routeGrid, which grows with the canvas) and blocks every square a
+// cell touches, so a gap of four squares always leaves one open.
+const GAP = 400;
+const CORRIDOR = 16;    // grid steps in the narrowest gap
+const PAD = 200;     // medium between the outermost drawing and the edge of the canvas
+const PLATE = 44;    // a cell's name plate stands this far above its boundary
+const FRAME = 26;    // the system boundary, inside the canvas edge
 
 const option = (name) => process.argv.slice(2).find((a) => a.startsWith(`--${name}=`))?.slice(name.length + 3) ?? null;
 
@@ -59,13 +74,114 @@ async function loadModel(file) {
   return models.get(file);
 }
 
+/**
+ * Where each cell's top left stands: columns side by side `gap` apart, the
+ * cells of a column `gap` apart, each column centred on the tallest. Within a
+ * column the cells line up on the side facing the next column, so two cells
+ * facing each other across a gap are `gap` apart.
+ */
+function arrange(columns, templates, gap) {
+  const widths = columns.map((col) => Math.max(...col.map((id) => templates.get(id).width)));
+  const heights = columns.map((col) => col.reduce((sum, id) => sum + templates.get(id).height, 0) + gap * (col.length - 1));
+  const tallest = Math.max(...heights);
+  const placed = new Map();
+  let x = 0;
+  columns.forEach((col, i) => {
+    let y = (tallest - heights[i]) / 2;
+    for (const id of col) {
+      const t = templates.get(id);
+      const free = widths[i] - t.width;
+      const align = columns.length === 1 ? 0.5 : i === 0 ? 1 : i === columns.length - 1 ? 0 : 0.5;
+      placed.set(id, { x: Math.round(x + free * align), y: Math.round(y) });
+      y += t.height + gap;
+    }
+    x += widths[i] + gap;
+  });
+  return placed;
+}
+
+/** How far the medium is open in front of a node: to the nearest other cell along its normal, or Infinity. */
+function openAhead(m, rects, own) {
+  let best = Infinity;
+  const [nx, ny] = m.normal;
+  for (const [id, r] of rects) {
+    if (id === own) continue;
+    const across = nx ? [r.y, r.y + r.h] : [r.x, r.x + r.w];
+    const at = nx ? m.at[1] : m.at[0];
+    if (at < across[0] - 40 || at > across[1] + 40) continue;
+    const d = nx > 0 ? r.x - m.at[0] : nx < 0 ? m.at[0] - (r.x + r.w)
+      : ny > 0 ? r.y - m.at[1] : m.at[1] - (r.y + r.h);
+    if (d > 0) best = Math.min(best, d);
+  }
+  return best;
+}
+
+/** Every cell of a scenario at its place, offset by (ox, oy), with the shared pools. */
+function draw(species, community, templates, placed, ox, oy) {
+  const single = species.length === 1;
+  const nodes = new Map();
+  const reactions = new Map();
+  const segments = [];
+  const texts = [];
+  const cells = [];
+  const medium = [];
+  const missing = [];
+  for (const sp of species) {
+    const { x, y } = placed.get(sp.id);
+    const out = instantiate(templates.get(sp.id), {
+      sp: sp.id, ox: x + ox, oy: y + oy, community, abundance: sp.abundance, mediumMode: single ? 'own' : 'copy',
+    });
+    cells.push(out.cell);
+    for (const [k, v] of out.nodes) { if (nodes.has(k)) throw new Error(`duplicate node ${k}`); nodes.set(k, v); }
+    for (const [k, v] of out.reactions) reactions.set(k, v);
+    segments.push(...out.segments);
+    texts.push(...out.texts);
+    missing.push(...out.missing.map((r) => `${sp.id}@${r}`));
+    medium.push(...out.medium.map((m) => ({ ...m, cellId: sp.id })));
+  }
+
+  // One node per metabolite becomes the pool, the others stay drawings of it.
+  const rects = new Map(cells.map((c) => [c.id, c.rect]));
+  const bases = [...new Set(medium.map((m) => m.base))];
+  const exchanges = [];
+  for (const base of bases) {
+    const list = medium.filter((m) => m.base === base);
+    const host = single ? list[0] : [...list].sort((a, b) => openAhead(b, rects, b.cellId) - openAhead(a, rects, a.cellId)
+      || a.cellId.localeCompare(b.cellId))[0];
+    const pool = `met:${sharedMetabolite(base)}`;
+    if (host.nodeId !== pool) {
+      const node = nodes.get(host.nodeId);
+      nodes.delete(host.nodeId);
+      const { reactionLocalFor, reactionLocal, ...rest } = node;
+      nodes.set(pool, { ...rest, id: pool });
+      for (const seg of segments) if (seg.nodeId === host.nodeId) seg.nodeId = pool;
+      host.nodeId = pool;
+    }
+    const geo = communityExchangeGeometry(community, base, nodes.get(pool), host.normal);
+    if (geo) { reactions.set(geo.reaction.id, geo.reaction); segments.push(...geo.segments); exchanges.push(geo.reaction.id); }
+  }
+  const mediumNodes = medium.map((m) => m.nodeId);
+  return { nodes, reactions, segments, texts, cells, mediumNodes, exchanges, missing };
+}
+
+/** The box round everything drawn: cells with their name plates, nodes, stubs and titles. */
+function extent({ cells, nodes, segments, texts }) {
+  const box = { x0: Infinity, y0: Infinity, x1: -Infinity, y1: -Infinity };
+  const add = (x, y) => { box.x0 = Math.min(box.x0, x); box.y0 = Math.min(box.y0, y); box.x1 = Math.max(box.x1, x); box.y1 = Math.max(box.y1, y); };
+  for (const c of cells) { add(c.rect.x, c.rect.y - PLATE); add(c.rect.x + c.rect.w, c.rect.y + c.rect.h); }
+  for (const n of nodes.values()) { add(n.x - 40, n.y - 30); add(n.x + 40, n.y + 30); }
+  for (const s of segments) if (s.kind === 'boundary') add(s.to.x, s.to.y);
+  for (const t of texts) { add(t.x, t.y - t.fontSize); add(t.x + t.text.length * t.fontSize * 0.55, t.y); }
+  return box;
+}
+
 /** The map document of one scenario. */
 export async function buildScenarioMap(scenario) {
-  const rows = ARRANGEMENT[scenario.id];
-  if (!rows) throw new Error(`No arrangement for ${scenario.id}`);
+  const columns = ARRANGEMENT[scenario.id];
+  if (!columns) throw new Error(`No arrangement for ${scenario.id}`);
   const species = [];
   for (const s of scenario.species) species.push({ id: s.id, file: s.model, model: await loadModel(s.model), abundance: s.abundance ?? 1 / scenario.species.length });
-  const listed = rows.flat().sort().join();
+  const listed = columns.flat().sort().join();
   if (listed !== species.map((s) => s.id).sort().join()) throw new Error(`${scenario.id}: arrangement ${listed} does not match its species`);
   // The medium the store builds the community with (Store#mediumSpec).
   const medium = Object.fromEntries(Object.entries(scenario.medium ?? {}).map(([b, v]) => [b, { lower: -Math.abs(Number(v) || 0), upper: 1000 }]));
@@ -73,87 +189,23 @@ export async function buildScenarioMap(scenario) {
     name: scenario.name, objective: scenario.objective, medium,
     species: species.map((s) => ({ id: s.id, model: s.model, abundance: s.abundance, enabled: true })),
   });
-  const single = species.length === 1;
   const templates = new Map(species.map((s) => [s.id, TEMPLATES[s.file](s.model)]));
 
-  // Cells in rows, each row centred, the cells of a row centred on its middle line
-  const rowSizes = rows.map((row) => ({
-    w: row.reduce((sum, id) => sum + templates.get(id).width, 0) + GAP * (row.length - 1),
-    h: Math.max(...row.map((id) => templates.get(id).height)),
-  }));
-  const width = Math.max(...rowSizes.map((r) => r.w)) + 2 * MARGIN;
-  let y = MARGIN;
-  const placed = [];
-  rows.forEach((row, i) => {
-    let x = (width - rowSizes[i].w) / 2;
-    for (const id of row) {
-      const tpl = templates.get(id);
-      placed.push({ id, x: Math.round(x), y: Math.round(y + (rowSizes[i].h - tpl.height) / 2) });
-      x += tpl.width + GAP;
-    }
-    y += rowSizes[i].h + GAP;
-  });
-  const cellsBottom = y - GAP;
-
-  const nodes = new Map();
-  const reactions = new Map();
-  const segments = [];
-  const texts = [];
-  const cells = [];
-  const mediumNodes = [];
-  const exchanges = [];
-  const missing = [];
-  for (const { id, x, y: cy } of placed) {
-    const sp = species.find((s) => s.id === id);
-    const out = instantiate(templates.get(id), {
-      sp: id, ox: x, oy: cy, community, abundance: sp.abundance, mediumMode: single ? 'own' : 'copy',
-    });
-    cells.push(out.cell);
-    for (const [k, v] of out.nodes) { if (nodes.has(k)) throw new Error(`duplicate node ${k}`); nodes.set(k, v); }
-    for (const [k, v] of out.reactions) reactions.set(k, v);
-    segments.push(...out.segments);
-    texts.push(...out.texts);
-    missing.push(...out.missing.map((r) => `${id}@${r}`));
-    for (const m of out.medium) {
-      mediumNodes.push(m.nodeId);
-      if (single) {
-        const geo = communityExchangeGeometry(community, m.base, nodes.get(m.nodeId), m.normal);
-        if (geo) { reactions.set(geo.reaction.id, geo.reaction); segments.push(...geo.segments); exchanges.push(geo.reaction.id); }
-      }
-    }
+  // Drawn once to find its extent, then again where that extent sits PAD in;
+  // the gap widens until it holds a corridor at the grid of the canvas it makes.
+  let gap = GAP, placed, box, width, height;
+  for (;;) {
+    placed = arrange(columns, templates, gap);
+    box = extent(draw(species, community, templates, placed, 0, 0));
+    width = Math.round(box.x1 - box.x0 + 2 * PAD);
+    height = Math.round(box.y1 - box.y0 + 2 * PAD);
+    const wanted = CORRIDOR * routeGrid({ width, height });
+    if (columns.flat().length === 1 || gap >= wanted) break;
+    gap = wanted;
   }
-
-  let height = cellsBottom + MARGIN;
-  if (!single) {
-    // The pools: what the medium supplies first, in the order the scenario lists it.
-    const bases = [...community.transfersByBase.keys()];
-    const supplied = Object.keys(scenario.medium ?? {}).filter((b) => bases.includes(b) && Number(scenario.medium[b]) > 0);
-    const order = [...supplied, ...bases.filter((b) => !supplied.includes(b)).sort()];
-    // Low enough that the cross-feeding lines, which keep to the middle of the
-    // medium below the cells, run above the pools rather than through them.
-    const poolY = cellsBottom + 520;
-    const x0 = (width - POOL_STEP * (order.length - 1)) / 2;
-    order.forEach((base, i) => {
-      const mid = sharedMetabolite(base);
-      const info = community.merged.metabolites.get(mid);
-      const id = `met:${mid}`;
-      const node = {
-        id, kind: 'medium', mergedId: mid, localId: base, base, name: info.name, formula: info.formula, compartment: 's',
-        cellId: null, x: Math.round(x0 + i * POOL_STEP), y: poolY, r: PRIMARY_R, primary: true, visualRole: 'primary',
-        labelAngle: -Math.PI / 2,
-      };
-      nodes.set(id, node);
-      mediumNodes.push(id);
-      const geo = communityExchangeGeometry(community, base, node, [0, 1]);
-      if (geo) { reactions.set(geo.reaction.id, geo.reaction); segments.push(...geo.segments); exchanges.push(geo.reaction.id); }
-    });
-    // The row's title stands at its left end, out of the lines' way.
-    const purpose = 'One pool per metabolite, supplied or washed out; every cell trades with these pools';
-    const tx = Math.round(x0 - 90 - purpose.length * 16 * 0.52);
-    texts.push({ id: 'pathway:medium', text: 'Shared medium', x: tx, y: poolY - 8, fontSize: 24 });
-    texts.push({ id: 'purpose:medium', text: purpose, x: tx, y: poolY + 18, fontSize: 16 });
-    height = poolY + 96 + 130;
-  }
+  const ox = Math.round(PAD - box.x0), oy = Math.round(PAD - box.y0);
+  const drawn = draw(species, community, templates, placed, ox, oy);
+  const { nodes, reactions, segments, texts, cells, mediumNodes, exchanges, missing } = drawn;
 
   // Everything the community has, and nothing it does not
   for (const id of reactions.keys()) if (!community.merged.reactions.has(id)) throw new Error(`${scenario.id}: ${id} is not in the model`);
@@ -164,9 +216,10 @@ export async function buildScenarioMap(scenario) {
 
   const map = new EditableMap({
     canvas: { width, height },
-    environment: { rect: { x: 26, y: 26, w: width - 52, h: height - 52 }, id: 's', label: 'Shared medium' },
+    environment: { rect: { x: FRAME, y: FRAME, w: width - 2 * FRAME, h: height - 2 * FRAME }, id: 's', label: 'Shared medium' },
     cells, medium: { nodes: mediumNodes, exchanges }, nodes, reactions, segments,
     texts: new Map(texts.map((t) => [t.id, t])),
+    cofactorStyle: 'quiet',
   });
   const json = map.toJSON();
   const doc = {
@@ -199,7 +252,7 @@ async function main() {
     await mkdir(dirname(out), { recursive: true });
     await writeFile(out, `${JSON.stringify(doc)}\n`);
     const m = doc.metadata;
-    console.log(`${id}: ${m.reactionCount} reactions, ${m.nodeCount} nodes, ${m.segmentCount} segments, ${m.textCount} texts${missing.length ? `; not drawn: ${missing.join(', ')}` : ''}`);
+    console.log(`${id}: ${doc.map.canvas.width}x${doc.map.canvas.height}, ${m.reactionCount} reactions, ${m.nodeCount} nodes, ${m.segmentCount} segments, ${m.textCount} texts${missing.length ? `; not drawn: ${missing.join(', ')}` : ''}`);
   }
 }
 if (process.argv[1] && fileURLToPath(import.meta.url) === resolve(process.argv[1])) await main();

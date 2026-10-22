@@ -319,6 +319,27 @@
   display: none;
 }
 
+/*
+ * Quiet cofactors: a map that sets cofactorStyle 'quiet' draws its secondary
+ * metabolites small and light, so its overview reads as pathways. The renderer
+ * shrinks the circles and thins their branches (QUIET_COFACTORS in
+ * mapview.js); these rules lighten them and set their names smaller.
+ */
+.emc-map.emc-quiet-cofactors .emc-node-secondary {
+  opacity: 0.5;
+  stroke-width: 1.1px !important;
+}
+.emc-map.emc-quiet-cofactors .emc-seg.is-cofactor { stroke-opacity: 0.5; }
+.emc-map.emc-quiet-cofactors .emc-arrow.is-cofactor { fill-opacity: 0.5; }
+.emc-map.emc-quiet-cofactors .emc-label-currency,
+.emc-map.emc-quiet-cofactors .emc-label-secondary {
+  font-size: calc(7.5px * var(--label-scale));
+  opacity: 0.55;
+}
+.emc-map.emc-dark.emc-quiet-cofactors .emc-node-secondary { opacity: 0.65; }
+.emc-map.emc-dark.emc-quiet-cofactors .emc-label-currency,
+.emc-map.emc-dark.emc-quiet-cofactors .emc-label-secondary { opacity: 0.7; }
+
 
 /* ------------------------------------------------ resizable drawing canvas */
 .emc-canvas-frame {

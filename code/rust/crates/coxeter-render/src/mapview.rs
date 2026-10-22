@@ -20,7 +20,7 @@ use coxeter_core::geometry::{
 use coxeter_core::js;
 use coxeter_core::label_sources::readable_name;
 use coxeter_core::mapdata::{MapCell, MapCompartment, MapGraph, MapReaction, MapText, Node, NodeKind, Point, Rect, Segment, SegmentKind};
-use coxeter_core::metabolite_label::{is_secondary_node, metabolite_label_position};
+use coxeter_core::metabolite_label::{Anchor, Baseline, LabelPosition, is_secondary_node, metabolite_label_angle};
 use coxeter_core::text_style::{DEFAULT_TEXT_FONT, text_box_of, text_font_stack};
 use serde_json::Value;
 
@@ -31,7 +31,7 @@ use crate::crossfeed_routes::{
 use crate::format::{esc, js_trim, n, utf16_len};
 use crate::reaction_colors::{PathwayRibbonMode, ReactionColorMode, is_missing_group};
 use crate::line_hops::{HopItem, MAX_LINE_HOPS, find_line_hops, hopped_path};
-use crate::reaction_path::{EndpointGeometry, endpoint_node_radius, reaction_endpoint_geometry};
+use crate::reaction_path::{EndpointGeometry, endpoint_node_radius_with, reaction_endpoint_geometry};
 use crate::state::{CrossFeedingEvent, GeometrySelection, LabelMode, MultiSelection, ReactionWidthMode, RenderState};
 use crate::svg::Element;
 use crate::theme::{CompartmentStyle, Scale, compartment_style, format_flux};
@@ -55,6 +55,10 @@ struct Ctx<'a> {
     s: &'a RenderState,
     scale: &'a dyn Scale,
     dark: bool,
+    /// Whether the map draws its cofactors quiet, and how large a secondary
+    /// circle is drawn then.
+    quiet: bool,
+    secondary_radius: f64,
     selected_reaction: Option<&'a str>,
     multi: Option<&'a MultiSelection>,
     min_hit_radius: f64,
@@ -146,11 +150,14 @@ pub fn render_map(map: &MapGraph, state: &RenderState) -> Element {
         selected_at: e.selected_at,
     });
     let dark = state.dark;
+    let quiet = is_quiet_cofactors(map);
     let cx = Ctx {
         map,
         s: state,
         scale: state.scale.as_ref(),
         dark,
+        quiet,
+        secondary_radius: if quiet { QUIET_COFACTORS.radius } else { SIZES.currency_radius },
         selected_reaction: if export { None } else { state.selected_reaction.as_deref() },
         multi: if export { None } else { state.multi_selection.as_ref() },
         min_hit_radius: if export { 0.0 } else { state.min_hit_radius },
@@ -166,7 +173,7 @@ pub fn render_map(map: &MapGraph, state: &RenderState) -> Element {
 
     let mut svg = Element::paired("svg")
         .with("xmlns", "http://www.w3.org/2000/svg")
-        .with("class", if dark { "emc-map emc-dark" } else { "emc-map" })
+        .with("class", format!("emc-map{}{}", if dark { " emc-dark" } else { "" }, if quiet { " emc-quiet-cofactors" } else { "" }))
         .with("viewBox", format!("0 0 {} {}", n(map.width()), n(map.height())))
         .with("width", n(map.width()))
         .with("height", n(map.height()))
@@ -1265,6 +1272,27 @@ fn active_cross_feeding_reaction_ids<'a>(cx: &'a Ctx) -> HashSet<&'a str> {
 
 const ESCHER_REACTION_STROKE_WIDTH: f64 = 7.5;
 
+/// How a quiet map draws its secondary metabolites (`QUIET_COFACTORS`).
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct QuietCofactors {
+    /// The radius of a secondary circle.
+    pub radius: f64,
+    /// The width of a branch to one, as a fraction of the reaction's.
+    pub branch_width: f64,
+}
+
+/// Quiet cofactors, the style a map asks for with `cofactorStyle: 'quiet'`:
+/// secondary metabolites drawn smaller and their branches thinner, so that the
+/// overview reads as pathways rather than grain. Their lighter colour and
+/// smaller labels come from map.css (`.emc-quiet-cofactors`).
+pub const QUIET_COFACTORS: QuietCofactors = QuietCofactors { radius: 4.5, branch_width: 0.5 };
+
+/// `isQuietCofactors(layout)`: whether the map draws its secondary metabolites
+/// quiet. The shared graph keeps the style among its extra fields.
+pub fn is_quiet_cofactors(map: &MapGraph) -> bool {
+    map.extra.get("cofactorStyle").and_then(serde_json::Value::as_str) == Some("quiet")
+}
+
 // A reaction that carries no flux in the solution, drawn the way a
 // switched-off reaction is in a topology figure: grey and dashed, so what the
 // solution uses stands out from what it does not.
@@ -1317,10 +1345,11 @@ fn render_segments(cx: &Ctx, cross_feeding_reactions: &HashSet<&str>) -> Element
         let disabled = cx.disabled(rid);
         let inactive = cx.inactive(rxn.cell_id.as_deref());
         let solved = if disabled || inactive { 0.0 } else { cx.solved(rid) };
+        let cofactor = cx.quiet && (seg.kind == SegmentKind::Currency || target.is_some_and(is_secondary_node));
         let width = match s.reaction_width_mode {
             ReactionWidthMode::Flux => cx.scale.width(v),
             ReactionWidthMode::Constant => ESCHER_REACTION_STROKE_WIDTH,
-        };
+        } * if cofactor { QUIET_COFACTORS.branch_width } else { 1.0 };
         let off = cx.is_off(rid, inactive);
         let color = if disabled {
             "#db2777".to_string()
@@ -1348,6 +1377,7 @@ fn render_segments(cx: &Ctx, cross_feeding_reactions: &HashSet<&str>) -> Element
             (inactive, " is-inactive-species"),
             (active, " is-active"),
             (is_cross_feed, " is-crossfeeding"),
+            (cofactor, " is-cofactor"),
             (is_sel, " is-selected"),
             (is_multi, " is-multi-selected"),
         ] {
@@ -1366,6 +1396,7 @@ fn render_segments(cx: &Ctx, cross_feeding_reactions: &HashSet<&str>) -> Element
             target,
             !disabled && !inactive && want_arrow && (active || seg.kind == SegmentKind::Boundary),
             width,
+            cx.secondary_radius,
         );
         let node_attr = seg.node_id.as_deref().filter(|id| !id.is_empty());
         if !geometry.d.is_empty() {
@@ -1398,7 +1429,7 @@ fn render_segments(cx: &Ctx, cross_feeding_reactions: &HashSet<&str>) -> Element
         if let Some(arrow) = geometry.arrow {
             let points = arrow.points.iter().map(|p| format!("{},{}", n(p.x), n(p.y))).collect::<Vec<_>>().join(" ");
             let mut polygon = Element::new("polygon")
-                .with("class", "emc-arrow")
+                .with("class", if cofactor { "emc-arrow is-cofactor" } else { "emc-arrow" })
                 .with("points", points)
                 .with("fill", color)
                 .with("opacity", n(cross_feed_opacity))
@@ -1438,8 +1469,15 @@ fn render_segments(cx: &Ctx, cross_feeding_reactions: &HashSet<&str>) -> Element
     out
 }
 
-fn segment_geometry(seg: &Segment, rxn: &MapReaction, node: Option<&Node>, arrow: bool, width: f64) -> EndpointGeometry {
-    let radius = node.map(endpoint_node_radius);
+fn segment_geometry(
+    seg: &Segment,
+    rxn: &MapReaction,
+    node: Option<&Node>,
+    arrow: bool,
+    width: f64,
+    secondary_radius: f64,
+) -> EndpointGeometry {
+    let radius = node.map(|node| endpoint_node_radius_with(node, secondary_radius));
     if node.is_some()
         && !matches!(seg.kind, SegmentKind::Boundary | SegmentKind::TransportLane | SegmentKind::Axis)
     {
@@ -2013,7 +2051,7 @@ fn render_nodes(cx: &Ctx) -> Element {
             .with("cx", n(node.x))
             .with("cy", n(node.y));
         let circle = if metabolite_like {
-            let radius = if secondary { SIZES.currency_radius } else { SIZES.primary_radius };
+            let radius = if secondary { cx.secondary_radius } else { SIZES.primary_radius };
             let mut circle = circle
                 .with("r", n(radius))
                 .with("fill", node.own_fill().map_or_else(|| orange.clone(), str::to_string))
@@ -2298,12 +2336,13 @@ fn render_text(cx: &Ctx) -> Element {
                 continue;
             }
             let text = s.metabolite_labels.get(&node.id).cloned();
+            let radius = cx.secondary_radius;
             if node.kind == NodeKind::Currency {
-                out.push(metabolite_label(node, &format!("emc-label-currency{ghost_class}"), halo, cx.dark, text));
+                out.push(metabolite_label(node, &format!("emc-label-currency{ghost_class}"), halo, cx.dark, text, radius));
             } else {
                 let role = if node.primary == Some(false) { " emc-label-secondary" } else { " emc-label-primary" };
                 let kind = if node.kind == NodeKind::Medium { "emc-label-medium" } else { "emc-label-met" };
-                out.push(metabolite_label(node, &format!("{kind}{role}{ghost_class}"), halo, cx.dark, text));
+                out.push(metabolite_label(node, &format!("{kind}{role}{ghost_class}"), halo, cx.dark, text, radius));
             }
         }
     }
@@ -2427,13 +2466,20 @@ fn emptier_side(nodes: &[&Node], rxn: &MapReaction) -> f64 {
     if below < above { 1.0 } else { -1.0 }
 }
 
-fn metabolite_label(node: &Node, cls: &str, halo: &'static str, dark: bool, text: Option<String>) -> Element {
+fn metabolite_label(
+    node: &Node,
+    cls: &str,
+    halo: &'static str,
+    dark: bool,
+    text: Option<String>,
+    secondary_radius: f64,
+) -> Element {
     let text = text.unwrap_or_else(|| str_opt(&node.base).to_string());
     if !node.is_metabolite_kind() {
         let gap = if node.primary == Some(false) { 3.5 } else { 5.0 };
         return label(node.x, node.y - node.r - gap, str_opt(&node.base).to_string(), cls, halo, dark, None, "middle");
     }
-    let p = metabolite_label_position(node);
+    let p = metabolite_label_position(node, secondary_radius);
     let mut el = label(p.x, p.y, text, &format!("{cls} emc-label-draggable"), halo, dark, None, p.anchor.as_str());
     el.attr("data-metabolite-label", node.id.clone());
     el.attr("dominant-baseline", p.baseline.as_str());
@@ -2441,6 +2487,40 @@ fn metabolite_label(node: &Node, cls: &str, halo: &'static str, dark: bool, text
         el.attr("opacity", "0.28");
     }
     el
+}
+
+/// `metaboliteLabelPosition(node, { secondaryRadius })`: an unrotated label
+/// just outside the drawn circle. The core's version knows only the full-size
+/// secondary circle; a quiet map draws a smaller one.
+pub fn metabolite_label_position(node: &Node, secondary_radius: f64) -> LabelPosition {
+    let secondary = is_secondary_node(node);
+    let radius = if secondary { secondary_radius } else { SIZES.primary_radius };
+    let distance = radius + if secondary { 3.5 } else { 5.0 };
+    let angle = metabolite_label_angle(node.label_angle);
+    // Near-zero cosines and sines are snapped to 0, so a cardinal direction
+    // lands exactly on the default coordinates.
+    let raw_cos = js::cos(angle);
+    let raw_sin = js::sin(angle);
+    let cos = if raw_cos.abs() < 1e-12 { 0.0 } else { raw_cos };
+    let sin = if raw_sin.abs() < 1e-12 { 0.0 } else { raw_sin };
+    LabelPosition {
+        x: node.x + distance * cos,
+        y: node.y + distance * sin,
+        anchor: if cos > 0.3 {
+            Anchor::Start
+        } else if cos < -0.3 {
+            Anchor::End
+        } else {
+            Anchor::Middle
+        },
+        baseline: if sin < -0.3 {
+            Baseline::Auto
+        } else if sin > 0.3 {
+            Baseline::Hanging
+        } else {
+            Baseline::Middle
+        },
+    }
 }
 
 #[allow(clippy::too_many_arguments)]

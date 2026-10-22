@@ -121,6 +121,9 @@ pub struct Store {
     /// `runSteadyComTask`, replaceable as the JS tests replace it.
     pub steady_com_runner: Arc<dyn SteadyComRunner>,
     pub(crate) next_state_serial: u64,
+    /// `_caseView`: `showCrossFeeding` before a SteadyCom community that
+    /// opened solved switched its lines on, given back when it is left.
+    pub(crate) case_view: Option<bool>,
 
     /// The Zuñiga published case.
     pub zuniga: ZunigaStudyState,
@@ -268,6 +271,7 @@ impl Store {
             steady_com_config: SteadyComConfig::default(),
             steady_com_runner: Arc::new(SolverSteadyComRunner),
             next_state_serial: 0,
+            case_view: None,
             zuniga: ZunigaStudyState::default(),
             zuniga_loader: Arc::new(SourceZunigaLoader::default()),
             models: ModelCatalog::default(),

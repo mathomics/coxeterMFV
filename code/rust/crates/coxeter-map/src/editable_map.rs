@@ -58,6 +58,18 @@ use crate::util::blank_node;
 /// `(from, to)`.
 pub type SegLinks = (Option<AxisEnd>, Option<AxisEnd>);
 
+/// The map field that says how secondary metabolites are drawn.
+pub const COFACTOR_STYLE: &str = "cofactorStyle";
+
+/// `normalizeCofactorStyle`: the secondary-metabolite styles a map can carry;
+/// anything else is the default.
+fn normalize_cofactor_style(style: Option<&Value>) -> Option<&'static str> {
+    match style.and_then(Value::as_str) {
+        Some("quiet") => Some("quiet"),
+        _ => None,
+    }
+}
+
 /// One end of a segment.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum SegEnd {
@@ -353,7 +365,13 @@ impl EditableMap {
     pub fn from_data(data: MapData) -> EditableMap {
         let mut g = MapGraph::from_data(data);
         // Only the fields the map knows are carried; JavaScript drops the rest.
+        // The one it knows that the shared graph has no field for is the
+        // cofactor style, kept among the extra fields.
+        let style = normalize_cofactor_style(g.extra.get(COFACTOR_STYLE));
         g.extra = Map::new();
+        if let Some(style) = style {
+            g.extra.insert(COFACTOR_STYLE.into(), Value::from(style));
+        }
         g.version = Value::from(1);
         EditableMap::from_graph(g, None)
     }
@@ -364,6 +382,9 @@ impl EditableMap {
     pub fn to_json(&self) -> Value {
         let mut data = self.g.to_data();
         data.extra = Map::new();
+        if let Some(style) = self.cofactor_style() {
+            data.extra.insert(COFACTOR_STYLE.into(), Value::from(style));
+        }
         let mut v = serde_json::to_value(&data).expect("map data always serialises");
         if let Value::Object(m) = &mut v {
             if self.g.label_settings.is_none() {
@@ -436,6 +457,12 @@ impl EditableMap {
     /// Which label source each kind of object shows, map-wide.
     pub fn label_settings(&self) -> Option<&IndexMap<String, String>> {
         self.g.label_settings.as_ref()
+    }
+    /// `cofactorStyle`: how the secondary metabolites are drawn, `quiet`
+    /// (smaller and lighter, so the pathways read first) or `None` for the
+    /// full size every map has by default.
+    pub fn cofactor_style(&self) -> Option<&'static str> {
+        normalize_cofactor_style(self.g.extra.get(COFACTOR_STYLE))
     }
 
     /// Change the graph directly, for what no method covers (a field of a
@@ -1245,6 +1272,17 @@ impl EditableMap {
         apply_map_color(&mut comp.fill, fill);
         apply_map_color(&mut comp.stroke, stroke);
         Some(comp)
+    }
+
+    /// `setCofactorStyle(style)`: `quiet`, or `None` for full size. Returns
+    /// the style kept (anything unknown is the default).
+    pub fn set_cofactor_style(&mut self, style: Option<&str>) -> Option<&'static str> {
+        let kept = normalize_cofactor_style(style.map(Value::from).as_ref());
+        match kept {
+            Some(style) => self.g.extra.insert(COFACTOR_STYLE.into(), Value::from(style)),
+            None => self.g.extra.remove(COFACTOR_STYLE),
+        };
+        kept
     }
 
     /// `setNodeStyle({ fill, stroke })`: the colours every metabolite circle

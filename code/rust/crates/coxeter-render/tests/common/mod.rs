@@ -32,11 +32,11 @@ use serde_json::Value;
 //   checks it);
 // - a reaction line writes `d` last, once its crossings are known: it is put
 //   back straight after `class`;
-// - map.css has the cursor rules of those handles and the grey label of a
-//   reaction without flux (NEW_RULES).
+// - map.css has the cursor rules of those handles, the grey label of a
+//   reaction without flux and the quiet cofactors (NEW_RULES).
 
-/// Rules of map.css added by d7b2c0e and 7b5aaa0, and the ring a reactions
-/// table puts on the map under its hovered row.
+/// Rules of map.css added by d7b2c0e and 7b5aaa0, the ring a reactions table
+/// puts on the map under its hovered row, and the quiet cofactors.
 pub const NEW_RULES: &[&str] = &[
     ".emc-geometry-n, .emc-geometry-s",
     ".emc-geometry-e, .emc-geometry-w",
@@ -45,6 +45,7 @@ pub const NEW_RULES: &[&str] = &[
     ".emc-label-rxn.is-off",
     "emc-table-hover",
     ".is-table-hover",
+    ".emc-quiet-cofactors",
 ];
 
 /// Whether a written rule is one the references do not know yet.

@@ -17,8 +17,8 @@
 import { Template, arcHandles } from './lib.mjs';
 
 const E = 120;                    // the cell's outer band
-const CW = 2400, CH = 2780;       // the cytosol
-const IM = { x: 40, y: 1780, w: 2260, h: 920 };   // intermembrane space, around the matrix
+const CW = 1900, CH = 2780;       // the cytosol
+const IM = { x: 40, y: 1780, w: 1820, h: 920 };   // intermembrane space, around the matrix
 const GAP = 55;                   // width of the intermembrane space
 const P = (x, y) => [E + x, E + y];
 
@@ -146,17 +146,17 @@ export default function yeast(model) {
   t.rxn('GLUDy', { line: ['glu__L_c', 'akg_c'], cof: 'E', sec: ['nh4_c'] });
   t.rxn('GLNS', { line: ['glu__L_c', 'gln__L_c'], cof: 'N', sec: ['nh4_c'] });
   t.column({ edge: 'right', along: E + 1490, chain: ['NH4t', 'EX_nh4_e'], mets: ['nh4_c', 'nh4_e'] });
-  title('nitrogen', 'Nitrogen assimilation', 'NH4+ onto 2-oxoglutarate', 1640, 1330);
+  title('nitrogen', 'Nitrogen assimilation', 'NH4+ onto 2-oxoglutarate', 1480, 1330);
 
   // Biomass: precursors on one arc, what it gives back on the other
-  t.rxn('BIOMASS_Sc_core', { at: at(1980, 1000), dir: [1, 0], fan: { r: 220, rp: 170 } });
-  title('biomass', 'Biomass', 'Precursors into new cells', 1450, 1000);
+  t.rxn('BIOMASS_Sc_core', { at: at(1690, 860), dir: [0, 1], stack: {} });
+  title('biomass', 'Biomass', 'Precursors into new cells', 1570, 1040);
 
   // The plasma membrane H+ pump, and ATP maintenance beside it
-  t.column({ edge: 'top', along: E + 1750, chain: ['PMA1', 'EX_h_e'], mets: ['h_e'], depth: E / 2 });
+  t.column({ edge: 'top', along: E + 1500, chain: ['PMA1', 'EX_h_e'], mets: ['h_e'], depth: E / 2 });
   t.reactions.get('PMA1').cof = 'W';
-  t.rxn('ATPM', { at: at(1900, 190), dir: [0, 1], cof: 'W' });
-  title('energy', 'H+ pump and maintenance', 'ATP spent on the gradient and upkeep', 1580, 330);
+  t.rxn('ATPM', { at: at(1700, 190), dir: [0, 1], cof: 'W' });
+  title('energy', 'H+ pump and maintenance', 'ATP spent on the gradient and upkeep', 1360, 360);
 
   // Into the mitochondrion, straight down from the cytosol
   const mDepth = 80;
@@ -202,11 +202,11 @@ export default function yeast(model) {
   t.rxn('CYOO_u6m', { edge: 'right', along: E + qy + qr, use: { ...rq.use, o2_m: 'o2_m' }, cof: 'S', outAlong: 27,
     curves: { q6h2_m: qArc(qy + qr) } });
   t.rxn('NADH2_u6m', { line: ['q6_m', 'q6h2_m'], cof: 'N' });
-  title('resp', 'Respiration and ATP synthesis', 'NADH to O2 pumps H+ out of the matrix', 1350, 1990);
+  title('resp', 'Respiration and ATP synthesis', 'NADH to O2 pumps H+ out of the matrix', 1130, 1990);
 
   // O2, CO2, water and phosphate cross both the plasma and the mitochondrial membranes
-  for (const [b, x, tm, t1] of [['pi', 1650, 'PIt2m', 'PIt2r'], ['h2o', 1800, 'H2Otm', 'H2Ot'],
-    ['co2', 1950, 'CO2tm', 'CO2t'], ['o2', 2100, 'O2tm', 'O2t']]) {
+  for (const [b, x, tm, t1] of [['pi', 1220, 'PIt2m', 'PIt2r'], ['h2o', 1350, 'H2Otm', 'H2Ot'],
+    ['co2', 1480, 'CO2tm', 'CO2t'], ['o2', 1610, 'O2tm', 'O2t']]) {
     t.column({ edge: 'bottom', along: E + x, chain: [tm, t1, `EX_${b}_e`], mets: [`${b}_m`, `${b}_c`, `${b}_e`] });
   }
   t.reactions.get('PIt2m').outAlong = 95;

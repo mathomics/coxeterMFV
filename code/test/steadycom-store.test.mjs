@@ -226,7 +226,7 @@ test('ordinary FVA refuses a fixed-μ result without changing the active solutio
   assert.match(store.status.message, /FVA.*fixed|fixed.*SteadyCom/);
 });
 
-test('GUT9 loads full biology and its diet while drawing only an excerpt and deferring expensive analysis', async t => {
+test('GUT9 loads full biology and its diet, draws its curated map and leaves the solve to the worker', async t => {
   const previousFetch = globalThis.fetch;
   const requested = [];
   globalThis.fetch = async url => {
@@ -240,7 +240,11 @@ test('GUT9 loads full biology and its diet while drawing only an excerpt and def
   const store = new Store('http://test.invalid');
   store.publishedCommunities = JSON.parse(await readFile(new URL('../models/scenarios.json', import.meta.url), 'utf8')).publishedCommunities;
   store.solve = () => { throw new Error('Selecting GUT9 must not run an expensive LP'); };
+  const opening = new Promise((resolve) => {
+    store.runSteadyComTask = (spec, request) => { resolve(request); return new Promise(() => {}); };
+  });
   await store.usePublishedCommunity('steadycom-gut-nine');
+  assert.equal(store.steadyComState.phase, 'fixed');
   assert.equal(store.steadyComSupport().supported, true);
   assert.equal(store.steadyComSupport().kind, 'joint');
   assert.equal(store.species.length, 9);
@@ -254,13 +258,16 @@ test('GUT9 loads full biology and its diet while drawing only an excerpt and def
   assert.ok(store.map.reactions.size > 0 && store.map.reactions.size * 5 < store.community.merged.reactions.size,
     `drawing must stay an excerpt, got ${store.map.reactions.size}`);
   assert.equal(store.map.cells.length, 9);
-  assert.equal(store.solution, null);
+  assert.equal(store.solution, null, 'the map is on screen before the solution arrives');
   assert.equal(Object.keys(store.medium).length, 88);
   assert.ok(requested.includes('models/published/steadycom-gut-nine/bounds.csv'));
   assert.ok(requested.includes('models/published/steadycom-gut-nine/model-Bt.json'));
   // The drawing is the curated map, not one assembled from the member previews.
   assert.ok(requested.includes('models/published/steadycom-gut-nine/map.json'));
   assert.ok(!requested.some((path) => /\/preview-/.test(path)));
+  // It opens solved: one fixed-µ task at its default growth rate, not the range search.
+  const request = await opening;
+  assert.deepEqual([request.type, request.mu], ['fixed', 0.0796]);
   const spec = await store.steadyComProblem();
   assert.equal(spec.reactions.size, 11009);
   assert.equal(spec.metadata.speciesExchange.size, 1355);
@@ -306,6 +313,23 @@ async function tinyJointStore(t) {
   await store.usePublishedCommunity(published);
   return store;
 }
+
+test('a SteadyCom community opens solved, with its lines on, and gives the view back when it is left', async t => {
+  const store = await tinyJointStore(t);
+  const opened = await store.steadyComOnOpen;
+  assert.equal(opened.mu, 0.0796);
+  assert.equal(opened.max, null, 'the range is still computed only when asked');
+  assert.equal(store.solution.steadyCom.mu, 0.0796);
+  assert.equal(store.view.showCrossFeeding, true);
+  assert.equal(store.unsavedWork().scenario, false, 'the solve is part of opening');
+  // The user's controls work on it as before.
+  assert.equal(store.clearSolution(), true);
+  await store.solveSteadyComAt(2);
+  assert.equal(store.solution.steadyCom.mu, 2);
+  store.scenarios = [{ id: 'plain', name: 'Plain', species: [{ id: 'A', model: 'published/steadycom-gut-nine/model-A', abundance: 1 }], medium: {} }];
+  await store.useScenario('plain');
+  assert.equal(store.view.showCrossFeeding, false);
+});
 
 test('disabling a joint member preserves the excerpt and closes its entire fixed-composition biology', async t => {
   const store = await tinyJointStore(t);

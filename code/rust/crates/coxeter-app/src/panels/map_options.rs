@@ -85,6 +85,10 @@ pub fn display_card(ui: &mut Ui, shell: &mut Shell, workspace: bool) {
             if widgets::toggle_button(ui, "Cofactors", v.show_currency, "Show secondary metabolites (ATP, NADH, H⁺… and nodes set to Secondary)").clicked() {
                 let _ = shell.store.set_view(ViewPatch { show_currency: Some(!v.show_currency), ..Default::default() });
             }
+            let quiet = shell.store.map.as_ref().and_then(|m| m.cofactor_style()) == Some("quiet");
+            if widgets::toggle_button(ui, "Quiet cofactors", quiet, "Draw this map’s secondary metabolites small and light, so the pathways stand out").clicked() {
+                shell.store.set_map_cofactor_style(if quiet { None } else { Some("quiet") });
+            }
             if widgets::toggle_button(
                 ui,
                 "Highlight cross-feeding",

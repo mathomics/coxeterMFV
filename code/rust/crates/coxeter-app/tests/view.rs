@@ -45,6 +45,21 @@ fn view_toggles_change_the_view_only() {
 }
 
 #[test]
+fn quiet_cofactors_is_switched_in_view_as_a_map_edit() {
+    let mut h = common::harness(None);
+    let style = |h: &H| h.state().store.map.as_ref().unwrap().cofactor_style();
+    let before = style(&h);
+    open_view(&mut h);
+    assert_eq!(common::pressed(&h, "Quiet cofactors"), before == Some("quiet"), "it shows the map's style");
+    common::click(&mut h, "Quiet cofactors");
+    assert_eq!(style(&h).is_some(), before.is_none(), "switched");
+    assert!(h.state().store.map_history.can_undo(), "an undoable map edit");
+    open_view(&mut h);
+    common::click(&mut h, "Quiet cofactors");
+    assert_eq!(style(&h), before, "and back");
+}
+
+#[test]
 fn labels_and_scrolling_selects() {
     let mut h = common::harness(None);
     open_view(&mut h);

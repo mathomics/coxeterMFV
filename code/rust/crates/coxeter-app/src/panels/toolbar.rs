@@ -169,6 +169,10 @@ pub fn render_view_controls(ui: &mut Ui, shell: &mut Shell) {
         if widgets::toggle_button(ui, "Cofactor labels", v.currency_labels, "Name the small secondary metabolite nodes. They appear once the map is zoomed in past 34%").clicked() {
             let _ = shell.store.set_view(coxeter_state::ViewPatch { currency_labels: Some(!v.currency_labels), ..Default::default() });
         }
+        let quiet = shell.store.map.as_ref().and_then(|m| m.cofactor_style()) == Some("quiet");
+        if widgets::toggle_button(ui, "Quiet cofactors", quiet, "Draw this map’s secondary metabolites small and light, so the pathways stand out. Saved with the map").clicked() {
+            shell.store.set_map_cofactor_style(if quiet { None } else { Some("quiet") });
+        }
         if widgets::toggle_button(ui, "Highlight cross-feeding", v.show_cross_feeding, "Dim the metabolic network and highlight active metabolite transfers between cells").clicked() {
             let _ = shell.store.set_view(coxeter_state::ViewPatch { show_cross_feeding: Some(!v.show_cross_feeding), ..Default::default() });
         }

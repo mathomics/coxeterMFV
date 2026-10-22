@@ -4378,6 +4378,7 @@ async function onSidebarClick(event) {
     }
     case 'toggle-currency': store.setView({ showCurrency: !store.view.showCurrency }); break;
     case 'toggle-currency-labels': store.setView({ currencyLabels: !store.view.currencyLabels }); break;
+    case 'toggle-quiet-cofactors': store.setMapCofactorStyle(store.map?.cofactorStyle === 'quiet' ? null : 'quiet'); break;
     case 'toggle-crossfeed': store.setView({ showCrossFeeding: !store.view.showCrossFeeding }); break;
     case 'crossfeed-show-all': store.setCrossFeedingTop(0); break;
     case 'crossfeed-show-none': store.setView({ crossFeedingShown: [] }); break;

@@ -491,15 +491,19 @@ impl Assets for RecordingAssets {
 }
 
 #[test]
-fn gut9_loads_full_biology_and_its_diet_while_drawing_only_an_excerpt_and_deferring_expensive_analysis() {
+fn gut9_loads_full_biology_and_its_diet_draws_its_curated_map_and_leaves_the_solve_to_the_background() {
     let assets = Arc::new(RecordingAssets { dir: DirAssets::new(repo_root()), requested: Mutex::new(Vec::new()) });
     let mut store = Store::new(assets.clone());
     let scenarios: Value = serde_json::from_str(&std::fs::read_to_string(repo_root().join("models/scenarios.json")).unwrap()).unwrap();
     store.published_communities = scenarios["publishedCommunities"].as_array().unwrap().clone();
+    let task = deferred_task(&mut store);
     // `store.solve = () => { throw … }`: selecting GUT9 must not run an
     // expensive LP. Checked below: no solution and no solve in the log.
     store.use_published_community("steadycom-gut-nine").unwrap();
     assert!(store.log.iter().all(|e| e.kind != LogKind::Solve), "Selecting GUT9 must not run an expensive LP");
+    // It opens solved: one fixed-µ task at its default growth rate, not the range search.
+    assert_eq!(store.steady_com_state.as_ref().unwrap().phase.as_deref(), Some("fixed"));
+    assert!(matches!(task.called().task, SteadyComTask::Fixed { mu, .. } if mu == 0.0796));
     let support = store.steady_com_support(None);
     assert!(support.supported);
     assert_eq!(support.kind, Some("joint"));
@@ -521,7 +525,7 @@ fn gut9_loads_full_biology_and_its_diet_while_drawing_only_an_excerpt_and_deferr
     assert!(drawn > 0 && drawn < store.problem.as_ref().unwrap().rxn_ids.len(), "drawing must stay an excerpt, got {drawn}");
     assert_eq!(drawn, curated["map"]["reactions"].as_array().unwrap().len(), "the curated map is drawn");
     assert_eq!(map.cells().len(), 9);
-    assert!(store.solution.is_none());
+    assert!(store.solution.is_none(), "the map is on screen before the solution arrives");
     assert_eq!(store.medium.len(), 88);
     let requested = assets.requested.lock().unwrap().clone();
     // JS: `preview-Bt.json` instead of `map.json` (see the header).
@@ -591,6 +595,26 @@ fn tiny_joint_store() -> Store {
     assets.insert(format!("models/published/{PUBLISHED}/bounds.csv"), rows.join("\n"));
     store.use_published_community(PUBLISHED).unwrap();
     store
+}
+
+#[test]
+fn a_steadycom_community_opens_solved_with_its_lines_on_and_gives_the_view_back_when_left() {
+    let mut store = tiny_joint_store();
+    assert!(store.solution.is_none(), "the solve runs in the background");
+    settle(&mut store).unwrap();
+    let state = store.steady_com_state.as_ref().unwrap();
+    assert_eq!(state.mu, Some(0.0796));
+    assert_eq!(state.max, None, "the range is still computed only when asked");
+    assert_eq!(store.solution.as_ref().unwrap().steady_com.as_ref().unwrap().mu, 0.0796);
+    assert!(store.view.show_cross_feeding);
+    assert!(!store.unsaved_work().scenario, "the solve is part of opening");
+    // The user's controls work on it as before.
+    assert!(store.clear_solution());
+    solve_steady_com_at(&mut store, 2.0).unwrap();
+    assert_eq!(store.solution.as_ref().unwrap().steady_com.as_ref().unwrap().mu, 2.0);
+    store.scenarios = vec![json!({"id": "plain", "name": "Plain", "species": [{"id": "A", "model": format!("published/{PUBLISHED}/model-A"), "abundance": 1}], "medium": {}})];
+    store.use_scenario("plain").unwrap();
+    assert!(!store.view.show_cross_feeding);
 }
 
 #[test]

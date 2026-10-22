@@ -187,8 +187,15 @@ fn reaction_drag_moves_a_reaction_by_its_marker() {
 
 #[test]
 fn rotate_drag_turns_the_selected_reaction() {
-    // The Edit tool draws every reaction's green lever.
-    let mut h = zoomed();
+    // The Edit tool draws every reaction's green lever; a reaction kept on its
+    // line or on its membrane has none, so the view is centred on one that is free.
+    let mut h = common::harness(None);
+    let free = {
+        let map = h.state().store.map.as_ref().unwrap();
+        let r = map.reactions().values().find(|r| r.axis.is_some() && r.linear.is_none() && !r.on_membrane).expect("a free reaction");
+        Point::new(r.x, r.y)
+    };
+    look_at(&mut h, free, 1.4);
     common::click(&mut h, "Edit Control Points");
     let lever = find(&mut h, "data-rotate-handle", |t, host| targets::rotate_handle_at(t, host).is_some()).expect("a lever in view");
     let rid = at_point(&mut h, lever, |t, host| targets::rotate_handle_at(t, host)).unwrap();

@@ -96,6 +96,9 @@ export class EditableMap {
     this.labelSettings = spec.labelSettings ? { ...spec.labelSettings } : null;
     // The colours metabolite circles take unless one sets its own.
     this.nodeStyle = spec.nodeStyle ? { ...spec.nodeStyle } : null;
+    // How the secondary metabolites are drawn: 'quiet' (smaller and lighter, so
+    // the pathways read first), or null for the full size every map has by default.
+    this.cofactorStyle = normalizeCofactorStyle(spec.cofactorStyle);
     // Derived from the cells and the environment, never stored separately: two
     // copies of the same fact would eventually disagree.
     this.boundaries = deriveBoundaries(this);
@@ -723,6 +726,12 @@ export class EditableMap {
     return this.nodeStyle;
   }
 
+  /** How secondary metabolites are drawn: 'quiet', or null for full size. Returns the style kept. */
+  setCofactorStyle(style) {
+    this.cofactorStyle = normalizeCofactorStyle(style);
+    return this.cofactorStyle;
+  }
+
   /** Colour some metabolite circles: `{ fill, stroke }`, null to return one to the map's. */
   setNodeColors(nodeIds, { fill, stroke } = {}) {
     const changed = [];
@@ -1242,6 +1251,7 @@ export class EditableMap {
       texts: [...this.texts.values()],
       ...(this.labelSettings ? { labelSettings: this.labelSettings } : {}),
       ...(this.nodeStyle ? { nodeStyle: this.nodeStyle } : {}),
+      ...(this.cofactorStyle ? { cofactorStyle: this.cofactorStyle } : {}),
     }));
   }
 
@@ -1268,11 +1278,19 @@ export class EditableMap {
       texts: new Map((doc.texts ?? []).map((item) => [item.id, item])),
       labelSettings: doc.labelSettings,
       nodeStyle: doc.nodeStyle,
+      cofactorStyle: doc.cofactorStyle,
     });
   }
 }
 
 // Helpers
+
+/** The secondary-metabolite styles a map can carry; anything else is the default. */
+const COFACTOR_STYLES = new Set(['quiet']);
+
+function normalizeCofactorStyle(style) {
+  return COFACTOR_STYLES.has(style) ? style : null;
+}
 
 /*
  * Where each straight reaction and its two ends stand, before a geometry edit.

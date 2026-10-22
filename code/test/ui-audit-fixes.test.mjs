@@ -598,6 +598,7 @@ test('every bundled scenario and published community opens as Saved', async (t) 
     store.publishedCommunities = catalog.publishedCommunities;
     // Opening is what is tested; the genome-scale LPs would only add minutes.
     store.solve = () => null;
+    store.runSteadyComTask = () => new Promise(() => {});
     await how(store);
     store.emit('probe');
     assert.deepEqual(store.unsavedWork(), { map: false, scenario: false, model: false }, `${label} opens as Unsaved`);

@@ -26,7 +26,7 @@ use indexmap::IndexMap;
 use serde_json::{Map, Value, json};
 
 use crate::error::{Result, StoreError};
-use crate::steadycom::STEADYCOM_COMMUNITIES;
+use crate::steadycom::{STEADYCOM_COMMUNITIES, steady_com_open_mu};
 use crate::store::{AUTO_DRAW_METABOLITE_LIMIT, AUTO_DRAW_REACTION_LIMIT, AUTO_SOLVE_REACTION_LIMIT, Store, objectives};
 use crate::types::*;
 use crate::util::normalize_pfba_percent;
@@ -663,10 +663,13 @@ impl Store {
         let curated = uses_curated_core_map(id);
         let joint_map = id == "steadycom-gut-nine";
         let own_map = text_field(&manifest, "map").is_some_and(|m| !m.is_empty()) && !joint_map;
+        // A SteadyCom community opens on its own solution, not on an FBA of
+        // the merged models that the SteadyCom one would replace a moment later.
+        let solved_on_open = steady_com_open_mu(id).is_some();
         self.rebuild(RebuildOptions {
             relayout: true,
             contents: if curated || joint_map || own_map { Contents::None } else { Contents::All },
-            solve: !joint_map,
+            solve: !joint_map && !solved_on_open,
         })?;
         if own_map {
             self.draw_published_preview(id)?;
@@ -675,6 +678,15 @@ impl Store {
         }
         self.settle_opened_work();
         self.draw_waiting_map();
+        if solved_on_open {
+            // In the background: the map is on screen now and the solution is
+            // painted on it when the job is in (`poll_jobs`).
+            if self.steady_com_support(None).supported {
+                let _ = self.solve_steady_com_on_open();
+            } else if !joint_map {
+                self.solve();
+            }
+        }
         Ok(())
     }
 

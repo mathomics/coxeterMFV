@@ -98,9 +98,10 @@ export function renderMap(layout, state) {
     offStyle = false, lineHops = false, tooltips = null,
   } = state;
 
+  const quiet = isQuietCofactors(layout);
   const parts = [];
   parts.push(
-    `<svg xmlns="http://www.w3.org/2000/svg" class="emc-map${dark ? ' emc-dark' : ''}" `
+    `<svg xmlns="http://www.w3.org/2000/svg" class="emc-map${dark ? ' emc-dark' : ''}${quiet ? ' emc-quiet-cofactors' : ''}" `
     + `viewBox="0 0 ${n(layout.width)} ${n(layout.height)}" `
     + `width="${n(layout.width)}" height="${n(layout.height)}" role="img" `
     + `aria-label="Multicell community metabolic map">`,
@@ -135,7 +136,7 @@ export function renderMap(layout, state) {
     crossFeedingReactions, showCrossFeeding,
     {
       solvedFluxes, reactionWidthMode, disabledReactionIds, inactiveSpeciesIds,
-      offStyle, lineHops, dark, tooltip: tooltips?.reaction ?? null,
+      offStyle, lineHops, dark, quiet, tooltip: tooltips?.reaction ?? null,
     },
   ));
   // The multi-selection area goes under the marks, so it reads as the area they
@@ -151,12 +152,12 @@ export function renderMap(layout, state) {
     reactionColorMode, reactionColors, omicsEnabled, omicsColors, omicsFallbackColor,
     { solvedFluxes, disabledReactionIds, modifiedReactionIds, inactiveSpeciesIds, offStyle, tooltip: tooltips?.reaction ?? null },
   ));
-  parts.push(renderNodes(layout, dark, showCurrency, multiSelection, inactiveSpeciesIds, tooltips?.node ?? null));
+  parts.push(renderNodes(layout, dark, showCurrency, multiSelection, inactiveSpeciesIds, tooltips?.node ?? null, quiet));
   parts.push(renderEditHandles(layout, dark, reactionEdit, minHitRadius));
   parts.push(renderText(
     layout, fluxes, scale, dark, labels, showCurrency, currencyLabels,
     fvaEnabled, fvaRanges, fvaProgress,
-    { solvedFluxes, disabledReactionIds, inactiveSpeciesIds, emphasizedReactionIds, metaboliteLabels, reactionLabels, offStyle },
+    { solvedFluxes, disabledReactionIds, inactiveSpeciesIds, emphasizedReactionIds, metaboliteLabels, reactionLabels, offStyle, quiet },
   ));
   parts.push(renderMapAnnotations(layout, dark, multiSelection));
   if (crossFeedingLayers?.tag) parts.push(crossFeedingLayers.tag);
@@ -782,6 +783,19 @@ function reactionDisplayColor(
 const ESCHER_REACTION_STROKE_WIDTH = 7.5;
 
 /*
+ * Quiet cofactors, the style a map asks for with `cofactorStyle: 'quiet'`:
+ * secondary metabolites drawn smaller and their branches thinner, so that the
+ * overview reads as pathways rather than grain. Their lighter colour and
+ * smaller labels come from map.css (.emc-quiet-cofactors).
+ */
+export const QUIET_COFACTORS = Object.freeze({ radius: 4.5, branchWidth: 0.5 });
+
+/** Whether the map draws its secondary metabolites quiet. */
+export function isQuietCofactors(layout) {
+  return layout?.cofactorStyle === 'quiet';
+}
+
+/*
  * A reaction that carries no flux in the solution, drawn the way a switched-off
  * reaction is in a topology figure: grey and dashed, so what the solution uses
  * stands out from what it does not.
@@ -802,10 +816,11 @@ function renderSegments(
   crossFeedingReactions = new Set(), highlightCrossFeeding = false,
   {
     solvedFluxes = fluxes, reactionWidthMode = 'constant', disabledReactionIds = new Set(), inactiveSpeciesIds = new Set(),
-    offStyle = false, lineHops = false, dark = false, tooltip = null,
+    offStyle = false, lineHops = false, dark = false, quiet = false, tooltip = null,
   } = {},
 ) {
   const out = ['<g class="emc-layer emc-layer-segments">'];
+  const secondaryRadius = quiet ? QUIET_COFACTORS.radius : SIZES.currencyRadius;
   const arrows = [];
   // Segments are collected before they are written: a line that hops over
   // another needs to know where the others run.
@@ -827,7 +842,9 @@ function renderSegments(
     const disabled = disabledReactionIds.has(seg.reactionId);
     const inactive = inactiveSpeciesIds.has(rxn.cellId);
     const solved = disabled || inactive ? 0 : (solvedFluxes.get(seg.reactionId) ?? 0);
-    const width = reactionWidthMode === 'flux' ? scale.width(v) : ESCHER_REACTION_STROKE_WIDTH;
+    const cofactor = quiet && (seg.kind === 'currency' || isSecondaryNode(targetNode));
+    const width = (reactionWidthMode === 'flux' ? scale.width(v) : ESCHER_REACTION_STROKE_WIDTH)
+      * (cofactor ? QUIET_COFACTORS.branchWidth : 1);
     const off = isOffReaction(seg.reactionId, { offStyle, solvedFluxes, disabledReactionIds, inactive });
     const color = disabled ? '#db2777' : off ? offColor(dark) : reactionDisplayColor(
       seg.reactionId, v, scale, reactionColorMode, reactionColors,
@@ -839,13 +856,13 @@ function renderSegments(
 
     const isCrossFeed = crossFeedingReactions.has(seg.reactionId);
     const crossFeedOpacity = inactive ? 0.22 : (highlightCrossFeeding && !isSel && !isMulti ? (isCrossFeed ? 1 : 0.14) : 1);
-    const cls = `emc-seg emc-seg-${seg.kind}${disabled ? ' is-disabled-reaction' : ''}${off ? ' is-off' : ''}${inactive ? ' is-inactive-species' : ''}${active ? ' is-active' : ''}${isCrossFeed ? ' is-crossfeeding' : ''}${isSel ? ' is-selected' : ''}${isMulti ? ' is-multi-selected' : ''}`;
+    const cls = `emc-seg emc-seg-${seg.kind}${disabled ? ' is-disabled-reaction' : ''}${off ? ' is-off' : ''}${inactive ? ' is-inactive-species' : ''}${active ? ' is-active' : ''}${isCrossFeed ? ' is-crossfeeding' : ''}${cofactor ? ' is-cofactor' : ''}${isSel ? ' is-selected' : ''}${isMulti ? ' is-multi-selected' : ''}`;
     // Arrowheads follow the sign of the flux, so a reversed reaction reads as
     // reversed on the map instead of only in the numbers.
     const forward = solved >= 0;
     const wantArrow = seg.side === (forward ? 'product' : 'substrate')
       || (seg.kind === 'boundary' && forward);
-    const geometry = segmentGeometry(seg, rxn, targetNode, !disabled && !inactive && wantArrow && (active || seg.kind === 'boundary'), width);
+    const geometry = segmentGeometry(seg, rxn, targetNode, !disabled && !inactive && wantArrow && (active || seg.kind === 'boundary'), width, secondaryRadius);
     if (geometry.d) {
       const dash = disabled ? '8 5' : off ? offDash(width) : null;
       drawn.push({
@@ -859,7 +876,7 @@ function renderSegments(
     }
     if (geometry.arrow) {
       const points = geometry.arrow.points.map((p) => `${n(p.x)},${n(p.y)}`).join(' ');
-      arrows.push(`<polygon class="emc-arrow" points="${points}" fill="${color}" opacity="${n(crossFeedOpacity)}" `
+      arrows.push(`<polygon class="emc-arrow${cofactor ? ' is-cofactor' : ''}" points="${points}" fill="${color}" opacity="${n(crossFeedOpacity)}" `
         + `data-rxn="${esc(seg.reactionId)}"${seg.nodeId ? ` data-node="${esc(seg.nodeId)}"` : ''}/>`);
     }
   }
@@ -880,15 +897,15 @@ function renderSegments(
   return out.join('');
 }
 
-function segmentGeometry(seg, rxn, node, arrow, width) {
+function segmentGeometry(seg, rxn, node, arrow, width, secondaryRadius = SIZES.currencyRadius) {
   if (node && seg.kind !== 'boundary' && seg.kind !== 'transport-lane' && seg.kind !== 'axis') {
     const { b1, b2 } = branchControls(seg);
     const metabolite = seg.side === 'substrate' ? seg.from : seg.to;
     const reaction = seg.side === 'substrate' ? seg.to : seg.from;
-    return reactionEndpointGeometry([reaction, b2, b1, metabolite], { node, arrow, width });
+    return reactionEndpointGeometry([reaction, b2, b1, metabolite], { node, arrow, width, secondaryRadius });
   }
   if (arrow || node) {
-    return reactionEndpointGeometry([seg.from, seg.to], { node, arrow, width });
+    return reactionEndpointGeometry([seg.from, seg.to], { node, arrow, width, secondaryRadius });
   }
   const curve = segmentCurve(seg);
   return { d: curvePath(curve), arrow: null, curve };
@@ -1212,7 +1229,7 @@ const METABOLITE_LIKE = new Set(['metabolite', 'medium', 'currency']);
 // hand-built map draws its cofactors as instances set to Secondary, so a toggle
 // that knew only the layout's own helper nodes would leave all of them on screen.
 
-function renderNodes(layout, dark, showCurrency, multiSelection, inactiveSpeciesIds = new Set(), tooltip = null) {
+function renderNodes(layout, dark, showCurrency, multiSelection, inactiveSpeciesIds = new Set(), tooltip = null, quiet = false) {
   const out = ['<g class="emc-layer emc-layer-nodes">'];
   // A colour chosen for the map, or for one metabolite, holds in both themes.
   const orange = layout.nodeStyle?.fill || (dark ? '#f59e0b' : '#e67e4c');
@@ -1235,7 +1252,7 @@ function renderNodes(layout, dark, showCurrency, multiSelection, inactiveSpecies
     if (inactive) out.push('<g opacity="0.28">');
 
     if (metaboliteLike) {
-      const radius = secondary ? SIZES.currencyRadius : SIZES.primaryRadius;
+      const radius = secondary ? (quiet ? QUIET_COFACTORS.radius : SIZES.currencyRadius) : SIZES.primaryRadius;
       const title = tooltip ? `<title>${esc(tooltip(node.id))}</title>` : '';
       out.push(`<circle class="${cls}" data-node="${esc(node.id)}" data-met="${esc(node.mergedId)}" `
         + `cx="${n(node.x)}" cy="${n(node.y)}" r="${n(radius)}" fill="${esc(node.fill || orange)}" `
@@ -1414,9 +1431,10 @@ function activeNodeIds(layout, solvedFluxes, disabledReactionIds, inactiveSpecie
 function renderText(
   layout, fluxes, scale, dark, labels, showCurrency, currencyLabels,
   fvaEnabled = false, fvaRanges = new Map(), fvaProgress = null,
-  { solvedFluxes = fluxes, disabledReactionIds = new Set(), inactiveSpeciesIds = new Set(), emphasizedReactionIds = new Set(), metaboliteLabels = new Map(), reactionLabels = new Map(), offStyle = false } = {},
+  { solvedFluxes = fluxes, disabledReactionIds = new Set(), inactiveSpeciesIds = new Set(), emphasizedReactionIds = new Set(), metaboliteLabels = new Map(), reactionLabels = new Map(), offStyle = false, quiet = false } = {},
 ) {
   const out = ['<g class="emc-layer emc-layer-text">'];
+  const secondaryRadius = quiet ? QUIET_COFACTORS.radius : SIZES.currencyRadius;
   const halo = dark ? '#0b1220' : '#ffffff';
 
   // "None" means none: metabolite names go too, not only reaction labels.
@@ -1432,11 +1450,11 @@ function renderText(
     const ghostClass = inactiveSpeciesIds.has(node.cellId) ? ' is-inactive-species' : '';
     if (isSecondaryNode(node) && (!showCurrency || !currencyLabels)) continue;
     if (node.kind === 'currency') {
-      out.push(metaboliteLabel(node, `emc-label-currency${ghostClass}`, halo, dark, metaboliteLabels.get(node.id)));
+      out.push(metaboliteLabel(node, `emc-label-currency${ghostClass}`, halo, dark, metaboliteLabels.get(node.id), secondaryRadius));
     } else {
       const role = node.primary === false ? ' emc-label-secondary' : ' emc-label-primary';
       const cls = (node.kind === 'medium' ? 'emc-label-medium' : 'emc-label-met') + role;
-      out.push(metaboliteLabel(node, cls + ghostClass, halo, dark, metaboliteLabels.get(node.id)));
+      out.push(metaboliteLabel(node, cls + ghostClass, halo, dark, metaboliteLabels.get(node.id), secondaryRadius));
     }
   }
 
@@ -1525,12 +1543,12 @@ function emptierSide(nodes = [], rxn) {
   return below < above ? 1 : -1;
 }
 
-function metaboliteLabel(node, cls, halo, dark, text = node.base) {
+function metaboliteLabel(node, cls, halo, dark, text = node.base, secondaryRadius = SIZES.currencyRadius) {
   if (!['metabolite', 'medium', 'currency'].includes(node.kind)) {
     const gap = node.primary === false ? 3.5 : 5;
     return label(node.x, node.y - node.r - gap, node.base, cls, halo, dark);
   }
-  const { x, y, anchor, baseline } = metaboliteLabelPosition(node);
+  const { x, y, anchor, baseline } = metaboliteLabelPosition(node, { secondaryRadius });
   return label(x, y, text, `${cls} emc-label-draggable`, halo, dark, null, anchor,
     ` data-metabolite-label="${esc(node.id)}" dominant-baseline="${baseline}"${cls.includes('is-inactive-species') ? ' opacity="0.28"' : ''}`);
 }

@@ -152,8 +152,8 @@ export default function ecoli(model) {
   t.rxn('NADTRHD', { at: at(1590, 560), dir: [0, 1], cof: 'W' });
 
   // Biomass: precursors on one arc, what it gives back on the other
-  t.rxn('BIOMASS_Ec_core', { at: at(1500, 790), dir: [1, 0], fan: { r: 220, rp: 170 } });
-  title('biomass', 'Biomass', 'Precursors into new cells', 990, 740);
+  t.rxn('BIOMASS_Ec_core', { at: at(1380, 620), dir: [0, 1], stack: {} });
+  title('biomass', 'Biomass', 'Precursors into new cells', 1290, 800);
 
   // Nitrogen assimilation off 2-oxoglutarate
   met('glu__L_c', 1360, 1150, 'NE');

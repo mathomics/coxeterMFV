@@ -273,6 +273,11 @@ impl Store {
         if let Some(show) = self.zuniga.previous_view.take() {
             self.view.show_cross_feeding = show;
         }
+        // Every switch of context comes here, so this also gives back the
+        // view a SteadyCom community changed when it opened solved.
+        if let Some(show) = self.case_view.take() {
+            self.view.show_cross_feeding = show;
+        }
         let generation = self.zuniga.generation;
         self.zuniga = ZunigaStudyState { generation, ..ZunigaStudyState::default() };
         // A download still running belongs to the case just left.

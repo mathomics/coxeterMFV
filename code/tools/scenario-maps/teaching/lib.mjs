@@ -18,7 +18,11 @@
  *   - every metabolite of an equation is drawn: the carbon backbone through
  *     shared primary nodes, the rest as small secondary nodes beside the axis
  *     (rows COFACTOR_ROWS, the same everywhere), so no reaction loses a
- *     participant and the map reads exactly as the model is written.
+ *     participant and the map reads exactly as the model is written;
+ *   - the biomass reaction stands upright with its precursors stacked in two
+ *     short columns above it and what it gives back in two below, every branch
+ *     a rung into the reaction's stem, so that it stays smaller than the
+ *     pathways that feed it.
  * Angles are in degrees, 0 to the right and 90 down the page.
  */
 
@@ -39,6 +43,10 @@ const COFACTOR_ROWS = [[48, 36], [34, 62], [20, 88]];
 // The same carriers take the same places on every reaction.
 const COFACTOR_ORDER = ['atp', 'gtp', 'adp', 'gdp', 'amp', 'nadph', 'nadp', 'nadh', 'nad', 'q8h2', 'q8',
   'q6h2', 'q6', 'pqh2', 'pq', 'coa', 'photon', 'o2', 'co2', 'hco3', 'nh4', 'h2', 'ppi', 'pi', 'h2o', 'h'];
+// The order a biomass reaction's precursors are stacked in: the carbon
+// skeletons in pathway order, then nitrogen, then the carriers.
+const STACK_ORDER = ['g6p', 'f6p', 'r5p', 'e4p', 'g3p', '3pg', 'pep', 'pyr', 'accoa', 'oaa', 'akg', 'glu__L',
+  'gln__L', 'nh4', 'atp', 'adp', 'pi', 'h', 'nadph', 'nadp', 'nad', 'nadh', 'coa', 'h2o'];
 // Metabolites drawn as secondary nodes unless a reaction asks for its primary.
 export const CURRENCY = new Set(['atp', 'adp', 'amp', 'gtp', 'gdp', 'nad', 'nadh', 'nadp', 'nadph', 'h', 'h2o',
   'pi', 'ppi', 'co2', 'coa', 'q8', 'q8h2', 'q6', 'q6h2', 'pq', 'pqh2', 'o2', 'nh4', 'hco3', 'photon', 'h2']);
@@ -103,13 +111,14 @@ function forkCurve(node, anchor, u) {
 }
 
 /**
- * A biomass precursor on its arc: the branch leaves the node towards the
- * reaction and bends once into its axis, so the branches of one side gather
- * like a sheaf without crossing.
+ * A stacked biomass metabolite: a rung straight across to the reaction's stem
+ * at the node's own height, then along the stem into the axis, so the branches
+ * of one column join the stem in order and never cross.
  */
-function sheafCurve(node, anchor, u) {
-  const dist = Math.hypot(node[0] - anchor[0], node[1] - anchor[1]);
-  return [lerp(node, anchor, 0.38), [anchor[0] + u[0] * dist * 0.3, anchor[1] + u[1] * dist * 0.3]];
+function rungCurve(node, anchor, u) {
+  const along = (node[0] - anchor[0]) * u[0] + (node[1] - anchor[1]) * u[1];
+  const onStem = [anchor[0] + u[0] * along, anchor[1] + u[1] * along];
+  return [onStem, [anchor[0] + u[0] * along * 0.45, anchor[1] + u[1] * along * 0.45]];
 }
 
 /** Handles of the circular arc of radius `R` round `centre` from `p` to `q` (the shorter way). */
@@ -168,8 +177,10 @@ export class Template {
    *   {line: [from, to], t, bend, offset}  on the line between two primary nodes
    *   {at: [x, y], dir: [dx, dy]}           at an absolute place
    *   {edge, along}                         a transporter on its membrane
-   * and may add `cof` (compass side of its own cofactors), `use` ({metabolite:
-   * node key} links beyond the default), `sec` (metabolites kept secondary),
+   * and may add `stack` (biomass: every metabolite secondary, stacked in two
+   * columns either side of the stem, see STACK_ORDER), `cof` (compass side of
+   * its own cofactors), `use` ({metabolite: node key} links beyond the
+   * default), `sec` (metabolites kept secondary),
    * `pos` ({metabolite: [x, y]} for a secondary node), `curves` ({metabolite:
    * [[b1], [b2]]}), `label` (reaction label nudges are not supported: keep room).
    */
@@ -408,7 +419,7 @@ export function instantiate(tpl, ctx) {
     const use = spec.use ?? {};
     const sec = new Set(spec.sec ?? []);
     for (const mid of Object.keys(rxn.metabolites)) {
-      if (sec.has(mid) || (spec.fan && !use[mid])) continue;
+      if (sec.has(mid) || (spec.stack && !use[mid])) continue;
       if (use[mid]) { links.set(mid, keyId(use[mid])); continue; }
       if (spec.line && spec.line.some((k) => tpl.nodes.get(k)?.mid === mid)) {
         links.set(mid, keyId(spec.line.find((k) => tpl.nodes.get(k).mid === mid)));
@@ -537,7 +548,8 @@ export function instantiate(tpl, ctx) {
       const s = COMPASS[spec.cof];
       hand = (onMembrane ? (-normal[1] * s[0] + normal[0] * s[1]) : (p[0] * s[0] + p[1] * s[1])) >= 0 ? 1 : -1;
     }
-    const rank = (b) => { const i = COFACTOR_ORDER.indexOf(b); return i < 0 ? COFACTOR_ORDER.length : i; };
+    const order = spec.stack ? STACK_ORDER : COFACTOR_ORDER;
+    const rank = (b) => { const i = order.indexOf(b); return i < 0 ? order.length : i; };
     const groups = new Map();
     for (const item of ownSecondary) {
       let g;
@@ -555,18 +567,21 @@ export function instantiate(tpl, ctx) {
         const extraAcross = i >= 2 * COFACTOR_ROWS.length ? 26 * (i - 2 * COFACTOR_ROWS.length + 1) : 0;
         let q;
         if (spec.pos?.[item.local]) q = X(spec.pos[item.local]);
-        else if (spec.fan) {
-          // Biomass: each side's metabolites on one arc round its own end of
-          // the axis, a fixed distance apart, so the reaction reads as two
-          // sheaves facing each other and never as a star.
-          const { r: fr = 200, rp = fr * 0.8, step = 34 } = spec.fan;
+        else if (spec.stack) {
+          // Biomass: two columns either side of the stem, filled left column
+          // first, top to bottom; the substrates stand behind the axis' first
+          // end and the products beyond its second, `lead` from it.
+          const { step = 22, dx = 40, lead = 34 } = spec.stack;
           const sign = g === 'substrate' ? -1 : 1;
           const end = sign < 0 ? a1 : a2;
-          const R = sign < 0 ? fr : rp;
-          const spread = Math.min(150, ((step / R) * 180 / Math.PI) * (list.length - 1));
-          const base = Math.atan2(d[1] * sign, d[0] * sign) * 180 / Math.PI;
-          const k = list.length === 1 ? 0 : i / (list.length - 1) - 0.5;
-          q = onCircle(end, R, base + k * spread);
+          const rows = Math.ceil(list.length / 2);
+          const col = i < rows ? 0 : 1;
+          const row = col ? i - rows : i;
+          // Rows run away from the axis from the one nearest it.
+          const k = sign < 0 ? rows - 1 - row : row;
+          const out = lead + k * step;
+          const side = col ? 1 : -1;
+          q = [end[0] + d[0] * out * sign - p[0] * dx * side, end[1] + d[1] * out * sign - p[1] * dx * side];
         }
         else if (onMembrane) {
           const k = g === 'out' ? 1 : -1;
@@ -592,7 +607,8 @@ export function instantiate(tpl, ctx) {
           id, kind: 'currency', mergedId: item.mid0, localId: item.local, base: item.met.base, name: item.met.name,
           formula: item.met.formula, compartment: item.met.compartment, cellId: sp, reactionId: mergedId,
           x: r2(q[0]), y: r2(q[1]), r: SECONDARY_R, primary: false, visualRole: 'secondary',
-          labelAngle: spec.secLabel?.[item.local] !== undefined ? labelAngle(spec.secLabel[item.local]) : snapAngle(away),
+          labelAngle: spec.secLabel?.[item.local] !== undefined ? labelAngle(spec.secLabel[item.local])
+            : spec.stack ? stackLabel(q, c, p) : snapAngle(away),
         });
         placed[item.side].push({ local: item.local, nodeId: id, coef: item.coef, secondary: true });
       });
@@ -617,7 +633,7 @@ export function instantiate(tpl, ctx) {
         const onCircleNow = ring && Math.abs(Math.hypot(here[0] - ring.at.centre[0], here[1] - ring.at.centre[1]) - ring.at.R) < 1;
         if (custom) { b1 = X(custom[0]); b2 = X(custom[1]); }
         else if (spec.fork?.includes(item.local)) [b1, b2] = forkCurve(here, anchor, u);
-        else if (spec.fan && item.secondary) [b1, b2] = sheafCurve(here, anchor, u);
+        else if (spec.stack && item.secondary) [b1, b2] = rungCurve(here, anchor, u);
         else if (onCircleNow && !item.secondary) {
           const { centre, R } = ring.at;
           const na = angleOf(centre, here);
@@ -628,7 +644,7 @@ export function instantiate(tpl, ctx) {
           b1 = [here[0] + t[0] * toward * hl, here[1] + t[1] * toward * hl];
           b2 = [anchor[0] + u[0] * hl, anchor[1] + u[1] * hl];
         } else if ((onLine && spec.bend) || (spec.track && member && !item.secondary)) [b1, b2] = arcCurve(here, anchor, u);
-        else if (onLine || spec.fan) [b1, b2] = straight(here, anchor);
+        else if (onLine || spec.stack) [b1, b2] = straight(here, anchor);
         else [b1, b2] = sideCurve(here, anchor, u);
         const seg = {
           reactionId: mergedId, kind: item.secondary ? 'currency' : 'primary', nodeId: item.nodeId,
@@ -646,6 +662,12 @@ export function instantiate(tpl, ctx) {
   const missing = [...model.reactions.keys()].filter((id) => !tpl.reactions.has(id));
   const texts = tpl.texts.map((t) => ({ ...t, id: `${sp}:${t.id}`, x: t.x + ox, y: t.y + oy }));
   return { cell, nodes, reactions, segments, texts, medium, missing };
+}
+
+/** A stacked metabolite's label, on the far side of its column from the stem (`p` across the axis). */
+function stackLabel(q, c, p) {
+  const s = (q[0] - c[0]) * p[0] + (q[1] - c[1]) * p[1] >= 0 ? 1 : -1;
+  return snapAngle(Math.atan2(p[1] * s, p[0] * s));
 }
 
 /** Label straight out from a secondary node, snapped to the nearest of eight directions. */

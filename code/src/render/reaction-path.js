@@ -12,9 +12,12 @@ const n = (value) => (Math.round(value * 100) / 100).toString();
  * model coordinates and editable control points untouched.
  *
  * Returns the SVG path `d`, the arrowhead (or null) and the drawn `curve`. `d`
- * is empty when the branch lies entirely inside its node.
+ * is empty when the branch lies entirely inside its node. `secondaryRadius` is
+ * the drawn radius of a secondary node, smaller on a map with quiet cofactors.
  */
-export function reactionEndpointGeometry(points, { node = null, arrow = false, width = 7.5 } = {}) {
+export function reactionEndpointGeometry(points, {
+  node = null, arrow = false, width = 7.5, secondaryRadius = SIZES.currencyRadius,
+} = {}) {
   const cubic = points.length === 4;
   const at = (t) => {
     if (!cubic) return mix(points[0], points[1], t);
@@ -26,7 +29,7 @@ export function reactionEndpointGeometry(points, { node = null, arrow = false, w
   const endpoint = points.at(-1);
   const radius = node
     ? (['metabolite', 'medium', 'currency'].includes(node.kind)
-      ? (node.kind === 'currency' || node.primary === false ? SIZES.currencyRadius : SIZES.primaryRadius)
+      ? (node.kind === 'currency' || node.primary === false ? secondaryRadius : SIZES.primaryRadius)
       : Math.max(0, Number(node.r) || 0))
     : 0;
   const inset = node ? radius + GAP : (arrow ? 2 : 0);

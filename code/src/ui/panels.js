@@ -218,6 +218,7 @@ export function renderViewControls(store) {
     <div class="toggle-list">
       ${toggle('toggle-currency', v.showCurrency, 'Cofactors', 'Show secondary metabolites: cofactors such as ATP, NADH and H⁺, and every node set to Secondary')}
       ${toggle('toggle-currency-labels', v.currencyLabels, 'Cofactor labels', 'Name the small secondary metabolite nodes. They appear once the map is zoomed in past 34%')}
+      ${toggle('toggle-quiet-cofactors', store.map?.cofactorStyle === 'quiet', 'Quiet cofactors', 'Draw this map’s secondary metabolites small and light, so the pathways stand out. Saved with the map')}
       ${toggle('toggle-crossfeed', v.showCrossFeeding, 'Highlight cross-feeding', 'Dim the metabolic network and highlight active metabolite transfers between cells')}
     </div>
     ${crossFeedingTopControl(store)}
@@ -2687,6 +2688,7 @@ function displayCard(store, { workspace = false } = {}) {
     ${v.textTool ? '<p class="hint"><strong>Text tool on.</strong> Click the map, type, and press Enter.</p>' : ''}
     <div class="toggle-list">
       ${toggle('toggle-currency', v.showCurrency, 'Cofactors', 'Show secondary metabolites (ATP, NADH, H⁺… and nodes set to Secondary)')}
+      ${toggle('toggle-quiet-cofactors', store.map?.cofactorStyle === 'quiet', 'Quiet cofactors', 'Draw this map’s secondary metabolites small and light, so the pathways stand out')}
       ${toggle('toggle-crossfeed', v.showCrossFeeding, 'Highlight cross-feeding', 'Dim the network and highlight active producer and consumer transfer reactions')}
       ${toggle('toggle-dark', v.dark, 'Dark', 'Switch the colour scheme')}
       ${toggle('toggle-geometry-edit', v.geometryEdit, 'Edit geometry', 'Move and resize cells and compartments')}

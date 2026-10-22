@@ -1326,6 +1326,20 @@ impl Store {
         self.map.as_mut()?.edit_geometry_rect(cell_id, compartment_id, rect)
     }
 
+    /// `setMapCofactorStyle(style)`: how this map draws its secondary
+    /// metabolites, `quiet` (smaller and lighter) or `None` (full size). It
+    /// belongs to the map, so it is saved with it and undone like any map
+    /// edit. The style kept.
+    pub fn set_map_cofactor_style(&mut self, style: Option<&str>) -> Option<&'static str> {
+        let map = self.map.as_mut()?;
+        let before = map.to_json();
+        let kept = map.set_cofactor_style(style);
+        if self.record_map(&before, if kept.is_some() { "Quiet cofactors" } else { "Full-size cofactors" }) {
+            self.emit("map");
+        }
+        kept
+    }
+
     /// `setMapNodeStyle(colors)`: the colours of every metabolite circle
     /// without its own; `Reset` for the theme's. One undo step.
     pub fn set_map_node_style(&mut self, fill: &ColorChange, stroke: &ColorChange) -> Option<coxeter_core::mapdata::NodeStyle> {

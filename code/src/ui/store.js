@@ -130,6 +130,10 @@ export class Store {
     this._steadyComController = null;
     this.steadyComConfig = { fiber: null, parsimonious: false };
     this.runSteadyComTask = runSteadyComTask;
+    // The solve a SteadyCom community starts when it opens (solveSteadyComOnOpen),
+    // and the view it changed, given back when the community is left.
+    this.steadyComOnOpen = null;
+    this._caseView = null;
     this.zunigaStudy = null;
     this.zunigaPrepared = null;
     this.zunigaScenarioId = null;
@@ -270,11 +274,17 @@ export class Store {
 
   get isZunigaStudy() { return this.scenario?.published === ZUNIGA_ID && Boolean(this.zunigaStudy); }
 
-  /** Leave the Zuñiga case: forget its models and solutions and give back the view it changed. */
+  /**
+   * Leave the Zuñiga case: forget its models and solutions and give back the
+   * view it changed. Every switch of context calls this, so it also gives back
+   * the view a SteadyCom community changed when it opened solved.
+   */
   resetZunigaStudy() {
     this._zunigaGeneration++;
     if (this._zunigaPreviousView) this.view.showCrossFeeding = this._zunigaPreviousView.showCrossFeeding;
     this._zunigaPreviousView = null;
+    if (this._caseView) Object.assign(this.view, this._caseView);
+    this._caseView = null;
     this.zunigaStudy = null;
     this.zunigaPrepared = null;
     this.zunigaScenarioId = null;
@@ -1371,7 +1381,10 @@ export class Store {
     const curatedCoreMap = usesCuratedCoreMap(id);
     const jointMap = id === 'steadycom-gut-nine';
     const ownMap = Boolean(manifest.map) && !jointMap;
-    await this.rebuild({ relayout: true, contents: curatedCoreMap || jointMap || ownMap ? 'none' : 'all', solve: !jointMap });
+    // A SteadyCom community opens on its own solution, not on an FBA of the
+    // merged models that the SteadyCom one would replace a moment later.
+    const solvedOnOpen = STEADYCOM_OPEN_MU.has(id);
+    await this.rebuild({ relayout: true, contents: curatedCoreMap || jointMap || ownMap ? 'none' : 'all', solve: !jointMap && !solvedOnOpen });
     if (ownMap) {
       await this.drawPublishedPreview(id);
     } else if (curatedCoreMap) {
@@ -1379,6 +1392,12 @@ export class Store {
     }
     this.settleOpenedWork();
     this.drawWaitingMap();
+    if (solvedOnOpen) {
+      // Not awaited: the map is on screen now and the worker paints the
+      // solution on it when it is ready.
+      if (this.steadyComSupport().supported) this.steadyComOnOpen = this.solveSteadyComOnOpen();
+      else if (!jointMap) this.solve();
+    }
     return this;
   }
 
@@ -2199,6 +2218,40 @@ export class Store {
     const state = this.steadyComState?.key === key && Number.isFinite(this.steadyComState.max)
       ? this.steadyComState : await this.steadyComRange();
     if (mu < state.min || mu > state.max) throw new Error(`Choose μ inside the computed range ${state.min}–${state.max} h⁻¹.`);
+    return this.solveSteadyComFixed(mu, state, key);
+  }
+
+  /**
+   * Open a SteadyCom community solved: one fixed-µ solve at the growth rate it
+   * opens at (STEADYCOM_OPEN_MU), in the worker, while its map is already on
+   * screen, with its cross-feeding lines switched on. The range is not searched
+   * first: that runs tens of LPs, and the panel computes it when asked, as it
+   * always has. Resolves to the SteadyCom state, or null when the solve failed
+   * (the status line says why) or was overtaken by a change or another case.
+   */
+  async solveSteadyComOnOpen() {
+    const id = this.scenario?.published;
+    const mu = STEADYCOM_OPEN_MU.get(id);
+    if (mu === undefined) return null;
+    const key = this.steadyComKey();
+    const context = this.workContextKey();
+    const settled = this.savedWork?.context === context && this.savedWork.scenario === this.scenarioSignature();
+    const state = { communityId: id, key, min: null, max: null, source: 'computed', phase: null, progress: null, mu: null, feasible: null, abundances: new Map() };
+    this.steadyComState = state;
+    try {
+      await this.solveSteadyComFixed(mu, state, key);
+    } catch {
+      return null;
+    }
+    // The composition it sets is part of what was opened, not an edit.
+    if (settled && this.workContextKey() === context) this.savedWork.scenario = this.scenarioSignature();
+    this._caseView ??= { showCrossFeeding: this.view.showCrossFeeding };
+    this.setView({ showCrossFeeding: true });
+    return state;
+  }
+
+  /** The fixed-µ solve of solveSteadyComAt, into `state`, for the constraints under `key`. */
+  async solveSteadyComFixed(mu, state, key) {
     this.cancelSteadyCom({ silent: true });
     const generation = this._steadyComGeneration;
     const controller = new AbortController();
@@ -4724,6 +4777,20 @@ export class Store {
     return style;
   }
 
+  /**
+   * How this map draws its secondary metabolites: 'quiet' (smaller and
+   * lighter) or null (full size). It belongs to the map, so it is saved with it
+   * and undone like any map edit.
+   */
+  setMapCofactorStyle(style) {
+    if (!this.map) return null;
+    const before = this.map.toJSON();
+    const kept = this.map.setCofactorStyle(style);
+    if (!this.mapHistory.record(before, this.map.toJSON(), kept ? 'Quiet cofactors' : 'Full-size cofactors')) return kept;
+    this.emit('map');
+    return kept;
+  }
+
   /** Colour some metabolite circles (a selection, or one): `{ fill, stroke }`, null for the map's. */
   setMapNodeColors(nodeIds, colors) {
     if (!this.map) return [];
@@ -6177,6 +6244,15 @@ function publishedMemberFileForRuntime(communityId, member) {
 
 /** Which published communities are distributed as SteadyCom problems. */
 const STEADYCOM_COMMUNITIES = new Set(['steadycom-ecoli-auxotrophs', 'steadycom-gut-nine']);
+
+/*
+ * The growth rate (h⁻¹) each SteadyCom community opens solved at: the top of
+ * its range on the default conditions, which is the panel's default µ too
+ * (0.7359848 for the four strains, the paper's 0.73599; 0.0796936 for the gut
+ * community on the authors' diet), rounded down so that it stays inside the
+ * range the search finds.
+ */
+const STEADYCOM_OPEN_MU = new Map([['steadycom-ecoli-auxotrophs', 0.7359], ['steadycom-gut-nine', 0.0796]]);
 
 function steadyComCrossFeeding(spec, fluxes, threshold = 1e-6) {
   const links = [], perMetabolite = [];

@@ -42,10 +42,16 @@ pub struct EndpointGeometry {
 /// The radius a line ending at this node stops short of: the drawn circle of
 /// a metabolite (secondary ones are smaller), or the node's own radius.
 pub fn endpoint_node_radius(node: &Node) -> f64 {
+    endpoint_node_radius_with(node, SIZES.currency_radius)
+}
+
+/// [`endpoint_node_radius`] with secondary circles drawn `secondary_radius`
+/// across (`secondaryRadius`), smaller on a map with quiet cofactors.
+pub fn endpoint_node_radius_with(node: &Node, secondary_radius: f64) -> f64 {
     match node.kind {
         NodeKind::Metabolite | NodeKind::Medium | NodeKind::Currency => {
             if node.kind == NodeKind::Currency || node.primary == Some(false) {
-                SIZES.currency_radius
+                secondary_radius
             } else {
                 SIZES.primary_radius
             }

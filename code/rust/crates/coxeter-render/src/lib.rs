@@ -36,7 +36,10 @@ pub use crossfeed_routes::{Route, Routes, route_cross_feeding};
 pub use css::{ComputedStyle, Paint, ResolveOptions, Rgba, StyleSheet, map_stylesheet};
 pub use export::{ExportError, ExportOptions, InlineOptions, PngExport, export_png, exportable_svg, exportable_tree, inline_styles};
 pub use format::esc;
-pub use mapview::{frame_label_scale, geometry_handle_side, render_map, render_map_svg, rotation_arm};
+pub use mapview::{
+    QUIET_COFACTORS, QuietCofactors, frame_label_scale, geometry_handle_side, is_quiet_cofactors, render_map, render_map_svg,
+    rotation_arm,
+};
 pub use raster_size::{PREFERRED_SCALE, raster_scales};
 pub use reaction_colors::{PathwayRibbonMode, ReactionColorMode, ReactionColoring, build_reaction_coloring};
 pub use state::{

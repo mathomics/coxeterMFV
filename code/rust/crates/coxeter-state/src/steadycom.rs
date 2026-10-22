@@ -44,6 +44,19 @@ use crate::types::*;
 /// Which published communities are distributed as SteadyCom problems.
 pub const STEADYCOM_COMMUNITIES: [&str; 2] = ["steadycom-ecoli-auxotrophs", "steadycom-gut-nine"];
 
+/// `STEADYCOM_OPEN_MU`: the growth rate (h⁻¹) each SteadyCom community opens
+/// solved at: the top of its range on the default conditions, which is the
+/// panel's default µ too (0.7359848 for the four strains, the paper's
+/// 0.73599; 0.0796936 for the gut community on the authors' diet), rounded
+/// down so that it stays inside the range the search finds.
+pub fn steady_com_open_mu(community_id: &str) -> Option<f64> {
+    match community_id {
+        "steadycom-ecoli-auxotrophs" => Some(0.7359),
+        "steadycom-gut-nine" => Some(0.0796),
+        _ => None,
+    }
+}
+
 /// `runSteadyComTask`'s request.
 #[derive(Debug, Clone, PartialEq)]
 pub enum SteadyComTask {
@@ -186,6 +199,17 @@ pub(crate) struct SteadyComJob {
     pub controller: Arc<AtomicBool>,
     /// A fixed-µ solve waiting for this range (`solveSteadyComAt` without a range).
     pub then_fixed: Option<f64>,
+    /// The solve a community opened with (`solveSteadyComOnOpen`), and what
+    /// it finishes once it is in.
+    pub on_open: Option<OpenedSolve>,
+}
+
+/// What `solveSteadyComOnOpen` knew when it started: the work context, and
+/// whether everything opened was still as opened.
+#[derive(Debug, Clone)]
+pub(crate) struct OpenedSolve {
+    pub context: String,
+    pub settled: bool,
 }
 
 /// `staleSteadyComError()`.
@@ -602,6 +626,7 @@ impl Store {
             started,
             controller,
             then_fixed,
+            on_open: None,
         }, timeout);
         Ok(SteadyComRequest::Started)
     }
@@ -621,7 +646,6 @@ impl Store {
     }
 
     fn start_steady_com_fixed(&mut self, mu: f64) -> Result<SteadyComRequest> {
-        let key = self.steady_com_key();
         let (min, max) = {
             let state = self.cached_range().ok_or_else(|| StoreError::msg("The permitted µ range is not known."))?;
             (state.min.unwrap_or(0.0), state.max.unwrap_or(f64::NAN))
@@ -633,13 +657,60 @@ impl Store {
                 js::number_to_string(max)
             )));
         }
+        self.spawn_steady_com_fixed(mu, None)
+    }
+
+    /// `solveSteadyComOnOpen()`: open a SteadyCom community solved, with one
+    /// fixed-µ solve at the growth rate it opens at ([`steady_com_open_mu`]),
+    /// in the background while its map is already on screen; its cross-feeding
+    /// lines are switched on when the solution is in. The range is not
+    /// searched first: that runs tens of LPs, and the panel computes it when
+    /// asked, as it always has.
+    pub fn solve_steady_com_on_open(&mut self) -> Result<SteadyComRequest> {
+        let id = self.scenario_published();
+        let Some(mu) = id.as_deref().and_then(steady_com_open_mu) else {
+            return Err(StoreError::msg("This community does not open solved."));
+        };
+        let context = self.work_context_key();
+        let settled = self.saved_work.as_ref().is_some_and(|s| s.context == context && s.scenario == self.scenario_signature());
+        let serial = self.next_serial();
+        self.steady_com_state = Some(SteadyComState {
+            serial,
+            community_id: id,
+            key: self.steady_com_key(),
+            min: None,
+            max: None,
+            source: "computed".into(),
+            phase: None,
+            progress: None,
+            mu: None,
+            feasible: None,
+            abundances: IndexMap::new(),
+            upper_bound: None,
+            resolution: None,
+            iterations: None,
+            seconds: None,
+            error: None,
+            parsimonious: false,
+            total_biomass: None,
+            original_fluxes: None,
+            total_flux: None,
+            solve_ms: None,
+        });
+        self.spawn_steady_com_fixed(mu, Some(OpenedSolve { context, settled }))
+    }
+
+    /// The fixed-µ solve of `solveSteadyComAt` (`solveSteadyComFixed`), into
+    /// the SteadyCom state there is now.
+    fn spawn_steady_com_fixed(&mut self, mu: f64, on_open: Option<OpenedSolve>) -> Result<SteadyComRequest> {
+        let key = self.steady_com_key();
         self.cancel_steady_com(true);
         let generation = self.steady_com_generation;
         let controller = Arc::new(AtomicBool::new(false));
         self.steady_com_controller = Some(controller.clone());
         let parsimonious = self.steady_com_config.parsimonious;
         let serial = {
-            let state = self.steady_com_state.as_mut().expect("cached range");
+            let state = self.steady_com_state.as_mut().expect("a SteadyCom state to solve into");
             state.phase = Some("fixed".into());
             state.parsimonious = parsimonious;
             state.error = None;
@@ -665,7 +736,7 @@ impl Store {
             (SteadyComTask::Fixed { mu, time_limit_seconds: 60.0 }, Duration::from_millis(300_000))
         };
         self.spawn_steady_com(
-            SteadyComJob { generation, key, state_serial: serial, task, spec, started, controller, then_fixed: None },
+            SteadyComJob { generation, key, state_serial: serial, task, spec, started, controller, then_fixed: None, on_open },
             timeout,
         );
         Ok(SteadyComRequest::Started)
@@ -730,7 +801,26 @@ impl Store {
         if let (Ok(()), Some(mu)) = (&outcome, job.then_fixed) {
             return self.start_steady_com_fixed(mu).map(|_| ());
         }
+        if let (Ok(()), Some(opened)) = (&outcome, &job.on_open) {
+            self.finish_opened_solve(opened)?;
+        }
         outcome
+    }
+
+    /// The end of `solveSteadyComOnOpen`: the composition it set is part of
+    /// what was opened, not an edit, and the community's story, its
+    /// cross-feeding lines, is switched on.
+    fn finish_opened_solve(&mut self, opened: &OpenedSolve) -> Result<()> {
+        if opened.settled && self.work_context_key() == opened.context {
+            let signature = self.scenario_signature();
+            if let Some(saved) = self.saved_work.as_mut() {
+                saved.scenario = signature;
+            }
+        }
+        if self.case_view.is_none() {
+            self.case_view = Some(self.view.show_cross_feeding);
+        }
+        self.set_view(ViewPatch { show_cross_feeding: Some(true), ..Default::default() })
     }
 
     fn apply_steady_com_result(&mut self, job: &SteadyComJob, result: Result<SteadyComTaskResult>) -> Result<()> {
