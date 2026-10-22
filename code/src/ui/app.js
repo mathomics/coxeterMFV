@@ -8,6 +8,7 @@ import {
   renderTaskPanel,
   renderWorkspace,
   renderViewControls,
+  renderMapQuickControls,
   getWorkspaceTitle,
   renderInspector,
   renderLayoutSettings,
@@ -16,6 +17,7 @@ import {
   renderCrossFeedingEvents,
   renderFluxColorPreview,
   modelKindLabel,
+  showsSelectionInspector,
 } from './panels.js';
 import { statusLine } from './status-line.js';
 import {
@@ -27,7 +29,7 @@ import { CompartmentMenuController } from './compartment-menu.js';
 import { MetaboliteAddMenuController } from './metabolite-add-menu.js';
 import { renderMap, rotationArm, frameLabelScale, geometryHandleSide } from '../render/mapview.js';
 import { formatFlux } from '../render/theme.js';
-import { rasterScales, PREFERRED_SCALE } from '../render/raster-size.js';
+import { rasterScales } from '../render/raster-size.js';
 import { TEXT_FONTS, TEXT_SIZE, clampTextSize, textFontStack } from '../core/text-style.js';
 import { stageToMap } from '../layout/drag.js';
 import {
@@ -37,6 +39,7 @@ import {
 import { COMPARTMENT_SHAPES, compartmentShape } from '../layout/geometry.js';
 import { beginPinch, updatePinch, zoomCameraAt } from './camera-zoom.js';
 import { metaboliteLabelAngle } from '../map/metabolite-label.js';
+import { reactionLabelPlacement } from '../map/reaction-label.js';
 import { compartmentKey } from '../map/multi-selection.js';
 import { createWheelNavigation, wheelPanDelta } from './wheel-navigation.js';
 import { saveFile } from './save-file.js';
@@ -53,9 +56,8 @@ const els = {
   workspaceEditor: document.getElementById('workspace-editor'),
   workspaceTitle: document.getElementById('workspace-title'),
   viewControls: document.getElementById('view-controls'),
+  quickControls: document.getElementById('map-quick-controls'),
   resultsSummary: document.getElementById('results-summary'),
-  themeLabel: document.getElementById('theme-label'),
-  activeToolLabel: document.getElementById('active-tool-label'),
   inspectorPanel: document.getElementById('inspector-panel'),
   inspector: document.getElementById('inspector'),
   resultsPanel: document.getElementById('results-panel'),
@@ -112,6 +114,8 @@ let storeRevision = 0;
 const store = new Store('.');
 store.view.dark = document.documentElement.dataset.theme === 'dark';
 const camera = { x: 0, y: 0, scale: 1, fitted: false };
+// The stage size the camera was last placed for (see syncStageViewport).
+let previousStageSize = null;
 let pendingSolve = null;
 
 const boundaryMenu = new BoundaryMenuController({
@@ -161,6 +165,7 @@ function paintMap() {
   applyCamera();
   markDraggedNode();
   markDraggedMetaboliteLabel();
+  markDraggedReactionLabel();
   renderTextEditor();
   if (ui.rx.hover) highlightReactionOnMap(ui.rx.hover);
 }
@@ -225,10 +230,10 @@ function mapRenderState() {
     reactionLabels: store.mapLabels('reaction'),
     showCurrency: store.view.showCurrency,
     currencyLabels: store.view.currencyLabels || store.mapMode === 'core-overview',
-    showCrossFeeding: store.view.showCrossFeeding,
+    showCrossFeeding: store.crossFeedingHighlighted(),
     crossFeedingWidth: store.view.crossFeedingWidth,
     crossFeeding: store.crossFeeding,
-    crossFeedingBases: store.view.showCrossFeeding ? store.crossFeedingVisibleBases() : null,
+    crossFeedingBases: store.crossFeedingHighlighted() ? store.crossFeedingVisibleBases() : null,
     crossFeedingExplorer: { enabled:store.crossFeedingExplorer.enabled, visibleEvents:store.crossFeedingExplorerEvents(), selectedEvent:store.crossFeedingExplorer.index?.events.find(e=>e.id===store.crossFeedingExplorer.selectedId)??null, selectedAt:store.crossFeedingExplorer.selectedAt??null },
     growth: store.growth,
     // Pre-size the pointer halos so a repaint never has to walk the DOM for them.
@@ -272,8 +277,8 @@ function emptyMapOverlay() {
     <div class="stage-empty-card">
       <h2>Nothing drawn yet</h2>
       <p>${shell
-        ? `The cells and compartments are drawn but nothing is inside them; the model is untouched${available ? ` — <strong>${available} reactions</strong> are waiting` : ''}.`
-        : `The map is empty; the model is untouched${available ? ` — <strong>${available} reactions</strong> are still there` : ''}.`}</p>
+        ? `The cells are drawn but empty${available ? `; <strong>${available} reactions</strong> can be added` : ''}.`
+        : `The map is empty${available ? `; the model has <strong>${available} reactions</strong>` : ''}.`}</p>
       <ol>
         ${steps.join('\n        ')}
       </ol>
@@ -526,7 +531,8 @@ function syncInspectorVisibility() {
     return;
   }
   if (ui.inspectorPinned) return;
-  const hasSelection = Boolean(store.selectedReaction || store.selectedEntity);
+  const hasSelection = Boolean(store.selectedReaction || store.selectedEntity)
+    || showsSelectionInspector(store);
   els.app.classList.toggle('is-inspector-collapsed', !hasSelection);
 }
 
@@ -828,12 +834,13 @@ function paintShell() {
     if (active) tab.setAttribute('aria-current', 'page'); else tab.removeAttribute('aria-current');
   });
   els.taskPanel.innerHTML = renderTaskPanel(store, ui);
-  const activeViewAction = els.viewControls.contains(document.activeElement) ? document.activeElement.dataset.action : null;
-  els.viewControls.innerHTML = renderViewControls(store);
-  if (activeViewAction) els.viewControls.querySelector(`[data-action="${activeViewAction}"]`)?.focus({ preventScroll: true });
+  for (const [box, render] of [[els.viewControls, renderViewControls], [els.quickControls, renderMapQuickControls]]) {
+    const activeViewAction = box.contains(document.activeElement) ? document.activeElement.dataset.action : null;
+    box.innerHTML = render(store);
+    if (activeViewAction) box.querySelector(`[data-action="${activeViewAction}"]`)?.focus({ preventScroll: true });
+  }
   els.workspaceTitle.textContent = getWorkspaceTitle(ui.workspace || ui.lastWorkspace);
   document.documentElement.dataset.theme = store.view.dark ? 'dark' : 'light';
-  if (els.themeLabel) els.themeLabel.textContent = store.view.dark ? 'Light' : 'Dark';
   els.app.querySelectorAll('[data-action="toggle-theme"]').forEach(button => {
     const label = `Switch to ${store.view.dark ? 'light' : 'dark'} theme`;
     button.setAttribute('aria-label', label);
@@ -847,7 +854,6 @@ function paintShell() {
     els.waitingMapItem.textContent = waiting?.name ? `Forget waiting map (${waiting.name})` : 'Forget waiting map';
     els.waitingMapItem.title = waiting ? `Will be drawn when ${waiting.needs} is loaded` : '';
   }
-  if (els.activeToolLabel) els.activeToolLabel.textContent = {select:'Select',pan:'Pan',edit:'Edit',reaction:'Add Reaction',metabolite:'Metabolite',text:'Text',cell:'Cell',compartment:'Compartment'}[ui.tool];
   const optimal = store.solution?.status === 'optimal';
   if (els.resultsSummary) paintRunSummary(optimal);
   els.app.querySelectorAll('[data-action="clear-solution"]').forEach((button) => { button.disabled = !store.solution; });
@@ -956,7 +962,7 @@ function patchSteadyComControls() {
   const busy = Boolean(ui.steadyComPending || state?.phase);
   panel.querySelectorAll('[data-action="steadycom-mu"], [data-action="steadycom-mu-number"], [data-action="steadycom-solve"]').forEach((control) => control.disabled = !computed || busy);
   const range = panel.querySelector('[data-steadycom-range-value]');
-  if (range) range.textContent = computed ? `${state.min ?? 0} – ${state.max} h⁻¹` : 'Not calculated for the current inputs';
+  if (range) range.textContent = computed ? `${+(state.min ?? 0).toFixed(6)} – ${+state.max.toFixed(6)} h⁻¹` : 'Not calculated for the current inputs';
   const calculate = panel.querySelector('[data-action="steadycom-recompute"]');
   if (calculate) calculate.disabled = busy;
   const cancel = panel.querySelector('[data-action="steadycom-cancel"]');
@@ -1206,6 +1212,10 @@ function fitToStage(svgNode) {
   camera.x = (box.width - store.layout.width * camera.scale) / 2;
   camera.y = (box.height - store.layout.height * camera.scale) / 2;
   camera.fitted = true;
+  // Fitted to this size, so a resize the observer reports later (the
+  // inspector closing itself after the first paint) moves it only by what
+  // changes from here, not a second time by what this fit already took in.
+  if (box.width > 0 && box.height > 0) previousStageSize = { width: box.width, height: box.height };
 }
 
 function applyCamera() {
@@ -1361,6 +1371,7 @@ els.stage.addEventListener('dblclick', (event) => {
 let panGesture = null;
 let nodeDragGesture = null;
 let metaboliteLabelDragGesture = null;
+let reactionLabelDragGesture = null;
 let compartmentLabelDragGesture = null;
 let reactionPickGesture = null;
 let reactionDragGesture = null;
@@ -1398,7 +1409,7 @@ function mapContentAt(target) {
     '.emc-node[data-node], .emc-marker[data-rxn], .emc-seg[data-rxn],'
     + ' .emc-hit-reaction[data-rxn], .emc-hit-node[data-node],'
     + ' [data-reaction-handle], [data-rotate-handle], [data-control-handle], [data-map-text],'
-    + ' [data-geometry-handle], [data-cell-plate], [data-metabolite-label]',
+    + ' [data-geometry-handle], [data-cell-plate], [data-metabolite-label], .emc-label-rxn[data-rxn]',
   ) ?? null;
 }
 
@@ -1436,9 +1447,10 @@ function reactionAt(target) {
   // (eleven units of radius, fifteen on a membrane, and a pointer cursor to say
   // so). It resolves to its reaction too, or only a press on the thin visible
   // geometry would count and everything around it would fall through to
-  // whatever is underneath.
+  // whatever is underneath. So does the reaction's name: with a tool that
+  // does not move it, a press on it is a press on the reaction.
   const visual = target?.closest?.(
-    '.emc-marker[data-rxn], .emc-seg[data-rxn], .emc-hit-reaction[data-rxn]',
+    '.emc-marker[data-rxn], .emc-seg[data-rxn], .emc-hit-reaction[data-rxn], .emc-label-rxn[data-rxn]',
   )?.dataset?.rxn;
   return explicit ?? visual ?? null;
 }
@@ -1470,7 +1482,8 @@ function multiSelectableAt(target) {
   const nodeId = target?.closest?.('.emc-node[data-node]')?.dataset?.node ?? metaboliteLabelAt(target);
   if (nodeId && store.canMoveNode(nodeId)) return { kind: 'node', id: nodeId };
 
-  const reactionId = target?.closest?.('.emc-marker[data-rxn], .emc-seg[data-rxn]')?.dataset?.rxn;
+  const reactionId = target?.closest?.('.emc-marker[data-rxn], .emc-seg[data-rxn]')?.dataset?.rxn
+    ?? reactionLabelAt(target);
   if (reactionId && store.canMoveReaction(reactionId)) return { kind: 'reaction', id: reactionId };
 
   const textId = mapTextAt(target);
@@ -1486,6 +1499,23 @@ function metaboliteLabelAt(target) {
   const id = target?.closest?.('[data-metabolite-label]')?.dataset?.metaboliteLabel;
   const node = id ? store.layout?.nodes.get(id) : null;
   return node && ['metabolite', 'medium', 'currency'].includes(node.kind) ? id : null;
+}
+
+/** The reaction whose name is under the pointer, if it is one drawn on the map. */
+function reactionLabelAt(target) {
+  const id = target?.closest?.('.emc-label-rxn[data-rxn]')?.dataset?.rxn;
+  return id && store.layout?.reactions?.has(id) ? id : null;
+}
+
+/*
+ * In Edit the curve handles and the lever are drawn under the names, and a
+ * name beside a marker can lie over one of them. The handle wins: the name can
+ * be moved in Select, but a handle hidden under it could not be reached at all.
+ */
+function editHandleUnder(event) {
+  if (ui.tool !== 'edit') return null;
+  return document.elementsFromPoint?.(event.clientX, event.clientY)
+    ?.find((el) => el.matches?.('[data-rotate-handle], [data-control-handle], [data-reaction-handle]')) ?? null;
 }
 
 /**
@@ -1869,6 +1899,81 @@ function markDraggedMetaboliteLabel() {
 function finishMetaboliteLabelDragForHistory() {
   if (metaboliteLabelDragGesture) {
     finishMetaboliteLabelDrag({ pointerId: metaboliteLabelDragGesture.pointerId });
+  }
+}
+
+// Reaction labels
+
+/**
+ * A press on a reaction's name: a drag puts the name somewhere else, kept as
+ * an offset from the marker (reaction-label.js); a press that never moves is
+ * a click on the reaction, decided on release.
+ */
+function beginReactionLabelDrag(reactionId, event) {
+  const rxn = store.layout?.reactions.get(reactionId);
+  if (!rxn) return;
+  closeMapMenus();
+  const at = screenToMap(event.clientX, event.clientY);
+  const history = store.beginMapEdit('Move reaction label');
+  if (history) history.before = structuredClone(history.before);
+  // Where the name is written now, in its default place or not: the drag goes
+  // on from there, so the name does not jump when it is picked up.
+  const place = reactionLabelPlacement(store.layout, rxn);
+  reactionLabelDragGesture = {
+    reactionId, pointerId: event.pointerId,
+    startOffset: { x: place.x - rxn.x, y: place.y - rxn.y },
+    labelOffsetBefore: rxn.labelOffset ? { ...rxn.labelOffset } : undefined,
+    pressX: at.x, pressY: at.y, clientX: event.clientX, clientY: event.clientY,
+    moved: false, history,
+  };
+  event.preventDefault();
+  capturePointer(event);
+  els.stage.classList.add('is-dragging-reaction-label');
+  markDraggedReactionLabel();
+}
+
+function updateReactionLabelDrag(event) {
+  const g = reactionLabelDragGesture;
+  if (!g || event.pointerId !== g.pointerId) return;
+  // A few pixels of slack, as for a reaction, so a click is not taken for a move.
+  if (!g.moved && Math.abs(event.clientX - g.clientX) + Math.abs(event.clientY - g.clientY) <= 4) return;
+  const at = screenToMap(event.clientX, event.clientY);
+  const offset = { x: g.startOffset.x + at.x - g.pressX, y: g.startOffset.y + at.y - g.pressY };
+  if (!store.setReactionLabelOffset(g.reactionId, offset)) return;
+  g.moved = true;
+  schedulePaint();
+}
+
+function finishReactionLabelDrag(event, { cancel = false } = {}) {
+  const g = reactionLabelDragGesture;
+  if (!g || event.pointerId !== g.pointerId) return null;
+  reactionLabelDragGesture = null;
+  releasePointer(event);
+  els.stage.classList.remove('is-dragging-reaction-label');
+  if (cancel) {
+    const rxn = store.layout?.reactions.get(g.reactionId);
+    if (rxn) {
+      if (g.labelOffsetBefore === undefined) delete rxn.labelOffset;
+      else rxn.labelOffset = g.labelOffsetBefore;
+    }
+  } else if (g.moved) store.commitMapEdit(g.history);
+  markDraggedReactionLabel();
+  schedulePaint();
+  return g;
+}
+
+function markDraggedReactionLabel() {
+  els.stage.querySelectorAll('.emc-label-rxn.is-dragging')
+    .forEach(label => label.classList.remove('is-dragging'));
+  const id = reactionLabelDragGesture?.reactionId;
+  if (!id) return;
+  const escaped = String(id).replace(/["\\]/g, '\\$&');
+  els.stage.querySelector('.emc-label-rxn[data-rxn="' + escaped + '"]')?.classList.add('is-dragging');
+}
+
+function finishReactionLabelDragForHistory() {
+  if (reactionLabelDragGesture) {
+    finishReactionLabelDrag({ pointerId: reactionLabelDragGesture.pointerId });
   }
 }
 
@@ -2265,7 +2370,7 @@ function finishCompartmentDraw(event) {
     store.status = {
       ...store.status,
       state: 'ok',
-      message: 'Drag to draw the compartment: press inside the highlighted parent and pull out a rectangle.',
+      message: 'Drag inside the highlighted parent to draw the compartment.',
     };
     store.emit('status');
     schedulePaint();
@@ -2583,6 +2688,9 @@ function finishSelectionRect(event) {
       x2: g.currentMap.x,
       y2: g.currentMap.y,
     }, { replace: true });
+    // A sweep that catches several things is about them: the inspector turns
+    // from whatever was picked before to the selection.
+    if (store.multiSelectionSize >= 2 && (store.selectedReaction || store.selectedEntity)) store.select(null);
   } else {
     store.clearMultiSelection();
   }
@@ -2714,6 +2822,9 @@ function suspendSinglePointerGestureForPinch() {
   }
   if (metaboliteLabelDragGesture) {
     finishMetaboliteLabelDrag({ pointerId: metaboliteLabelDragGesture.pointerId });
+  }
+  if (reactionLabelDragGesture) {
+    finishReactionLabelDrag({ pointerId: reactionLabelDragGesture.pointerId });
   }
   if (textDragGesture) {
     const g = textDragGesture;
@@ -2911,6 +3022,22 @@ els.stage.addEventListener('pointerdown', (event) => {
     return;
   }
 
+  // A reaction's name is moved by the tools that move things. With any other
+  // tool, or with shift, it stands for its reaction (reactionAt,
+  // multiSelectableAt), and the press goes on below as one on the marker.
+  const labelReactionId = reactionLabelAt(event.target);
+  if (labelReactionId && !store.view.geometryEdit && !selecting && movesThings()) {
+    const handle = editHandleUnder(event);
+    const rotating = handle && rotateHandleAt(handle);
+    if (rotating) { beginRotateDrag(rotating, event); return; }
+    const control = handle && controlHandleAt(handle);
+    if (control) { beginControlDrag(control, event); return; }
+    const marker = handle && draggableReactionAt(handle);
+    if (marker) { beginReactionDrag(marker, event); return; }
+    beginReactionLabelDrag(labelReactionId, event);
+    return;
+  }
+
   if (selecting && !store.view.geometryEdit) {
     if (multiHit) {
       if (store.isMultiSelected(multiHit.kind, multiHit.id) && store.multiSelectionSize >= 2 && movesThings()) {
@@ -3054,6 +3181,7 @@ els.stage.addEventListener('pointermove', (event) => {
     return;
   }
   if (metaboliteLabelDragGesture) { updateMetaboliteLabelDrag(event); return; }
+  if (reactionLabelDragGesture) { updateReactionLabelDrag(event); return; }
   if (textDragGesture) { updateTextDrag(event); return; }
   if (selectionGesture) { updateSelectionRect(event); return; }
   if (groupDragGesture) { updateGroupDrag(event); return; }
@@ -3084,6 +3212,15 @@ els.stage.addEventListener('pointerup', (event) => {
   if (metaboliteLabelDragGesture) {
     const gesture = finishMetaboliteLabelDrag(event);
     if (gesture && !gesture.moved) store.selectEntity('metabolite', gesture.nodeId);
+    return;
+  }
+  if (reactionLabelDragGesture) {
+    // A press on the name that never moved is a click on the reaction.
+    const gesture = finishReactionLabelDrag(event);
+    if (gesture && !gesture.moved) {
+      closeMapMenus();
+      store.select(gesture.reactionId);
+    }
     return;
   }
   if (textDragGesture) { finishTextDrag(event); return; }
@@ -3331,6 +3468,7 @@ els.stage.addEventListener('pointercancel', (event) => {
     return;
   }
   if (metaboliteLabelDragGesture) { finishMetaboliteLabelDrag(event, { cancel: true }); return; }
+  if (reactionLabelDragGesture) { finishReactionLabelDrag(event, { cancel: true }); return; }
   if (textDragGesture) { finishTextDrag(event); return; }
   if (reactionPickGesture) {
     reactionPickGesture = null;
@@ -4181,6 +4319,7 @@ async function onSidebarClick(event) {
     case 'reaction-align': store.alignMapReaction(rxn, button.dataset.direction); break;
     case 'reaction-align-axis': store.alignMapReactionAxis(rxn, button.dataset.axis); break;
     case 'reaction-tidy': store.tidyMapReaction(rxn); break;
+    case 'reaction-label-reset': store.resetReactionLabel(rxn); break;
     case 'reaction-flip': store.flipMapReaction(rxn); break;
     case 'reaction-mirror': store.mirrorMapReaction(rxn); break;
     case 'reaction-rotate':
@@ -4188,8 +4327,8 @@ async function onSidebarClick(event) {
       break;
     case 'knockout': runConstraintEdit(() => store.knockout(rxn)); break;
     case 'remove-map-reaction': boundaryMenu.close(); metaboliteMenu.close(); compartmentMenu.close(); store.removeMapReaction(rxn); break;
-    case 'map-undo': finishMetaboliteLabelDragForHistory(); closeMapMenus(); store.undoMap(); break;
-    case 'map-redo': finishMetaboliteLabelDragForHistory(); closeMapMenus(); store.redoMap(); break;
+    case 'map-undo': finishMetaboliteLabelDragForHistory(); finishReactionLabelDragForHistory(); closeMapMenus(); store.undoMap(); break;
+    case 'map-redo': finishMetaboliteLabelDragForHistory(); finishReactionLabelDragForHistory(); closeMapMenus(); store.redoMap(); break;
     case 'map-save': saveMap(); break;
     case 'clear-log':
       store.clearLog();
@@ -4257,8 +4396,8 @@ async function onSidebarClick(event) {
         ...store.status,
         state: 'ok',
         message: cleared
-          ? `Map cleared — ${cleared} drawn reactions removed. The model is unchanged; Ctrl+Z undoes this.`
-          : 'Map cleared. The model is unchanged.',
+          ? `Map cleared: ${cleared} drawn reactions removed. Ctrl+Z undoes.`
+          : 'Map cleared.',
       };
       store.emit('status');
       break;
@@ -4377,6 +4516,7 @@ async function onSidebarClick(event) {
       break;
     }
     case 'toggle-currency': store.setView({ showCurrency: !store.view.showCurrency }); break;
+    case 'toggle-width-by-flux': store.setView({ widthByFlux: !store.view.widthByFlux }); break;
     case 'toggle-currency-labels': store.setView({ currencyLabels: !store.view.currencyLabels }); break;
     case 'toggle-quiet-cofactors': store.setMapCofactorStyle(store.map?.cofactorStyle === 'quiet' ? null : 'quiet'); break;
     case 'toggle-crossfeed': store.setView({ showCrossFeeding: !store.view.showCrossFeeding }); break;
@@ -4415,6 +4555,22 @@ async function onSidebarClick(event) {
       closeMapMenus();
       store.arrangeMultiSelection(action);
       break;
+    case 'selection-space-evenly':
+      closeMapMenus();
+      store.spaceMultiSelectionEvenly();
+      break;
+    case 'selection-point':
+      closeMapMenus();
+      store.pointMultiSelection(button.dataset.direction);
+      break;
+    case 'selection-rotate':
+      closeMapMenus();
+      store.rotateMultiSelection((Number(button.dataset.angle) * Math.PI) / 180);
+      break;
+    case 'clear-multi-selection':
+      closeMapMenus();
+      store.clearMultiSelection();
+      break;
     case 'show-hidden-metabolites':
       closeMapMenus();
       store.showAllHiddenMetabolites();
@@ -4430,7 +4586,7 @@ async function onSidebarClick(event) {
     default: break;
   }
 
-  if (button.closest('.top-menu')) button.closest('.top-menu').removeAttribute('open');
+  button.closest('.top-menu, .canvas-export')?.removeAttribute('open');
   if (!button.isConnected && !ui.workspace) {
     const restored = [...els.app.querySelectorAll('button[data-action]')].find(candidate =>
       Object.entries(button.dataset).every(([key,value]) => candidate.dataset[key] === value)
@@ -4470,7 +4626,7 @@ els.mapFileInput.addEventListener('change', async () => {
       store.status = {
         ...store.status,
         state: 'warn',
-        message: `“${file.name}” does not fit what is open: ${store.waitingMap.reason} The map is kept and will be drawn as soon as ${store.waitingMap.needs} is loaded (File ▸ Model). The current drawing is unchanged.`,
+        message: `“${file.name}” does not fit what is open: ${store.waitingMap.reason} It will be drawn once ${store.waitingMap.needs} is loaded; the current drawing is kept.`,
       };
       store.emit('status');
       els.mapFileInput.value = '';
@@ -4652,10 +4808,23 @@ document.addEventListener('toggle', (event) => {
   });
 }, true);
 
+// A press anywhere outside an open dropdown closes it, as menus do. Captured,
+// so the map, which keeps its presses to itself, cannot hold it open.
+document.addEventListener('pointerdown', (event) => {
+  document.querySelectorAll('.canvas-view[open], .top-menu[open]').forEach((menu) => {
+    if (!menu.contains(event.target)) menu.open = false;
+  });
+}, true);
+
 window.addEventListener('keydown', (event) => {
   if (event.key === 'Escape' && metaboliteLabelDragGesture) {
     event.preventDefault();
     finishMetaboliteLabelDrag({ pointerId: metaboliteLabelDragGesture.pointerId }, { cancel: true });
+    return;
+  }
+  if (event.key === 'Escape' && reactionLabelDragGesture) {
+    event.preventDefault();
+    finishReactionLabelDrag({ pointerId: reactionLabelDragGesture.pointerId }, { cancel: true });
     return;
   }
   if (event.key === 'Escape' && ui.workspace) { event.preventDefault(); closeWorkspace(); return; }
@@ -4690,6 +4859,7 @@ window.addEventListener('keydown', (event) => {
   if (mod && event.key.toLowerCase() === 'z') {
     event.preventDefault();
     finishMetaboliteLabelDragForHistory();
+    finishReactionLabelDragForHistory();
     closeMapMenus();
     if (event.shiftKey) store.redoMap();
     else store.undoMap();
@@ -4698,6 +4868,7 @@ window.addEventListener('keydown', (event) => {
   if (mod && event.key.toLowerCase() === 'y') {
     event.preventDefault();
     finishMetaboliteLabelDragForHistory();
+    finishReactionLabelDragForHistory();
     closeMapMenus();
     store.redoMap();
     return;
@@ -4747,7 +4918,6 @@ window.addEventListener('keydown', (event) => {
   if (event.key === '-') zoomBy(1 / 1.3);
 });
 
-let previousStageSize = null;
 function syncStageViewport() {
   const { width, height } = els.stage.getBoundingClientRect();
   // Maximized results temporarily give the map a zero-height grid track. Keep
@@ -4786,7 +4956,7 @@ function acceptNumber(el, event, current) {
     store.status = {
       ...store.status,
       state: 'warn',
-      message: 'That field was empty or not a number, so nothing changed; it shows the value still in force.',
+      message: 'Invalid number; value unchanged.',
     };
     store.emit('status');
   } else {
@@ -4880,7 +5050,7 @@ function showModelEditError(error) {
 function selectModelMetabolite(mergedId) {
   const node=[...(store.map?.nodes?.values?.()??[])].find(n=>n.mergedId===mergedId);
   if(node){store.selectedReaction=null;store.selectedEntity={type:'metabolite',id:node.id};store.emit('selection');return;}
-  store.status={...store.status,state:'ok',message:`Metabolite ${mergedId} exists in the model but is not currently drawn on the map.`};store.emit('status');
+  store.status={...store.status,state:'ok',message:`Metabolite ${mergedId} is not drawn on the map.`};store.emit('status');
 }
 
 function closeMapMenus() {
@@ -5025,14 +5195,15 @@ async function exportPNG() {
       throw new Error(`the map is too large for this browser to rasterize${detail}. Export the SVG instead; it keeps full resolution.`);
     });
     if (!filename) return;
-    if (used >= PREFERRED_SCALE) {
+    // Short of 2× is still a sharp picture; smaller than the map itself is worth a word.
+    if (used >= 1) {
       store.addLog('ok', `Map exported as ${filename} (${Math.round(width * used)} × ${Math.round(height * used)} px)`);
       store.emit('status');
     } else {
       store.status = {
         ...store.status,
         state: 'warn',
-        message: `PNG exported at ${used}× (${Math.round(width * used)} × ${Math.round(height * used)} px): a ${PREFERRED_SCALE}× image of this map exceeds the browser's canvas limit. The SVG keeps full resolution.`,
+        message: `PNG exported at ${used}× (${Math.round(width * used)} × ${Math.round(height * used)} px), smaller than the map: a larger one does not fit in memory. The SVG keeps full resolution.`,
       };
       store.emit('status');
     }
@@ -5239,6 +5410,7 @@ window.escherMCMC = {
     pan: panGesture,
     node: nodeDragGesture,
     metaboliteLabel: metaboliteLabelDragGesture,
+    reactionLabel: reactionLabelDragGesture,
     compartmentLabel: compartmentLabelDragGesture,
     reactionPick: reactionPickGesture,
     reaction: reactionDragGesture,

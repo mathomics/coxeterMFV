@@ -131,6 +131,15 @@ test('invalid and out-of-range μ never replace the last valid fixed solution', 
   assertFixedSolution(store, 2);
 });
 
+test('the maximum μ as its field reads it back, a hair past the maximum, is the maximum', async () => {
+  const store = await pairStore();
+  const { max } = await store.steadyComRange();
+  // An <input type=number> keeps 15 significant digits.
+  await store.solveSteadyComAt(max * (1 + 1e-12));
+  assertFixedSolution(store, max);
+  await assert.rejects(store.solveSteadyComAt(max * 1.001), /computed range/, 'past it by more is still refused');
+});
+
 test('medium and member-bound changes invalidate the previous interval and are included in the new solve', async () => {
   const store = await pairStore();
   const initial = await store.steadyComRange();

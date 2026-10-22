@@ -139,6 +139,18 @@ impl Store {
         self.select_cross_feeding_event(&event.id)
     }
 
+    /// `crossFeedingHighlighted()`: whether the map is drawn with its
+    /// cross-feeding highlighted: asked for in the view, there are cells to
+    /// feed one another, and the solution has them pass something. The
+    /// highlight dims all but the transfers between cells, so without one it
+    /// would only dim the map (on a map of one cell with no control in sight
+    /// to undo it); the view setting is kept for when there is.
+    pub fn cross_feeding_highlighted(&self) -> bool {
+        self.view.show_cross_feeding
+            && self.community.as_ref().is_some_and(|c| c.active_species().count() > 1)
+            && !self.cross_feeding_metabolites().is_empty()
+    }
+
     /// `crossFeedingMetabolites()`: the metabolites species pass to each
     /// other, most important first (protons and water left out).
     pub fn cross_feeding_metabolites(&self) -> Vec<ExchangedMetabolite> {

@@ -28,6 +28,8 @@ use std::f64::consts::{FRAC_1_SQRT_2, PI};
 use coxeter_core::geometry::{closest_perimeter_point, closest_perimeter_point_corners, compartment_corners};
 use coxeter_core::js;
 use coxeter_core::mapdata::{AxisEnd, Linear, LineEnds, MapReaction, NodeKind, Point, Segment, SegmentKind};
+use coxeter_core::metabolite_label::turn_metabolite_label;
+use coxeter_core::reaction_label::{reaction_label_offset, set_reaction_label_offset};
 use serde_json::{Map, Value};
 
 use crate::drag::{Moving, Placeable, clamp_node_position, node_fits_at, update_connected_segments};
@@ -241,8 +243,10 @@ fn place_node(map: &mut EditableMap, node_id: &str, point: Point) {
 }
 
 /// `ensureReactionBackbone`: give every branch of an internal reaction its
-/// own attachment point along the backbone (Escher-style), once.
-fn ensure_reaction_backbone(map: &mut EditableMap, reaction_id: &str) {
+/// own attachment point along the backbone (Escher-style), and its two cubic
+/// handles, as edits here expect. A map laid out by the automatic layout has
+/// neither: its branches meet at the axis ends, as straight lines.
+pub fn ensure_reaction_backbone(map: &mut EditableMap, reaction_id: &str) {
     let Some(rxn) = map.g.reactions.get(reaction_id) else { return };
     if rxn.axis.is_none() || rxn.on_membrane {
         return;
@@ -596,10 +600,10 @@ pub fn can_rotate_reaction(map: &EditableMap, reaction_id: &str) -> bool {
 /// reaction about its centre (radians; positive is clockwise on screen).
 ///
 /// Everything that belongs to the reaction itself turns with it: the axis,
-/// the points where the branches leave it, their reaction-side handles and
-/// the small cofactor nodes the reaction owns. Metabolites that stand on
-/// their own stay where they are, and their branches are redrawn to the
-/// turned backbone.
+/// the points where the branches leave it, their reaction-side handles, the
+/// small cofactor nodes the reaction owns and a name moved off its default
+/// place. Metabolites that stand on their own stay where they are, and their
+/// branches are redrawn to the turned backbone.
 pub fn rotate_reaction(map: &mut EditableMap, reaction_id: &str, angle: f64) -> bool {
     if !angle.is_finite() || !can_rotate_reaction(map, reaction_id) {
         return false;
@@ -612,13 +616,62 @@ pub fn rotate_reaction(map: &mut EditableMap, reaction_id: &str, angle: f64) -> 
     let sin = js::sin(angle);
     let rxn = &map.g.reactions[reaction_id];
     let centre = Point::new(rxn.x, rxn.y);
-    transform_skeleton(
-        map,
-        reaction_id,
-        &|p| rotate_about(p, centre, centre, cos, sin),
-        &|v| Point::new(v.x * cos - v.y * sin, v.x * sin + v.y * cos),
-        &HashSet::new(),
-    );
+    let turn = |v: Point| Point::new(v.x * cos - v.y * sin, v.x * sin + v.y * cos);
+    transform_skeleton(map, reaction_id, &|p| rotate_about(p, centre, centre, cos, sin), &turn, &HashSet::new());
+    let rxn = &mut map.g.reactions[reaction_id];
+    if let Some(offset) = reaction_label_offset(rxn) {
+        set_reaction_label_offset(rxn, Some(turn(offset)));
+    }
+    true
+}
+
+/// `turnReactionAbout(layout, reactionId, pivot, angle)`: turn an internal
+/// reaction's own drawing about `pivot`, marker included: the axis and the
+/// direction it was placed in, where its branches leave the backbone with
+/// their reaction-side handles, its cofactor nodes (labels and all) and its
+/// name. This is one reaction's part of turning a whole selection
+/// ([`rotate_selection`](crate::multi_selection::rotate_selection)), which is
+/// rigid, so nothing is clamped here; the caller has checked there is room.
+/// Metabolites standing on their own, and the metabolite ends of the branches
+/// to them, are the caller's.
+///
+/// `angle` is in radians; positive is clockwise on screen. `false` for a
+/// transporter or a straight reaction: one turns with its membrane, the other
+/// with its two metabolites.
+pub fn turn_reaction_about(map: &mut EditableMap, reaction_id: &str, pivot: Point, angle: f64) -> bool {
+    let Some(rxn) = map.g.reactions.get(reaction_id) else { return false };
+    if rxn.on_membrane
+        || linear_ends(map, reaction_id).is_some()
+        || !angle.is_finite()
+        || !pivot.x.is_finite()
+        || !pivot.y.is_finite()
+    {
+        return false;
+    }
+    ensure_reaction_backbone(map, reaction_id);
+    let cos = js::cos(angle);
+    let sin = js::sin(angle);
+    let point = |p: Point| rotate_about(p, pivot, pivot, cos, sin);
+    let turn = |v: Point| Point::new(v.x * cos - v.y * sin, v.x * sin + v.y * cos);
+    transform_skeleton(map, reaction_id, &point, &turn, &HashSet::new());
+    let rxn = &mut map.g.reactions[reaction_id];
+    let centre = point(Point::new(rxn.x, rxn.y));
+    rxn.x = centre.x;
+    rxn.y = centre.y;
+    rxn.axis_direction_hint = rxn.axis_direction_hint.map(turn);
+    if let Some(p) = rxn.placement_direction.as_ref().and_then(point_from_value) {
+        let q = turn(p);
+        rxn.placement_direction = Some(serde_json::json!({ "x": q.x, "y": q.y }));
+    }
+    rxn.normal = rxn.normal.map(turn);
+    if let Some(offset) = reaction_label_offset(rxn) {
+        set_reaction_label_offset(rxn, Some(turn(offset)));
+    }
+    for node in map.g.nodes.values_mut() {
+        if node.reaction_id.as_deref() == Some(reaction_id) {
+            turn_metabolite_label(node, angle);
+        }
+    }
     true
 }
 

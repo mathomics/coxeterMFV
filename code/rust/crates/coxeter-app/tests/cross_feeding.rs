@@ -41,7 +41,7 @@ fn open_crossfeeding_explorer() {
     open(&mut h, Workspace::Crossfeeding);
     let n = h.state().store.cross_feeding.links.iter().filter(|l| l.from.is_some() && l.to.is_some()).count();
     assert!(n > 0, "the consortium cross-feeds");
-    assert!(common::shows(&h, &format!("{n} active producer→consumer event(s) detected in the current flux solution.")));
+    assert!(common::shows(&h, &format!("{n} active producer→consumer event(s).")));
     assert!(!h.state().store.view.show_cross_feeding);
     h.state_mut().close_workspace();
     common::settle(&mut h);
@@ -54,7 +54,7 @@ fn open_crossfeeding_explorer() {
     let total = store.cross_feeding_explorer.index.as_ref().unwrap().events.len();
     assert!(total > 0);
     let visible = store.cross_feeding_explorer_events().len();
-    assert!(common::shows(&h, &format!(" of {total} active events · flux solution evidence.")));
+    assert!(common::shows(&h, &format!(" of {total} active events")));
     assert!(common::shows(&h, &visible.to_string()));
     assert!(common::shows(&h, "mmol·gDW community⁻¹·h⁻¹"));
 }
@@ -125,7 +125,7 @@ fn select_and_close_the_explorer() {
     assert!(common::shows(&h, &label));
 
     // close-crossfeeding-explorer
-    common::click(&mut h, "Close cross-feeding explorer");
+    common::click(&mut h, "Close explorer");
     let x = &h.state().store.cross_feeding_explorer;
     assert!(!x.enabled);
     assert_eq!(x.selected_id, None);

@@ -45,8 +45,10 @@ import {
 } from './geometry-edit.js';
 import {
   alignSelection, distributeSelection, dragSelection, selectableInRect, translateSelection, textCentre,
+  spaceSelectionEvenly, rotateSelection, pointSelection,
 } from './multi-selection.js';
 import { isSecondaryNode, metaboliteLabelAngle } from './metabolite-label.js';
+import { normalizeReactionLabelOffset } from './reaction-label.js';
 import { closestPerimeterPoint, compartmentCorners } from '../layout/geometry.js';
 import {
   membraneStyle, compartmentName, cellCompartmentName, cellCompartmentVisualId,
@@ -91,6 +93,7 @@ export class EditableMap {
     normalizeMetaboliteLabelAngles(this.nodes);
     stripSpeciesFromLabels(this.nodes);
     this.reactions = asMap(spec.reactions);
+    normalizeReactionLabelOffsets(this.reactions);
     this.segments = spec.segments ?? [];
     this.texts = asMap(spec.texts);
     this.labelSettings = spec.labelSettings ? { ...spec.labelSettings } : null;
@@ -789,6 +792,26 @@ export class EditableMap {
     return node;
   }
 
+  /**
+   * Write a reaction's name at `offset` from its marker (map units) instead of
+   * where the map would put it. Nothing else of the reaction changes.
+   */
+  setReactionLabelOffset(reactionId, offset) {
+    const rxn = this.reactions.get(reactionId);
+    const value = normalizeReactionLabelOffset(offset);
+    if (!rxn || !value) return null;
+    rxn.labelOffset = value;
+    return rxn;
+  }
+
+  /** Put a moved reaction name back in its default place. Null when it was never moved. */
+  resetReactionLabel(reactionId) {
+    const rxn = this.reactions.get(reactionId);
+    if (!rxn || !Object.hasOwn(rxn, 'labelOffset')) return null;
+    delete rxn.labelOffset;
+    return rxn;
+  }
+
   /** Hide/show one metabolite graphically. Its model membership is untouched. */
   setNodeHidden(nodeId, hidden = true) {
     const node = this.nodes.get(nodeId);
@@ -927,6 +950,21 @@ export class EditableMap {
 
   distributeSelection(selection, axis) {
     return distributeSelection(this, selection, axis);
+  }
+
+  /** Space a selection evenly along its own line, in any direction. */
+  spaceSelectionEvenly(selection) {
+    return spaceSelectionEvenly(this, selection);
+  }
+
+  /** Turn a selection as one rigid piece (radians, clockwise on screen), or say why not. */
+  rotateSelection(selection, angle, pivot = null) {
+    return rotateSelection(this, selection, angle, pivot);
+  }
+
+  /** Turn a selection so its main line points a compass direction ('N' ... 'NW'), the way it runs. */
+  pointSelection(selection, direction) {
+    return pointSelection(this, selection, direction);
   }
 
   /**
@@ -1451,6 +1489,16 @@ function normalizeMetaboliteLabelAngles(nodes) {
   }
 }
 
+/* A moved reaction name keeps a usable offset; anything else puts it back in its default place. */
+function normalizeReactionLabelOffsets(reactions) {
+  for (const rxn of reactions.values()) {
+    if (!rxn || !Object.hasOwn(rxn, 'labelOffset')) continue;
+    const offset = normalizeReactionLabelOffset(rxn.labelOffset);
+    if (offset) rxn.labelOffset = offset;
+    else delete rxn.labelOffset;
+  }
+}
+
 function normalizeRect(rect) {
   if (!rect) return null;
   const x1 = Number(rect.x);
@@ -1685,6 +1733,7 @@ function cloneGraphics(reactions, segments) {
     if (rxn.boundary) copy.boundary = { ...rxn.boundary };
     if (rxn.linear) copy.linear = { ...rxn.linear };
     if (rxn.lineEnds) copy.lineEnds = { ...rxn.lineEnds };
+    if (rxn.labelOffset) copy.labelOffset = { ...rxn.labelOffset };
     copies.set(id, copy);
   }
 

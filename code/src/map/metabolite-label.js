@@ -13,6 +13,16 @@ export function metaboliteLabelAngle(node) {
   return wrapped >= Math.PI ? wrapped - turn : wrapped < -Math.PI ? wrapped + turn : wrapped;
 }
 
+/**
+ * Turn a label round its metabolite by `angle`, from wherever it is now (the
+ * default, above, for one never moved), so a drawing turned as a whole reads
+ * as it did before.
+ */
+export function turnMetaboliteLabel(node, angle) {
+  node.labelAngle = metaboliteLabelAngle({ labelAngle: metaboliteLabelAngle(node) + angle });
+  return node;
+}
+
 const METABOLITE_LIKE = new Set(['metabolite', 'medium', 'currency']);
 
 /**

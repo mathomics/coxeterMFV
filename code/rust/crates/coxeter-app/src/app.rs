@@ -176,12 +176,20 @@ impl Shell {
         self.before_frame(&ctx);
         // Set again by a reactions table whose row is under the pointer.
         self.ui.rx.hover = None;
+        // Escape that closes a menu, a select's list or the View popover does
+        // only that, as app.js returns once it has closed `.canvas-view` /
+        // `.top-menu`: the menus see it while they are drawn, and it is taken
+        // away before the map and `keys` would clear the selection with it.
+        let escape_closes_menu = (egui::Popup::is_any_open(&ctx) || self.ui.view_open) && ctx.input(|i| i.key_pressed(egui::Key::Escape));
 
         panels::topbar::show(ui, self);
         panels::left::show(ui, self);
         panels::right::show(ui, self);
         egui::CentralPanel::no_frame().show(ui, |ui| {
             panels::toolbar::show(ui, self);
+            if escape_closes_menu {
+                ctx.input_mut(|i| i.consume_key(egui::Modifiers::NONE, egui::Key::Escape));
+            }
             self.canvas_column(ui);
         });
         panels::menus::show(&ctx, self);
@@ -477,7 +485,9 @@ impl Shell {
         if self.ui.inspector_pinned {
             return;
         }
-        let has = self.store.selected_reaction.is_some() || self.store.selected_entity.is_some();
+        let has = self.store.selected_reaction.is_some()
+            || self.store.selected_entity.is_some()
+            || crate::panels::inspector::shows_selection_inspector(&self.store);
         self.ui.inspector_collapsed = !has;
     }
 

@@ -24,6 +24,8 @@ const { CommunityModel } = await import(pathToFileURL(join(root, 'src/core/commu
 const { layoutCommunity } = await import(pathToFileURL(join(root, 'src/layout/layout.js')).href);
 const { LAYOUT_PRESETS, layoutEngineOptions, layoutPreset } = await import(pathToFileURL(join(root, 'src/layout/layout-settings.js')).href);
 const { EditableMap } = await import(pathToFileURL(join(root, 'src/map/editable-map.js')).href);
+const { compartmentKey, pointingAngle, spacingItems } = await import(pathToFileURL(join(root, 'src/map/multi-selection.js')).href);
+const { reactionLabelPlacement } = await import(pathToFileURL(join(root, 'src/map/reaction-label.js')).href);
 
 const sections = new Set(process.argv.slice(2));
 const want = (name) => sections.size === 0 || sections.has(name);
@@ -137,7 +139,10 @@ if (want('maps')) {
  */
 function applyEdit(map, community, op, a) {
   const yes = (v) => (v === null || v === undefined ? null : true);
-  const sel = (s) => ({ nodes: new Set(s.nodes ?? []), reactions: new Set(s.reactions ?? []), texts: new Set(s.texts ?? []) });
+  const sel = (s) => ({
+    nodes: new Set(s.nodes ?? []), reactions: new Set(s.reactions ?? []), texts: new Set(s.texts ?? []),
+    compartments: new Set((s.compartments ?? []).map(([cellId, compartmentId]) => compartmentKey(cellId, compartmentId))),
+  });
   switch (op) {
     case 'addReaction': {
       const r = map.addReaction(community, a.id, a.opts ?? {});
@@ -180,6 +185,20 @@ function applyEdit(map, community, op, a) {
     case 'alignSelection': return [map, map.alignSelection(sel(a.selection), a.mode)];
     case 'distributeSelection': return [map, map.distributeSelection(sel(a.selection), a.axis)];
     case 'alignSelectionInLine': return [map, map.alignSelectionInLine(sel(a.selection), a.mode)];
+    case 'spaceSelectionEvenly': {
+      const r = map.spaceSelectionEvenly(sel(a.selection));
+      return [map, { moved: r.moved, count: r.count, axis: r.axis ?? null, step: r.step ?? null }];
+    }
+    case 'rotateSelection': return [map, map.rotateSelection(sel(a.selection), a.angle, a.pivot ?? null)];
+    case 'pointSelection': return [map, map.pointSelection(sel(a.selection), a.direction)];
+    case 'pointingAngle': return [map, pointingAngle(map, sel(a.selection), a.direction)];
+    case 'spacingItems': return [map, spacingItems(map, sel(a.selection)).map(({ kind, id }) => ({ kind, id }))];
+    case 'setReactionLabelOffset': return [map, yes(map.setReactionLabelOffset(a.id, a.offset))];
+    case 'resetReactionLabel': return [map, yes(map.resetReactionLabel(a.id))];
+    case 'reactionLabelPlacement': {
+      const rxn = map.reactions.get(a.id);
+      return [map, rxn ? reactionLabelPlacement(map, rxn) : null];
+    }
     case 'editGeometryRect': return [map, map.editGeometryRect(a.cellId, a.compartmentId, a.rect)];
     case 'setCanvasSize': return [map, map.setCanvasSize(a.width, a.height, a.move ?? {})];
     case 'addCell': {
@@ -521,6 +540,65 @@ function savedMapScript({ run, map }) {
   run('reload');
   for (const r of every(reactions(), 6)) run('moveReaction', { id: r.id, x: r.x - 9, y: r.y + 16 });
   run('stats');
+}
+
+/**
+ * Sequence D: a curated scenario map laid out as a whole, selection by
+ * selection (even spacing, turns and compass points, and the turns that are
+ * refused), and reaction names moved off their default place.
+ */
+function selectionTurnScript({ run, map }) {
+  const m = () => map();
+  const box = (x, y, w, h) => {
+    const s = m().selectableInRect({ x, y, w, h });
+    return { nodes: [...s.nodes], reactions: [...s.reactions], texts: [...s.texts] };
+  };
+  // Reaction names: a straight one and a curved one moved, the curved one turned.
+  run('reactionLabelPlacement', { id: 'eco@PFK' });
+  run('setReactionLabelOffset', { id: 'eco@PFK', offset: { x: 40, y: -25 } });
+  run('reactionLabelPlacement', { id: 'eco@PFK' });
+  run('setReactionLabelOffset', { id: 'eco@PFK', offset: 'nope' });
+  run('setReactionLabelOffset', { id: 'eco@FUM', offset: { x: -30, y: 12 } });
+  run('rotateReaction', { id: 'eco@FUM', angle: 0.5 });
+  run('reactionLabelPlacement', { id: 'eco@FUM' });
+  run('resetReactionLabel', { id: 'eco@PGI' });
+
+  // Upper glycolysis of E. coli: straight reactions between selected metabolites.
+  const chain = box(2581, 1398, 160, 570);
+  run('spacingItems', { selection: chain });
+  run('spaceSelectionEvenly', { selection: chain });
+  run('pointingAngle', { selection: chain, direction: 'SE' });
+  run('pointSelection', { selection: chain, direction: 'SE' });
+  run('rotateSelection', { selection: chain, angle: Math.PI / 4 });
+  run('pointSelection', { selection: chain, direction: 'W' });
+  run('spaceSelectionEvenly', { selection: { nodes: chain.nodes.slice(0, 2) } });
+
+  // Part of the TCA cycle: curved reactions whose metabolites stay behind.
+  const tca = box(2818, 2242, 320, 320);
+  run('rotateSelection', { selection: tca, angle: -Math.PI / 4 });
+  run('rotateSelection', { selection: tca, angle: 0.3, pivot: { x: 2900, y: 2400 } });
+  run('pointSelection', { selection: { reactions: tca.reactions }, direction: 'N' });
+
+  // A text comes along, level.
+  const text = run('addText', { text: 'Upper glycolysis', x: 2700, y: 1500 })?.id;
+  run('rotateSelection', { selection: { ...box(2581, 1398, 160, 570), texts: [text] }, angle: -Math.PI / 2 });
+
+  // Refused, with the map left as it was.
+  run('rotateSelection', { selection: { reactions: ['eco@NADH16pp', 'eco@PFK'] }, angle: 0.4 });
+  run('rotateSelection', { selection: { reactions: ['eco@PFK'], compartments: [['eco', 'c']] }, angle: 0.4 });
+  run('rotateSelection', { selection: chain, angle: 1, pivot: { x: 0, y: 0 } });
+
+  run('resetReactionLabel', { id: 'eco@PFK' });
+  run('reload');
+  run('reactionLabelPlacement', { id: 'eco@FUM' });
+}
+
+if (want('edits') || want('selection-turn')) {
+  const curated = join(root, 'models/maps/consorcio-anaerobio.json');
+  const parsed = parseMapDocument(await readFile(curated, 'utf8'));
+  const steps = recordEdits(EditableMap.fromJSON(parsed.map), null, selectionTurnScript);
+  const file = await write('edits-selection-turn.json', steps, { small: true });
+  await writeIndex('selection-turn', [{ name: 'selection-turn', start: 'file', ...inputRef(curated, file) }]);
 }
 
 if (want('edits')) {

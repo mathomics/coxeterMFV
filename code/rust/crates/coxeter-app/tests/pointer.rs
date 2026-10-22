@@ -333,7 +333,13 @@ fn group_drag_by_the_selection_handle() {
         picked.push(at);
     }
     assert_eq!(h.state().store.multi_selection_size(), 2, "shift-click adds to the selection");
-    let at = picked[0];
+    // Two objects open the inspector's Selection section, and the narrower
+    // stage keeps its centre (`syncStageViewport`): the first node is found
+    // where it is drawn now.
+    let first = h.state().store.multi_selection.nodes.first().cloned().expect("a selected node");
+    let n = h.state().store.map.as_ref().unwrap().node(&first).unwrap().clone();
+    let at = screen(&h, Point::new(n.x, n.y));
+    assert!(picked.len() == 2);
     let before = h.state().store.map.as_ref().unwrap().to_json();
     drag(&mut h, at, Vec2::new(20.0, 25.0));
     assert_ne!(h.state().store.map.as_ref().unwrap().to_json(), before, "the group moved");

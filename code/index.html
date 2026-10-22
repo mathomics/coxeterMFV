@@ -23,7 +23,7 @@ try {
         <path d="M7 25 14 17 19 8 27 13" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"/>
         <circle cx="7" cy="25" r="4"/><circle cx="14" cy="17" r="3.3"/><circle cx="19" cy="8" r="4"/><circle cx="27" cy="13" r="3"/>
       </svg>
-      <div><h1 title="Coxeter Multicell Flux Visualizer">Coxeter-MFV</h1><span>Edit Map · Edit Model · Simulate</span></div>
+      <div><h1 title="Coxeter Multicell Flux Visualizer">Coxeter-MFV</h1></div>
     </div>
 
     <div class="model-identity">
@@ -37,8 +37,8 @@ try {
       <span class="dot"></span><span id="status-text">Loading models…</span>
     </div>
 
-    <button class="header-search" data-action="open-workspace" data-workspace="library" title="Find reactions (Ctrl+F)">⌕ <span>Find reaction</span></button>
-    <button class="theme-button" data-action="toggle-theme" aria-label="Switch to dark theme" title="Switch to dark theme">◐ <span id="theme-label">Dark</span></button>
+    <button class="header-search" data-action="open-workspace" data-workspace="library" title="Find reactions (Ctrl+F)">⌕ <span>Find</span></button>
+    <button class="theme-button" data-action="toggle-theme" aria-label="Switch to dark theme" title="Switch to dark theme">◐</button>
     <details class="top-menu file-menu">
       <summary>File <span>⌄</span></summary>
       <div class="top-menu-popover">
@@ -49,7 +49,7 @@ try {
         <button data-action="discard-waiting-map" id="waiting-map-item" hidden>Forget waiting map</button>
         <button data-action="import-state">Scenario</button>
         <button data-action="import-reproducibility">Reproducibility bundle</button>
-        <small>EXPORT / SAVE A LOCAL COPY</small>
+        <small>EXPORT</small>
         <button data-action="map-save">Map JSON</button>
         <button data-action="export-model-json">Model JSON</button>
         <button data-action="export-model-sbml">Model SBML</button>
@@ -65,15 +65,15 @@ try {
       <summary><span class="run-icon">▶</span> <span class="run-label">Simulate</span> <span>⌄</span></summary>
       <div class="top-menu-popover analysis-popover">
         <small>FLUX ANALYSIS</small>
-        <button data-action="run-fba"><b>FBA</b><span>Flux balance analysis</span></button>
-        <button data-action="run-pfba"><b>pFBA</b><span>Parsimonious FBA</span></button>
-        <button data-action="run-fva"><b>FVA</b><span>Flux variability analysis</span></button>
-        <button data-action="run-loopless"><b>Loopless FBA</b><span>Exclude internal cycles</span></button>
-        <button data-action="run-cyclefree"><b>CycleFreeFlux</b><span>Remove internal cycles with one LP</span></button>
+        <button data-action="run-fba"><b>FBA</b></button>
+        <button data-action="run-pfba"><b>pFBA</b></button>
+        <button data-action="run-fva"><b>FVA</b></button>
+        <button data-action="run-loopless"><b>Loopless FBA</b></button>
+        <button data-action="run-cyclefree"><b>CycleFreeFlux</b></button>
         <button data-action="open-workspace" data-workspace="analysis">Simulation settings</button>
       </div>
     </details>
-    <button class="clear-solution-button" data-action="clear-solution" title="Remove the solution from the map. Changes to bounds or medium are not solved again until an analysis is run" disabled>✕ <span>Clear solution</span></button>
+    <button class="clear-solution-button" data-action="clear-solution" title="Remove the solution from the map" disabled>✕ <span>Clear solution</span></button>
   </header>
 
   <div class="workspace">
@@ -86,22 +86,22 @@ try {
       </nav>
       <div class="toolbox" aria-label="Editing tools">
         <span class="section-label">Editing tools</span>
-        <button class="tool-button is-active" data-action="tool-select" data-tool="select" title="Select and move: drag a reaction or metabolite to move it, the background to sweep a selection. Click a compartment's membrane to select it, then drag its centre handle to move it, a corner to resize it, or the middle of a side to change only its width or height"><span>↖</span>Select</button>
-        <button class="tool-button" data-action="tool-pan" data-tool="pan" title="Pan Mode: drag anywhere to move the map. Nothing can be selected until another tool is chosen"><span>✥</span>Pan Mode</button>
-        <button class="tool-button" data-action="tool-edit" data-tool="edit" title="Show and move reaction control points to adjust reaction paths"><span>⌘</span>Edit Control Points</button>
-        <button class="tool-button" data-action="tool-reaction" data-tool="reaction" title="Add Reaction mode: click a metabolite to list addable reactions"><span>⌁</span>Add Reaction</button>
+        <button class="tool-button is-active" data-action="tool-select" data-tool="select" title="Drag to move; drag the background to box-select"><span>↖</span>Select</button>
+        <button class="tool-button" data-action="tool-pan" data-tool="pan" title="Drag to pan"><span>✥</span>Pan Mode</button>
+        <button class="tool-button" data-action="tool-edit" data-tool="edit" title="Drag control points to reshape reactions"><span>⌘</span>Edit Control Points</button>
+        <button class="tool-button" data-action="tool-reaction" data-tool="reaction" title="Click a metabolite to add its reactions"><span>⌁</span>Add Reaction</button>
         <button class="tool-button" data-action="tool-metabolite" data-tool="metabolite"><span>○</span>Add Metabolite</button>
         <button class="tool-button" data-action="tool-text" data-tool="text"><span>T</span>Text</button>
-        <button class="tool-button" data-action="tool-compartment" data-tool="compartment" title="Add an existing model compartment to the map"><span>▣</span>Add Compartment</button>
-        <button class="tool-button" data-action="tool-cell" data-tool="cell" title="Add an existing model species as a cell on the map"><span>⬡</span>Add Cell</button>
+        <button class="tool-button" data-action="tool-compartment" data-tool="compartment" title="Draw a model compartment"><span>▣</span>Add Compartment</button>
+        <button class="tool-button" data-action="tool-cell" data-tool="cell" title="Draw a model species as a cell"><span>⬡</span>Add Cell</button>
       </div>
       <div id="task-panel" class="task-panel" aria-live="polite"></div>
-      <div class="panel-footer"><span>Map edits stay separate from the model.</span><button data-action="toggle-focus" title="Give the map more space">Focus mode</button></div>
+      <div class="panel-footer"><button data-action="toggle-focus" title="Give the map more space">Focus mode</button></div>
     </aside>
 
     <main class="canvas-column">
       <div class="canvas-toolbar" aria-label="Map toolbar">
-        <button class="toolbar-label" data-action="toggle-left" aria-expanded="true" aria-controls="left-panel">☷ <span>Tools</span></button>
+        <button data-action="toggle-left" aria-expanded="true" aria-controls="left-panel" aria-label="Tools panel" title="Show or hide the tools panel">☷</button>
         <button data-action="map-undo" aria-label="Undo map edit" title="Undo map edit (Ctrl+Z)">↶</button>
         <button data-action="map-redo" aria-label="Redo map edit" title="Redo map edit (Ctrl+Y)">↷</button>
         <span class="toolbar-separator"></span>
@@ -109,14 +109,15 @@ try {
         <button data-action="zoom-in" title="Zoom in">+</button>
         <button data-action="zoom-fit" title="Fit map to screen">⤢</button>
         <span class="zoom-readout" id="zoom-readout">100%</span>
-        <span class="toolbar-tool-name" id="active-tool-label">Select</span>
-        <div class="layout-preset-toolbar" role="group" aria-label="Map layout density">
-          <span>Layout:</span>
-          <button data-action="layout-preset" data-layout-preset="compact" type="button">Compact</button>
-          <button data-action="layout-preset" data-layout-preset="normal" type="button">Normal</button>
-          <button data-action="layout-preset" data-layout-preset="spacious" type="button">Spacious</button>
-        </div>
+        <div class="map-quick-controls" id="map-quick-controls" role="group" aria-label="Map display"></div>
         <span class="grow"></span>
+        <details class="canvas-view canvas-export">
+          <summary title="Export the map as a figure">⤓ Image ⌄</summary>
+          <div class="view-popover export-popover">
+            <button data-action="export-svg" type="button">SVG</button>
+            <button data-action="export-png" type="button">PNG</button>
+          </div>
+        </details>
         <details class="canvas-view">
           <summary>View ⌄</summary>
           <div class="view-popover" id="view-controls"></div>

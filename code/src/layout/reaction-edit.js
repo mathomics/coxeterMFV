@@ -23,6 +23,7 @@
 
 import { clampNodePosition, nodeFitsAt, updateConnectedSegments } from './drag.js';
 import { closestBoundaryPoint } from './geometry.js';
+import { turnMetaboliteLabel } from '../map/metabolite-label.js';
 
 const EPS = 1e-9;
 
@@ -116,9 +117,10 @@ export function canRotateReaction(layout, reactionId) {
  * Turn the backbone of an internal reaction about its centre.
  *
  * Everything that belongs to the reaction itself turns with it: the axis, the
- * points where the branches leave it, their reaction-side handles and the small
- * cofactor nodes the reaction owns. Metabolites that stand on their own stay
- * where they are, and their branches are redrawn to the turned backbone.
+ * points where the branches leave it, their reaction-side handles, the small
+ * cofactor nodes the reaction owns and a name moved off its default place.
+ * Metabolites that stand on their own stay where they are, and their branches
+ * are redrawn to the turned backbone.
  *
  * @param {number} angle radians; positive is clockwise on screen
  */
@@ -131,10 +133,47 @@ export function rotateReaction(layout, reactionId, angle) {
   const cos = Math.cos(angle);
   const sin = Math.sin(angle);
   const centre = { x: rxn.x, y: rxn.y };
+  const turn = (v) => ({ x: v.x * cos - v.y * sin, y: v.x * sin + v.y * cos });
   transformSkeleton(layout, rxn, {
     point: (p) => rotateAbout(p, centre, centre, cos, sin),
-    vector: (v) => ({ x: v.x * cos - v.y * sin, y: v.x * sin + v.y * cos }),
+    vector: turn,
   });
+  if (rxn.labelOffset) rxn.labelOffset = turn(rxn.labelOffset);
+  return rxn;
+}
+
+/**
+ * Turn an internal reaction's own drawing about `pivot`, marker included: the
+ * axis and the direction it was placed in, where its branches leave the
+ * backbone with their reaction-side handles, its cofactor nodes (labels and
+ * all) and its name. This is one reaction's part of turning a whole selection
+ * (rotateSelection, multi-selection.js), which is rigid, so nothing is clamped
+ * here; the caller has checked there is room. Metabolites standing on their
+ * own, and the metabolite ends of the branches to them, are the caller's.
+ *
+ * @param {number} angle radians; positive is clockwise on screen
+ * @returns {object|null} the reaction, or null for a transporter or a straight
+ *   reaction (one turns with its membrane, the other with its two metabolites)
+ */
+export function turnReactionAbout(layout, reactionId, pivot, angle) {
+  const rxn = layout?.reactions?.get(reactionId);
+  if (!rxn || rxn.onMembrane || linearEnds(layout, rxn) || !Number.isFinite(angle)
+    || !Number.isFinite(pivot?.x) || !Number.isFinite(pivot?.y)) return null;
+  ensureReactionBackbone(layout, reactionId);
+  const cos = Math.cos(angle);
+  const sin = Math.sin(angle);
+  const point = (p) => rotateAbout(p, pivot, pivot, cos, sin);
+  const turn = (v) => ({ x: v.x * cos - v.y * sin, y: v.x * sin + v.y * cos });
+  transformSkeleton(layout, rxn, { point, vector: turn });
+  const centre = point(rxn);
+  rxn.x = centre.x;
+  rxn.y = centre.y;
+  for (const key of ['axisDirectionHint', 'placementDirection', 'normal', 'labelOffset']) {
+    if (rxn[key]) rxn[key] = turn(rxn[key]);
+  }
+  for (const node of layout.nodes.values()) {
+    if (node.reactionId === rxn.id) turnMetaboliteLabel(node, angle);
+  }
   return rxn;
 }
 
@@ -947,7 +986,12 @@ export function ensureCubicControls(seg) {
   return seg;
 }
 
-function ensureReactionBackbone(layout, reactionId) {
+/**
+ * Give every branch of an internal reaction its own point on the backbone and
+ * its two cubic handles, as edits here expect. A map laid out by the automatic
+ * layout has neither: its branches meet at the axis ends, as straight lines.
+ */
+export function ensureReactionBackbone(layout, reactionId) {
   const rxn = layout?.reactions?.get(reactionId);
   if (!rxn?.axis || rxn.onMembrane) return;
 

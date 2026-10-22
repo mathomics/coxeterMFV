@@ -69,8 +69,7 @@ test('zero growth and inactive species are described without claiming a unique c
   const html = renderWorkspace(store, 'scenario');
   assert.match(html, /Composition at µ = 0 h⁻¹/);
   assert.match(html, /B inactive \(X = 0\)/);
-  assert.match(html, /may be non-unique, even at the maximum/);
-  assert.match(html, /At µ = 0, present members still obey their maintenance bounds/);
+  assert.match(html, /Composition may be non-unique/);
   assert.doesNotMatch(html, /answer unique|community is pinned down/);
 });
 
@@ -118,6 +117,6 @@ test('fixed-growth results take precedence over ordinary mode flags and disable 
   assert.match(task, /<strong>SteadyCom fixed µ<\/strong>/);
   assert.match(task, /Abundances are outputs of this solve/);
   assert.match(tag(task, 'run-fva', 'button'), / disabled/);
-  assert.match(renderResults(store), /SteadyCom fixed µ completed successfully/);
+  assert.match(renderResults(store), /SteadyCom fixed µ · Optimal/);
   assert.match(tag(renderWorkspace(store, 'scenario'), 'fva'), / disabled/);
 });

@@ -6,9 +6,15 @@
 //! 10000 × 10000, which at the 2× the export asks for is 400 million pixels:
 //! the canvas would come back unusable and the export fail on the very maps
 //! that most need a picture. Each entry here is the largest scale, up to the
-//! 2× that is wanted, that fits one browser's ceiling. The export tries them
-//! in order and keeps the first one that can be made. The native export keeps
-//! the same ladder, so a PNG made here is the size the web app would have made.
+//! 2× that is wanted, that fits one ceiling. The export tries them in order
+//! and keeps the first one that can be made. The native export keeps the same
+//! ladder, so a PNG made here is the size the web app would have made.
+//!
+//! The first ceiling is memory rather than a browser's limit. A picture at
+//! Chromium's ceiling holds over a gigabyte of pixels before it is encoded,
+//! and Firefox, instead of refusing one, can take the tab down with it. A
+//! hundred million pixels is still several times what a printed figure needs,
+//! and the SVG keeps full resolution.
 
 use coxeter_core::js;
 
@@ -20,9 +26,8 @@ struct Ceiling {
     side: f64,
 }
 
-const CEILINGS: [Ceiling; 3] = [
-    Ceiling { area: 268_435_456.0, side: 32_767.0 }, // Chromium
-    Ceiling { area: 124_000_000.0, side: 32_767.0 }, // Firefox
+const CEILINGS: [Ceiling; 2] = [
+    Ceiling { area: 100_000_000.0, side: 32_767.0 }, // what fits in memory, under Chromium's and Firefox's ceilings
     Ceiling { area: 16_777_216.0, side: 16_384.0 },  // Safari, iOS
 ];
 
@@ -54,8 +59,8 @@ mod tests {
         assert_eq!(PREFERRED_SCALE, 2.0);
         assert_eq!(raster_scales(1200.0, 800.0, PREFERRED_SCALE), [2.0], "an ordinary map gets the full 2x");
         let scales = raster_scales(10000.0, 10200.0, PREFERRED_SCALE);
-        assert_eq!(scales, [1.62, 1.1, 0.4]);
-        for (scale, area, side) in [(1.62, 268_435_456.0, 32_767.0), (1.1, 124_000_000.0, 32_767.0), (0.4, 16_777_216.0, 16_384.0)] {
+        assert_eq!(scales, [0.99, 0.4]);
+        for (scale, area, side) in [(0.99, 100_000_000.0, 32_767.0), (0.4, 16_777_216.0, 16_384.0)] {
             let w = js::round(10000.0 * scale);
             let h = js::round(10200.0 * scale);
             assert!(w * h <= area && w <= side && h <= side, "{scale}x must fit {area} px");

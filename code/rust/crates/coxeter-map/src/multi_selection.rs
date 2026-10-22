@@ -12,13 +12,17 @@ use std::collections::{HashMap, HashSet};
 
 use coxeter_core::js;
 use coxeter_core::mapdata::{MapText, NodeKind, Point, Rect};
-use coxeter_core::metabolite_label::is_secondary_node;
+use coxeter_core::metabolite_label::{is_secondary_node, turn_metabolite_label};
+use coxeter_core::reaction_label::{reaction_label_offset, set_reaction_label_offset};
 use coxeter_core::text_style::{TextBox, text_box_of, text_centre};
 use indexmap::{IndexMap, IndexSet};
 
 use crate::drag::{Moving, Placeable, is_draggable_node, node_fits_at, update_connected_segments};
 use crate::editable_map::{EditableMap, LINE_ALIGN_GAP};
-use crate::reaction_edit::{keep_straight_through, reaction_centre_fits, reaction_line_ends, straighten_linear_reactions, tidy_reaction};
+use crate::reaction_edit::{
+    ensure_reaction_backbone, keep_straight_through, reaction_centre_fits, reaction_line_ends, straighten_linear_reactions,
+    tidy_reaction, turn_reaction_about,
+};
 
 /// What is selected: node, reaction and text ids, in the order they were
 /// added, and whole compartments as `(cell id, compartment id)`.
@@ -773,6 +777,436 @@ pub fn distribute_selection(map: &mut EditableMap, selection: &Selection, axis: 
         }
     }
     Arranged { moved, count, step: Some(step) }
+}
+
+// Even spacing and turning
+
+/// `withReactionMetabolites(map, selection)`: a selection with the main
+/// metabolites of its reactions added, which is what even spacing and turning
+/// act on. A pathway is picked by its reactions, and a rectangle drawn round
+/// them easily misses the metabolites at either end: left behind, a straight
+/// reaction would bend back to them and the pathway would zigzag. Align does
+/// the same with the metabolites a reaction's line runs through. Cofactors are
+/// not added (their reactions carry them), nor are the metabolites of
+/// transporters, which stay on their membranes.
+pub fn with_reaction_metabolites(map: &EditableMap, selection: &Selection) -> Selection {
+    let mut out = selection.clone();
+    for seg in map.segments() {
+        let Some(node_id) = seg.node_id.as_deref().filter(|id| !id.is_empty()) else { continue };
+        if !selection.reactions.contains(&seg.reaction_id) || map.reaction(&seg.reaction_id).is_some_and(|r| r.on_membrane) {
+            continue;
+        }
+        let Some(node) = map.node(node_id) else { continue };
+        if matches!(node.kind, NodeKind::Metabolite | NodeKind::Medium) && !is_secondary_node(node) {
+            out.nodes.insert(node.id.clone());
+        }
+    }
+    out
+}
+
+/// `spacingItems(map, selection)`: what a selection is spaced and lined up
+/// by: its metabolites that stand on their own, those of its reactions
+/// included ([`with_reaction_metabolites`]), and its reaction markers.
+///
+/// Secondary metabolites are left out, since their reactions place them, and
+/// so is a straight reaction with one of these metabolites at an end: it goes
+/// where its two metabolites go, and placing it as well would count it twice.
+pub fn spacing_items(map: &EditableMap, selection: &Selection) -> Vec<(ItemKind, String)> {
+    let mut out = Vec::new();
+    for id in &with_reaction_metabolites(map, selection).nodes {
+        let Some(node) = map.node(id) else { continue };
+        if node.hidden == Some(true)
+            || !matches!(node.kind, NodeKind::Metabolite | NodeKind::Medium)
+            || is_secondary_node(node)
+            || !map.can_move_node(id)
+        {
+            continue;
+        }
+        out.push((ItemKind::Node, id.clone()));
+    }
+    let placed: HashSet<String> = out.iter().map(|(_, id)| id.clone()).collect();
+    for id in &selection.reactions {
+        if map.reaction(id).is_none() || !crate::reaction_edit::can_move_reaction(map, id) || follows_end(map, id, &placed) {
+            continue;
+        }
+        out.push((ItemKind::Reaction, id.clone()));
+    }
+    out
+}
+
+/// `selectionMainAxis(map, selection)`: the line a selection lies along, as
+/// a unit vector: the principal axis of where its spacing items stand, so a
+/// pathway drawn on a slant is taken along its slant. None with fewer than two
+/// items. When they all stand on one spot there is no line, and x is taken.
+pub fn selection_main_axis(map: &EditableMap, selection: &Selection) -> Option<Point> {
+    let items = spacing_items(map, selection);
+    if items.len() < 2 {
+        return None;
+    }
+    Some(principal_axis(&items.iter().map(|(kind, id)| item_centre(map, kind, id)).collect::<Vec<_>>()))
+}
+
+/// What even spacing placed.
+#[derive(Debug, Clone, PartialEq, Default)]
+pub struct SpacedEvenly {
+    pub moved: Vec<(ItemKind, String)>,
+    pub count: usize,
+    /// The line the items were spaced along, and the step between them.
+    pub axis: Option<Point>,
+    pub step: Option<f64>,
+}
+
+/// `spaceSelectionEvenly(map, selection)`: space a selection evenly along its
+/// own line, in whatever direction it runs: the two items furthest apart
+/// along it stay, the others are set at equal steps between them, each
+/// keeping how far off the line it stands. The items are moved as align and
+/// distribute move them, so a reaction brings its cofactors, a straight
+/// reaction stays on its two metabolites, and a metabolite stays inside its
+/// compartment. Needs three items ([`spacing_items`]).
+pub fn space_selection_evenly(map: &mut EditableMap, selection: &Selection) -> SpacedEvenly {
+    let items = spacing_items(map, selection);
+    let count = items.len();
+    if count < 3 {
+        return SpacedEvenly { count, ..Default::default() };
+    }
+    let centres: Vec<Point> = items.iter().map(|(kind, id)| item_centre(map, kind, id)).collect();
+    let axis = principal_axis(&centres);
+    let along = |p: Point| p.x * axis.x + p.y * axis.y;
+    let mut placed: Vec<(ItemKind, String, Point, f64)> =
+        items.into_iter().zip(centres).map(|((kind, id), centre)| (kind, id, centre, along(centre))).collect();
+    placed.sort_by(|a, b| {
+        let d = a.3 - b.3;
+        if d != 0.0 && !d.is_nan() {
+            return if d < 0.0 { std::cmp::Ordering::Less } else { std::cmp::Ordering::Greater };
+        }
+        js::locale_compare(&format!("{}:{}", a.0.as_str(), a.1), &format!("{}:{}", b.0.as_str(), b.1))
+    });
+    let first = placed[0].3;
+    let step = (placed[placed.len() - 1].3 - first) / (placed.len() as f64 - 1.0);
+
+    // Moving one item never moves another (a metabolite takes only the
+    // straight reactions on it, a reaction only its own cofactors, and neither
+    // is an item), so every target can be taken from where things stand now.
+    let mut moved = Vec::new();
+    for (i, (kind, id, centre, at)) in placed.iter().enumerate().take(placed.len() - 1).skip(1) {
+        let shift = first + step * i as f64 - at;
+        if move_item(map, kind, id, centre.x + axis.x * shift, centre.y + axis.y * shift) {
+            moved.push((kind.clone(), id.clone()));
+        }
+    }
+    SpacedEvenly { moved, count, axis: Some(axis), step: Some(step) }
+}
+
+/// `TURN_REFUSAL`: why a selection could not be turned.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum TurnRefusal {
+    /// Transporters stay on their membranes.
+    Transporter,
+    /// Compartments stay upright.
+    Compartment,
+    /// Something would be turned out of where it may be.
+    Room,
+}
+
+impl TurnRefusal {
+    pub fn as_str(self) -> &'static str {
+        match self {
+            TurnRefusal::Transporter => "transporter",
+            TurnRefusal::Compartment => "compartment",
+            TurnRefusal::Room => "room",
+        }
+    }
+}
+
+/// What turning a selection did.
+#[derive(Debug, Clone, PartialEq)]
+pub enum SelectionTurn {
+    Turned { angle: f64, pivot: Point, nodes: Vec<String>, reactions: Vec<String>, texts: Vec<String> },
+    Refused(TurnRefusal),
+}
+
+/// `rotateSelection(map, selection, angle, pivot)`: turn a selection as one
+/// rigid piece by `angle` about `pivot` (by default the middle of the box
+/// round its selected objects), so that a pathway can be laid on a diagonal
+/// and come out the same drawing, its cofactors and curves where they were
+/// relative to it.
+///
+/// - Selected metabolites turn about the pivot, their labels with them, and
+///   so do the main metabolites of selected reactions
+///   ([`with_reaction_metabolites`]). The branches of the reactions that turn
+///   with them keep their shape; the branches of the others are dragged
+///   along, as when the metabolite is dragged.
+/// - Selected reactions turn their whole drawing ([`turn_reaction_about`]),
+///   their cofactors and names included.
+/// - A straight reaction with a selected metabolite at an end goes where its
+///   two metabolites go. With both of them selected that is the same turn.
+/// - Texts turn about the pivot by their anchor, and stay level.
+///
+/// Transporters stay on their membranes and compartments stay upright, so a
+/// selection holding either is refused, as is one that would turn a
+/// metabolite or a reaction centre out of where it may be (one already out of
+/// place is not held to it). A refusal is decided before anything moves.
+///
+/// `angle` is in radians; positive is clockwise on screen.
+pub fn rotate_selection(map: &mut EditableMap, picked: &Selection, angle: f64, pivot: Option<Point>) -> Option<SelectionTurn> {
+    if !angle.is_finite() {
+        return None;
+    }
+    if !picked.compartments.is_empty() {
+        return Some(SelectionTurn::Refused(TurnRefusal::Compartment));
+    }
+    if picked.reactions.iter().any(|id| map.reaction(id).is_some_and(|r| r.on_membrane)) {
+        return Some(SelectionTurn::Refused(TurnRefusal::Transporter));
+    }
+    let selection = &with_reaction_metabolites(map, picked);
+    let centre = match pivot {
+        Some(p) => p,
+        None => box_centre(&selected_objects(map, selection).iter().map(|(kind, id)| item_centre(map, kind, id)).collect::<Vec<_>>())?,
+    };
+    if !centre.x.is_finite() || !centre.y.is_finite() {
+        return None;
+    }
+    if angle.abs() < 1e-9 {
+        return Some(SelectionTurn::Turned { angle: 0.0, pivot: centre, nodes: vec![], reactions: vec![], texts: vec![] });
+    }
+
+    let plan = plan_turn(map, selection);
+    let cos = js::cos(angle);
+    let sin = js::sin(angle);
+    let turn = |p: Point| {
+        let dx = p.x - centre.x;
+        let dy = p.y - centre.y;
+        Point::new(centre.x + dx * cos - dy * sin, centre.y + dx * sin + dy * cos)
+    };
+
+    // Everything that lands where the turn puts it, checked before any of it moves.
+    for id in &plan.landing {
+        let node = &map.g.nodes[id];
+        let to = turn(node.pos());
+        if node_fits_at(map, Placeable::from(node), node.x, node.y, None) && !node_fits_at(map, Placeable::from(node), to.x, to.y, None) {
+            return Some(SelectionTurn::Refused(TurnRefusal::Room));
+        }
+    }
+    for id in &plan.reactions {
+        let rxn = &map.g.reactions[id];
+        let to = turn(Point::new(rxn.x, rxn.y));
+        if reaction_centre_fits(map, id, rxn.x, rxn.y, None) && !reaction_centre_fits(map, id, to.x, to.y, None) {
+            return Some(SelectionTurn::Refused(TurnRefusal::Room));
+        }
+    }
+
+    // Every curve that turns whole needs its handles first: made after the
+    // turn, from ends turned and ends not yet turned, they would bend it.
+    for id in &plan.rigid {
+        ensure_reaction_backbone(map, id);
+    }
+    for id in &plan.nodes {
+        // The branches of a reaction that turns too keep their shape: their
+        // metabolite-side handle turns. Any other branch is dragged along.
+        let handles: Vec<(usize, Point)> = map
+            .g
+            .segments
+            .iter()
+            .enumerate()
+            .filter(|(_, seg)| seg.node_id.as_deref() == Some(id.as_str()) && plan.rigid.contains(&seg.reaction_id))
+            .filter_map(|(i, seg)| seg.b1.map(|b1| (i, turn(b1))))
+            .collect();
+        let node = map.g.nodes.get_mut(id).expect("planned");
+        let to = turn(node.pos());
+        let delta = (to.x - node.x, to.y - node.y);
+        node.x = to.x;
+        node.y = to.y;
+        update_connected_segments(map, id, Some(delta));
+        for (i, b1) in handles {
+            map.g.segments[i].b1 = Some(b1);
+        }
+        turn_metabolite_label(map.g.nodes.get_mut(id).expect("planned"), angle);
+    }
+    for id in &plan.reactions {
+        turn_reaction_about(map, id, centre, angle);
+    }
+    straighten_linear_reactions(map, Some(&plan.landing));
+    // A straight reaction with both ends turned has turned as a whole: its
+    // name and its cofactors' labels turn with it.
+    for id in &plan.straight {
+        let rxn = &mut map.g.reactions[id];
+        if let Some(offset) = reaction_label_offset(rxn) {
+            set_reaction_label_offset(rxn, Some(Point::new(offset.x * cos - offset.y * sin, offset.x * sin + offset.y * cos)));
+        }
+        let (from, to) = rxn.linear.as_ref().map(|l| (l.from.clone(), l.to.clone())).unwrap_or_default();
+        for node in map.g.nodes.values_mut() {
+            if node.reaction_id.as_deref() == Some(id.as_str()) && Some(&node.id) != from.as_ref() && Some(&node.id) != to.as_ref() {
+                turn_metabolite_label(node, angle);
+            }
+        }
+    }
+
+    let mut texts = Vec::new();
+    for id in &selection.texts {
+        let Some(t) = map.text(id) else { continue };
+        let to = turn(Point::new(t.x, t.y));
+        if map.move_text(id, to.x, to.y).is_some() {
+            texts.push(id.clone());
+        }
+    }
+    Some(SelectionTurn::Turned {
+        angle,
+        pivot: centre,
+        nodes: plan.nodes,
+        reactions: plan.reactions.into_iter().chain(plan.straight).collect(),
+        texts,
+    })
+}
+
+/// `pointingAngle(map, selection, direction)`: how far to turn a selection so
+/// that its main line points `direction` (`N`, `NE`, … `NW`; y grows down the
+/// page), the way its reactions run: the sum of their backbones along the
+/// line says which end is the start. With no reactions, or as many running
+/// each way, the line is turned whichever way round is the smaller turn. None
+/// with fewer than two items to take a line from.
+pub fn pointing_angle(map: &EditableMap, selection: &Selection, direction: &str) -> Option<f64> {
+    let way = crate::reaction_edit::compass(direction)?;
+    let axis = selection_main_axis(map, selection)?;
+    let directions: Vec<Point> = selection.reactions.iter().filter_map(|id| map.reaction(id)?.axis.map(|a| a.dir)).collect();
+    let flow = directions.iter().fold(0.0, |sum, dir| sum + dir.x * axis.x + dir.y * axis.y);
+    let angle_from = |u: Point| js::atan2(u.x * way.y - u.y * way.x, u.x * way.x + u.y * way.y);
+    let back = Point::new(-axis.x, -axis.y);
+    if !directions.is_empty() && flow.abs() >= FLOW_CLEAR * directions.len() as f64 {
+        return Some(angle_from(if flow > 0.0 { axis } else { back }));
+    }
+    let forward = angle_from(axis);
+    let backward = angle_from(back);
+    Some(if backward.abs() < forward.abs() { backward } else { forward })
+}
+
+/// `pointSelection(map, selection, direction)`: turn a selection so that its
+/// main line points `direction` ([`pointing_angle`]).
+pub fn point_selection(map: &mut EditableMap, selection: &Selection, direction: &str) -> Option<SelectionTurn> {
+    let angle = pointing_angle(map, selection, direction)?;
+    rotate_selection(map, selection, angle, None)
+}
+
+/// How much of the reactions' backbones, on average, must run one way along
+/// the line before that way is taken as the way the pathway runs.
+const FLOW_CLEAR: f64 = 0.25;
+
+/// `planTurn`: who moves what when a selection turns.
+///
+/// A cofactor is carried by its reaction when that reaction turns or follows
+/// its ends, so moving it as well would turn it twice.
+struct TurnPlan {
+    /// Selected metabolites the turn moves itself.
+    nodes: Vec<String>,
+    /// Selected reactions that turn whole (not transporters, not straight
+    /// ones, which follow their ends).
+    reactions: Vec<String>,
+    /// Straight reactions with both ends among `nodes`: they turn whole too,
+    /// by being straightened.
+    straight: Vec<String>,
+    /// Ids of the two kinds above, whose branches keep their shape.
+    rigid: HashSet<String>,
+    /// Every metabolite the turn sets down exactly where it turns it to,
+    /// cofactors included, for the room check.
+    landing: Vec<String>,
+}
+
+fn plan_turn(map: &EditableMap, selection: &Selection) -> TurnPlan {
+    let selected: Vec<String> = selection.nodes.iter().filter(|id| map.node(id).is_some() && map.can_move_node(id)).cloned().collect();
+    let ids: HashSet<&str> = selected.iter().map(String::as_str).collect();
+    let reactions: Vec<String> = selection
+        .reactions
+        .iter()
+        .filter(|id| map.reaction(id).is_some_and(|r| !r.on_membrane) && !is_straight(map, id))
+        .cloned()
+        .collect();
+    let turning: HashSet<&str> = reactions.iter().map(String::as_str).collect();
+    let carried = |id: &str| -> bool {
+        let Some(owner) = map.g.nodes[id].reaction_id.as_deref().filter(|r| !r.is_empty()).and_then(|r| map.reaction(r)) else {
+            return false;
+        };
+        if turning.contains(owner.id.as_str()) {
+            return true;
+        }
+        let Some((from, to)) = straight_ends(map, &owner.id) else { return false };
+        if id == from || id == to {
+            return false;
+        }
+        // A straight reaction keeps its cofactors with it, wherever it goes.
+        selection.reactions.contains(&owner.id) || ids.contains(from.as_str()) || ids.contains(to.as_str())
+    };
+    let nodes: Vec<String> = selected.iter().filter(|id| !carried(id)).cloned().collect();
+    let moving: HashSet<&str> = nodes.iter().map(String::as_str).collect();
+    let straight: Vec<String> = map
+        .g
+        .reactions
+        .keys()
+        .filter(|id| straight_ends(map, id).is_some_and(|(from, to)| moving.contains(from.as_str()) && moving.contains(to.as_str())))
+        .cloned()
+        .collect();
+    let rigid: HashSet<String> = reactions.iter().chain(&straight).cloned().collect();
+    let mut landing = nodes.clone();
+    for node in map.g.nodes.values() {
+        if node.reaction_id.as_deref().is_some_and(|r| !r.is_empty() && rigid.contains(r)) && !moving.contains(node.id.as_str()) {
+            landing.push(node.id.clone());
+        }
+    }
+    TurnPlan { nodes, reactions, straight, rigid, landing }
+}
+
+/// `isStraight`: a reaction kept straight between two metabolites that are
+/// both on the map. Its two ends, when it is one.
+fn straight_ends(map: &EditableMap, reaction_id: &str) -> Option<(String, String)> {
+    let rxn = map.reaction(reaction_id)?;
+    let linear = rxn.linear.as_ref()?;
+    if rxn.axis.is_none() || rxn.on_membrane {
+        return None;
+    }
+    let from = linear.from.as_deref().filter(|id| map.has_node(id))?;
+    let to = linear.to.as_deref().filter(|id| map.has_node(id))?;
+    Some((from.to_string(), to.to_string()))
+}
+
+fn is_straight(map: &EditableMap, reaction_id: &str) -> bool {
+    straight_ends(map, reaction_id).is_some()
+}
+
+/// `followsEnd`: a straight reaction with one of `node_ids` at an end: it goes
+/// where they go.
+fn follows_end(map: &EditableMap, reaction_id: &str, node_ids: &HashSet<String>) -> bool {
+    straight_ends(map, reaction_id).is_some_and(|(from, to)| node_ids.contains(&from) || node_ids.contains(&to))
+}
+
+/// `principalAxis`: the principal axis of some points, x when they give none.
+fn principal_axis(points: &[Point]) -> Point {
+    let mean = Point::new(average(&points.iter().map(|p| p.x).collect::<Vec<_>>()), average(&points.iter().map(|p| p.y).collect::<Vec<_>>()));
+    let mut sxx = 0.0;
+    let mut syy = 0.0;
+    let mut sxy = 0.0;
+    for p in points {
+        let dx = p.x - mean.x;
+        let dy = p.y - mean.y;
+        sxx += dx * dx;
+        syy += dy * dy;
+        sxy += dx * dy;
+    }
+    if sxx + syy < 1e-9 {
+        return Point::new(1.0, 0.0);
+    }
+    let theta = js::atan2(2.0 * sxy, sxx - syy) / 2.0;
+    // Snap the components that should be nought, so a line already level or
+    // upright is read as exactly that.
+    let snap = |v: f64| if v.abs() < 1e-12 { 0.0 } else { v };
+    Point::new(snap(js::cos(theta)), snap(js::sin(theta)))
+}
+
+/// `boxCentre`: the middle of the box round some points, or None for none.
+fn box_centre(points: &[Point]) -> Option<Point> {
+    if points.is_empty() {
+        return None;
+    }
+    let xs = || points.iter().map(|p| p.x);
+    let ys = || points.iter().map(|p| p.y);
+    Some(Point::new((js::min_n(xs()) + js::max_n(xs())) / 2.0, (js::min_n(ys()) + js::max_n(ys())) / 2.0))
 }
 
 /// What Align vertical / horizontal for a selection with reactions did.

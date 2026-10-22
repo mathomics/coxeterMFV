@@ -21,6 +21,7 @@ import { boundaryKey, ENVIRONMENT_KEY } from '../map/boundaries.js';
 import { SIZES } from '../layout/layout.js';
 import { compartmentKey, textBox } from '../map/multi-selection.js';
 import { isSecondaryNode, metaboliteLabelPosition } from '../map/metabolite-label.js';
+import { reactionLabelPlacement, reactionNodes } from '../map/reaction-label.js';
 import { reactionEndpointGeometry } from './reaction-path.js';
 import { findLineHops, hoppedPath } from './line-hops.js';
 import { crossFeedingLineWidth, isDrawnCrossFeedingBase, roundedPath, routeAnchor, routeCrossFeeding, routeGrid } from './crossfeed-routes.js';
@@ -99,12 +100,16 @@ export function renderMap(layout, state) {
   } = state;
 
   const quiet = isQuietCofactors(layout);
+  // The names of cells and compartments in an exported picture are as large
+  // as on screen with the whole map in view, not their base size, which on a
+  // large map is too small to read.
+  const exportScale = forExport ? exportFrameLabelScale(layout) : null;
   const parts = [];
   parts.push(
     `<svg xmlns="http://www.w3.org/2000/svg" class="emc-map${dark ? ' emc-dark' : ''}${quiet ? ' emc-quiet-cofactors' : ''}" `
     + `viewBox="0 0 ${n(layout.width)} ${n(layout.height)}" `
     + `width="${n(layout.width)}" height="${n(layout.height)}" role="img" `
-    + `aria-label="Multicell community metabolic map">`,
+    + `aria-label="Multicell community metabolic map"${exportScale ? ` style="--frame-label-scale:${exportScale}"` : ''}>`,
   );
   parts.push(defs(dark));
   parts.push(renderCanvasFrame(layout, dark));
@@ -118,7 +123,7 @@ export function renderMap(layout, state) {
     ? renderCrossFeeding(layout, crossFeeding, scale, dark, crossFeedingExplorer, crossFeedingBases, crossFeedingWidth)
     : null;
   if (crossFeedingLayers) parts.push(crossFeedingLayers.behind);
-  parts.push(renderCells(layout, dark, growth, minHitRadius, inactiveSpeciesIds, inactiveSpeciesLabel));
+  parts.push(renderCells(layout, dark, growth, minHitRadius, inactiveSpeciesIds, inactiveSpeciesLabel, exportScale));
   if (crossFeedingLayers) parts.push(crossFeedingLayers.routed);
   parts.push(renderPathwayRibbons(
     layout,
@@ -162,7 +167,7 @@ export function renderMap(layout, state) {
   parts.push(renderMapAnnotations(layout, dark, multiSelection));
   if (crossFeedingLayers?.tag) parts.push(crossFeedingLayers.tag);
   if (!forExport) parts.push(renderCanvasResizeHandles(layout, dark));
-  parts.push(renderCompartmentLabels(layout, dark, inactiveSpeciesIds));
+  parts.push(renderCompartmentLabels(layout, dark, inactiveSpeciesIds, exportScale));
   // The handles (corners, sides, the centre to move by and the two shape
   // diamonds) belong to any compartment that is selected, not only to the
   // geometry-editing tools. Select sets the same geometry selection, so
@@ -388,7 +393,7 @@ function renderEnvironment(layout, dark, minHitRadius = 0) {
 
 // Cells
 
-function renderCells(layout, dark, growth, minHitRadius = 0, inactiveSpeciesIds = new Set(), inactiveLabel = 'inactive context') {
+function renderCells(layout, dark, growth, minHitRadius = 0, inactiveSpeciesIds = new Set(), inactiveLabel = 'inactive context', exportScale = null) {
   const out = ['<g class="emc-layer emc-layer-cells">'];
 
   for (const cell of layout.cells) {
@@ -416,7 +421,7 @@ function renderCells(layout, dark, growth, minHitRadius = 0, inactiveSpeciesIds 
     const textWidth = plateText.length * PLATE_CHAR;
     const plateWidth = textWidth + 44;
     out.push(`<g class="emc-cell-plate" data-cell-plate="${esc(cell.id)}" transform="translate(${n(r.x)} ${n(r.y - 10)})">
-      <g class="emc-frame-label" style="--fit:${fitScale(cellPlateFit(cell, layout.environment?.rect, plateText))}">
+      ${frameLabelGroup(fitScale(cellPlateFit(cell, layout.environment?.rect, plateText)), exportScale)}
         <rect x="0" y="-30" width="${n(plateWidth)}" height="30" rx="15"
           fill="${cell.color}" opacity="0.14"/>
         <circle cx="17" cy="-15" r="6" fill="${cell.color}"/>
@@ -516,6 +521,34 @@ export function frameLabelScale(minHitRadius = 0) {
   return Math.min(FRAME_SCALE_MAX, Math.max(1, (minHitRadius || 0) / 12));
 }
 
+/** The window an exported figure's plates are sized for, with the fit's padding. */
+const EXPORT_VIEW = { width: 1200, height: 800, pad: 20 };
+
+/**
+ * How much the plates are enlarged in an exported picture: as much as on
+ * screen once the whole map is fitted to a window, so that the names can be
+ * read when the figure is seen whole. A fixed window, so that the file does not
+ * depend on the zoom or the size of the screen it was exported from.
+ */
+export function exportFrameLabelScale(layout) {
+  const zoom = Math.min(
+    (EXPORT_VIEW.width - EXPORT_VIEW.pad * 2) / layout.width,
+    (EXPORT_VIEW.height - EXPORT_VIEW.pad * 2) / layout.height,
+  );
+  return Number.isFinite(zoom) && zoom > 0 ? Number(frameLabelScale(12 / zoom).toFixed(3)) : 1;
+}
+
+/**
+ * The group a plate is scaled by. On screen the stylesheet scales it; an
+ * exported file also states the scale outright, because editors such as
+ * Inkscape or Illustrator do not work out the stylesheet's `var()` and `min()`.
+ */
+function frameLabelGroup(fit, exportScale) {
+  // Both have three decimals already, so the smaller is written as it is.
+  const transform = exportScale ? ` transform="scale(${Math.min(exportScale, Number(fit))})"` : '';
+  return `<g class="emc-frame-label" style="--fit:${fit}"${transform}>`;
+}
+
 /**
  * How far a cell's name plate may grow: as wide as the cell, and no taller
  * than the strip of medium above the cell it stands in.
@@ -570,6 +603,7 @@ function clearScale(x, y, box, w, h, taken, most) {
  */
 function frameLabel({
   id, label, rect: r, style: s, margin = 14, centred = false, taken = [], limit = Infinity, cls = '', position = null,
+  exportScale = null,
 }) {
   const text = String(label ?? '').trim();
   if (!text) return '';
@@ -615,7 +649,7 @@ function frameLabel({
   }
 
   return `<g class="emc-comp-label${cls ? ` ${cls}` : ''}" data-compartment-label="${esc(id)}" transform="translate(${n(x)} ${n(y)})">
-    <g class="emc-frame-label" style="--fit:${fitScale(fit)}">
+    ${frameLabelGroup(fitScale(fit), exportScale)}
       <rect x="${n(box.x)}" y="${n(box.y)}" width="${n(w)}" height="${h}" rx="${h / 2}"
         fill="${s.fill}" stroke="${s.stroke}" stroke-width="${centred ? 1.2 : 0}" opacity="${centred ? 1 : 0.18}"/>
       <text x="${n(box.x + w / 2)}" y="${n(box.y + 13.5)}" text-anchor="middle" textLength="${n(textWidth)}"
@@ -636,7 +670,7 @@ function compartmentLabelPosition(compartment, radius) {
   }, radius);
 }
 
-function renderCompartmentLabels(layout, dark, inactiveSpeciesIds) {
+function renderCompartmentLabels(layout, dark, inactiveSpeciesIds, exportScale = null) {
   const out = ['<g class="emc-layer emc-layer-compartment-labels">'];
   const environment = layout.environment;
   if (environment?.rect && !environment.hidden) {
@@ -647,7 +681,7 @@ function renderCompartmentLabels(layout, dark, inactiveSpeciesIds) {
     out.push(frameLabel({
       id: environment.id ?? 's', label: environment.label, rect: environment.rect,
       style: compartmentStyle('s', dark), margin: 22, taken, cls: 'emc-env-label',
-      position: compartmentLabelPosition(environment, 26),
+      position: compartmentLabelPosition(environment, 26), exportScale,
     }));
   }
   for (const cell of layout.cells) {
@@ -655,7 +689,7 @@ function renderCompartmentLabels(layout, dark, inactiveSpeciesIds) {
     out.push(`<g data-cell="${esc(cell.id)}"${inactive ? ' opacity="0.32"' : ''}>`);
     const ordered = [...cell.compartments].sort((a, b) => a.depth - b.depth);
     for (const compartment of ordered) {
-      out.push(renderCompartmentLabel(compartment, dark, cell));
+      out.push(renderCompartmentLabel(compartment, dark, cell, exportScale));
     }
     out.push('</g>');
   }
@@ -668,7 +702,7 @@ function renderCompartmentLabels(layout, dark, inactiveSpeciesIds) {
  * boxy compartments keep it in a corner, out of the pathway and clear of the
  * compartments nested inside them.
  */
-function renderCompartmentLabel(comp, dark, cell) {
+function renderCompartmentLabel(comp, dark, cell, exportScale = null) {
   const visualId = comp.visualId ?? comp.id;
   const corners = compartmentCorners(comp);
   const centred = isRoundCompartment(comp);
@@ -699,6 +733,7 @@ function renderCompartmentLabel(comp, dark, cell) {
     taken: children.map((o) => o.rect),
     limit,
     position: compartmentLabelPosition(comp, corners),
+    exportScale,
   });
 }
 
@@ -1473,28 +1508,10 @@ function renderText(
           && !(emphasizedReactionIds.has(rid) && Math.abs(solved) > 1e-9)) continue;
       }
 
-      // Place the ID and its value beside the marker, leaving a gap even
-      // for rotated transporters with several lanes.
-      const angle = rxn.axis ? Math.atan2(rxn.axis.dir.y, rxn.axis.dir.x) : 0;
-      const halfWidth = rxn.onMembrane ? 13 : 3;
-      const halfHeight = rxn.onMembrane
-        ? ((rxn.transportLanes?.length ?? 0) >= 2 ? (14 + rxn.transportLanes.length * 10) / 2 : 11)
-        : 9;
-      const markerRight = halfWidth * Math.abs(Math.cos(angle)) + halfHeight * Math.abs(Math.sin(angle));
-      let tx = rxn.x + markerRight + 8;
-      let ty = rxn.y;
-      let placement = 'emc-label-rxn-adjacent';
-      // A reaction kept straight and lying on its side has its own arm where
-      // the name would go, so there the name stands over the bar, on the side
-      // with fewer of its metabolites.
-      if (rxn.linear && rxn.axis && !rxn.onMembrane && Math.abs(Math.sin(angle)) < 0.5) {
-        const markerTop = halfWidth * Math.abs(Math.sin(angle)) + halfHeight * Math.abs(Math.cos(angle));
-        nodesOf ??= reactionNodes(layout);
-        const below = emptierSide(nodesOf.get(rid), rxn) > 0;
-        tx = rxn.x;
-        ty = rxn.y + (markerTop + 5) * (below ? 1 : -1);
-        placement = below ? 'emc-label-rxn-below' : 'emc-label-rxn-above';
-      }
+      // Beside the marker unless the name was moved (reaction-label.js).
+      const { x: tx, y: ty, anchor, placement } = reactionLabelPlacement(
+        layout, rxn, () => (nodesOf ??= reactionNodes(layout)).get(rid),
+      );
       const localId = String(rxn.localId ?? '').trim();
       const cellPrefix = rxn.cellId ? `${rxn.cellId}@` : '';
       const reactionId = reactionLabels.get(rid) ?? (localId || (cellPrefix && rid.startsWith(cellPrefix)
@@ -1506,41 +1523,18 @@ function renderText(
         const range = fvaRanges.get(rid);
         text = range && Number.isFinite(range.min) && Number.isFinite(range.max)
           ? `${reactionId}  [${formatFlux(range.min, 3)}, ${formatFlux(range.max, 3)}]`
-          : `${reactionId}  [calculando…]`;
+          : `${reactionId}  [computing…]`;
       } else {
         text = `${reactionId}${disabled ? ' [KO]' : ''}  ${formatFlux(v, 3)}`;
       }
       const off = !fvaEnabled && isOffReaction(rid, { offStyle, solvedFluxes, disabledReactionIds, inactive });
       out.push(label(tx, ty, text, `emc-label-rxn${disabled ? ' is-disabled-reaction' : ''}${off ? ' is-off' : ''}${inactive ? ' is-inactive-species' : ''}${fvaEnabled ? ' emc-label-fva' : ''} ${placement}`, halo, dark, rid,
-        placement === 'emc-label-rxn-adjacent' ? 'start' : 'middle', inactive ? ' opacity="0.28"' : ''));
+        anchor, inactive ? ' opacity="0.28"' : ''));
     }
   }
 
   out.push('</g>');
   return out.join('');
-}
-
-/** The metabolite nodes each reaction reaches. */
-function reactionNodes(layout) {
-  const byReaction = new Map();
-  for (const seg of layout.segments) {
-    const node = seg.nodeId ? layout.nodes.get(seg.nodeId) : null;
-    if (!node || !seg.reactionId) continue;
-    if (!byReaction.has(seg.reactionId)) byReaction.set(seg.reactionId, []);
-    byReaction.get(seg.reactionId).push(node);
-  }
-  return byReaction;
-}
-
-/** Above (-1) or below (+1) a reaction lying on its side: where fewer of its metabolites stand. */
-function emptierSide(nodes = [], rxn) {
-  let above = 0;
-  let below = 0;
-  for (const node of nodes) {
-    if (node.y < rxn.y - 4) above += 1;
-    else if (node.y > rxn.y + 4) below += 1;
-  }
-  return below < above ? 1 : -1;
 }
 
 function metaboliteLabel(node, cls, halo, dark, text = node.base, secondaryRadius = SIZES.currencyRadius) {

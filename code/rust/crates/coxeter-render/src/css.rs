@@ -1807,7 +1807,7 @@ mod tests {
             }
         }
         let important = sheet.flat.iter().flat_map(|r| &r.declarations).filter(|d| d.important).count();
-        assert_eq!(important, 10);
+        assert_eq!(important, 11);
     }
 
     #[test]

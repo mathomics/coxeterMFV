@@ -126,7 +126,8 @@ fn drawn_reactions(h: &H, n: usize) -> Vec<String> {
 fn selection_card_toggles_geometry_edit_and_multi_select() {
     let mut h = common::harness(None);
     open(&mut h, Workspace::Map);
-    assert!(common::shows(&h, "Select a reaction, or at least two objects, to align them"));
+    // Arranging a selection is the inspector's now (selection_inspector_aligns_and_distributes).
+    assert!(!common::shows(&h, "Select a reaction or two or more objects to align them."));
     assert!(!common::pressed(&h, "Edit geometry"));
 
     // toggle-geometry-edit
@@ -156,21 +157,23 @@ fn selection_card_toggles_geometry_edit_and_multi_select() {
     assert!(!h.state().store.view.multi_select);
 }
 
+/// The arrange block, in the inspector's Selection section since it left Map
+/// options.
 #[test]
-fn arrange_selection_aligns_and_distributes() {
+fn selection_inspector_aligns_and_distributes() {
     let mut h = common::harness(None);
-    open(&mut h, Workspace::Map);
     let nodes = movable_nodes(&h, 3);
 
-    // One object: no block (a lone metabolite is no line).
+    // One object: no Selection section (a lone metabolite is no line).
     h.state_mut().store.toggle_multi_selection("node", &nodes[0]);
     common::settle(&mut h);
     assert!(!common::has(&h, "Left"));
     // Two: aligned, not distributed.
     h.state_mut().store.toggle_multi_selection("node", &nodes[1]);
     common::settle(&mut h);
-    assert!(common::shows(&h, "Arrange selection"));
-    assert!(common::shows(&h, "2 objects"));
+    assert!(!h.state().ui.inspector_collapsed, "the inspector opens for the selection");
+    assert!(common::shows(&h, "Selection"));
+    assert!(common::shows(&h, "2 metabolites"));
     assert!(!common::disabled(&h, "Left"));
     let distribute_h = format!("Distribute {}", coxeter_app::fonts::glyph::DISTRIBUTE_H);
     let distribute_v = format!("Distribute {}", coxeter_app::fonts::glyph::DISTRIBUTE_V);
@@ -178,7 +181,7 @@ fn arrange_selection_aligns_and_distributes() {
     assert!(common::disabled(&h, &distribute_v));
     h.state_mut().store.toggle_multi_selection("node", &nodes[2]);
     common::settle(&mut h);
-    assert!(common::shows(&h, "3 objects"));
+    assert!(common::shows(&h, "3 metabolites"));
     assert!(!common::disabled(&h, &distribute_h));
 
     // align-horizontal: one y.
@@ -315,12 +318,13 @@ fn view_card_map_buttons() {
     common::click(&mut h, "Show hidden metabolites (1)");
     assert_eq!(h.state().store.hidden_metabolite_count(), 0);
     assert!(!common::has(&h, "Show hidden metabolites (1)"));
-    // The arrange block appears with two objects.
+    // The arrange block is not here any more: two objects open the inspector's Selection section.
     for id in movable_nodes(&h, 2) {
         h.state_mut().store.toggle_multi_selection("node", &id);
     }
     common::settle(&mut h);
-    assert!(common::shows(&h, "Arrange selection"));
+    assert!(!common::shows(&h, "Arrange selection"));
+    assert!(!h.state().ui.inspector_collapsed);
 }
 
 // Reaction colours & pathway ribbons
@@ -336,7 +340,7 @@ fn appearance_card_modes_and_ribbons() {
     common::choose(&mut h, "Reaction color mode", "Subsystem");
     assert_eq!(h.state().store.view.reaction_color_mode, ReactionColorMode::Subsystem);
     assert_eq!(h.state().store.view.line_color_group, "subsystem");
-    assert!(common::shows(&h, "A color set on a reaction in the Inspector is used over its pathway's. Your flux palette is retained."));
+    assert!(!common::shows(&h, "Your flux palette is retained"));
     assert!(!common::shows(&h, "Flux palette"));
     common::choose(&mut h, "Pathway ribbon mode", "Pathway");
     assert_eq!(h.state().store.view.pathway_ribbon_mode, PathwayRibbonMode::Pathway);
@@ -463,7 +467,7 @@ fn legend_card_follows_the_colour_modes() {
     assert!(common::shows(&h, &cell_label), "compartments of the drawn cells");
     assert!(common::shows(&h, "|flux| mmol·gDW⁻¹·h⁻¹"));
     assert!(!common::shows(&h, "of each species"), "not a SteadyCom solution");
-    assert!(common::shows(&h, "Flux colors encode magnitude; arrowheads show the actual direction in the solution."));
+    assert!(!common::shows(&h, "Flux colors encode magnitude"), "the legend has no footnote");
 
     h.state_mut().store.set_view(coxeter_state::ViewPatch { reaction_color_mode: Some("subsystem".into()), ..Default::default() }).unwrap();
     common::settle(&mut h);
@@ -471,12 +475,12 @@ fn legend_card_follows_the_colour_modes() {
     let groups = h.state().store.reaction_coloring(true).legend;
     assert!(label_exact(&h, &groups.len().to_string()));
     assert!(common::shows(&h, &groups[0].label));
-    assert!(common::shows(&h, "Color marks the subsystem; arrowheads show the direction of the solved flux."));
+    assert!(!common::shows(&h, "Color marks the subsystem"));
 
     h.state_mut().store.set_view(coxeter_state::ViewPatch { pathway_ribbon_mode: Some("pathway".into()), ..Default::default() }).unwrap();
     common::settle(&mut h);
     assert!(label_exact(&h, "Pathways"));
-    assert!(common::shows(&h, "The translucent ribbon marks the pathway; arrow colors encode flux magnitude."));
+    assert!(!common::shows(&h, "The translucent ribbon marks the pathway"));
 
     h.state_mut()
         .store
@@ -484,7 +488,7 @@ fn legend_card_follows_the_colour_modes() {
         .unwrap();
     common::settle(&mut h);
     common::click(&mut h, "Custom colors");
-    assert!(common::shows(&h, "Flux colors represent signed values; arrowheads show the solved direction."));
+    assert!(!common::shows(&h, "Flux colors represent signed values"));
     let previews = h.query_all_by(|n| n.label().is_some_and(|l| l.starts_with("Signed flux color gradient"))).count();
     assert_eq!(previews, 2, "the editor and the legend preview the palette");
 }
@@ -597,7 +601,7 @@ fn map_structure_card_places_cells_and_compartments() {
     let available = h.state().store.available_map_cells();
     assert!(available.len() >= 2);
     assert!(common::shows(&h, "0 cells · 0 compartments"));
-    assert!(common::shows(&h, "Nothing can be drawn yet: draw a cell first, or every compartment is already on the map."));
+    assert!(common::shows(&h, "Nothing to draw: draw a cell first, or all compartments are on the map."));
 
     // cell-placement-species
     let second = &available[1];
@@ -612,12 +616,13 @@ fn map_structure_card_places_cells_and_compartments() {
     let compartments = h.state().store.available_map_compartments();
     assert!(!compartments.is_empty());
     let last = compartments.last().unwrap().clone();
-    // Every compartment of the model is listed, with why it can be drawn or not (d7b2c0e).
+    // Every compartment of the model is listed, with why it can be drawn or
+    // not on hover (d7b2c0e).
     let choices = h.state().store.map_compartment_choices();
     let many = choices.iter().any(|c| c.species_id != choices[0].species_id);
     let choice = choices.iter().find(|c| c.key() == last.key()).unwrap();
     let who = if many { format!("{} · ", choice.species_name) } else { String::new() };
-    let option = format!("{who}{} ({}) — {}", choice.compartment_name, choice.compartment_id, choice.reason);
+    let option = format!("{who}{} ({})", choice.compartment_name, choice.compartment_id);
     common::choose(&mut h, "Compartment to add", &option);
     assert_eq!(h.state().store.compartment_placement_key.as_deref(), Some(last.key().as_str()));
     let before = h.state().store.map.as_ref().unwrap().cell(&last.species_id).unwrap().compartments.len();
@@ -651,7 +656,7 @@ fn canvas_card_clears_and_draws_the_map() {
     assert_eq!(h.state().store.map.as_ref().unwrap().reactions().len(), 0);
     assert_eq!(
         h.state().store.status().message,
-        format!("Map cleared — {drawn} drawn reactions removed. The model is unchanged; Ctrl+Z undoes this.")
+        format!("Map cleared: {drawn} drawn reactions removed. Ctrl+Z undoes.")
     );
     // map-full: a core model draws without asking (ui-audit-fixes).
     open(&mut h, Workspace::Map);
@@ -669,7 +674,7 @@ fn canvas_card_clears_and_draws_the_map() {
 fn reaction_search_adds_and_selects() {
     let mut h = common::harness(None);
     open(&mut h, Workspace::Library);
-    assert!(common::shows(&h, "Type to search every reaction in the model, drawn or not."));
+    assert!(common::shows(&h, "Search every reaction in the model."));
     // A community exchange: a blank canvas has no cell for any other reaction to go in.
     let rid = h.state().store.map.as_ref().unwrap().reactions().values().find(|r| r.cell_id.is_none()).expect("a community exchange").id.clone();
     let local = h.state().store.search_reactions(&rid, 30).into_iter().find(|r| r.reaction_id == rid).unwrap().local_id;
@@ -817,8 +822,8 @@ fn view_menu_shows_the_actual_state() {
     common::settle(&mut h);
     common::press(&mut h, "View menu");
     assert!(!common::pressed(&h, "Cofactors"));
-    assert!(common::pressed(&h, "Highlight cross-feeding"));
-    assert_eq!(common::control(&h, "Map labels").value().as_deref(), Some("None"));
+    assert!(common::pressed(&h, "⇄ Cross-feeding"));
+    assert_eq!(common::control(&h, "Map labels").value().as_deref(), Some("Labels: none"));
     assert!(!common::has(&h, "Dark"), "no theme toggle in the View menu");
     assert!(!common::shows(&h, "Primary only"));
 }
@@ -834,7 +839,7 @@ fn map_workspace_pages_show_their_cards() {
     assert!(common::shows(&h, "Map structure") && common::has(&h, "Clear drawing"));
     assert!(!common::has(&h, map_options::REACTION_SEARCH_LABEL));
     open(&mut h, Workspace::Map);
-    for title in ["Selection & geometry", "Reaction lines, metabolites & pathway ribbons", "Pathway Manager", "Canvas", "Legend"] {
+    for title in ["Selection & geometry", "Lines, circles & ribbons", "Pathway Manager", "Canvas", "Legend"] {
         assert!(common::shows(&h, title), "{title}");
     }
     assert!(!common::shows(&h, "Nested compartments"));
@@ -853,7 +858,7 @@ fn line_switches_and_circle_colours_of_the_appearance_card() {
     let v = h.state().store.view.clone();
     assert_eq!((v.width_by_flux, v.dash_no_flux, v.line_hops), (false, true, true));
     common::click(&mut h, "Line width follows flux");
-    common::click(&mut h, "Grey dashed lines");
+    common::click(&mut h, "Dash lines with no flux");
     common::click(&mut h, "Gap where lines cross");
     let v = h.state().store.view.clone();
     assert_eq!((v.width_by_flux, v.dash_no_flux, v.line_hops), (true, false, false));

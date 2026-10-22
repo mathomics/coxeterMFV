@@ -162,6 +162,18 @@ impl MapHost for StoreHost<'_> {
             });
         }
     }
+    fn set_reaction_label_offset(&mut self, reaction_id: &str, offset: Point) -> bool {
+        self.store.set_reaction_label_offset(reaction_id, offset)
+    }
+    fn restore_reaction_label_offset(&mut self, reaction_id: &str, offset: Option<Point>) {
+        if let Some(map) = &mut self.store.map {
+            map.edit_graph(|g| {
+                if let Some(rxn) = g.reactions.get_mut(reaction_id) {
+                    coxeter_core::reaction_label::set_reaction_label_offset(rxn, offset);
+                }
+            });
+        }
+    }
     fn move_map_text(&mut self, id: &str, x: f64, y: f64) -> Option<Point> {
         self.store.move_map_text(id, x, y)
     }

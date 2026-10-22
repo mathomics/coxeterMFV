@@ -33,10 +33,14 @@ use serde_json::Value;
 // - a reaction line writes `d` last, once its crossings are known: it is put
 //   back straight after `class`;
 // - map.css has the cursor rules of those handles, the grey label of a
-//   reaction without flux and the quiet cofactors (NEW_RULES).
+//   reaction without flux, the quiet cofactors and the reaction names that
+//   can be picked up (NEW_RULES; browser.rs takes the last into account in
+//   the computed styles too).
 
 /// Rules of map.css added by d7b2c0e and 7b5aaa0, the ring a reactions table
-/// puts on the map under its hovered row, and the quiet cofactors.
+/// puts on the map under its hovered row, the quiet cofactors, and the
+/// reaction names a drag can pick up. An entry is a piece of the selector, or
+/// the start of the rule when the selector alone would match older rules.
 pub const NEW_RULES: &[&str] = &[
     ".emc-geometry-n, .emc-geometry-s",
     ".emc-geometry-e, .emc-geometry-w",
@@ -46,6 +50,8 @@ pub const NEW_RULES: &[&str] = &[
     "emc-table-hover",
     ".is-table-hover",
     ".emc-quiet-cofactors",
+    ".emc-label-rxn { pointer-events: all",
+    ".is-dragging-reaction-label",
 ];
 
 /// Whether a written rule is one the references do not know yet.
@@ -88,7 +94,13 @@ pub fn before_shapes(svg: &str) -> String {
     // An exported file carries the stylesheet, a rule a line.
     let mut svg = svg.into_owned();
     for rule in NEW_RULES {
-        let re = regex::Regex::new(&format!(r"\n[^\n{{}}<>]*{}[^\n{{}}]*\{{[^}}]*\}}", regex::escape(rule))).unwrap();
+        // An entry with the brace in it has its selector whole already.
+        let pattern = if rule.contains('{') {
+            format!(r"\n[^\n{{}}<>]*{}[^}}]*\}}", regex::escape(rule))
+        } else {
+            format!(r"\n[^\n{{}}<>]*{}[^\n{{}}]*\{{[^}}]*\}}", regex::escape(rule))
+        };
+        let re = regex::Regex::new(&pattern).unwrap();
         svg = re.replace_all(&svg, "").into_owned();
     }
     // An at-rule block that held only new rules.

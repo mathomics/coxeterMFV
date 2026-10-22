@@ -730,7 +730,7 @@ fn direction_section(ui: &mut Ui, args: &PanelArgs<'_>, selected: Option<&str>, 
                     ui.set_width(text_w);
                     ui.spacing_mut().item_spacing = Vec2::new(0.0, 2.0);
                     ui.add(egui::Label::new(RichText::new("Direction").size(11.5).family(bold()).color(p.ink)).selectable(false));
-                    let caption = if selected.is_some() { "Choose where to place the selected reaction." } else { "Select a reaction first." };
+                    let caption = if selected.is_some() { "Where to place the reaction." } else { "Select a reaction first." };
                     ui.add(egui::Label::new(RichText::new(caption).size(10.5).color(p.ink_3)).wrap());
                     if selected.is_some() {
                         ui.add_space(8.0);
@@ -767,12 +767,7 @@ fn terminal_control(ui: &mut Ui, args: &PanelArgs<'_>, p: &Palette) -> Option<Pa
     let terminal = &terminals[index];
     let mut action = None;
     ui.add(egui::Label::new(RichText::new("Terminal metabolite").size(11.5).family(bold()).color(p.ink)).selectable(false));
-    let explain = if terminals.len() > 1 {
-        "Choose which primary product lies on the reaction axis."
-    } else {
-        "Primary product on the reaction axis."
-    };
-    ui.add(egui::Label::new(RichText::new(explain).size(10.5).color(p.ink_3)).wrap());
+    ui.add(egui::Label::new(RichText::new("Product on the reaction axis.").size(10.5).color(p.ink_3)).wrap());
     ui.add_space(4.0);
     ui.horizontal(|ui| {
         ui.spacing_mut().item_spacing = Vec2::new(5.0, 0.0);

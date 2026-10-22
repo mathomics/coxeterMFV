@@ -30,7 +30,7 @@ pub fn show(ui: &mut Ui, shell: &mut Shell) {
                     simulate_menu(ui, shell, &p);
                     file_menu(ui, shell, &p);
                     theme_button(ui, shell);
-                    let find = Btn::new("⌕ Find reaction").look(Look::Secondary).title("Find reactions (Ctrl+F)").aria("Find reaction").height(34.0).show(ui);
+                    let find = Btn::new("⌕ Find").look(Look::Secondary).title("Find reactions (Ctrl+F)").aria("Find reaction").height(34.0).show(ui);
                     if find.clicked() {
                         shell.open_workspace_named("library");
                         shell.ui.focus_request = Some(crate::panels::map_options::reaction_search_id());
@@ -53,11 +53,7 @@ fn brand(ui: &mut Ui, p: &Palette) {
         painter.circle_filled(at(x, y), r, p.accent);
     }
     response.on_hover_text("Coxeter Multicell Flux Visualizer");
-    ui.vertical(|ui| {
-        ui.spacing_mut().item_spacing.y = 0.0;
-        ui.label(RichText::new("Coxeter-MFV").size(15.0).family(bold()).color(p.ink)).on_hover_text("Coxeter Multicell Flux Visualizer");
-        ui.label(RichText::new("Edit Map · Edit Model · Simulate").size(11.0).color(p.ink_3));
-    });
+    ui.label(RichText::new("Coxeter-MFV").size(15.0).family(bold()).color(p.ink)).on_hover_text("Coxeter Multicell Flux Visualizer");
 }
 
 /// `#model-name` and `#model-kind`.
@@ -166,7 +162,7 @@ fn status(ui: &mut Ui, shell: &mut Shell, p: &Palette) {
 fn theme_button(ui: &mut Ui, shell: &mut Shell) {
     let dark = shell.store.view.dark;
     let label = if dark { "Switch to light theme" } else { "Switch to dark theme" };
-    let r = Btn::new(format!("◐ {}", if dark { "Light" } else { "Dark" })).active(dark).title(label).aria(label).height(34.0).show(ui);
+    let r = Btn::new("◐").active(dark).title(label).aria(label).height(34.0).show(ui);
     widgets::aria_pressed(&r, dark);
     if r.clicked() {
         shell.set_theme(!dark);
@@ -231,7 +227,7 @@ fn file_menu(ui: &mut Ui, shell: &mut Shell, p: &Palette) {
         if menu_item(ui, "Reproducibility bundle", "Import reproducibility bundle", true, "") {
             shell.import_reproducibility();
         }
-        menu_heading(ui, "EXPORT / SAVE A LOCAL COPY");
+        menu_heading(ui, "EXPORT");
         if menu_item(ui, "Map JSON", "Export map JSON", true, "") {
             shell.map_save();
         }
@@ -282,7 +278,7 @@ fn clear_solution_button(ui: &mut Ui, shell: &mut Shell) {
     let clicked = Btn::new("✕ Clear solution")
         .look(Look::Secondary)
         .enabled(shell.store.solution.is_some())
-        .title("Remove the solution from the map. Changes to bounds or medium are not solved again until an analysis is run")
+        .title("Remove the solution from the map")
         .aria("Clear solution")
         .height(34.0)
         .show(ui)
@@ -300,22 +296,14 @@ fn simulate_menu(ui: &mut Ui, shell: &mut Shell, p: &Palette) {
         .corner_radius(CornerRadius::same(8))
         .min_size(Vec2::new(0.0, 34.0));
     let (response, _) = egui::containers::menu::MenuButton::from_button(button).ui(ui, |ui| {
-        ui.set_min_width(250.0);
+        ui.set_min_width(200.0);
         menu_heading(ui, "FLUX ANALYSIS");
-        for (method, name, description) in [
-            ("fba", "FBA", "Flux balance analysis"),
-            ("pfba", "pFBA", "Parsimonious FBA"),
-            ("fva", "FVA", "Flux variability analysis"),
-            ("loopless", "Loopless FBA", "Exclude internal cycles"),
-            ("cyclefree", "CycleFreeFlux", "Remove internal cycles with one LP"),
-        ] {
+        for (method, name) in [("fba", "FBA"), ("pfba", "pFBA"), ("fva", "FVA"), ("loopless", "Loopless FBA"), ("cyclefree", "CycleFreeFlux")] {
             let (enabled, title) = run_button_state(shell, method);
-            let mut job = egui::text::LayoutJob::default();
             let pal = Palette::current(ui.ctx());
-            job.append(name, 0.0, egui::TextFormat { font_id: egui::FontId::new(12.5, bold()), color: pal.ink, ..Default::default() });
-            job.append(&format!("   {description}"), 0.0, egui::TextFormat { font_id: egui::FontId::proportional(11.5), color: pal.ink_3, ..Default::default() });
+            let job = RichText::new(name).size(12.5).family(bold()).color(pal.ink);
             let fill = if enabled && widgets::hovered_next(ui) { pal.hover } else { Color32::TRANSPARENT };
-            let button = egui::Button::new(job).fill(fill).stroke(Stroke::NONE).min_size(Vec2::new(ui.available_width().max(230.0), 34.0));
+            let button = egui::Button::new(job).fill(fill).stroke(Stroke::NONE).min_size(Vec2::new(ui.available_width().max(190.0), 34.0));
             let r = ui.add_enabled(enabled, button);
             aria_label(&r, &format!("Run {name}"));
             let r = if title.is_empty() { r } else { r.on_disabled_hover_text(title) };

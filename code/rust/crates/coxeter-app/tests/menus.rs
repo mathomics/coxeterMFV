@@ -252,7 +252,11 @@ fn metabolite_menu_shows_stoichiometry_then_eight_directions_and_reuses_the_meta
     let menu = h.state().menus.state.clone().unwrap();
     assert_eq!((menu.position.left, menu.position.top), (212.0, 172.0));
     assert!(common::shows(&h, "Add reaction"));
-    assert!(common::shows(&h, "selected metabolite will be reused"));
+    let from = |text: &str| text.starts_with("From ") && !text.contains(" · ");
+    assert!(
+        h.query_all_by(|n| n.label().is_some_and(|l| from(&l)) || n.value().is_some_and(|v| from(&v))).next().is_some(),
+        "the subtitle names the metabolite, and only that"
+    );
     assert!(common::shows(&h, "1 reaction available"));
 
     // The reaction, with its compact stoichiometry, is listed and — the only
@@ -270,7 +274,7 @@ fn metabolite_menu_shows_stoichiometry_then_eight_directions_and_reuses_the_meta
         assert!(!common::disabled(&h, &direction_label(d.label)), "{}", d.label);
     }
     // The terminal metabolite: the one primary product.
-    assert!(common::shows(&h, "Primary product on the reaction axis."));
+    assert!(common::shows(&h, "Product on the reaction axis."));
 
     common::click(&mut h, &direction_label("East"));
     assert_eq!(current(&h), None, "placing the reaction closes the panel");
@@ -376,7 +380,9 @@ fn compartment_menu_places_at_the_clicked_point_without_linking_a_metabolite() {
     assert!((origin.x - expected.x).abs() < 1e-9 && (origin.y - expected.y).abs() < 1e-9);
 
     assert!(common::shows(&h, "Add reaction"));
-    assert!(common::shows(&h, "all metabolites will be new visual instances"));
+    let place = h.state().menus.state.as_ref().unwrap().label.clone();
+    assert!(common::shows(&h, &place), "the subtitle names the compartment");
+    assert!(!common::shows(&h, "new visual instances"));
     let equation = reaction_stoichiometry(&h.state().store, "eco@PGI", 3);
     assert!(row_label(&h, "PGI").contains(&equation));
     assert_eq!(REACTION_DIRECTIONS.iter().filter(|d| common::has(&h, &direction_label(d.label))).count(), 8);
@@ -405,7 +411,7 @@ fn the_terminal_metabolite_is_chosen_and_placed_on_the_axis() {
     open(&mut h, MenuRequest::Compartment { cell_id, compartment_id }, at);
     let terminals = primary_metabolites_for_side(&h.state().store, "eco@TKT1", Side::Product);
     assert_eq!(terminals.len(), 2, "{terminals:?}");
-    assert!(common::shows(&h, "Choose which primary product lies on the reaction axis."));
+    assert!(common::shows(&h, "Product on the reaction axis."));
     assert!(common::shows(&h, &terminals[0].label));
 
     common::click(&mut h, "Next terminal metabolite");
@@ -586,7 +592,9 @@ fn add_metabolite_places_a_node_at_the_clicked_point() {
     open(&mut h, MenuRequest::MetaboliteAdd { cell_id: cell_id.clone(), compartment_id: compartment_id.clone() }, at);
     assert_eq!(current(&h), Some(MapMenu::MetaboliteAdd));
     assert!(common::shows(&h, "Add metabolite"));
-    assert!(common::shows(&h, "new visual instance"));
+    let place = h.state().menus.state.as_ref().unwrap().label.clone();
+    assert!(common::shows(&h, &place), "the subtitle names the compartment");
+    assert!(!common::shows(&h, "new visual instance"));
     assert!(common::has(&h, "Search metabolites"));
     let origin = h.state().map.canvas.screen_to_map(at);
 
@@ -639,7 +647,7 @@ fn menus_close_by_button_escape_and_each_other() {
     open(&mut h, MenuRequest::MetaboliteAdd { cell_id: "eco".into(), compartment_id: "c".into() }, at);
     assert_eq!(current(&h), Some(MapMenu::MetaboliteAdd));
     assert!(!common::has(&h, "Close Add Reaction panel"));
-    common::click(&mut h, "Close Add metabolite panel");
+    common::click(&mut h, "Close");
     assert_eq!(current(&h), None);
 
     // The map asks a menu it did not open to close: the open one stays.

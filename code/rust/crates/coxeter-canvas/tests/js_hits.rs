@@ -13,6 +13,11 @@
 //! 0.8 px wide at 27 % there. The stylesheet means constant screen pixels
 //! ("the same few pixels at every zoom"), which is what Chromium and the
 //! native painter and hit-test do. Those points are counted apart.
+//!
+//! The references were recorded before reaction names could be picked up
+//! (map.css `.emc-label-rxn { pointer-events: all }`): where the native side
+//! finds a reaction's name and the browser did not, it is compared by what
+//! lies under the name, as the browser saw through it then.
 
 mod common;
 
@@ -20,6 +25,7 @@ use std::collections::BTreeMap;
 
 use coxeter_canvas::camera::{Camera, StageRect};
 use coxeter_canvas::gestures::Stage;
+use coxeter_canvas::targets::Target;
 use coxeter_canvas::host::MapHost;
 use coxeter_canvas::{MapCanvas, Tool};
 use coxeter_core::mapdata::Point;
@@ -30,6 +36,11 @@ use common::*;
 fn hits() -> Option<Value> {
     let path = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/fixtures/hits.json");
     Some(serde_json::from_str(&std::fs::read_to_string(path).ok()?).expect("hits.json"))
+}
+
+/// A target that is a reaction's name.
+fn is_reaction_name(v: &Value) -> bool {
+    v["cls"].as_str().is_some_and(|c| c.split_ascii_whitespace().any(|c| c == "emc-label-rxn"))
 }
 
 fn label(v: &Value) -> String {
@@ -70,12 +81,17 @@ fn hit_testing_matches_the_browser() {
         let mut camera = canvas.camera;
         let stage = Stage { camera: &mut camera, rect: canvas.rect, scene: canvas.scene.as_ref() };
         let mut confusions: BTreeMap<(String, String), usize> = BTreeMap::new();
-        let (mut n, mut ok, mut firefox) = (0, 0, 0);
+        let (mut n, mut ok, mut firefox, mut names) = (0, 0, 0, 0);
         let t0 = std::time::Instant::now();
         for p in grid["points"].as_array().unwrap() {
             let at = Point::new(p[0].as_f64().unwrap(), p[1].as_f64().unwrap());
             let js = &targets[p[2].as_u64().unwrap() as usize];
-            let rust = describe(&stage.target_at(at, filter));
+            let mut rust = describe(&stage.target_at(at, filter));
+            if is_reaction_name(&rust) && !is_reaction_name(js) {
+                let under = stage.elements_from_point(at, filter).into_iter().find(|t| !t.element().is_some_and(|e| e.has_class("emc-label-rxn")));
+                rust = describe(&under.unwrap_or_else(Target::stage));
+                names += 1;
+            }
             n += 1;
             if same_target(&rust, js) {
                 ok += 1;
@@ -90,7 +106,7 @@ fn hit_testing_matches_the_browser() {
         }
         let per_point = t0.elapsed().as_secs_f64() * 1e6 / n as f64;
         eprintln!(
-            "scale {} ({}): {ok} of {n} points agree ({:.2}%), {firefox} on a non-scaling outline, {per_point:.1} µs a point",
+            "scale {} ({}): {ok} of {n} points agree ({:.2}%), {firefox} on a non-scaling outline, {names} on a reaction name, {per_point:.1} µs a point",
             cam["scale"],
             grid["tool"],
             100.0 * ok as f64 / n as f64

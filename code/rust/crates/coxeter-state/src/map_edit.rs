@@ -33,7 +33,7 @@ use coxeter_core::geometry::compartment_shape_preset;
 use coxeter_map::editable_map::RemovedCompartment;
 use coxeter_map::geometry_edit::{GeometryEdit, ShapeEdit, ShapePatch};
 use coxeter_map::layout_settings::{RawLayoutSettings, layout_engine_options, layout_preset, normalize_layout_settings};
-use coxeter_map::multi_selection::{ItemKind, Moved, SelectionRect, empty_selection, selection_size};
+use coxeter_map::multi_selection::{ItemKind, Moved, SelectionRect, SelectionTurn, TurnRefusal, empty_selection, selection_size};
 use coxeter_map::place_reaction::{PlaceOptions, Placed};
 use coxeter_map::reaction_edit::Handle;
 use coxeter_render::reaction_colors::{PathwayRibbonMode, category_color};
@@ -363,6 +363,64 @@ impl Store {
             self.emit("status");
         }
         Some(result)
+    }
+
+    /// `spaceMultiSelectionEvenly()`: space the selection evenly along its own
+    /// line, in any direction, as one undoable edit. None with fewer than
+    /// three items to space.
+    pub fn space_multi_selection_evenly(&mut self) -> Option<SpaceResult> {
+        let selection = self.multi_selection.clone();
+        let map = self.map.as_mut()?;
+        let before = map.to_json();
+        let spaced = map.space_selection_evenly(&selection);
+        if spaced.count < 3 {
+            return None;
+        }
+        let changed = self.record_map(&before, "Space evenly");
+        if changed {
+            self.emit("map");
+        }
+        Some(SpaceResult {
+            moved: spaced.moved.into_iter().map(|(kind, id)| (kind.as_str().to_string(), id)).collect(),
+            count: spaced.count,
+            changed,
+        })
+    }
+
+    /// `rotateMultiSelection(angle)`: turn the selection as one rigid piece by
+    /// `angle` radians (clockwise on screen), as one undoable edit.
+    pub fn rotate_multi_selection(&mut self, angle: f64) -> Option<TurnResult> {
+        let selection = self.multi_selection.clone();
+        self.turn_multi_selection("Rotate selection", |map| map.rotate_selection(&selection, angle, None))
+    }
+
+    /// `pointMultiSelection(direction)`: turn the selection so that its main
+    /// line points `direction` (`N`, `NE`, … `NW`), the way it runs.
+    pub fn point_multi_selection(&mut self, direction: &str) -> Option<TurnResult> {
+        let selection = self.multi_selection.clone();
+        self.turn_multi_selection(&format!("Point selection {direction}"), |map| map.point_selection(&selection, direction))
+    }
+
+    /// `turnMultiSelection(label, turn)`: one turn of the selection, recorded
+    /// when it moved anything. A turn the map refuses has moved nothing, and
+    /// the status line says why.
+    fn turn_multi_selection(&mut self, label: &str, turn: impl FnOnce(&mut EditableMap) -> Option<SelectionTurn>) -> Option<TurnResult> {
+        let map = self.map.as_mut()?;
+        let before = map.to_json();
+        match turn(map)? {
+            SelectionTurn::Refused(reason) => {
+                self.set_status_message(StatusState::Warn, turn_warning(reason));
+                self.emit("status");
+                Some(TurnResult { refused: Some(reason), changed: false })
+            }
+            SelectionTurn::Turned { .. } => {
+                let changed = self.record_map(&before, label);
+                if changed {
+                    self.emit("map");
+                }
+                Some(TurnResult { refused: None, changed })
+            }
+        }
     }
 
     // Labels
@@ -736,10 +794,7 @@ impl Store {
         let community = self.community.clone()?;
         let support = core_overview_support(&community);
         if !support.supported {
-            self.set_status_message(
-                StatusState::Warn,
-                "This community does not contain enough annotated central-carbon reactions for the core metabolism overview.",
-            );
+            self.set_status_message(StatusState::Warn, "Too few annotated central-carbon reactions for the core overview.");
             self.emit("status");
             return None;
         }
@@ -1039,7 +1094,7 @@ impl Store {
             what.push(plural(result.texts.len(), "text"));
         }
         let message = format!(
-            "Removed {}{} from the map{}. The model is unchanged; Ctrl+Z brings it back.",
+            "Removed {}{} from the map{}. Ctrl+Z undoes.",
             if result.cell_removed { "the cell " } else { "" },
             result.label,
             if what.is_empty() { String::new() } else { format!(", with {}", what.join(", ")) }
@@ -1398,6 +1453,20 @@ impl Store {
     /// repaint and its single history transaction.
     pub fn set_metabolite_label_angle(&mut self, node_id: &str, angle: f64) -> bool {
         self.map.as_mut().is_some_and(|m| m.set_metabolite_label_angle(node_id, angle).is_some())
+    }
+
+    /// `setReactionLabelOffset(reactionId, offset)`: write a reaction's name
+    /// somewhere else while it is dragged. Like `set_metabolite_label_angle`,
+    /// no history and no emit: the drag gesture owns the repaint and its
+    /// single history transaction.
+    pub fn set_reaction_label_offset(&mut self, reaction_id: &str, offset: Point) -> bool {
+        self.map.as_mut().is_some_and(|m| m.set_reaction_label_offset(reaction_id, offset).is_some())
+    }
+
+    /// `resetReactionLabel(reactionId)`: put a moved reaction name back in its
+    /// default place, as one undoable edit.
+    pub fn reset_reaction_label(&mut self, reaction_id: &str) -> bool {
+        self.edit_map_reaction("Reset reaction label", |m| m.reset_reaction_label(reaction_id).is_some())
     }
 
     // Arranging one reaction
@@ -1883,4 +1952,14 @@ impl Store {
 /// `ItemKind` as the JS strings.
 pub fn item_kind_str(kind: &ItemKind) -> &'static str {
     kind.as_str()
+}
+
+/// `TURN_WARNINGS`: what the status line says when the map refuses to turn a
+/// selection (`rotate_selection`).
+pub fn turn_warning(reason: TurnRefusal) -> &'static str {
+    match reason {
+        TurnRefusal::Transporter => "Transporters stay on their membranes; leave them out to turn the selection.",
+        TurnRefusal::Compartment => "Compartments cannot be turned; leave them out.",
+        TurnRefusal::Room => "No room to turn the selection here.",
+    }
 }

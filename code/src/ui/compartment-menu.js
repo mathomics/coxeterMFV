@@ -79,7 +79,7 @@ export class CompartmentMenuController {
       reactionIds: reactions,
       selectedReactionId: this.state.selectedReactionId,
       title: 'Add reaction',
-      subtitle: `${this.state.label} · all metabolites will be new visual instances`,
+      subtitle: this.state.label,
       left,
       top,
       width,

@@ -88,7 +88,7 @@ fn the_reactions_page_edits_bounds_and_the_objective_with_its_own_undo_and_round
     assert_eq!(h.state().ui.workspace, None);
     common::click(&mut h, "Table view");
     assert_eq!(h.state().ui.results_tab, ResultsTab::Table);
-    assert!(common::shows(&h, "filtered as on the Reactions page"), "the search carries over");
+    assert!(common::shows(&h, " · filtered"), "the search carries over");
     common::click(&mut h, "Open in Reactions ↗");
     assert_eq!(h.state().ui.workspace, Some(Workspace::Reactions));
 }

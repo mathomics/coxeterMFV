@@ -59,7 +59,7 @@ test('deleting a compartment takes what is nested in it and drawn there, and not
   assert.ok(!store.map.texts.has(tca.id), 'the name written inside it went with it');
   assert.ok(store.map.texts.has(glycolysis.id), 'the one outside stayed');
   assert.equal(store.selectedGeometry, null);
-  assert.match(store.status.message, /^Removed .+ from the map, with 1 nested compartment, \d+ reactions?, \d+ metabolites?, 1 text\. The model is unchanged/);
+  assert.match(store.status.message, /^Removed .+ from the map, with 1 nested compartment, \d+ reactions?, \d+ metabolites?, 1 text\. Ctrl\+Z undoes/);
 
   // It can be drawn again, and Ctrl+Z puts everything back as it was.
   assert.ok(store.availableMapCompartments().some((c) => c.compartmentId === 'im'));

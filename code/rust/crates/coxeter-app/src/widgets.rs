@@ -603,13 +603,30 @@ pub fn select<T: PartialEq + Clone>(
     enabled: bool,
     aria: &str,
 ) -> Option<T> {
-    let selected = options.iter().find(|(v, _)| v == current).map(|(_, l)| l.clone()).unwrap_or_default();
+    let titled: Vec<(T, String, String)> = options.iter().map(|(v, l)| (v.clone(), l.clone(), String::new())).collect();
+    select_titled(ui, id_salt, current, &titled, width, enabled, aria)
+}
+
+/// A `<select>` whose options may carry a `title`, shown on hover
+/// (`(value, label, title)`; an empty title shows none).
+pub fn select_titled<T: PartialEq + Clone>(
+    ui: &mut Ui,
+    id_salt: impl std::hash::Hash + std::fmt::Debug,
+    current: &T,
+    options: &[(T, String, String)],
+    width: f32,
+    enabled: bool,
+    aria: &str,
+) -> Option<T> {
+    let selected = options.iter().find(|(v, _, _)| v == current).map(|(_, l, _)| l.clone()).unwrap_or_default();
     let mut picked = None;
     let response = ui
         .add_enabled_ui(enabled, |ui| {
             egui::ComboBox::from_id_salt(id_salt).selected_text(selected).width(width).truncate().show_ui(ui, |ui| {
-                for (value, label) in options {
-                    if ui.selectable_label(value == current, label).clicked() && value != current {
+                for (value, label, title) in options {
+                    let r = ui.selectable_label(value == current, label);
+                    let r = if title.is_empty() { r } else { r.on_hover_text(title) };
+                    if r.clicked() && value != current {
                         picked = Some(value.clone());
                     }
                 }
@@ -648,17 +665,18 @@ pub fn select_grouped(
 }
 
 /// A `<select>` with `<optgroup>`s whose options may be disabled: `groups`
-/// of `(group label, options)`, each option `(value, label, enabled)`.
+/// of `(group label, options)`, each option `(value, label, enabled, title)`,
+/// the title shown on hover (an empty one shows none).
 pub fn select_grouped_enabled(
     ui: &mut Ui,
     id_salt: impl std::hash::Hash + std::fmt::Debug,
     current: &str,
-    groups: &[(String, Vec<(String, String, bool)>)],
+    groups: &[(String, Vec<(String, String, bool, String)>)],
     width: f32,
     enabled: bool,
     aria: &str,
 ) -> Option<String> {
-    let selected = groups.iter().flat_map(|(_, o)| o).find(|(v, _, _)| v == current).map(|(_, l, _)| l.clone()).unwrap_or_default();
+    let selected = groups.iter().flat_map(|(_, o)| o).find(|(v, _, _, _)| v == current).map(|(_, l, _, _)| l.clone()).unwrap_or_default();
     let mut picked = None;
     let p = Palette::current(ui.ctx());
     let response = ui
@@ -666,8 +684,13 @@ pub fn select_grouped_enabled(
             egui::ComboBox::from_id_salt(id_salt).selected_text(selected).width(width).truncate().show_ui(ui, |ui| {
                 for (group, options) in groups {
                     ui.label(RichText::new(group).size(10.5).family(bold()).color(p.ink_3));
-                    for (value, label, on) in options {
+                    for (value, label, on, title) in options {
                         let r = ui.add_enabled(*on, egui::Button::selectable(value == current, label.as_str()));
+                        let r = match (title.is_empty(), *on) {
+                            (true, _) => r,
+                            (false, true) => r.on_hover_text(title),
+                            (false, false) => r.on_disabled_hover_text(title),
+                        };
                         if r.clicked() && value != current {
                             picked = Some(value.clone());
                         }

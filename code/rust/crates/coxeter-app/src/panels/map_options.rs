@@ -57,11 +57,6 @@ pub fn display_card(ui: &mut Ui, shell: &mut Shell, workspace: bool) {
                     toggle_multi_select(shell);
                 }
             });
-            widgets::hint(
-                ui,
-                "Geometry editing uses a centre handle to move a compartment, corner handles to resize it and side handles to change only its width or height. Multi-select lets you click several objects or drag a selection area.",
-            );
-            selection_arrange_controls(ui, shell);
             selection_color_block(ui, shell);
         });
         return;
@@ -70,11 +65,11 @@ pub fn display_card(ui: &mut Ui, shell: &mut Shell, workspace: bool) {
     widgets::card(ui, "View", None, |ui| {
         let v = shell.store.view.clone();
         if v.geometry_edit {
-            widgets::hint_rich(ui, &["", "Geometry editor on.", " Click a membrane or compartment. The centre handle moves it; the four corners resize it; the middle of each side moves that side alone."]);
+            widgets::hint_rich(ui, &["", "Geometry editor on.", " Click a membrane or compartment."]);
         }
         if v.multi_select {
             let size = shell.store.multi_selection_size();
-            let rest = format!(" Click objects to add them, or drag the background to select an area. Selected: {size}.");
+            let rest = format!(" Selected: {size}.");
             widgets::hint_rich(ui, &["", "Multi-select on.", rest.as_str()]);
         }
         if v.text_tool {
@@ -82,21 +77,14 @@ pub fn display_card(ui: &mut Ui, shell: &mut Shell, workspace: bool) {
         }
         ui.horizontal_wrapped(|ui| {
             ui.spacing_mut().item_spacing = Vec2::splat(6.0);
-            if widgets::toggle_button(ui, "Cofactors", v.show_currency, "Show secondary metabolites (ATP, NADH, H⁺… and nodes set to Secondary)").clicked() {
+            if widgets::toggle_button(ui, "Cofactors", v.show_currency, "Show secondary metabolites (ATP, NADH, H⁺…)").clicked() {
                 let _ = shell.store.set_view(ViewPatch { show_currency: Some(!v.show_currency), ..Default::default() });
             }
             let quiet = shell.store.map.as_ref().and_then(|m| m.cofactor_style()) == Some("quiet");
-            if widgets::toggle_button(ui, "Quiet cofactors", quiet, "Draw this map’s secondary metabolites small and light, so the pathways stand out").clicked() {
+            if widgets::toggle_button(ui, "Quiet cofactors", quiet, "Draw secondary metabolites small and light").clicked() {
                 shell.store.set_map_cofactor_style(if quiet { None } else { Some("quiet") });
             }
-            if widgets::toggle_button(
-                ui,
-                "Highlight cross-feeding",
-                v.show_cross_feeding,
-                "Dim the network and highlight active producer and consumer transfer reactions",
-            )
-            .clicked()
-            {
+            if widgets::toggle_button(ui, "Highlight cross-feeding", v.show_cross_feeding, "Dim the network and highlight transfers between cells").clicked() {
                 let _ = shell.store.set_view(ViewPatch { show_cross_feeding: Some(!v.show_cross_feeding), ..Default::default() });
             }
             if widgets::toggle_button(ui, "Dark", v.dark, "Switch the colour scheme").clicked() {
@@ -113,9 +101,6 @@ pub fn display_card(ui: &mut Ui, shell: &mut Shell, workspace: bool) {
             }
         });
 
-        if shell.store.can_arrange_selection("align-vertical") {
-            arrange_selection_block(ui, shell);
-        }
         selection_color_block(ui, shell);
         let hidden = shell.store.hidden_metabolite_count();
         if hidden > 0 {
@@ -126,14 +111,12 @@ pub fn display_card(ui: &mut Ui, shell: &mut Shell, workspace: bool) {
         }
         ui.add_space(4.0);
         reaction_color_select(ui, shell, "display-reaction-color-mode", "Reaction color");
-        widgets::hint(ui, "Subsystem and pathway colors group reactions. Arrowheads show the direction of the solved flux.");
         ribbon_box(ui, |ui| {
             pathway_ribbon_select(ui, shell, "display-pathway-ribbon-mode", "Pathway ribbons");
             if shell.store.view.pathway_ribbon_mode != PathwayRibbonMode::Off {
                 pathway_ribbon_sliders(ui, shell);
             }
         });
-        widgets::hint(ui, "Ribbons follow the current reaction geometry. Enabling them returns the reaction arrows to flux colors.");
         ui.add_space(4.0);
         crate::panels::toolbar::labels_select(ui, shell, "display-labels");
         ui.add_space(6.0);
@@ -156,18 +139,6 @@ pub fn display_card(ui: &mut Ui, shell: &mut Shell, workspace: bool) {
                 shell.map_full();
             }
         });
-        widgets::hint_rich(
-            ui,
-            &[
-                "",
-                "Empty map",
-                " clears the canvas so you can build one by hand from ",
-                "Map structure",
-                "; nothing is removed from the model. Undo/redo affects the map only, never the FBA. Use ",
-                "File",
-                " at the top of the window to import, export, or save a local copy.",
-            ],
-        );
     });
 }
 
@@ -215,26 +186,16 @@ fn show_hidden_metabolites(shell: &mut Shell) {
     shell.store.show_all_hidden_metabolites();
 }
 
-/// `selectionArrangeControls(store)`.
-fn selection_arrange_controls(ui: &mut Ui, shell: &mut Shell) {
-    if !shell.store.can_arrange_selection("align-vertical") {
-        widgets::hint(ui, "Select a reaction, or at least two objects, to align them; three to distribute them evenly.");
-        return;
-    }
-    arrange_selection_block(ui, shell);
-}
-
-/// `arrangeSelectionBlock(store)`: align and distribute for a selection.
-/// With reactions in it, Horizontal and Vertical work as in Escher: each
-/// reaction comes with its metabolites, all on one line; one selected
-/// reaction is enough for that.
-fn arrange_selection_block(ui: &mut Ui, shell: &mut Shell) {
-    let p = shell.palette();
-    let size = shell.store.multi_selection_size();
-    let with_reactions = shell.store.map.as_ref().is_some_and(|m| m.selection_has_line_reactions(&shell.store.multi_selection));
+/// `arrangeSelectionBlock(store)`: align and distribute for a selection, in
+/// the inspector's Selection section. With reactions in it, Horizontal and
+/// Vertical work as in Escher: each reaction comes with its metabolites, all
+/// on one line; one selected reaction is enough for that. The action clicked.
+pub(crate) fn arrange_selection_block(ui: &mut Ui, store: &Store) -> Option<&'static str> {
+    let size = store.multi_selection_size();
+    let with_reactions = store.map.as_ref().is_some_and(|m| m.selection_has_line_reactions(&store.multi_selection));
     let line_title = |axis: &str, same: &str| {
         if with_reactions {
-            format!("Put the selected reactions and their metabolites on one {axis} line, kept straight")
+            format!("Put the selected reactions and their metabolites on one {axis} line")
         } else {
             format!("Same {same}: a {axis} line")
         }
@@ -253,25 +214,16 @@ fn arrange_selection_block(ui: &mut Ui, shell: &mut Shell) {
         ("distribute-horizontal", &distribute_h, "Space centres evenly, horizontally", size >= 3),
         ("distribute-vertical", &distribute_v, "Space centres evenly, vertically", size >= 3),
     ];
-    ui.add_space(10.0);
     let mut clicked = None;
-    Frame::new().fill(p.panel).stroke(Stroke::new(1.0, p.line)).corner_radius(CornerRadius::same(9)).inner_margin(Margin::same(9)).show(ui, |ui| {
-        ui.set_width(ui.available_width());
-        head_row(ui, "Arrange selection", &format!("{size} object{}", if size == 1 { "" } else { "s" }), &p);
-        ui.add_space(3.0);
-        for pair in buttons.chunks(2) {
-            widgets::grow_row(ui, 2, |ui, i| {
-                let (action, label, title, enabled) = pair[i];
-                if Btn::new(label).enabled(enabled).title(title).wide().show(ui).clicked() {
-                    clicked = Some(action);
-                }
-            });
-        }
-    });
-    if let Some(action) = clicked {
-        shell.close_map_menus();
-        shell.store.arrange_multi_selection(action);
+    for pair in buttons.chunks(2) {
+        widgets::grow_row(ui, 2, |ui, i| {
+            let (action, label, title, enabled) = pair[i];
+            if Btn::new(label).enabled(enabled).title(title).wide().show(ui).clicked() {
+                clicked = Some(action);
+            }
+        });
     }
+    clicked
 }
 
 /// A head line: strong text on the left, a small count on the right
@@ -374,10 +326,10 @@ fn slider_row(ui: &mut Ui, p: &Palette, label: &str, readout: String, add: impl 
 
 /// `mapAppearanceCard(store, fluxColorDraft)`.
 pub fn map_appearance_card(ui: &mut Ui, shell: &mut Shell) {
-    widgets::card(ui, "Reaction lines, metabolites & pathway ribbons", None, |ui| {
+    widgets::card(ui, "Lines, circles & ribbons", None, |ui| {
         let by_flux = shell.store.view.reaction_color_mode == ReactionColorMode::Flux;
         // `color-by-flux`: off colours lines by the group last chosen.
-        if let Some(on) = line_toggle(ui, by_flux, "Color lines by flux", "off: by pathway or subsystem") {
+        if let Some(on) = line_toggle(ui, by_flux, "Color lines by flux") {
             let mode = if on { "flux".to_string() } else { shell.store.view.line_color_group.clone() };
             let _ = shell.store.set_view(ViewPatch { reaction_color_mode: Some(mode), ..Default::default() });
         }
@@ -395,40 +347,33 @@ pub fn map_appearance_card(ui: &mut Ui, shell: &mut Shell) {
                     });
                 }
             });
-            widgets::hint(ui, "A color set on a reaction in the Inspector is used over its pathway's. Your flux palette is retained.");
         }
         let v = shell.store.view.clone();
-        if let Some(on) = line_toggle(ui, v.width_by_flux, "Line width follows flux", "") {
+        if let Some(on) = line_toggle(ui, v.width_by_flux, "Line width follows flux") {
             let _ = shell.store.set_view(ViewPatch { width_by_flux: Some(on), ..Default::default() });
         }
-        if let Some(on) = line_toggle(ui, v.dash_no_flux, "Grey dashed lines", "reactions with no flux in the solution") {
+        if let Some(on) = line_toggle(ui, v.dash_no_flux, "Dash lines with no flux") {
             let _ = shell.store.set_view(ViewPatch { dash_no_flux: Some(on), ..Default::default() });
         }
-        if let Some(on) = line_toggle(ui, v.line_hops, "Gap where lines cross", "the line underneath is cut where another passes over it") {
+        if let Some(on) = line_toggle(ui, v.line_hops, "Gap where lines cross") {
             let _ = shell.store.set_view(ViewPatch { line_hops: Some(on), ..Default::default() });
         }
-        widgets::hint(ui, "Arrowheads show the direction of the solved flux.");
         node_style_controls(ui, shell);
         pathway_ribbon_select(ui, shell, "pathway-ribbon-mode", "Pathway ribbon mode");
         if shell.store.view.pathway_ribbon_mode != PathwayRibbonMode::Off {
             ribbon_box(ui, |ui| pathway_ribbon_sliders(ui, shell));
         }
-        widgets::hint(ui, "Ribbons follow the current reaction geometry. Enabling them returns the reaction arrows to flux colors.");
     });
 }
 
-/// `lineToggle(action, checked, title, detail)`: a switch in the map
-/// appearance card, one way of drawing the lines, on or off. The new state
-/// when it is clicked.
-fn line_toggle(ui: &mut Ui, checked: bool, title: &str, detail: &str) -> Option<bool> {
+/// `lineToggle(action, checked, title)`: a switch in the map appearance
+/// card, one way of drawing the lines, on or off. The new state when it is
+/// clicked.
+fn line_toggle(ui: &mut Ui, checked: bool, title: &str) -> Option<bool> {
     let p = Palette::current(ui.ctx());
-    let mut job = egui::text::LayoutJob::default();
-    job.append(title, 0.0, egui::TextFormat { font_id: egui::FontId::new(12.0, bold()), color: p.ink, ..Default::default() });
-    if !detail.is_empty() {
-        job.append(&format!(" · {detail}"), 0.0, egui::TextFormat { font_id: egui::FontId::proportional(12.0), color: p.ink_2, ..Default::default() });
-    }
+    let label = RichText::new(title).size(12.0).family(bold()).color(p.ink);
     ui.add_space(4.0);
-    widgets::checkbox(ui, checked, job, true, Some(title)).1
+    widgets::checkbox(ui, checked, label, true, Some(title)).1
 }
 
 /// `defaultNodeColors(dark)`: the circle colours of the theme, as the
@@ -461,7 +406,6 @@ fn node_style_controls(ui: &mut Ui, shell: &mut Shell) {
             shell.store.set_map_node_style(&ColorChange::Reset, &ColorChange::Reset);
         }
     });
-    widgets::hint(ui, "For every circle on the map. One metabolite, or a selection, can be given its own in the Inspector.");
 }
 
 /// What a colour row asks for (`node-fill`, `node-stroke`,
@@ -531,7 +475,7 @@ pub fn reaction_color_row(ui: &mut Ui, store: &Store, reaction_ids: &[String], s
         }
     });
     if by_flux {
-        widgets::note(ui, "Shown when lines are not colored by flux (Map options ▸ Color lines by flux).");
+        widgets::note(ui, "Used when lines are not colored by flux.");
     }
     edit
 }
@@ -840,13 +784,12 @@ fn flux_color_editor(ui: &mut Ui, shell: &mut Shell) {
         }
         ui.add_space(8.0);
         if omics_active {
-            widgets::hint(ui, "An Omics overlay is active. Disable it in Omics & expression to display flux colors.");
+            widgets::hint(ui, "An omics overlay is active and hides flux colors.");
         }
         render_flux_color_preview(ui, &shell.store);
         // The rows may have changed with the mode.
         let custom = shell.store.view.flux_color_stops.as_ref().is_some_and(|s| !s.is_empty());
         if !custom {
-            widgets::hint(ui, "Automatic colors follow flux magnitude. Choose Custom colors to set a signed gradient.");
             return;
         }
         let rows = if mode.is_some() { shown_rows(shell) } else { rows };
@@ -897,10 +840,7 @@ fn flux_color_editor(ui: &mut Ui, shell: &mut Shell) {
         if Btn::new("+ Add color point").wide().height(34.0).show(ui).clicked() {
             flux_color_add(shell);
         }
-        widgets::hint(
-            ui,
-            "Signed flux values. Colors blend linearly between points; values outside the range use the nearest end color. Each point needs a unique value.",
-        );
+        widgets::hint(ui, "Each point needs a unique value.");
         match edit {
             Some(RowEdit::Value(index, text)) => {
                 let mut rows = read_flux_color_rows(shell);
@@ -936,7 +876,7 @@ pub fn render_flux_color_preview(ui: &mut Ui, store: &Store) {
         store.scale.as_ref().map(|s| s.legend_stops(7)).unwrap_or_default().into_iter().map(|s| (s.t, s.value, s.color)).collect()
     };
     if stops.is_empty() {
-        widgets::hint(ui, "The automatic scale appears after an analysis.");
+        widgets::hint(ui, "The scale appears after an analysis.");
         return;
     }
     let first = stops[0].1;
@@ -1101,7 +1041,7 @@ pub fn legend_card(ui: &mut Ui, shell: &mut Shell) {
     // gram of itself, and the cross-feeding lines per gram of the whole
     // community.
     let steady_com = store.solution.as_ref().is_some_and(|s| s.steady_com.is_some());
-    let show_cross_feeding = store.view.show_cross_feeding;
+    let show_cross_feeding = store.cross_feeding_highlighted();
 
     widgets::card(ui, "Legend", None, |ui| {
         let p = Palette::current(ui.ctx());
@@ -1140,10 +1080,10 @@ pub fn legend_card(ui: &mut Ui, shell: &mut Shell) {
                 });
             }
             if shown_groups.is_empty() {
-                widgets::empty(ui, "No hay reacciones dibujadas.");
+                widgets::empty(ui, "No drawn reactions.");
             }
             if extra_groups > 0 {
-                widgets::hint(ui, format!("+{extra_groups} additional categories."));
+                widgets::hint(ui, format!("+{extra_groups} more"));
             }
         }
 
@@ -1189,12 +1129,7 @@ pub fn legend_card(ui: &mut Ui, shell: &mut Shell) {
             paragraph(
                 ui,
                 12.0,
-                &[
-                    (Run::Bold, "Reaction arrows"),
-                    (Run::Plain, ", including each cell's exchange with the medium: mmol per gram dry weight "),
-                    (Run::Italic, "of that species"),
-                    (Run::Plain, " per hour. A species with little biomass can show large numbers here."),
-                ],
+                &[(Run::Bold, "Reaction arrows"), (Run::Plain, ": mmol·gDW⁻¹·h⁻¹ "), (Run::Italic, "of that species"), (Run::Plain, ".")],
             );
             if show_cross_feeding {
                 paragraph(
@@ -1202,32 +1137,13 @@ pub fn legend_card(ui: &mut Ui, shell: &mut Shell) {
                     12.0,
                     &[
                         (Run::Bold, "Cross-feeding lines"),
-                        (Run::Plain, " between cells: mmol per gram dry weight "),
+                        (Run::Plain, ": mmol·gDW⁻¹·h⁻¹ "),
                         (Run::Italic, "of the whole community"),
-                        (
-                            Run::Plain,
-                            " per hour (abundance × flux), so they add up across species. Each line splits a metabolite in proportion to what each species produces and takes up.",
-                        ),
+                        (Run::Plain, " (abundance × flux)."),
                     ],
                 );
             }
         }
-
-        let kind = if mode == "pathway" { "pathway" } else { "subsystem" };
-        let hint = if ribbon_mode != PathwayRibbonMode::Off {
-            format!(
-                "The translucent ribbon marks the {kind}; arrow colors {}.",
-                if custom_flux_colors { "use the signed flux palette" } else { "encode flux magnitude" }
-            )
-        } else if categorical {
-            format!("Color marks the {kind}; arrowheads show the direction of the solved flux.")
-        } else if custom_flux_colors {
-            "Flux colors represent signed values; arrowheads show the solved direction.".into()
-        } else {
-            "Flux colors encode magnitude; arrowheads show the actual direction in the solution.".into()
-        };
-        ui.add_space(4.0);
-        widgets::hint(ui, hint);
     });
 }
 
@@ -1243,10 +1159,6 @@ pub fn pathway_manager_card(ui: &mut Ui, shell: &mut Shell) {
     let badge = entries.len().to_string();
     widgets::card(ui, "Pathway Manager", Some(&badge), |ui| {
         let p = Palette::current(ui.ctx());
-        widgets::hint(
-            ui,
-            "Manage drawn pathways, change their colors, hide ribbons, select or focus a pathway. Manual pathways preserve the model stoichiometry and FBA.",
-        );
         if selected_reaction_count > 0 {
             pathway_create(ui, shell, selected_reaction_count, &p);
         } else {
@@ -1263,7 +1175,7 @@ pub fn pathway_manager_card(ui: &mut Ui, shell: &mut Shell) {
         }
         ui.add_space(10.0);
         if entries.is_empty() {
-            widgets::empty(ui, "No pathways are annotated among the drawn reactions. Create a manual pathway from a selection.");
+            widgets::empty(ui, "No annotated pathways among the drawn reactions.");
         }
         for item in &entries {
             pathway_item(ui, shell, item, &p);
@@ -1406,7 +1318,7 @@ fn pathway_item(ui: &mut Ui, shell: &mut Shell, item: &coxeter_state::PathwayEnt
 
 /// `SHAPE_LABELS`: the shape presets of Add Compartment and the inspector.
 pub const SHAPE_LABELS: [(&str, &str); 5] = [
-    ("auto", "Its usual shape (organelles round)"),
+    ("auto", "Auto"),
     ("rectangle", "Rectangle"),
     ("rounded", "Rounded corners"),
     ("capsule", "Capsule"),
@@ -1430,7 +1342,7 @@ pub fn compartment_placement_controls(ui: &mut Ui, shell: &mut Shell, id_prefix:
     let mut species: Vec<&str> = choices.iter().map(|c| c.species_id.as_str()).collect();
     species.dedup();
     let many_species = species.len() > 1;
-    let groups: Vec<(String, Vec<(String, String, bool)>)> = [
+    let groups: Vec<(String, Vec<(String, String, bool, String)>)> = [
         ("ready", "Ready to draw"),
         ("waiting", "Not yet"),
         ("cell", "Drawn with Add Cell"),
@@ -1438,12 +1350,12 @@ pub fn compartment_placement_controls(ui: &mut Ui, shell: &mut Shell, id_prefix:
     ]
     .iter()
     .filter_map(|(status, label)| {
-        let items: Vec<(String, String, bool)> = choices
+        let items: Vec<(String, String, bool, String)> = choices
             .iter()
             .filter(|c| c.status == *status)
             .map(|c| {
                 let who = if many_species { format!("{} · ", c.species_name) } else { String::new() };
-                (c.key(), format!("{who}{} ({}) — {}", c.compartment_name, c.compartment_id, c.reason), c.status == "ready")
+                (c.key(), format!("{who}{} ({})", c.compartment_name, c.compartment_id), c.status == "ready", c.reason.clone())
             })
             .collect();
         (!items.is_empty()).then(|| (label.to_string(), items))
@@ -1457,9 +1369,12 @@ pub fn compartment_placement_controls(ui: &mut Ui, shell: &mut Shell, id_prefix:
         shell.store.set_compartment_placement(&key);
     }
     ui.label(RichText::new("Shape").size(12.0).family(bold()).color(p.ink_2));
-    let shapes: Vec<(String, String)> = SHAPE_LABELS.iter().map(|(n, l)| (n.to_string(), l.to_string())).collect();
+    let shapes: Vec<(String, String, String)> = SHAPE_LABELS
+        .iter()
+        .map(|(n, l)| (n.to_string(), l.to_string(), if *n == "auto" { "Its usual shape; organelles are round".to_string() } else { String::new() }))
+        .collect();
     let current_shape = shell.store.compartment_shape_preset.clone();
-    if let Some(name) = widgets::select(ui, (id_prefix, "compartment-shape"), &current_shape, &shapes, width, true, "Shape of the new compartment") {
+    if let Some(name) = widgets::select_titled(ui, (id_prefix, "compartment-shape"), &current_shape, &shapes, width, true, "Shape of the new compartment") {
         shell.store.set_compartment_shape_preset(&name);
     }
 }
@@ -1480,21 +1395,10 @@ pub fn compartment_tool_controls(ui: &mut Ui, shell: &mut Shell) {
                 .and_then(|c| c.parent_name)
                 .or(current.parent_id.clone())
                 .unwrap_or_default();
-            widgets::hint_rich(
-                ui,
-                &[
-                    "Drag inside ",
-                    parent.as_str(),
-                    ", highlighted on the map. Once drawn, drag the ",
-                    "orange diamond",
-                    " to soften its corners and the ",
-                    "yellow diamond",
-                    " to make it oval.",
-                ],
-            );
+            widgets::hint_rich(ui, &["Drag inside ", parent.as_str(), ", highlighted on the map."]);
         }
         None => {
-            widgets::hint(ui, "Nothing can be drawn yet: the list says what each compartment is waiting for.");
+            widgets::hint(ui, "Nothing can be drawn yet.");
         }
     }
 }
@@ -1516,9 +1420,9 @@ pub fn map_structure_card(ui: &mut Ui, shell: &mut Shell) {
     let available = shell.store.available_map_compartments();
     let current_key = shell.store.current_compartment_placement().or_else(|| available.first().cloned()).map(|c| c.key()).unwrap_or_default();
 
-    let (cells, compartments, width, height) = match shell.store.map.as_ref() {
-        Some(m) => (m.cells().len(), m.cells().iter().map(|c| c.compartments.len()).sum::<usize>(), js::round(m.width()), js::round(m.height())),
-        None => (0, 0, 0.0, 0.0),
+    let (cells, compartments) = match shell.store.map.as_ref() {
+        Some(m) => (m.cells().len(), m.cells().iter().map(|c| c.compartments.len()).sum::<usize>()),
+        None => (0, 0),
     };
     let badge = format!("{cells} cells · {compartments} compartments");
 
@@ -1535,14 +1439,7 @@ pub fn map_structure_card(ui: &mut Ui, shell: &mut Shell) {
             if let Some(species) = widgets::select(ui, "cell-species-select", &current_cell_species, &cell_options, width, true, "Species to draw a cell for") {
                 shell.store.set_cell_placement_species(&species);
             }
-            widgets::hint_rich(
-                ui,
-                &[
-                    "Pick the ",
-                    "Cell",
-                    " tool and drag to draw the cell boundary. Inside is that species' extracellular compartment; outside is the shared medium.",
-                ],
-            );
+            widgets::hint_rich(ui, &["Pick the ", "Cell", " tool and drag on the map."]);
         } else {
             widgets::hint(ui, "Every active species already has a cell boundary drawn.");
         }
@@ -1575,19 +1472,9 @@ pub fn map_structure_card(ui: &mut Ui, shell: &mut Shell) {
                 }
             });
         } else {
-            widgets::empty(ui, "Nothing can be drawn yet: draw a cell first, or every compartment is already on the map.");
+            widgets::empty(ui, "Nothing to draw: draw a cell first, or all compartments are on the map.");
         }
-        widgets::hint_rich(
-            ui,
-            &[
-                "Pick the ",
-                "Compartment",
-                " tool and drag inside the highlighted parent. The model's hierarchy decides what may go where: the periplasm holds the cytosol, the cytosol holds the organelles, and a mitochondrial intermembrane space holds the matrix.",
-            ],
-        );
-        ui.add_space(4.0);
-        let size = format!("{} × {}", js::number_to_string(width), js::number_to_string(height));
-        widgets::hint_rich(ui, &["Canvas ", size.as_str(), ". Drag the right edge, bottom edge or canvas corner to resize it."]);
+        widgets::hint(ui, "Drag inside the highlighted parent.");
     });
 }
 
@@ -1604,7 +1491,7 @@ pub fn map_canvas_card(ui: &mut Ui, shell: &mut Shell) {
                 ui.label(RichText::new(format!("{} × {}", js::number_to_string(width), js::number_to_string(height))).size(12.0).color(p.ink_2));
             });
         });
-        widgets::hint(ui, "Drag the canvas right edge, bottom edge or corner to resize it.");
+        widgets::hint(ui, "Drag the canvas edge or corner to resize it.");
         ui.add_space(4.0);
         widgets::grow_row(ui, 2, |ui, i| {
             if i == 0 {
@@ -1615,10 +1502,7 @@ pub fn map_canvas_card(ui: &mut Ui, shell: &mut Shell) {
                 shell.map_full();
             }
         });
-        widgets::hint(
-            ui,
-            "These actions replace the map drawing. The biological model and its analysis are preserved. Use Undo in the map toolbar to restore the previous drawing.",
-        );
+        widgets::hint(ui, "Replaces the drawing; Undo restores it.");
     });
 }
 
@@ -1660,7 +1544,7 @@ fn render_reaction_search_results(ui: &mut Ui, shell: &mut Shell, query: &str) {
     let p = Palette::current(ui.ctx());
     let q = query.trim();
     if q.is_empty() {
-        widgets::empty(ui, "Type to search every reaction in the model, drawn or not.");
+        widgets::empty(ui, "Search every reaction in the model.");
         return;
     }
     let results = shell.store.search_reactions(q, 30);

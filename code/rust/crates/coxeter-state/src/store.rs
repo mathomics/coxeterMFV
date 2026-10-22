@@ -586,7 +586,7 @@ impl Store {
     pub fn assert_published_study_constraints(&self) -> Result<()> {
         if self.is_zuniga_study() {
             return Err(StoreError::msg(
-                "The Zuñiga case preserves the authors’ objective, medium, bounds and population coefficients. Choose a documented case scenario to change these conditions. Map geometry remains editable.",
+                "The Zuñiga case keeps the authors’ objective, medium, bounds and population coefficients.",
             ));
         }
         Ok(())

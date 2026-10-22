@@ -858,9 +858,7 @@ impl Store {
     /// `reproducibilityBundle()`.
     pub fn reproducibility_bundle(&self) -> Result<Value> {
         if self.solution.as_ref().is_some_and(|s| s.steady_com.is_some()) {
-            return Err(StoreError::msg(
-                "Fixed-μ SteadyCom replay is saved through Scenario JSON. This reproducibility bundle supports ordinary FBA analyses; export the scenario and flux CSV for this solution.",
-            ));
+            return Err(StoreError::msg("Reproducibility bundles cover ordinary FBA only; save a SteadyCom solution as Scenario JSON."));
         }
         Ok(create_reproducibility_bundle(&self.repro_store()))
     }

@@ -216,6 +216,12 @@ pub trait MapHost {
     /// Put a node's `labelAngle` back as it was (the JS cancel path writes the
     /// node directly: `delete node.labelAngle` or `node.labelAngle = before`).
     fn restore_metabolite_label_angle(&mut self, node_id: &str, angle: Option<f64>);
+    /// `setReactionLabelOffset(reactionId, offset)`.
+    fn set_reaction_label_offset(&mut self, reaction_id: &str, offset: Point) -> bool;
+    /// Put a reaction's `labelOffset` back as it was (the JS cancel path
+    /// writes the reaction directly: `delete rxn.labelOffset` or
+    /// `rxn.labelOffset = before`).
+    fn restore_reaction_label_offset(&mut self, reaction_id: &str, offset: Option<Point>);
     /// `moveMapText(id, x, y)`: where the text ended up.
     fn move_map_text(&mut self, id: &str, x: f64, y: f64) -> Option<Point>;
     /// `moveCompartmentLabel(cellId, compartmentId, x, y)`: the label's position

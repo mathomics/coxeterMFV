@@ -70,7 +70,7 @@ fn deleting_a_compartment_takes_what_is_nested_in_it_and_is_one_undo_step() {
     assert_eq!(store.selected_geometry, None);
     assert!(store.selected_entity.is_none());
     let message = &store.status().message;
-    let pattern = regex::Regex::new(r"^Removed .+ from the map, with 1 nested compartment, \d+ reactions?, \d+ metabolites?, 1 text\. The model is unchanged").unwrap();
+    let pattern = regex::Regex::new(r"^Removed .+ from the map, with 1 nested compartment, \d+ reactions?, \d+ metabolites?, 1 text\. Ctrl\+Z undoes").unwrap();
     assert!(pattern.is_match(message), "{message}");
 
     // It can be drawn again, and Ctrl+Z puts everything back as it was.

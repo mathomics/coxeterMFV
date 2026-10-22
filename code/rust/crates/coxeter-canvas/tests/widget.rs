@@ -9,6 +9,8 @@ use coxeter_canvas::targets;
 use coxeter_canvas::test_host::EditableMapHost;
 use coxeter_canvas::{CanvasEvent, MapView, Tool};
 use coxeter_core::mapdata::Point;
+use coxeter_core::reaction_label::reaction_label_placement_in;
+use coxeter_render::LabelMode;
 use egui::{Event, Key, Modifiers, PointerButton, Pos2, Vec2};
 use egui_kittest::Harness;
 use egui_kittest::kittest::Queryable;
@@ -117,6 +119,94 @@ fn dragging_a_metabolite_moves_it_and_records_one_edit() {
         assert!((n.x - start.x - 40.0 / scale).abs() < 1.5 && (n.y - start.y - 30.0 / scale).abs() < 1.5, "moved to ({}, {})", n.x, n.y);
     }
     assert_eq!(labels, vec!["Move metabolite".to_string()]);
+}
+
+/// A reaction whose name is drawn beside its marker, in view, and found
+/// under a point of the name: its id, where the name is anchored, and that
+/// point on screen.
+fn grabbable_reaction_name(h: &Harness<'static, App>) -> (String, Point, Pos2) {
+    let s = h.state();
+    let rect = s.view.canvas.rect;
+    let map = s.host.map().unwrap();
+    for rxn in map.reactions().values() {
+        let place = reaction_label_placement_in(map.graph(), rxn);
+        if place.placement != "emc-label-rxn-adjacent" {
+            continue;
+        }
+        let at = s.view.canvas.map_to_screen(Point::new(place.x + 6.0, place.y));
+        if at.x < rect.left + 80.0 || at.y < rect.top + 80.0 || at.x > rect.left + rect.width - 80.0 || at.y > rect.top + rect.height - 80.0 {
+            continue;
+        }
+        let mut cam = s.view.canvas.camera;
+        let stage = coxeter_canvas::gestures::Stage { camera: &mut cam, rect, scene: s.view.canvas.scene.as_ref() };
+        let target = stage.target_at(at, s.view.canvas.gestures.hit_filter());
+        if targets::reaction_label_at(&target, &s.host).as_deref() == Some(rxn.id.as_str()) {
+            return (rxn.id.clone(), Point::new(place.x, place.y), pos(at));
+        }
+    }
+    panic!("no reaction name in view takes the pointer");
+}
+
+#[test]
+fn a_reaction_name_is_picked_up_where_it_stands_and_put_down_elsewhere_as_one_edit() {
+    let Some(mut a) = app() else { return };
+    if let Some(state) = a.host.render.as_mut() {
+        state.labels = LabelMode::All;
+    }
+    let mut h = harness(a);
+    let (id, anchor, at) = grabbable_reaction_name(&h);
+    let scale = h.state().view.camera().scale;
+    press(&mut h, at, PointerButton::Primary);
+    move_to(&mut h, at + Vec2::new(2.0, 1.0));
+    assert!(h.state().host.map().unwrap().reaction(&id).unwrap().extra.get("labelOffset").is_none(), "a few pixels are slack");
+    move_to(&mut h, at + Vec2::new(30.0, 20.0));
+    move_to(&mut h, at + Vec2::new(60.0, -40.0));
+    {
+        let s = h.state();
+        assert_eq!(s.view.canvas.gestures.stage_classes(), vec!["is-dragging-reaction-label"]);
+        let scene = s.view.canvas.scene.as_ref().unwrap();
+        let marked = (0..scene.doc.len()).any(|i| {
+            let e = scene.doc.element(i);
+            e.has_class("emc-label-rxn") && e.has_class("is-dragging") && e.get("data-rxn") == Some(id.as_str())
+        });
+        assert!(marked, "the dragged name carries is-dragging");
+    }
+    release(&mut h, at + Vec2::new(60.0, -40.0), PointerButton::Primary);
+    h.run_steps(2);
+    let s = h.state();
+    let map = s.host.map().unwrap();
+    let rxn = map.reaction(&id).unwrap();
+    let place = reaction_label_placement_in(map.graph(), rxn);
+    // It went on from where it stood, so it moved by exactly the drag.
+    assert!((place.x - anchor.x - 60.0 / scale).abs() < 1e-6 && (place.y - anchor.y + 40.0 / scale).abs() < 1e-6, "now at ({}, {})", place.x, place.y);
+    assert_eq!(s.host.history.undo_labels(), vec!["Move reaction label"]);
+    assert_eq!(s.host.selected_reaction, None, "a drag is not a click");
+}
+
+#[test]
+fn a_click_on_a_reaction_name_selects_its_reaction_and_escape_puts_a_dragged_one_back() {
+    let Some(mut a) = app() else { return };
+    if let Some(state) = a.host.render.as_mut() {
+        state.labels = LabelMode::All;
+    }
+    let mut h = harness(a);
+    let (id, _, at) = grabbable_reaction_name(&h);
+    press(&mut h, at, PointerButton::Primary);
+    release(&mut h, at, PointerButton::Primary);
+    h.run_steps(2);
+    assert_eq!(h.state().host.selected_reaction.as_deref(), Some(id.as_str()));
+    assert!(h.state().host.history.undo_labels().is_empty(), "a click records nothing");
+
+    press(&mut h, at, PointerButton::Primary);
+    move_to(&mut h, at + Vec2::new(50.0, 50.0));
+    assert!(h.state().host.map().unwrap().reaction(&id).unwrap().extra.get("labelOffset").is_some());
+    h.event(Event::Key { key: Key::Escape, physical_key: None, pressed: true, repeat: false, modifiers: Modifiers::NONE });
+    h.step();
+    release(&mut h, at + Vec2::new(50.0, 50.0), PointerButton::Primary);
+    h.run_steps(2);
+    let s = h.state();
+    assert!(s.host.map().unwrap().reaction(&id).unwrap().extra.get("labelOffset").is_none(), "back where the map puts it");
+    assert!(s.host.history.undo_labels().is_empty(), "and nothing recorded");
 }
 
 #[test]

@@ -330,7 +330,7 @@ impl Store {
             return refuse("Open this community first to load its models.");
         };
         if self.scenario_published().is_some() && !STEADYCOM_COMMUNITIES.contains(&id.as_str()) {
-            return refuse("This published example does not supply a validated SteadyCom formulation and its full constraints.");
+            return refuse("No validated SteadyCom formulation for this example.");
         }
         if self.community.is_none() || !self.species.iter().any(|sp| sp.enabled) {
             return refuse("No active member models are available.");
@@ -343,7 +343,7 @@ impl Store {
                 self.assets.contains(&format!("models/published/{id}/{model}"))
             });
             if !all {
-                return refuse("This older standalone contains only map excerpts. Open the updated standalone or serve the application to calculate growth rates.");
+                return refuse("This older standalone has only map excerpts; growth rates need the updated one.");
             }
         }
         let kind = if id == "steadycom-gut-nine" { "joint" } else { "separate" };
@@ -420,7 +420,7 @@ impl Store {
         }
         self.invalidate_steady_com();
         self.steady_com_config.fiber = value.map(|rate| Fiber { bacteroides: rate, faecalibacterium: 5.0 });
-        self.set_status_message(StatusState::Ok, "Condition changed. Calculate the permitted growth-rate range again.");
+        self.set_status_message(StatusState::Ok, "Condition changed; recalculate the growth-rate range.");
         self.emit("steadycom");
         Ok(())
     }
@@ -650,14 +650,13 @@ impl Store {
             let state = self.cached_range().ok_or_else(|| StoreError::msg("The permitted µ range is not known."))?;
             (state.min.unwrap_or(0.0), state.max.unwrap_or(f64::NAN))
         };
-        if mu < min || mu > max {
-            return Err(StoreError::msg(format!(
-                "Choose μ inside the computed range {}–{} h⁻¹.",
-                js::number_to_string(min),
-                js::number_to_string(max)
-            )));
+        // The µ field reads a bound back to 15 significant digits, which can
+        // land a hair outside it: that much is the bound itself.
+        let slack = 1e-9 * js::max(1.0, max.abs());
+        if mu < min - slack || mu > max + slack {
+            return Err(StoreError::msg(format!("Choose μ inside the computed range {}–{} h⁻¹.", six_digits(min), six_digits(max))));
         }
-        self.spawn_steady_com_fixed(mu, None)
+        self.spawn_steady_com_fixed(js::min(max, js::max(min, mu)), None)
     }
 
     /// `solveSteadyComOnOpen()`: open a SteadyCom community solved, with one
@@ -717,7 +716,7 @@ impl Store {
             state.serial
         };
         let what = if parsimonious { "the least total flux" } else { "fluxes" };
-        self.set_status_message(StatusState::Busy, format!("Calculating {what} at fixed μ = {} h⁻¹…", js::number_to_string(mu)));
+        self.set_status_message(StatusState::Busy, format!("Calculating {what} at fixed μ = {} h⁻¹…", six_digits(mu)));
         self.emit("steadycom");
         let started = Instant::now();
         let spec = match self.steady_com_problem(false) {
@@ -882,8 +881,9 @@ impl Store {
                 format!("No feasible flux distribution was found at μ = {} h⁻¹.", js::number_to_string(mu))
             } else {
                 format!(
-                    "The solver did not finish the fixed-μ calculation ({}). Its last solution has been retained.",
-                    at.status.as_str()
+                    "The solver did not finish the fixed-μ calculation ({}).{}",
+                    at.status.as_str(),
+                    if self.solution.is_some() { " The previous solution is kept." } else { "" }
                 )
             }));
         }
@@ -956,12 +956,12 @@ impl Store {
         self.apply_solution(solution, false);
         let message = if parsimonious {
             format!(
-                "SteadyCom at fixed μ = {} h⁻¹, parsimonious: the composition and fluxes with the least total member flux ({} mmol h⁻¹).",
-                js::number_to_string(mu),
+                "SteadyCom at fixed μ = {} h⁻¹, least total member flux ({} mmol h⁻¹).",
+                six_digits(mu),
                 js::to_fixed(at.total_flux.unwrap_or(f64::NAN), 3)
             )
         } else {
-            format!("SteadyCom at fixed μ = {} h⁻¹; one feasible population composition and flux distribution.", js::number_to_string(mu))
+            format!("SteadyCom at fixed μ = {} h⁻¹: one feasible composition.", six_digits(mu))
         };
         let next = Status { state: StatusState::Ok, message, solve_ms, ..self.status().clone() };
         self.set_status(next);
@@ -975,4 +975,10 @@ impl Store {
         let outcomes = self.wait_for_jobs(timeout);
         outcomes.into_iter().rev().find(|o| o.kind == JobKind::SteadyCom).map(|o| o.result)
     }
+}
+
+/// `+x.toFixed(6)`: a growth rate as the messages write it, without the
+/// sixteen digits a bisection leaves.
+fn six_digits(x: f64) -> String {
+    js::number_to_string(js::to_fixed(x, 6).parse().unwrap_or(x))
 }

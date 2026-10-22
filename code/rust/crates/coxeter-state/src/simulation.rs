@@ -603,10 +603,7 @@ impl Store {
     pub fn set_fva(&mut self, enabled: bool) -> Result<()> {
         self.assert_published_study_constraints()?;
         if enabled && self.solution.as_ref().is_some_and(|s| s.steady_com.is_some()) {
-            self.set_status_message(
-                StatusState::Warn,
-                "Ordinary FVA does not apply to the fixed-μ SteadyCom LP. Run an ordinary analysis first.",
-            );
+            self.set_status_message(StatusState::Warn, "FVA does not apply to a fixed-μ SteadyCom solution.");
             self.emit("status");
             return Ok(());
         }
@@ -769,10 +766,7 @@ impl Store {
         self.selected_entity = None;
         self.rebuild(RebuildOptions { relayout: !keep_drawing, ..RebuildOptions::default() })?;
         if keep_drawing && enabled && self.map.as_ref().is_some_and(|m| !m.cells().iter().any(|c| c.id == id)) {
-            self.set_status_message(
-                StatusState::Warn,
-                format!("{id} is simulated again but is not drawn on this hand-built map. Draw its cell with the Cell tool, or use Draw full model."),
-            );
+            self.set_status_message(StatusState::Warn, format!("{id} is simulated again but is not drawn on this hand-built map; the Cell tool draws it."));
             self.emit("status");
         }
         Ok(())

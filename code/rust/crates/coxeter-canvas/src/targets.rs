@@ -2,7 +2,8 @@
 //! with `closest()` to the `data-*` attributes the renderer puts on its
 //! elements (`mapContentAt`, `draggableNodeAt`, `reactionAt`,
 //! `draggableReactionAt`, `reactionMarkerAt`, `rotateHandleAt`,
-//! `multiSelectableAt`, `mapTextAt`, `metaboliteLabelAt`, `controlHandleAt`,
+//! `multiSelectableAt`, `mapTextAt`, `metaboliteLabelAt`, `reactionLabelAt`,
+//! `controlHandleAt`, `editHandleUnder`,
 //! `canvasResizeAt`, `geometryHandleAt`, `sharedMediumBoundaryHandleAt`,
 //! `compartmentBoundaryHandleAt` and `drawTargetAt`).
 //!
@@ -110,18 +111,23 @@ selector!(
     ".emc-node[data-node], .emc-marker[data-rxn], .emc-seg[data-rxn], \
      .emc-hit-reaction[data-rxn], .emc-hit-node[data-node], \
      [data-reaction-handle], [data-rotate-handle], [data-control-handle], [data-map-text], \
-     [data-geometry-handle], [data-cell-plate], [data-metabolite-label]"
+     [data-geometry-handle], [data-cell-plate], [data-metabolite-label], .emc-label-rxn[data-rxn]"
 );
 selector!(NODE_CIRCLE, ".emc-node[data-node], .emc-hit-node[data-node]");
 selector!(NODE_ONLY, ".emc-node[data-node]");
 selector!(REACTION_HANDLE, "[data-reaction-handle]");
 selector!(ROTATE_HANDLE, "[data-rotate-handle]");
 selector!(CONTROL_RXN, "[data-control-rxn]");
-selector!(REACTION_VISUAL, ".emc-marker[data-rxn], .emc-seg[data-rxn], .emc-hit-reaction[data-rxn]");
+selector!(
+    REACTION_VISUAL,
+    ".emc-marker[data-rxn], .emc-seg[data-rxn], .emc-hit-reaction[data-rxn], .emc-label-rxn[data-rxn]"
+);
 selector!(REACTION_MARKER, ".emc-marker[data-rxn], .emc-hit-reaction[data-rxn], [data-reaction-handle]");
 selector!(REACTION_SELECTABLE, ".emc-marker[data-rxn], .emc-seg[data-rxn]");
 selector!(MAP_TEXT, "[data-map-text]");
 selector!(METABOLITE_LABEL, "[data-metabolite-label]");
+selector!(REACTION_LABEL, ".emc-label-rxn[data-rxn]");
+selector!(EDIT_HANDLE, "[data-rotate-handle], [data-control-handle], [data-reaction-handle]");
 selector!(CONTROL_HANDLE, "[data-control-rxn][data-control-node][data-control-handle]");
 selector!(CANVAS_RESIZE, "[data-canvas-resize]");
 selector!(GEOMETRY_HANDLE, "[data-geometry-handle][data-geometry-cell][data-geometry-comp]");
@@ -161,7 +167,9 @@ pub fn draggable_node_at(t: &Target, host: &dyn MapHost) -> Option<String> {
 /// `reactionAt(target)`. A control point or the rotation lever is part of the
 /// reaction it shapes: a click that ends on one is still a click on that
 /// reaction. The hit layer is the generous target the map draws around every
-/// reaction, resolved back to its reaction like the thin visible geometry.
+/// reaction, resolved back to its reaction like the thin visible geometry. So
+/// does the reaction's name: with a tool that does not move it, a press on it
+/// is a press on the reaction.
 pub fn reaction_at(t: &Target) -> Option<String> {
     let explicit = t
         .data(&REACTION_HANDLE, "data-reaction-handle")
@@ -196,7 +204,7 @@ pub fn multi_selectable_at(t: &Target, host: &dyn MapHost) -> Option<(SelectKind
     if let Some(id) = truthy(&node_id).filter(|id| host.can_move_node(id)) {
         return Some((SelectKind::Node, id.to_string()));
     }
-    let reaction_id = t.data(&REACTION_SELECTABLE, "data-rxn");
+    let reaction_id = t.data(&REACTION_SELECTABLE, "data-rxn").or_else(|| reaction_label_at(t, host));
     if let Some(id) = truthy(&reaction_id).filter(|id| host.can_move_reaction(id)) {
         return Some((SelectKind::Reaction, id.to_string()));
     }
@@ -216,6 +224,22 @@ pub fn metabolite_label_at(t: &Target, host: &dyn MapHost) -> Option<String> {
     let id = truthy(&id)?;
     let node = host.map()?.node(id)?;
     node.is_metabolite_kind().then(|| id.to_string())
+}
+
+/// `reactionLabelAt(target)`: the reaction whose name is under the pointer,
+/// if it is one drawn on the map.
+pub fn reaction_label_at(t: &Target, host: &dyn MapHost) -> Option<String> {
+    let id = t.data(&REACTION_LABEL, "data-rxn");
+    let id = truthy(&id)?;
+    host.map()?.reaction(id).map(|_| id.to_string())
+}
+
+/// `editHandleUnder(event)`: in Edit the curve handles and the lever are drawn
+/// under the names, and a name beside a marker can lie over one of them. The
+/// handle wins: the name can be moved in Select, but a handle hidden under it
+/// could not be reached at all. `stack` is `elementsFromPoint`, topmost first.
+pub fn edit_handle_under(stack: &[Target]) -> Option<&Target> {
+    stack.iter().find(|t| t.element().is_some_and(|e| EDIT_HANDLE.matches(e)))
 }
 
 /// A reaction's control point, as `controlHandleAt` reads it.

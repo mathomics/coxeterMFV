@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { Store } from '../src/ui/store.js';
-import { renderTaskPanel, renderWorkspace, renderViewControls } from '../src/ui/panels.js';
+import { renderTaskPanel, renderWorkspace, renderViewControls, renderMapQuickControls } from '../src/ui/panels.js';
 
 const actions = (html) => [...html.matchAll(/data-action="([^"]+)"/g)].map((match) => match[1]);
 const routes = (html) => [...html.matchAll(/data-workspace="([^"]+)"/g)].map((match) => match[1]);
@@ -73,7 +73,49 @@ test('View menu exposes presentation controls with their actual selected state',
   store.view.labels = 'none';
   const html = renderViewControls(store);
   assert.match(html, /data-action="toggle-currency" aria-pressed="false"/);
-  assert.match(html, /data-action="toggle-crossfeed" aria-pressed="true"/);
   assert.match(html, /value="none" selected/);
   assert.doesNotMatch(html, /data-action="(?:objective|medium|parsimonious|loopless|fva|toggle-dark)"/);
+  // Cross-feeding is offered only where there are cells to feed one another.
+  assert.doesNotMatch(html, /data-action="toggle-crossfeed"/);
+  store.community = { activeSpecies: [{ id: 'a' }, { id: 'b' }] };
+  assert.match(renderMapQuickControls(store), /data-action="toggle-crossfeed" aria-pressed="true"/);
+});
+
+test('the Cell tool says which species a drag draws, or that every one is on the map', () => {
+  const store = new Store('.');
+  const hub = () => renderTaskPanel(store, { leftTab: 'build', tool: 'cell' });
+  store.availableMapCells = () => [{ speciesId: 'eco', speciesName: 'E. coli' }, { speciesId: 'sce', speciesName: 'S. cerevisiae' }];
+  assert.match(hub(), /Drag on the map to draw E\. coli\./, 'the first one not on the map');
+  store.cellPlacementSpeciesId = 'sce';
+  assert.match(hub(), /Drag on the map to draw S\. cerevisiae\./, 'or the one picked in Structure');
+  store.availableMapCells = () => [];
+  assert.match(hub(), /Every species is on the map\./, 'where a drag would do nothing');
+});
+
+test('a map of one cell is never dimmed by the cross-feeding highlight', () => {
+  const store = new Store('.');
+  store.view.showCrossFeeding = true;
+  store.community = { activeSpecies: [{ id: 'sce' }] };
+  // The highlight dims all but the transfers between cells, and its toggle is
+  // not offered here, so drawing it would leave the map dim with no way back.
+  assert.equal(store.crossFeedingHighlighted(), false);
+  assert.doesNotMatch(renderMapQuickControls(store), /toggle-crossfeed/);
+  store.community = { activeSpecies: [{ id: 'sce' }, { id: 'eco' }] };
+  assert.equal(store.crossFeedingHighlighted(), false, 'two cells that pass nothing are not dimmed either');
+  store.crossFeedingMetabolites = () => [{ base: 'ac' }];
+  assert.equal(store.crossFeedingHighlighted(), true, 'the setting waits for a community that exchanges something');
+  store.view.showCrossFeeding = false;
+  assert.equal(store.crossFeedingHighlighted(), false);
+});
+
+test('the map toolbar carries the display options used most, and View the same for a narrow toolbar', () => {
+  const store = new Store('.');
+  store.view.widthByFlux = true;
+  store.view.reactionColorMode = 'pathway';
+  const quick = renderMapQuickControls(store);
+  assert.match(quick, /<span class="quick quick-a">[\s\S]*data-action="labels"[\s\S]*data-action="toggle-currency"[\s\S]*<\/span>\s*<span class="quick quick-b">/);
+  assert.match(quick, /<option value="pathway" selected>Color: pathway<\/option>/);
+  assert.match(quick, /data-action="toggle-width-by-flux" aria-pressed="true"/);
+  // View holds a copy, shown by the stylesheet only when the toolbar is too narrow.
+  assert.ok(renderViewControls(store).includes(`<div class="view-folded">${quick}</div>`));
 });

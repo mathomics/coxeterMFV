@@ -267,7 +267,7 @@ export function renderAddReactionPanel({
   const terminal = terminals[terminalIndex] ?? terminals[0] ?? null;
   const terminalControl = terminals.length > 1 ? `
     <div class="add-reaction-terminal">
-      <div><strong>Terminal metabolite</strong><span>Choose which primary product lies on the reaction axis.</span></div>
+      <div><strong>Terminal metabolite</strong><span>Product on the reaction axis.</span></div>
       <div class="add-reaction-terminal-controls">
         <button type="button" data-rotate-terminal="-1" aria-label="Previous terminal metabolite">‹</button>
         <code>${esc(terminal?.label ?? '—')}</code>
@@ -275,7 +275,7 @@ export function renderAddReactionPanel({
       </div>
     </div>` : (terminal ? `
     <div class="add-reaction-terminal">
-      <div><strong>Terminal metabolite</strong><span>Primary product on the reaction axis.</span></div>
+      <div><strong>Terminal metabolite</strong><span>Product on the reaction axis.</span></div>
       <code>${esc(terminal.label)}</code>
     </div>` : '');
 
@@ -310,7 +310,7 @@ export function renderAddReactionPanel({
       <div class="add-reaction-direction-text">
         <div class="add-reaction-direction-title">
           <strong>Direction</strong>
-          <span>${selected ? 'Choose where to place the selected reaction.' : 'Select a reaction first.'}</span>
+          <span>${selected ? 'Where to place the reaction.' : 'Select a reaction first.'}</span>
         </div>
         ${terminalControl}
       </div>

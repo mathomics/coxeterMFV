@@ -343,6 +343,19 @@ fn invalid_and_out_of_range_mu_never_replace_the_last_valid_fixed_solution() {
     assert_fixed_solution(&store, 2.0);
 }
 
+/// JS: 'the maximum μ as its field reads it back, a hair past the maximum, is the maximum'
+#[test]
+fn the_maximum_mu_as_its_field_reads_it_back_is_the_maximum() {
+    let mut store = pair_store();
+    steady_com_range(&mut store).unwrap();
+    let max = store.steady_com_state.as_ref().unwrap().max.unwrap();
+    // An <input type=number> keeps 15 significant digits.
+    solve_steady_com_at(&mut store, max * (1.0 + 1e-12)).unwrap();
+    assert_fixed_solution(&store, max);
+    let error = solve_steady_com_at(&mut store, max * 1.001).unwrap_err().to_string();
+    assert!(error.contains("computed range"), "past it by more is still refused: {error}");
+}
+
 #[test]
 fn medium_and_member_bound_changes_invalidate_the_previous_interval_and_are_included_in_the_new_solve() {
     let mut store = pair_store();

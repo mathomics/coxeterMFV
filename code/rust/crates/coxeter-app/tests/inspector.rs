@@ -239,7 +239,7 @@ fn nothing_selected_reads_no_selection_and_a_selection_opens_the_panel() {
     assert_eq!(h.state().store.selected_reaction, None);
     assert_eq!(h.state().store.selected_entity, None);
     assert!(label_is(&h, "No selection"));
-    assert!(common::shows(&h, "Select a reaction, metabolite, cell, compartment, or text element"));
+    assert!(common::shows(&h, "Select something on the map to inspect it."));
 }
 
 #[test]
@@ -266,7 +266,7 @@ fn metabolite_inspector_reports_available_model_and_map_properties() {
     for control in ["Primary", "Secondary", "Duplicate metabolite", "Hide metabolite", "Metabolite label source"] {
         assert!(common::has(&h, control), "{control}");
     }
-    assert!(common::shows(&h, "Visual changes affect the map only"));
+    assert!(!common::shows(&h, "Visual changes affect the map only"), "no note that the map is not the model");
 }
 
 #[test]
@@ -327,7 +327,7 @@ fn remove_map_node_deletes_a_free_instance() {
     let node = node_of(&h, "eco@g6p_c", NodeKind::Metabolite);
     select_entity(&mut h, "metabolite", &node);
     assert!(!common::has(&h, "Delete metabolite from map"), "drawn reactions use it");
-    assert!(common::shows(&h, "first remove the drawn reactions that use it"));
+    assert!(common::shows(&h, "Remove the drawn reactions that use it before deleting it."));
     common::click(&mut h, "Duplicate metabolite");
     let copy = h.state().store.selected_entity.clone().unwrap().id;
     assert!(h.state().store.can_remove_map_node(&copy));
@@ -399,7 +399,7 @@ fn the_text_inspector_offers_a_size_and_a_font() {
     select_entity(&mut h, "text", &text.id);
     assert_eq!(value_of(&h, "Text size in pixels"), "26");
     assert!(common::has(&h, "Text font"));
-    assert!(common::shows(&h, "The size and font chosen here are also used for the next text you write."));
+    assert!(common::shows(&h, "Also used for the next text you write."));
 }
 
 #[test]
@@ -525,7 +525,7 @@ fn compartment_inspector_edits_its_boundary_and_the_shared_medium_is_one() {
     let comp = h.state().store.map.as_ref().unwrap().cell("demo").unwrap().compartments.last().unwrap().id.clone();
     h.state_mut().store.select_geometry(Some("demo"), &comp);
     common::settle(&mut h);
-    assert!(common::shows(&h, "centre handle"));
+    assert!(common::shows(&h, "Drag the centre to move it, a corner or side to resize it."));
     assert!(label_is(&h, "Cell root") || common::shows(&h, "Parent"));
     // edit-selected-compartment-boundary
     common::click(&mut h, "Edit Boundary");
@@ -584,7 +584,7 @@ fn the_reaction_card_lists_the_reaction() {
         assert!(common::shows(&h, text), "{text}");
     }
     assert!(common::shows(&h, "R00001"), "the reaction's annotation");
-    assert!(common::shows(&h, "Enable FVA to see the minimum and maximum flux"));
+    assert!(!common::shows(&h, "Enable FVA") && !common::shows(&h, "Computing the FVA range"), "nothing on FVA while it is off");
     assert!(common::shows(&h, "Original bounds: [0, 1.00e+3]"), "formatFlux writes 1000 as 1.00e+3");
     // select-model-metabolite: a drawn metabolite is selected…
     common::click(&mut h, "a_c");
@@ -603,7 +603,7 @@ fn select_model_metabolite_says_when_it_is_not_drawn() {
     common::click(&mut h, "g6p_c");
     let status = h.state().store.status().clone();
     assert_eq!(status.state, StatusState::Ok);
-    assert_eq!(status.message, "Metabolite eco@g6p_c exists in the model but is not currently drawn on the map.");
+    assert_eq!(status.message, "Metabolite eco@g6p_c is not drawn on the map.");
     assert_eq!(h.state().store.selected_reaction.as_deref(), Some(PGI), "the selection stays");
 }
 
@@ -709,7 +709,7 @@ fn a_double_click_gives_the_keyboard_to_the_lower_bound() {
 fn remove_map_reaction_keeps_it_in_the_model() {
     let mut h = ecoli();
     select_reaction(&mut h, PGI);
-    assert!(common::shows(&h, "Removing it from the map is not a knockout"));
+    assert!(!common::shows(&h, "Removing it from the map is not a knockout"));
     common::click(&mut h, "Delete reaction from map");
     let store = &h.state().store;
     assert!(!store.map.as_ref().unwrap().has_reaction(PGI));
@@ -723,7 +723,7 @@ fn switching_a_species_off_leaves_its_reaction_without_bounds() {
     h.state_mut().store.set_species_enabled("other", false).expect("switched off");
     common::settle(&mut h);
     select_reaction(&mut h, "other@At");
-    assert!(common::shows(&h, "switched off: it stays on the map, dimmed, and is not simulated"));
+    assert!(common::shows(&h, "is switched off, so this reaction is not simulated"));
     assert!(!common::has(&h, "Upper bound of At"), "no bounds to edit for a reaction the analysis cannot see");
 }
 
@@ -746,7 +746,7 @@ fn a_zero_abundance_joint_member_is_held_out_like_a_switched_off_one() {
         store.select(Some("other@At"));
     }
     common::settle(&mut h);
-    assert!(common::shows(&h, "zero abundance in this community, so its reactions are held at zero"));
+    assert!(common::shows(&h, "has zero abundance, so this reaction is held at zero"));
     assert!(!common::has(&h, "Upper bound of At"));
 }
 
@@ -761,7 +761,7 @@ fn the_reaction_inspector_offers_linear_swap_mirror_and_rotate_as_map_options() 
     // One swap between each pair of neighbours: 1 for two substrates, 2 for three products.
     let swaps: Vec<String> = control_labels(&h, "Swap ").into_iter().filter(|l| l != "Swap substrates ⇄ products").collect();
     assert_eq!(swaps.len(), 3, "{swaps:?}");
-    assert!(common::shows(&h, "These change the drawing only"));
+    assert!(common::shows(&h, "Shift-click two metabolites to pick them."));
 }
 
 #[test]
@@ -775,6 +775,99 @@ fn the_inspector_offers_the_compass_the_metabolite_choice_and_tidy() {
     assert_eq!(chips.len(), 5, "one per drawn metabolite");
     assert_eq!(chips.iter().filter(|t| **t == Some(Toggled::True)).count(), 2, "the two the line would run through are marked");
     assert!(common::has(&h, "Tidy curves"));
+}
+
+/// The reaction's name moved off its default place: Reset label is offered,
+/// and puts it back as one undo step (`test/reaction-label.test.mjs`).
+#[test]
+fn reset_label_is_offered_for_a_moved_name_and_puts_it_back() {
+    let mut h = pfk_alone();
+    assert!(!common::has(&h, "Reset label"), "offered only for a moved name");
+    h.state_mut().store.set_reaction_label_offset(PFK, coxeter_core::mapdata::Point::new(25.0, -10.0));
+    h.state_mut().store.emit("map");
+    common::settle(&mut h);
+    let depth = undo_depth(&h);
+    common::click(&mut h, "Reset label");
+    let rxn = h.state().store.map.as_ref().unwrap().reaction(PFK).unwrap().clone();
+    assert_eq!(coxeter_core::reaction_label::reaction_label_offset(&rxn), None);
+    assert_eq!(undo_depth(&h), depth + 1);
+    assert!(!common::has(&h, "Reset label"));
+}
+
+// Selection
+
+/// `chainSelection(map, reactions)`: some reactions and every metabolite
+/// drawn to them, cofactors included.
+fn select_chain(h: &mut H, reactions: &[&str]) {
+    let store = &mut h.state_mut().store;
+    store.select(None);
+    let mut selection = coxeter_map::multi_selection::empty_selection();
+    selection.reactions.extend(reactions.iter().map(|id| id.to_string()));
+    for seg in store.map.as_ref().unwrap().segments() {
+        if selection.reactions.contains(&seg.reaction_id) {
+            if let Some(node) = seg.node_id.as_deref().filter(|id| !id.is_empty()) {
+                selection.nodes.insert(node.to_string());
+            }
+        }
+    }
+    store.multi_selection = selection;
+    store.emit("multi-selection");
+}
+
+/// JS (selection-turn.test.mjs): "the inspector turns to a selection of two or more and offers its tools there"
+#[test]
+fn the_inspector_turns_to_a_selection_of_two_or_more_and_offers_its_tools_there() {
+    let mut h = ecoli();
+    h.state_mut().store.select(None);
+    common::settle(&mut h);
+    assert!(h.state().ui.inspector_collapsed, "nothing selected");
+    select_chain(&mut h, &[PGI, PFK]);
+    common::settle(&mut h);
+    let nodes = h.state().store.multi_selection.nodes.len();
+    assert!(!h.state().ui.inspector_collapsed, "the inspector opens for it");
+    assert!(common::shows(&h, "Selection"));
+    assert!(common::shows(&h, &format!("2 reactions · {nodes} metabolites")));
+    let distribute_v = format!("Distribute {}", coxeter_app::fonts::glyph::DISTRIBUTE_V);
+    for control in ["Horizontal", "Vertical", "Left", distribute_v.as_str(), "Even spacing", "⟲ 45°", "⟳ 45°", "Clear selection"] {
+        assert!(common::has(&h, control), "{control} is offered");
+    }
+    for direction in ["N", "NE", "E", "SE", "S", "SW", "W", "NW"] {
+        assert!(common::has(&h, &format!("Point {direction}")), "{direction}");
+    }
+    assert!(common::shows(&h, "Turns as one piece; cofactors follow."));
+
+    // A reaction picked on its own keeps its inspector: it reads line ends from the selection.
+    h.state_mut().store.select(Some(PGI));
+    common::settle(&mut h);
+    assert!(!common::has(&h, "Point N"));
+    assert!(common::has(&h, "Align N"));
+}
+
+#[test]
+fn the_selection_turns_points_and_is_cleared_from_the_inspector() {
+    let mut h = ecoli();
+    select_chain(&mut h, &[PGI, PFK]);
+    common::settle(&mut h);
+    common::click(&mut h, "Vertical");
+    select_chain(&mut h, &[PGI, PFK]);
+    common::settle(&mut h);
+    let labels = |h: &H| h.state().store.map_history.undo_labels().iter().map(|l| l.to_string()).collect::<Vec<_>>();
+
+    common::click(&mut h, "Point E");
+    let (g6p, fdp) = (node_pos(&h, "met:eco@g6p_c"), node_pos(&h, "met:eco@fdp_c"));
+    assert!((g6p.1 - fdp.1).abs() < 1e-6 && fdp.0 > g6p.0, "glucose 6-phosphate to fructose bisphosphate runs east");
+    assert_eq!(labels(&h).last().map(String::as_str), Some("Point selection E"));
+    common::click(&mut h, "⟳ 45°");
+    assert_eq!(labels(&h).last().map(String::as_str), Some("Rotate selection"));
+    let (g6p, fdp) = (node_pos(&h, "met:eco@g6p_c"), node_pos(&h, "met:eco@fdp_c"));
+    assert!(((fdp.1 - g6p.1) - (fdp.0 - g6p.0)).abs() < 1e-6 && fdp.0 > g6p.0, "and now down to the right");
+    let depth = undo_depth(&h);
+    common::click(&mut h, "Even spacing");
+    assert!(undo_depth(&h) <= depth + 1);
+
+    common::click(&mut h, "Clear selection");
+    assert_eq!(h.state().store.multi_selection_size(), 0);
+    assert!(h.state().ui.inspector_collapsed, "the inspector gives the map its column back");
 }
 
 #[test]
@@ -1028,7 +1121,7 @@ fn compartment_inspector_offers_shape_presets_and_delete() {
     h.state_mut().store.select_geometry(Some("demo"), &comp);
     common::settle(&mut h);
     assert!(common::shows(&h, "orange diamond"));
-    assert!(common::shows(&h, "middle of a "));
+    assert!(common::shows(&h, "a corner or side to resize it"));
     let shape = |h: &H| {
         let map = h.state().store.map.as_ref().unwrap();
         coxeter_core::geometry::compartment_shape(map.cell("demo").unwrap().compartments.iter().find(|c| c.id == comp).unwrap())
@@ -1100,7 +1193,7 @@ fn the_inspector_colours_a_metabolite_circle_and_a_reaction_line() {
     assert_eq!(own(&h), (None, None));
 
     select_reaction(&mut h, PFK);
-    assert!(common::shows(&h, "Shown when lines are not colored by flux"));
+    assert!(common::shows(&h, "Used when lines are not colored by flux."));
     common::type_into(&mut h, "Reaction line color", "#123456");
     let color = |h: &H| h.state().store.map.as_ref().unwrap().reaction(PFK).unwrap().own_color().map(str::to_string);
     assert_eq!(color(&h).as_deref(), Some("#123456"));

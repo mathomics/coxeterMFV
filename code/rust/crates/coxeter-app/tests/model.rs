@@ -122,7 +122,7 @@ fn the_medium_takes_a_slider_or_an_exact_number() {
     common::settle(&mut h);
     assert_eq!(h.state().store.medium.get("glc__D").copied(), Some(7.5), "nothing applied");
     assert_eq!(h.state().store.status().state, StatusState::Warn);
-    assert!(status(&h).starts_with("That field was empty or not a number"));
+    assert_eq!(status(&h), "Invalid number; value unchanged.");
     assert_eq!(common::control(&h, field).value().as_deref(), Some("7.5"), "it shows the value in force");
 }
 

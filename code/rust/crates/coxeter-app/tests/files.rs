@@ -193,7 +193,7 @@ fn a_map_for_a_model_that_is_not_open_waits_and_can_be_forgotten() {
     assert_eq!(store.status().state, coxeter_state::StatusState::Warn);
     let message = store.status().message.clone();
     assert!(message.starts_with("“old_map.json” does not fit what is open: "), "{message}");
-    assert!(message.contains("a-scenario-that-went-away") && message.contains("The current drawing is unchanged."), "{message}");
+    assert!(message.contains("a-scenario-that-went-away") && message.ends_with("; the current drawing is kept."), "{message}");
     assert_eq!(store.map.as_ref().unwrap().to_json(), before, "the drawing is untouched");
 
     common::press(&mut h, "File menu");

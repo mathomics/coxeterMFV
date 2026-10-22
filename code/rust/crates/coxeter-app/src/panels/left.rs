@@ -19,25 +19,32 @@ pub const COLLAPSED: f32 = 42.0;
 
 /// The tools of the grid: tool, icon, label, `title`.
 pub const TOOLS: [(Tool, &str, &str, &str); 8] = [
-    (
-        Tool::Select,
-        crate::fonts::glyph::SELECT,
-        "Select",
-        "Select and move: drag a reaction or metabolite to move it, the background to sweep a selection. Click a compartment's membrane to select it, then drag its centre handle to move it or a corner to resize it",
-    ),
-    (Tool::Pan, "✥", "Pan Mode", "Pan Mode: drag anywhere to move the map. Nothing can be selected until another tool is chosen"),
-    (Tool::Edit, "⌘", "Edit Control Points", "Show and move reaction control points to adjust reaction paths"),
-    (Tool::Reaction, "⌁", "Add Reaction", "Add Reaction mode: click a metabolite to list addable reactions"),
+    (Tool::Select, crate::fonts::glyph::SELECT, "Select", "Drag to move; drag the background to box-select"),
+    (Tool::Pan, "✥", "Pan Mode", "Drag to pan"),
+    (Tool::Edit, "⌘", "Edit Control Points", "Drag control points to reshape reactions"),
+    (Tool::Reaction, "⌁", "Add Reaction", "Click a metabolite to add its reactions"),
     (Tool::Metabolite, "○", "Add Metabolite", ""),
     (Tool::Text, "T", "Text", ""),
-    (Tool::Compartment, "▣", "Add Compartment", "Add an existing model compartment to the map"),
-    (Tool::Cell, "⬡", "Add Cell", "Add an existing model species as a cell on the map"),
+    (Tool::Compartment, "▣", "Add Compartment", "Draw a model compartment"),
+    (Tool::Cell, "⬡", "Add Cell", "Draw a model species as a cell"),
 ];
+
+/// `matchMedia('(max-width: 1000px), (max-height: 620px)')`: a window this
+/// small has no room for the task panel beside the map, so it is hidden until
+/// asked for (`is-task-overlay`).
+pub fn narrow(ctx: &egui::Context) -> bool {
+    let r = ctx.content_rect();
+    r.width() <= 1000.0 || r.height() <= 620.0
+}
 
 /// Draw the left panel.
 pub fn show(ui: &mut Ui, shell: &mut Shell) {
     let p = shell.palette();
-    let collapsed = (shell.ui.left_collapsed || shell.ui.focus_mode) && !shell.ui.task_overlay;
+    let narrow = narrow(ui.ctx());
+    if narrow && !shell.ui.task_overlay {
+        return;
+    }
+    let collapsed = !narrow && (shell.ui.left_collapsed || shell.ui.focus_mode) && !shell.ui.task_overlay;
     let width = if collapsed { COLLAPSED } else { WIDTH };
     egui::Panel::left("left-panel")
         .exact_size(width)
@@ -50,7 +57,7 @@ pub fn show(ui: &mut Ui, shell: &mut Shell) {
             }
             egui::Panel::bottom("left-footer")
                 .frame(Frame::new().fill(p.panel).inner_margin(Margin::symmetric(12, 8)).stroke(Stroke::new(1.0, p.line)))
-                .show(ui, |ui| footer(ui, shell, &p));
+                .show(ui, |ui| footer(ui, shell));
             egui::ScrollArea::vertical().id_salt("left-scroll").show(ui, |ui| {
                 if shell.ui.left_tab == LeftTab::Build {
                     toolbox(ui, shell, &p);
@@ -86,12 +93,10 @@ fn tabs(ui: &mut Ui, shell: &mut Shell, collapsed: bool, p: &Palette) {
                     .title(label)
                     .aria(label)
                     .show(ui);
+                // `toggle-left`, as the toolbar's: in a narrow window or in
+                // focus mode it opens and closes the panel over the map.
                 if r.clicked() {
-                    if shell.ui.focus_mode {
-                        shell.toggle_focus();
-                    } else {
-                        shell.toggle_left(false);
-                    }
+                    shell.toggle_left(narrow(ui.ctx()));
                 }
             });
         });
@@ -161,7 +166,7 @@ fn tool_button(ui: &mut Ui, icon: &str, label: &str, title: &str, active: bool, 
 }
 
 /// `.panel-footer`.
-fn footer(ui: &mut Ui, shell: &mut Shell, p: &Palette) {
+fn footer(ui: &mut Ui, shell: &mut Shell) {
     ui.horizontal(|ui| {
         let focused = shell.ui.focus_mode;
         ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
@@ -169,7 +174,6 @@ fn footer(ui: &mut Ui, shell: &mut Shell, p: &Palette) {
             if r.clicked() {
                 shell.toggle_focus();
             }
-            ui.add(egui::Label::new(RichText::new("Map edits stay separate from the model.").size(10.0).color(p.ink_3)).wrap());
         });
     });
 }
@@ -207,8 +211,8 @@ pub fn format_percent(value: f64) -> String {
     coxeter_core::js::number_to_string(coxeter_core::js::string_to_number(&coxeter_core::js::to_fixed(value, 2)))
 }
 
-/// A `.task-link`: icon, title, description, arrow; opens a workspace.
-fn task_link(ui: &mut Ui, shell: &mut Shell, workspace: &str, icon: &str, title: &str, description: &str, p: &Palette) {
+/// A `.task-link`: icon, title, arrow; opens a workspace.
+fn task_link(ui: &mut Ui, shell: &mut Shell, workspace: &str, icon: &str, title: &str, p: &Palette) {
     let width = ui.available_width();
     let r = Frame::new()
         .fill(p.panel)
@@ -219,11 +223,7 @@ fn task_link(ui: &mut Ui, shell: &mut Shell, workspace: &str, icon: &str, title:
             ui.set_width(width - 22.0);
             ui.horizontal(|ui| {
                 ui.label(RichText::new(icon).size(16.0).color(p.accent));
-                ui.vertical(|ui| {
-                    ui.spacing_mut().item_spacing.y = 2.0;
-                    ui.label(RichText::new(title).size(12.0).family(bold()).color(p.ink));
-                    ui.add(egui::Label::new(RichText::new(description).size(10.5).color(p.ink_3)).wrap());
-                });
+                ui.label(RichText::new(title).size(12.0).family(bold()).color(p.ink));
                 ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
                     ui.label(RichText::new("›").size(14.0).color(p.ink_3));
                 });
@@ -260,20 +260,19 @@ pub fn render_task_panel(ui: &mut Ui, shell: &mut Shell, p: &Palette) {
             task_context(ui, p, |ui| {
                 widgets::section_label(ui, "Community model");
                 ui.label(RichText::new(format!("{count} active species")).family(bold()).color(p.ink));
-                ui.add(egui::Label::new(RichText::new("Edit the biological inputs used by the analysis.").size(11.5).color(p.ink_2)).wrap());
             });
-            task_link(ui, shell, "scenario", "◇", "Scenario & objective", "Setup and published communities", p);
-            task_link(ui, shell, "community", "⬡", "Species & abundance", "Models and community composition", p);
-            task_link(ui, shell, "medium", "◌", "Shared medium", "Nutrient supply and exchange", p);
-            task_link(ui, shell, "reactions", "☰", "Reactions & bounds", "Every reaction’s constraints", p);
-            task_link(ui, shell, "model", "⌁", "Biological model", "Create reactions and metabolites", p);
-            task_link(ui, shell, "omics", "≋", "Omics & expression", "Visual overlays and GIMME", p);
-            footnote(ui, "Model edits affect the analysis. Map edits affect the drawing.", p);
+            task_link(ui, shell, "scenario", "◇", "Scenario & objective", p);
+            task_link(ui, shell, "community", "⬡", "Species & abundance", p);
+            task_link(ui, shell, "medium", "◌", "Shared medium", p);
+            task_link(ui, shell, "reactions", "☰", "Reactions & bounds", p);
+            task_link(ui, shell, "model", "⌁", "Biological model", p);
+            task_link(ui, shell, "omics", "≋", "Omics & expression", p);
         }
         LeftTab::Analysis => analysis_hub(ui, shell, p),
         LeftTab::Build => {
             let tool = shell.map.tool();
             let (title, help) = tool_help(tool);
+            let help = if tool == Tool::Cell { cell_tool_help(&shell.store) } else { help.to_string() };
             task_context(ui, p, |ui| {
                 widgets::section_label(ui, title);
                 ui.add(egui::Label::new(RichText::new(help).size(11.5).color(p.ink_2)).wrap());
@@ -281,32 +280,37 @@ pub fn render_task_panel(ui: &mut Ui, shell: &mut Shell, p: &Palette) {
                     crate::panels::map_options::compartment_tool_controls(ui, shell);
                 }
             });
-            task_link(ui, shell, "library", "⌕", "Reaction library", "Find and add model reactions", p);
-            task_link(ui, shell, "structure", "⬡", "Structure", "Cells and nested compartments", p);
-            task_link(ui, shell, "map", "⚙", "Map options", "Appearance, pathways and canvas", p);
-            footnote(ui, "Map edits change the drawing. The biological model is preserved.", p);
+            task_link(ui, shell, "library", "⌕", "Reaction library", p);
+            task_link(ui, shell, "structure", "⬡", "Structure", p);
+            task_link(ui, shell, "map", "⚙", "Map options", p);
         }
     }
-}
-
-fn footnote(ui: &mut Ui, s: &str, p: &Palette) {
-    ui.add(egui::Label::new(RichText::new(s).size(11.0).color(p.ink_3)).wrap());
 }
 
 /// The help of each tool in the Edit Map hub.
 pub fn tool_help(tool: Tool) -> (&'static str, &'static str) {
     match tool {
-        Tool::Select => ("Select & inspect", "Click an object to inspect it. Drag an object to reposition it. Drag a metabolite label to place it around its circle."),
-        Tool::Edit => ("Edit Control Points", "Show and move reaction control points to adjust reaction paths. Drag metabolites, reaction centres, or Bézier handles directly."),
-        Tool::Reaction => ("Add Reaction mode", "Click a metabolite on the map to see only the model reactions that can be added from it."),
-        Tool::Metabolite => (
-            "Add Metabolite mode",
-            "Click inside a compartment, then pick one of its model metabolites to draw it there. This adds a map instance; the biological model is unchanged.",
-        ),
-        Tool::Text => ("Add map text", "Click the map, type a label, choose its size and font beside it, and press Enter. Select a text later to restyle it."),
-        Tool::Compartment => ("Add Compartment", "Choose a model compartment and a shape, then drag inside its highlighted parent to add it to the map."),
-        Tool::Cell => ("Add Cell", "Choose an existing model species, then drag on the map to add its cell boundary."),
-        Tool::Pan => ("Edit your map", "Choose an editing tool to work on the map."),
+        Tool::Select => ("Select & inspect", "Click an object to inspect it, or drag it to move it."),
+        Tool::Edit => ("Edit Control Points", "Drag control points and Bézier handles to reshape reaction paths."),
+        Tool::Reaction => ("Add Reaction mode", "Click a metabolite to add a reaction from it."),
+        Tool::Metabolite => ("Add Metabolite mode", "Click a compartment, then pick a metabolite."),
+        Tool::Text => ("Add map text", "Click the map, type, and press Enter."),
+        Tool::Compartment => ("Add Compartment", "Pick a compartment and a shape, then drag inside its highlighted parent."),
+        Tool::Cell => ("Add Cell", "Drag on the map to draw a cell."),
+        Tool::Pan => ("Edit your map", "Choose an editing tool."),
+    }
+}
+
+/// `cellToolHelp(store)`: what a drag with the Cell tool draws, picked as
+/// `add_map_cell` picks it (the species chosen in Structure, else the first
+/// not on the map), or that there is nothing left to draw, where a drag would
+/// otherwise do nothing at all.
+pub fn cell_tool_help(store: &coxeter_state::Store) -> String {
+    let available = store.available_map_cells();
+    let next = available.iter().find(|c| Some(&c.species_id) == store.cell_placement_species_id.as_ref()).or(available.first());
+    match next {
+        Some(cell) => format!("Drag on the map to draw {}.", cell.species_name),
+        None => "Every species is on the map.".to_string(),
     }
 }
 
@@ -340,7 +344,7 @@ fn analysis_hub(ui: &mut Ui, shell: &mut Shell, p: &Palette) {
     } else if store.loopless {
         "Internal cycles excluded".into()
     } else if store.cycle_free {
-        "Internal cycles removed from the FBA optimum".into()
+        "Internal cycles removed".into()
     } else if store.parsimonious {
         format!("Biomass target: {}% of optimum", format_percent(store.pfba_biomass_percent))
     } else {
@@ -354,30 +358,22 @@ fn analysis_hub(ui: &mut Ui, shell: &mut Shell, p: &Palette) {
         ui.add(egui::Label::new(RichText::new(&parameters).size(11.0).color(p.ink_3)).wrap());
         ui.add(egui::Label::new(RichText::new(&solver).size(11.0).color(p.ink_3)).wrap());
     });
-    let methods = [
-        ("fba", "FBA", "Flux balance"),
-        ("pfba", "pFBA", "Minimum total flux"),
-        ("fva", "FVA", "Flux ranges"),
-        ("loopless", "Loopless", "Exclude internal cycles"),
-        ("cyclefree", "CycleFreeFlux", "Remove cycles with one LP"),
-    ];
+    let methods = [("fba", "FBA"), ("pfba", "pFBA"), ("fva", "FVA"), ("loopless", "Loopless"), ("cyclefree", "CycleFreeFlux")];
     for pair in methods.chunks(2) {
         widgets::grow_row(ui, pair.len(), |ui, i| {
-            let (method, name, small) = pair[i];
+            let (method, name) = pair[i];
             let (mut enabled, mut title) = crate::panels::topbar::run_button_state(shell, method);
             if method == "fva" && fixed_mu.is_some() {
                 enabled = false;
                 title = "Run an ordinary analysis before FVA";
             }
-            let mut job = egui::text::LayoutJob::default();
-            job.append(name, 0.0, egui::TextFormat { font_id: egui::FontId::new(12.0, bold()), color: p.ink, ..Default::default() });
-            job.append(&format!("\n{small}"), 0.0, egui::TextFormat { font_id: egui::FontId::proportional(10.0), color: p.ink_3, ..Default::default() });
+            let label = RichText::new(name).size(12.0).family(bold()).color(p.ink);
             let hovered = enabled && crate::widgets::hovered_next(ui);
             let r = ui.add_enabled(
                 enabled,
-                egui::Button::new(job)
+                egui::Button::new(label)
                     .fill(if hovered { p.hover } else { p.panel })
-                    .stroke(Stroke::new(1.0, if hovered { p.ink_3 } else { p.line })).corner_radius(CornerRadius::same(8)).min_size(Vec2::new(ui.available_width(), 46.0)),
+                    .stroke(Stroke::new(1.0, if hovered { p.ink_3 } else { p.line })).corner_radius(CornerRadius::same(8)).min_size(Vec2::new(ui.available_width(), 36.0)),
             );
             aria_label(&r, name);
             let r = if title.is_empty() { r } else { r.on_disabled_hover_text(title) };
@@ -386,13 +382,12 @@ fn analysis_hub(ui: &mut Ui, shell: &mut Shell, p: &Palette) {
             }
         });
     }
-    task_link(ui, shell, "analysis", "⚙", "Simulation settings", "Objective and solver options", p);
-    task_link(ui, shell, "reactions", "☰", "Reactions & bounds", "Bounds, objective and fluxes", p);
-    task_link(ui, shell, "crossfeeding", "⇄", "Cross-feeding explorer", "Producer and consumer transfers", p);
+    task_link(ui, shell, "analysis", "⚙", "Simulation settings", p);
+    task_link(ui, shell, "reactions", "☰", "Reactions & bounds", p);
+    task_link(ui, shell, "crossfeeding", "⇄", "Cross-feeding explorer", p);
     if Btn::new("View simulation results ↗").wide().height(34.0).show(ui).clicked() {
         let stage = shell.map_rect.map_or(600.0, |r| r.height());
         shell.show_results(stage);
     }
-    footnote(ui, "Input changes recalculate the current method automatically.", p);
     let _ = format_flux;
 }

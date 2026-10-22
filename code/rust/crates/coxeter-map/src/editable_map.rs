@@ -47,6 +47,7 @@ use coxeter_core::mapdata::{
     NodeKind, Point, Rect, Segment, axis_links,
 };
 use coxeter_core::metabolite_label::{is_secondary_node, metabolite_label_angle};
+use coxeter_core::reaction_label::{LABEL_OFFSET, normalize_reaction_label_offset, set_reaction_label_offset};
 use coxeter_core::text_style::{TextBox, clamp_text_size, normalize_text_font};
 use indexmap::IndexMap;
 use serde_json::{Map, Value, json};
@@ -275,6 +276,7 @@ impl EditableMap {
         normalize_visual_roles(&mut g.nodes);
         normalize_metabolite_label_angles(&mut g.nodes);
         strip_species_from_labels(&mut g.nodes);
+        normalize_reaction_label_offsets(&mut g.reactions);
         let links = links.unwrap_or_else(|| initial_links(&g));
         let mut map = EditableMap { g, links, boundaries: Vec::new(), boundary_index: HashMap::new(), live_lanes: HashMap::new() };
         map.refresh_boundaries();
@@ -1405,6 +1407,26 @@ impl EditableMap {
         Some(node)
     }
 
+    /// `setReactionLabelOffset(reactionId, offset)`: write a reaction's name at
+    /// `offset` from its marker (map units) instead of where the map would put
+    /// it. Nothing else of the reaction changes.
+    pub fn set_reaction_label_offset(&mut self, reaction_id: &str, offset: Point) -> Option<&MapReaction> {
+        let rxn = self.g.reactions.get_mut(reaction_id)?;
+        if !offset.x.is_finite() || !offset.y.is_finite() {
+            return None;
+        }
+        set_reaction_label_offset(rxn, Some(offset));
+        Some(rxn)
+    }
+
+    /// `resetReactionLabel(reactionId)`: put a moved reaction name back in its
+    /// default place. None when it was never moved.
+    pub fn reset_reaction_label(&mut self, reaction_id: &str) -> Option<&MapReaction> {
+        let rxn = self.g.reactions.get_mut(reaction_id)?;
+        rxn.extra.shift_remove(LABEL_OFFSET)?;
+        Some(rxn)
+    }
+
     /// Hide/show one metabolite graphically. Its model membership is untouched.
     pub fn set_node_hidden(&mut self, node_id: &str, hidden: bool) -> Option<&Node> {
         let node = self.g.nodes.get_mut(node_id)?;
@@ -1885,6 +1907,15 @@ fn normalize_visual_roles(nodes: &mut IndexMap<String, Node>) {
     }
 }
 
+/// A moved reaction name keeps a usable offset; anything else puts it back in its default place.
+fn normalize_reaction_label_offsets(reactions: &mut IndexMap<String, MapReaction>) {
+    for rxn in reactions.values_mut() {
+        let Some(value) = rxn.extra.get(LABEL_OFFSET) else { continue };
+        let offset = normalize_reaction_label_offset(value);
+        set_reaction_label_offset(rxn, offset);
+    }
+}
+
 fn normalize_metabolite_label_angles(nodes: &mut IndexMap<String, Node>) {
     for node in nodes.values_mut() {
         if !is_metabolite_kind(&node.kind) {
@@ -2105,7 +2136,7 @@ pub fn is_secondary(node: &Node) -> bool {
 
 // Editing, by delegation
 
-use crate::multi_selection::{Arranged, LineAlignment, Moved, Selection, SelectionRect};
+use crate::multi_selection::{Arranged, LineAlignment, Moved, Selection, SelectionRect, SelectionTurn, SpacedEvenly};
 use crate::place_reaction::{PlaceOptions, Placed};
 use crate::reaction_edit::{ControlPoint, Handle, SideEntry};
 
@@ -2222,6 +2253,20 @@ impl EditableMap {
     /// Spread a selection evenly along `horizontal` or `vertical`.
     pub fn distribute_selection(&mut self, selection: &Selection, axis: &str) -> Arranged {
         crate::multi_selection::distribute_selection(self, selection, axis)
+    }
+    /// Space a selection evenly along its own line, in any direction.
+    pub fn space_selection_evenly(&mut self, selection: &Selection) -> SpacedEvenly {
+        crate::multi_selection::space_selection_evenly(self, selection)
+    }
+    /// Turn a selection as one rigid piece (radians, clockwise on screen), or
+    /// say why not.
+    pub fn rotate_selection(&mut self, selection: &Selection, angle: f64, pivot: Option<Point>) -> Option<SelectionTurn> {
+        crate::multi_selection::rotate_selection(self, selection, angle, pivot)
+    }
+    /// Turn a selection so its main line points a compass direction (`N` …
+    /// `NW`), the way it runs.
+    pub fn point_selection(&mut self, selection: &Selection, direction: &str) -> Option<SelectionTurn> {
+        crate::multi_selection::point_selection(self, selection, direction)
     }
     /// Escher's Align vertical / Align horizontal for a selection with
     /// reactions in it.

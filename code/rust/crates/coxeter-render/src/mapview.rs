@@ -21,6 +21,7 @@ use coxeter_core::js;
 use coxeter_core::label_sources::readable_name;
 use coxeter_core::mapdata::{MapCell, MapCompartment, MapGraph, MapReaction, MapText, Node, NodeKind, Point, Rect, Segment, SegmentKind};
 use coxeter_core::metabolite_label::{Anchor, Baseline, LabelPosition, is_secondary_node, metabolite_label_angle};
+use coxeter_core::reaction_label::{ReactionLabelPlacement, reaction_label_placement, reaction_nodes};
 use coxeter_core::text_style::{DEFAULT_TEXT_FONT, text_box_of, text_font_stack};
 use serde_json::Value;
 
@@ -64,6 +65,9 @@ struct Ctx<'a> {
     min_hit_radius: f64,
     explorer: Option<Explorer<'a>>,
     omics_fallback: String,
+    /// How much the name plates are enlarged in an exported picture
+    /// (`exportFrameLabelScale`); `None` on screen, where the camera sets it.
+    export_scale: Option<f64>,
 }
 
 impl<'a> Ctx<'a> {
@@ -166,6 +170,10 @@ pub fn render_map(map: &MapGraph, state: &RenderState) -> Element {
             .omics_fallback_color
             .clone()
             .unwrap_or_else(|| if dark { "#475569".into() } else { "#cbd5e1".into() }),
+        // The names of cells and compartments in an exported picture are as
+        // large as on screen with the whole map in view, not their base size,
+        // which on a large map is too small to read.
+        export_scale: if export { Some(export_frame_label_scale(map)) } else { None },
     };
     let selected_geometry = if export { None } else { state.selected_geometry.as_ref() };
     let geometry_edit = !export && state.geometry_edit;
@@ -179,6 +187,9 @@ pub fn render_map(map: &MapGraph, state: &RenderState) -> Element {
         .with("height", n(map.height()))
         .with("role", "img")
         .with("aria-label", "Multicell community metabolic map");
+    if let Some(k) = cx.export_scale {
+        svg.attr("style", format!("--frame-label-scale:{}", js::number_to_string(k)));
+    }
     svg.push(defs(dark));
     svg.push(render_canvas_frame(map, dark));
     if let Some(env) = render_environment(map, dark, cx.min_hit_radius) {
@@ -723,9 +734,7 @@ fn render_cells(cx: &Ctx) -> Element {
         let text_width = utf16_len(&plate_text) as f64 * PLATE_CHAR;
         let plate_width = text_width + 44.0;
         let fit = fit_scale(cell_plate_fit(cell, Some(&map.environment.rect), &plate_text));
-        let frame = Element::paired("g")
-            .with("class", "emc-frame-label")
-            .with("style", format!("--fit:{fit}"))
+        let frame = frame_label_group(&fit, cx.export_scale)
             .text("\n        ")
             .child(
                 Element::new("rect")
@@ -922,6 +931,35 @@ pub fn frame_label_scale(min_hit_radius: f64) -> f64 {
     js::min(FRAME_SCALE_MAX, js::max(1.0, or_zero(min_hit_radius) / 12.0))
 }
 
+/// The window an exported figure's plates are sized for: width, height and
+/// the fit's padding.
+const EXPORT_VIEW: (f64, f64, f64) = (1200.0, 800.0, 20.0);
+
+/// `exportFrameLabelScale(layout)`: how much the plates are enlarged in an
+/// exported picture, as much as on screen once the whole map is fitted to a
+/// window, so that the names can be read when the figure is seen whole. A
+/// fixed window, so that the file does not depend on the zoom or the size of
+/// the screen it was exported from.
+pub fn export_frame_label_scale(map: &MapGraph) -> f64 {
+    let (width, height, pad) = EXPORT_VIEW;
+    let zoom = js::min((width - pad * 2.0) / map.width(), (height - pad * 2.0) / map.height());
+    if zoom.is_finite() && zoom > 0.0 { js::to_fixed(frame_label_scale(12.0 / zoom), 3).parse().unwrap_or(1.0) } else { 1.0 }
+}
+
+/// `frameLabelGroup(fit, exportScale)`: the group a plate is scaled by. On
+/// screen the stylesheet scales it; an exported file also states the scale
+/// outright, because editors such as Inkscape or Illustrator do not work out
+/// the stylesheet's `var()` and `min()`.
+fn frame_label_group(fit: &str, export_scale: Option<f64>) -> Element {
+    let mut g = Element::paired("g").with("class", "emc-frame-label").with("style", format!("--fit:{fit}"));
+    if let Some(k) = export_scale {
+        // Both have three decimals already, so the smaller is written as it is.
+        let fit = fit.parse().unwrap_or(f64::NAN);
+        g.attr("transform", format!("scale({})", js::number_to_string(js::min(k, fit))));
+    }
+    g
+}
+
 /// How far a cell's name plate may grow: as wide as the cell, and no taller
 /// than the strip of medium above the cell it stands in.
 fn cell_plate_fit(cell: &MapCell, env_rect: Option<&Rect>, text: &str) -> f64 {
@@ -981,6 +1019,7 @@ struct FrameLabel<'a> {
     limit: f64,
     cls: &'static str,
     position: Option<Point>,
+    export_scale: Option<f64>,
 }
 
 /// One name plate in a corner of `rect`, or centred on its top edge.
@@ -1047,9 +1086,7 @@ fn frame_label(f: FrameLabel) -> Option<Element> {
     }
 
     let class = if f.cls.is_empty() { "emc-comp-label".to_string() } else { format!("emc-comp-label {}", f.cls) };
-    let frame = Element::paired("g")
-        .with("class", "emc-frame-label")
-        .with("style", format!("--fit:{}", fit_scale(fit)))
+    let frame = frame_label_group(&fit_scale(fit), f.export_scale)
         .text("\n      ")
         .child(
             Element::new("rect")
@@ -1128,6 +1165,7 @@ fn render_compartment_labels(cx: &Ctx) -> Element {
             limit: f64::INFINITY,
             cls: "emc-env-label",
             position: compartment_label_position(&env.rect, &env.extra, Corners::circular(26.0)),
+            export_scale: cx.export_scale,
         }) {
             out.push(label);
         }
@@ -1139,7 +1177,7 @@ fn render_compartment_labels(cx: &Ctx) -> Element {
             g.attr("opacity", "0.32");
         }
         for comp in by_depth(cell) {
-            if let Some(label) = render_compartment_label(comp, cx.dark, cell) {
+            if let Some(label) = render_compartment_label(comp, cx.dark, cell, cx.export_scale) {
                 g.push(label);
             }
         }
@@ -1151,7 +1189,7 @@ fn render_compartment_labels(cx: &Ctx) -> Element {
 /// Compartment name plate. Rounded organelles get it straddling the top edge;
 /// boxy compartments keep it in a corner, out of the pathway and clear of the
 /// compartments nested inside them.
-fn render_compartment_label(comp: &MapCompartment, dark: bool, cell: &MapCell) -> Option<Element> {
+fn render_compartment_label(comp: &MapCompartment, dark: bool, cell: &MapCell, export_scale: Option<f64>) -> Option<Element> {
     let vid = visual_id(comp);
     let corners = compartment_corners(comp);
     let centred = is_round_compartment(comp);
@@ -1187,6 +1225,7 @@ fn render_compartment_label(comp: &MapCompartment, dark: bool, cell: &MapCell) -
         limit,
         cls: "",
         position: compartment_label_position(&comp.rect, &comp.extra, corners),
+        export_scale,
     })
 }
 
@@ -2368,32 +2407,10 @@ fn render_text(cx: &Ctx) -> Element {
                 }
             }
 
-            // Place the ID and its value beside the marker, leaving a gap even
-            // for rotated transporters with several lanes.
-            let angle = rxn.axis.map_or(0.0, |a| js::atan2(a.dir.y, a.dir.x));
-            let half_width = if rxn.on_membrane { 13.0 } else { 3.0 };
-            let lanes = rxn.transport_lanes.as_ref().map_or(0, Vec::len);
-            let half_height = if rxn.on_membrane {
-                if lanes >= 2 { (14.0 + lanes as f64 * 10.0) / 2.0 } else { 11.0 }
-            } else {
-                9.0
-            };
-            let (cos, sin) = (js::cos(angle), js::sin(angle));
-            let marker_right = half_width * cos.abs() + half_height * sin.abs();
-            let mut tx = rxn.x + marker_right + 8.0;
-            let mut ty = rxn.y;
-            let mut placement = "emc-label-rxn-adjacent";
-            // A reaction kept straight and lying on its side has its own arm where
-            // the name would go, so there the name stands over the bar, on the side
-            // with fewer of its metabolites.
-            if rxn.linear.is_some() && rxn.axis.is_some() && !rxn.on_membrane && sin.abs() < 0.5 {
-                let marker_top = half_width * sin.abs() + half_height * cos.abs();
-                let nodes = nodes_of.get_or_insert_with(|| reaction_nodes(map));
-                let below = emptier_side(nodes.get(rid.as_str()).map(Vec::as_slice).unwrap_or(&[]), rxn) > 0.0;
-                tx = rxn.x;
-                ty = rxn.y + (marker_top + 5.0) * if below { 1.0 } else { -1.0 };
-                placement = if below { "emc-label-rxn-below" } else { "emc-label-rxn-above" };
-            }
+            // Beside the marker unless the name was moved (reaction_label).
+            let ReactionLabelPlacement { x: tx, y: ty, anchor, placement } = reaction_label_placement(rxn, || {
+                nodes_of.get_or_insert_with(|| reaction_nodes(map)).get(rid.as_str()).into_iter().flatten().copied()
+            });
             let local_id = js_trim(str_opt(&rxn.local_id));
             let cell_prefix = rxn.cell_id.as_deref().filter(|c| !c.is_empty()).map(|c| format!("{c}@")).unwrap_or_default();
             let reaction_id = match s.reaction_labels.get(rid) {
@@ -2413,7 +2430,7 @@ fn render_text(cx: &Ctx) -> Element {
                         format_flux(Some(range.min), 3),
                         format_flux(Some(range.max), 3)
                     ),
-                    None => format!("{reaction_id}  [calculando…]"),
+                    None => format!("{reaction_id}  [computing…]"),
                 }
             } else {
                 format!("{reaction_id}{}  {}", if disabled { " [KO]" } else { "" }, format_flux(Some(v), 3))
@@ -2426,8 +2443,7 @@ fn render_text(cx: &Ctx) -> Element {
                 if inactive { " is-inactive-species" } else { "" },
                 if s.fva_enabled { " emc-label-fva" } else { "" }
             );
-            let anchor = if placement == "emc-label-rxn-adjacent" { "start" } else { "middle" };
-            let mut el = label(tx, ty, text, &cls, halo, cx.dark, Some(rid), anchor);
+            let mut el = label(tx, ty, text, &cls, halo, cx.dark, Some(rid), anchor.as_str());
             if inactive {
                 el.attr("opacity", "0.28");
             }
@@ -2435,35 +2451,6 @@ fn render_text(cx: &Ctx) -> Element {
         }
     }
     out
-}
-
-/// The metabolite nodes each reaction reaches.
-fn reaction_nodes(map: &MapGraph) -> HashMap<&str, Vec<&Node>> {
-    let mut by_reaction: HashMap<&str, Vec<&Node>> = HashMap::new();
-    for seg in &map.segments {
-        let Some(node) = seg.node_id.as_deref().filter(|id| !id.is_empty()).and_then(|id| map.nodes.get(id)) else {
-            continue;
-        };
-        if seg.reaction_id.is_empty() {
-            continue;
-        }
-        by_reaction.entry(seg.reaction_id.as_str()).or_default().push(node);
-    }
-    by_reaction
-}
-
-/// Above (-1) or below (+1) a reaction lying on its side: where fewer of its metabolites stand.
-fn emptier_side(nodes: &[&Node], rxn: &MapReaction) -> f64 {
-    let mut above = 0;
-    let mut below = 0;
-    for node in nodes {
-        if node.y < rxn.y - 4.0 {
-            above += 1;
-        } else if node.y > rxn.y + 4.0 {
-            below += 1;
-        }
-    }
-    if below < above { 1.0 } else { -1.0 }
 }
 
 fn metabolite_label(

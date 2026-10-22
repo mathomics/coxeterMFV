@@ -74,8 +74,8 @@ export class BoundaryMenuController {
     const width = 330;
     const left = Math.max(8, Math.min(this.state.left, this.stage.clientWidth - width - 8));
     const top = Math.max(8, Math.min(this.state.top, this.stage.clientHeight - 300));
-    const title = boundary.label || boundary.inside || 'Membrana';
-    const subtitle = `${boundary.outside ?? 'exterior'} ↔ ${boundary.inside}`;
+    const title = boundary.label || boundary.inside || 'Membrane';
+    const subtitle = `${boundary.outside ?? 'outside'} ↔ ${boundary.inside}`;
 
     const rows = reactions.length
       ? reactions.map((reactionId) => {
@@ -86,7 +86,7 @@ export class BoundaryMenuController {
               <span>${esc(detail)}</span>
             </button>`;
         }).join('')
-      : '<p class="boundary-menu-empty">No undrawn transport reactions are left on this membrane.</p>';
+      : '<p class="boundary-menu-empty">No undrawn transport reactions left.</p>';
 
     return `
       <div class="boundary-menu" style="left:${left}px;top:${top}px" data-boundary-menu="${esc(this.state.boundaryId)}">

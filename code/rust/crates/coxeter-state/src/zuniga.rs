@@ -533,7 +533,7 @@ impl Store {
         self.apply_solution_arc(solution.clone(), false);
         self.set_status_message(
             if solution.is_optimal() { StatusState::Ok } else { StatusState::Error },
-            format!("{} · exact source constraints · stationary FBA adaptation of the authors’ community model.", scenario.name),
+            format!("{} · exact source constraints · stationary FBA.", scenario.name),
         );
         if emit {
             self.emit("solution");

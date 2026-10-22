@@ -71,7 +71,7 @@ export class MetaboliteMenuController {
       reactionIds: reactions,
       selectedReactionId: this.state.selectedReactionId,
       title: 'Add reaction',
-      subtitle: `From ${label} · selected metabolite will be reused`,
+      subtitle: `From ${label}`,
       left,
       top,
       width,

@@ -374,7 +374,7 @@ fn metabolite_menu(ctx: &egui::Context, store: &Store, menu: &mut MenuState, sta
         .or_else(|| node.local_id.clone().filter(|l| !l.is_empty()))
         .or_else(|| node.merged_id.clone().filter(|l| !l.is_empty()))
         .unwrap_or_else(|| "Selected metabolite".into());
-    let subtitle = format!("From {label} · selected metabolite will be reused");
+    let subtitle = format!("From {label}");
     // The list is ordered by these fluxes (see Store::order_by_flux).
     match add_reaction_panel(ctx, store, menu, stage, revision, &subtitle, true, || store.reactions_available_from_metabolite(node_id)) {
         Err(()) => Outcome::Close,
@@ -395,7 +395,7 @@ fn metabolite_menu(ctx: &egui::Context, store: &Store, menu: &mut MenuState, sta
 
 /// `CompartmentMenuController`: `render()` and `handleClick`.
 fn compartment_menu(ctx: &egui::Context, store: &Store, menu: &mut MenuState, stage: Rect, revision: u64, cell_id: &str, compartment_id: &str) -> Outcome {
-    let subtitle = format!("{} · all metabolites will be new visual instances", menu.label);
+    let subtitle = menu.label.clone();
     match add_reaction_panel(ctx, store, menu, stage, revision, &subtitle, false, || store.reactions_available_in_compartment(cell_id, compartment_id)) {
         Err(()) => Outcome::Close,
         Ok(None) => Outcome::Keep,
@@ -425,8 +425,8 @@ fn boundary_menu(ctx: &egui::Context, store: &Store, menu: &mut MenuState, stage
     let (stage_w, stage_h) = (stage.width() as f64, stage.height() as f64);
     let left = js::max(8.0, js::min(menu.position.left, stage_w - BOUNDARY_MENU_WIDTH - 8.0));
     let top = js::max(8.0, js::min(menu.position.top, stage_h - 300.0));
-    let title = [boundary.label.as_str(), boundary.inside.as_str()].into_iter().find(|s| !s.is_empty()).unwrap_or("Membrana").to_string();
-    let subtitle = format!("{} ↔ {}", boundary.outside.as_deref().unwrap_or("exterior"), boundary.inside);
+    let title = [boundary.label.as_str(), boundary.inside.as_str()].into_iter().find(|s| !s.is_empty()).unwrap_or("Membrane").to_string();
+    let subtitle = format!("{} ↔ {}", boundary.outside.as_deref().unwrap_or("outside"), boundary.inside);
     let at = stage.min + Vec2::new(left as f32, top as f32);
     let mut outcome = Outcome::Keep;
     menu_area(ctx, egui::Id::new("boundary-menu"), stage, at, BOUNDARY_MENU_WIDTH as f32, |ui| {
@@ -438,7 +438,7 @@ fn boundary_menu(ctx: &egui::Context, store: &Store, menu: &mut MenuState, stage
         menu_summary(ui, &add_reaction::available_summary(ids.len()));
         let used = ui.cursor().top() - top_y;
         if ids.is_empty() {
-            menu_empty(ui, "No undrawn transport reactions are left on this membrane.");
+            menu_empty(ui, "No undrawn transport reactions left.");
             return;
         }
         Frame::new().inner_margin(Margin::same(8)).show(ui, |ui| {
@@ -477,11 +477,11 @@ fn metabolite_add_menu(ctx: &egui::Context, store: &Store, menu: &mut MenuState,
     let left = js::max(8.0, js::min(menu.position.left, stage_w - 388.0));
     let top = js::max(8.0, js::min(menu.position.top, stage_h - 500.0));
     let at = stage.min + Vec2::new(left as f32, top as f32);
-    let subtitle = format!("{} · new visual instance", menu.label);
+    let subtitle = menu.label.clone();
     let mut outcome = Outcome::Keep;
     let filter_id = egui::Id::new("add-metabolite-filter");
     menu_area(ctx, egui::Id::new("add-metabolite-menu"), stage, at, add_reaction::ADD_REACTION_PANEL_WIDTH as f32, |ui| {
-        let (_, closed, _) = menu_head(ui, "Add metabolite", &subtitle, "Close Add metabolite panel", None);
+        let (_, closed, _) = menu_head(ui, "Add metabolite", &subtitle, "Close", Some("Close"));
         if closed {
             outcome = Outcome::Close;
         }
@@ -493,7 +493,7 @@ fn metabolite_add_menu(ctx: &egui::Context, store: &Store, menu: &mut MenuState,
             ui.set_width(ui.available_width());
             if metabolites.is_empty() {
                 ui.set_min_height(58.0 - 16.0);
-                ui.add(egui::Label::new(egui::RichText::new("No metabolites are available in this compartment.").size(12.0).color(p.ink_3)).wrap());
+                ui.add(egui::Label::new(egui::RichText::new("No metabolites available here.").size(12.0).color(p.ink_3)).wrap());
                 return;
             }
             egui::ScrollArea::vertical().id_salt("add-metabolite-list").max_height(LIST_MAX_HEIGHT - 16.0).auto_shrink([false, true]).show(ui, |ui| {

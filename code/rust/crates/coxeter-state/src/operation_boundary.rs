@@ -30,7 +30,7 @@ impl OperationDomain {
 }
 
 /// The MAP (BUILD) operations, by JavaScript name.
-pub const MAP_OPERATIONS: [&str; 45] = [
+pub const MAP_OPERATIONS: [&str; 50] = [
     "beginMapEdit",
     "commitMapEdit",
     "undoMap",
@@ -39,6 +39,9 @@ pub const MAP_OPERATIONS: [&str; 45] = [
     "moveCompartmentLabel",
     "setMapLabelSource",
     "arrangeMultiSelection",
+    "spaceMultiSelectionEvenly",
+    "rotateMultiSelection",
+    "pointMultiSelection",
     "removeMultiSelection",
     "setMap",
     "addMapReaction",
@@ -74,6 +77,8 @@ pub const MAP_OPERATIONS: [&str; 45] = [
     "removeMapText",
     "duplicateMapMetabolite",
     "setMetaboliteLabelAngle",
+    "setReactionLabelOffset",
+    "resetReactionLabel",
     "setMapNodePrimary",
     "removeMapNode",
 ];

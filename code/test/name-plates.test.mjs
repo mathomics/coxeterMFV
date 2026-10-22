@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { Model } from '../src/core/model.js';
 import { CommunityModel } from '../src/core/community.js';
 import { EditableMap } from '../src/map/editable-map.js';
-import { renderMap, frameLabelScale } from '../src/render/mapview.js';
+import { renderMap, frameLabelScale, exportFrameLabelScale } from '../src/render/mapview.js';
 
 /*
  * The names of compartments, cells and the medium.
@@ -155,4 +155,29 @@ test('the cell is named on a plate as wide as its name, held to the cell and the
   assert.ok(width * fit <= r.w + 0.01, 'never wider than the cell');
   assert.ok(30 * fit <= r.y - map.environment.rect.y, 'never taller than the medium above the cell');
   assert.match(svg, /class="emc-cell-name"[^>]*textLength=/);
+});
+
+test('an exported picture names its cells and compartments as large as the fitted view does', () => {
+  const map = EditableMap.emptyFromCommunity(cell());
+  // A map several screens wide, as a community map is.
+  map.setCanvasSize(map.width * 4, map.height * 4);
+  const k = exportFrameLabelScale(map);
+  const zoom = Math.min(1160 / map.width, 760 / map.height);
+  assert.equal(k, Number(frameLabelScale(12 / zoom).toFixed(3)));
+  assert.ok(k > 3, `a large map's names are enlarged (${k}×)`);
+
+  const exported = render(map, { forExport: true });
+  // Browsers scale the plates by the stylesheet, from the root...
+  assert.match(exported, new RegExp(`^<svg [^>]*style="--frame-label-scale:${k}"`));
+  // ...and every plate states its scale too, for editors that do not read var() or min().
+  const groups = [...exported.matchAll(/<g class="emc-frame-label" style="--fit:([\d.]+)" transform="scale\(([\d.]+)\)">/g)];
+  assert.equal(groups.length, plates(render(map)).length + map.cells.length, 'every compartment, the medium and the cell');
+  for (const [, fit, scale] of groups) assert.equal(Number(scale), Math.min(k, Number(fit)));
+
+  // On screen the camera sets the scale; nothing is fixed in the markup.
+  const screen = render(map);
+  assert.doesNotMatch(screen, /emc-frame-label"[^>]*transform=/);
+  assert.doesNotMatch(screen.slice(0, screen.indexOf('>')), /--frame-label-scale/);
+  // A small map is exported with its names near their base size.
+  assert.equal(exportFrameLabelScale({ width: 900, height: 600 }), 1);
 });

@@ -225,24 +225,23 @@ fn the_objective_select_sets_the_community_objective() {
 fn pfba_and_its_biomass_target() {
     let mut h = common::harness(None);
     open(&mut h, Workspace::Scenario);
-    assert!(common::shows(&h, "Current method: FBA."));
+    assert!(!h.state().store.parsimonious);
     common::click(&mut h, "Use Parsimonious Flux Balance Analysis");
     assert!(h.state().store.parsimonious);
-    assert!(common::shows(&h, "Current method: pFBA. pFBA fixes 100% of the optimum"));
+    assert!(!common::shows(&h, "Current method:"), "no method sentence under the switches");
     assert_eq!(value(&h, "Percentage of the optimal objective fixed for pFBA"), "100");
     common::type_into(&mut h, "Percentage of the optimal objective fixed for pFBA", "90.5");
     assert_eq!(h.state().store.pfba_biomass_percent, 90.5, "the debounced setter ran");
-    assert!(common::shows(&h, "pFBA fixes 90.5% of the optimum"));
+    assert_eq!(value(&h, "Percentage of the optimal objective fixed for pFBA"), "90.5");
 }
 
 #[test]
 fn loopless_and_its_progress_line() {
     let mut h = common::harness(None);
     open(&mut h, Workspace::Scenario);
-    assert!(common::shows(&h, "Removes internal cycles with a MILP"));
+    assert!(!common::shows(&h, "Removes internal cycles with a MILP"), "no line while it is off");
     common::click(&mut h, "Enable Loopless Flux Balance Analysis");
     assert!(h.state().store.loopless);
-    assert!(common::shows(&h, "Loopless uses a MILP"));
     // (The loopless MILP of this consortium is infeasible, as in the JS app.)
     assert!(common::shows(&h, "Loopless MILP optimal") || common::shows(&h, "Loopless: "));
 }
@@ -251,11 +250,10 @@ fn loopless_and_its_progress_line() {
 fn fva_and_its_progress_line() {
     let mut h = common::harness(None);
     open(&mut h, Workspace::Scenario);
-    assert!(common::shows(&h, "Computes the minimum and maximum flux"));
+    assert!(!common::shows(&h, "Computes the minimum and maximum flux"), "no line while it is off");
     common::click(&mut h, "Enable Flux Variability Analysis");
     assert!(h.state().store.fva_enabled);
     assert!(common::shows(&h, "FVA done: "), "FVA ran on the next solve");
-    assert!(common::shows(&h, "Current method: FBA + FVA."));
 }
 
 // steadycom-ui.test.mjs
@@ -329,8 +327,7 @@ fn zero_growth_and_inactive_species_are_described_without_claiming_a_unique_comp
     assert!(common::shows(&h, "Composition at µ = 0 h⁻¹"));
     assert!(common::shows(&h, "A 100.0 % · B inactive (X = 0)"));
     assert!(common::shows(&h, "(12 ms)"));
-    assert!(common::shows(&h, "may be non-unique, even at the maximum"));
-    assert!(common::shows(&h, "At µ = 0, present members still obey their maintenance bounds"));
+    assert!(common::shows(&h, "Composition may be non-unique"));
     assert!(!common::shows(&h, "answer unique") && !common::shows(&h, "community is pinned down"));
 }
 
@@ -350,7 +347,7 @@ fn an_infeasible_growth_rate_is_reported() {
 #[test]
 fn nine_species_conditions_distinguish_baseline_from_optional_figure_4_fiber_limits() {
     let mut h = fixture(GUT9, true);
-    assert_eq!(value(&h, "SteadyCom fiber condition"), "Baseline diet (no additional fiber limits)");
+    assert_eq!(value(&h, "SteadyCom fiber condition"), "Baseline diet");
     assert!(!common::has(&h, "Bacteroides maximum specific fiber uptake"));
     h.state_mut().store.steady_com_config.fiber = Some(Fiber { bacteroides: 12.5, faecalibacterium: 5.0 });
     common::settle(&mut h);
@@ -366,7 +363,7 @@ fn the_fiber_condition_and_limit_are_set_and_validated() {
     // `steadycom-fiber-condition`.
     choose(&mut h, "SteadyCom fiber condition", "Figure 4 fiber limits");
     assert_eq!(h.state().store.steady_com_config.fiber.map(|f| f.bacteroides), Some(30.0));
-    assert!(status(&h).contains("Calculate the permitted growth-rate range again"));
+    assert!(status(&h).contains("Condition changed; recalculate the growth-rate range."));
     // `steadycom-fiber`: out of range is refused under the controls.
     let field = "Bacteroides maximum specific fiber uptake";
     common::type_into(&mut h, field, "50");
@@ -384,7 +381,7 @@ fn the_fiber_condition_and_limit_are_set_and_validated() {
     assert!(!invalid(&h, field));
     assert!(!common::shows(&h, "Enter a Bacteroides fiber limit"));
     // Back to the baseline.
-    choose(&mut h, "SteadyCom fiber condition", "Baseline diet (no additional fiber limits)");
+    choose(&mut h, "SteadyCom fiber condition", "Baseline diet");
     assert_eq!(h.state().store.steady_com_config.fiber, None);
 }
 
@@ -446,7 +443,7 @@ fn fixed_growth_results_take_precedence_over_ordinary_mode_flags_and_disable_inc
     let solved = h.state().store.solution.as_ref().and_then(|s| s.steady_com.as_ref()).map(|s| s.mu);
     assert_eq!(solved, Some(mu));
     assert!(common::shows(&h, &format!("Composition at µ = {} h⁻¹:", coxeter_core::js::number_to_string(mu))));
-    assert!(common::shows(&h, "Current method: SteadyCom fixed µ. The map shows a fixed-µ SteadyCom solution."));
+    assert!(!common::shows(&h, "Current method:"));
     assert!(common::disabled(&h, "Enable Flux Variability Analysis"));
 }
 
@@ -480,9 +477,9 @@ fn the_growth_rate_field_says_what_is_wrong_with_it() {
 fn the_parsimonious_choice_applies_to_the_next_fixed_growth_solve() {
     let mut h = fixture(TEACHING, false);
     assert!(!h.state().store.steady_com_config.parsimonious);
-    common::click(&mut h, "Parsimonious: least total flux at this µ");
+    common::click(&mut h, "Parsimonious");
     assert!(h.state().store.steady_com_config.parsimonious);
-    common::click(&mut h, "Parsimonious: least total flux at this µ");
+    common::click(&mut h, "Parsimonious");
     assert!(!h.state().store.steady_com_config.parsimonious);
 }
 
@@ -684,7 +681,7 @@ fn the_case_scenario_and_flux_comparison_are_chosen() {
     assert_eq!(h.state().store.zuniga.scenario_id.as_deref(), Some("mutant-monoculture"));
     choose(&mut h, "Zuñiga flux comparison", "Δ flux vs WT monoculture");
     assert_eq!(h.state().store.zuniga.comparison, "difference");
-    assert!(common::shows(&h, "Δv = selected − WT"));
+    assert!(common::shows(&h, "Blue is a decrease and red an increase relative to WT"));
 }
 
 #[test]
@@ -719,7 +716,7 @@ fn the_case_before_its_sources_are_downloaded_says_so() {
     shell.store.scenario = Some(json!({ "id": format!("published:{ZUNIGA_ID}"), "published": ZUNIGA_ID, "name": name }));
     let mut h = common::harness_of(shell);
     open(&mut h, Workspace::Scenario);
-    assert!(common::shows(&h, "Loading requires an internet connection the first time."));
+    assert!(common::shows(&h, "Loading needs an internet connection the first time."));
     assert!(common::shows(&h, "SOURCE CONDITIONS"));
     assert!(common::disabled(&h, "Download Ec as COBRA JSON"));
     assert!(common::disabled(&h, "Download Se as SBML"));
@@ -747,7 +744,7 @@ fn the_solver_block_lists_the_solvers_and_switches_every_analysis() {
     solvers_checked(&mut h);
     let highs = format!("{} · built in", h.state().store.solver.label());
     assert_eq!(value(&h, "Solver"), highs);
-    assert!(common::shows(&h, "Every analysis runs on it"));
+    assert!(common::shows(&h, "Solvers may return different fluxes when the optimum is not unique."));
     assert!(common::has(&h, "Check the solvers again"));
     assert!(common::has(&h, "Locate the Gurobi library"));
     assert!(common::has(&h, "Locate the CPLEX library"));

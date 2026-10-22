@@ -35,6 +35,15 @@
 }
 .stage.is-dragging-metabolite-label,
 .stage.is-dragging-metabolite-label * { cursor: grabbing !important; }
+/* A reaction's name can be picked up and put elsewhere too. */
+.emc-label-rxn {
+  pointer-events: all;
+  cursor: grab;
+  user-select: none;
+  touch-action: none;
+}
+.stage.is-dragging-reaction-label,
+.stage.is-dragging-reaction-label * { cursor: grabbing !important; }
 .emc-label-met { font-size: calc(12.5px * var(--label-scale)); font-weight: 600; }
 .emc-label-medium { font-size: calc(15px * var(--label-scale)); font-weight: 700; }
 .emc-label-currency { font-size: calc(9.5px * var(--label-scale)); font-weight: 500; opacity: 0.72; }

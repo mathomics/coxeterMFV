@@ -70,7 +70,10 @@ fn the_exported_svg_is_the_map_alone_with_its_stylesheet_rules_in_front() {
     assert_eq!(tree, render_map(&map, &RenderState { for_export: true, ..state.clone() }));
 
     let with_meta = exportable_svg(&map, &state, &ExportOptions { metadata: Some(r#"{"id":"zuniga","a":"<b>"}"#.into()), ..Default::default() });
-    assert!(with_meta.contains(r#"role="img" aria-label="Multicell community metabolic map"><metadata>{"id":"zuniga","a":"&lt;b&gt;"}</metadata><style>"#));
+    let k = coxeter_render::export_frame_label_scale(&map);
+    assert!(with_meta.contains(&format!(
+        r#"role="img" aria-label="Multicell community metabolic map" style="--frame-label-scale:{k}"><metadata>{{"id":"zuniga","a":"&lt;b&gt;"}}</metadata><style>"#
+    )));
 }
 
 #[test]
@@ -98,10 +101,11 @@ fn inlined_styles_leave_nothing_for_css_to_do() {
     assert_eq!((minor.get("font-size"), minor.get("font-weight"), minor.get("opacity")), (Some("9.5"), Some("500"), Some("0.85")));
     let currency = by_class("emc-label-currency");
     assert_eq!((currency.get("font-size"), currency.get("opacity")), (Some("9.5"), Some("0.85")), "dark: .emc-map.emc-dark .emc-label-currency");
-    // A name plate is scaled as a whole, never past its fit; its text is in capitals.
+    // A name plate is scaled as a whole, as on screen with the map fitted to
+    // a window and never past its fit; its text is in capitals.
     let frame = by_class("emc-frame-label");
     let scale: f64 = frame.get("transform").unwrap().strip_prefix("scale(").unwrap().strip_suffix(')').unwrap().parse().unwrap();
-    assert!(scale > 0.0 && scale <= 1.0);
+    assert!(scale > 0.0 && scale <= coxeter_render::export_frame_label_scale(&map));
     let name = by_class("emc-comp-text");
     assert_eq!(name.text_content(), name.text_content().to_uppercase());
     assert_eq!((name.get("font-size"), name.get("font-weight")), (Some("11.5"), Some("700")));

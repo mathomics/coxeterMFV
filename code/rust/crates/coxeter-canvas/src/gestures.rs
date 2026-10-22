@@ -23,6 +23,7 @@
 use coxeter_core::js;
 use coxeter_core::mapdata::{Point, Rect};
 use coxeter_core::metabolite_label::metabolite_label_angle;
+use coxeter_core::reaction_label::{reaction_label_offset, reaction_label_placement_in};
 use coxeter_map::reaction_edit::Handle;
 use indexmap::IndexMap;
 
@@ -323,6 +324,23 @@ pub struct LabelDrag {
     pub history: Option<MapEdit>,
 }
 
+/// `reactionLabelDragGesture`: a reaction's name picked up. The drag goes on
+/// from where the name was written, so it does not jump.
+#[derive(Debug, Clone, PartialEq)]
+pub struct ReactionLabelDrag {
+    pub reaction_id: String,
+    pub pointer_id: PointerId,
+    /// The place the name was written from, relative to the marker.
+    pub start_offset: Point,
+    /// `rxn.labelOffset` as it was, for a cancel.
+    pub label_offset_before: Option<Point>,
+    /// The press, in map and in client coordinates.
+    pub press: Point,
+    pub client: Point,
+    pub moved: bool,
+    pub history: Option<MapEdit>,
+}
+
 /// `textDragGesture`.
 #[derive(Debug, Clone, PartialEq)]
 pub struct TextDrag {
@@ -526,6 +544,8 @@ pub struct Marks {
     pub merge_target: Option<String>,
     /// `.emc-label-draggable.is-dragging`.
     pub dragging_label: Option<String>,
+    /// `.emc-label-rxn.is-dragging`.
+    pub dragging_reaction_label: Option<String>,
 }
 
 /// Every gesture variable of `app.js`, and the stage's own state.
@@ -541,6 +561,7 @@ pub struct Gestures {
     pub pan: Option<PanGesture>,
     pub node_drag: Option<NodeDrag>,
     pub metabolite_label_drag: Option<LabelDrag>,
+    pub reaction_label_drag: Option<ReactionLabelDrag>,
     pub compartment_label_drag: Option<CompartmentLabelDrag>,
     pub reaction_pick: Option<ReactionPick>,
     pub reaction_drag: Option<ReactionDrag>,
@@ -640,6 +661,7 @@ impl Gestures {
         self.pan.is_some()
             || self.node_drag.is_some()
             || self.metabolite_label_drag.is_some()
+            || self.reaction_label_drag.is_some()
             || self.compartment_label_drag.is_some()
             || self.reaction_pick.is_some()
             || self.reaction_drag.is_some()
@@ -687,6 +709,9 @@ impl Gestures {
         if self.metabolite_label_drag.is_some() {
             out.push("is-dragging-metabolite-label");
         }
+        if self.reaction_label_drag.is_some() {
+            out.push("is-dragging-reaction-label");
+        }
         if self.compartment_label_drag.is_some() {
             out.push("is-dragging-compartment-label");
         }
@@ -711,7 +736,8 @@ impl Gestures {
         out
     }
 
-    /// What `markDraggedNode` and `markDraggedMetaboliteLabel` mark.
+    /// What `markDraggedNode`, `markDraggedMetaboliteLabel` and
+    /// `markDraggedReactionLabel` mark.
     pub fn marks(&self, host: &dyn MapHost) -> Marks {
         let mut marks = Marks::default();
         if let Some(g) = &self.node_drag {
@@ -724,6 +750,7 @@ impl Gestures {
             }
         }
         marks.dragging_label = self.metabolite_label_drag.as_ref().map(|g| g.node_id.clone());
+        marks.dragging_reaction_label = self.reaction_label_drag.as_ref().map(|g| g.reaction_id.clone());
         marks
     }
 
@@ -917,6 +944,83 @@ impl Gestures {
         }
         self.paint = true;
         Some(g)
+    }
+
+    // Reaction labels
+
+    /// `beginReactionLabelDrag`: a press on a reaction's name. A drag puts the
+    /// name somewhere else, kept as an offset from the marker
+    /// (`reaction_label`); a press that never moves is a click on the
+    /// reaction, decided on release.
+    fn begin_reaction_label_drag(&mut self, reaction_id: String, ev: &PointerInput, stage: &Stage, host: &mut dyn MapHost) {
+        let Some((place, marker, before)) = host.map().and_then(|m| {
+            let rxn = m.reaction(&reaction_id)?;
+            Some((reaction_label_placement_in(m.graph(), rxn), Point::new(rxn.x, rxn.y), reaction_label_offset(rxn)))
+        }) else {
+            return;
+        };
+        self.close_map_menus();
+        let at = stage.screen_to_map(ev.client);
+        let history = begin(host, "Move reaction label");
+        // Where the name is written now, in its default place or not: the drag
+        // goes on from there, so the name does not jump when it is picked up.
+        self.reaction_label_drag = Some(ReactionLabelDrag {
+            reaction_id,
+            pointer_id: ev.pointer_id,
+            start_offset: Point::new(place.x - marker.x, place.y - marker.y),
+            label_offset_before: before,
+            press: at,
+            client: ev.client,
+            moved: false,
+            history,
+        });
+        self.capture(ev);
+        self.paint = true;
+    }
+
+    fn update_reaction_label_drag(&mut self, ev: &PointerInput, stage: &Stage, host: &mut dyn MapHost) {
+        let Some(g) = &mut self.reaction_label_drag else { return };
+        if ev.pointer_id != g.pointer_id {
+            return;
+        }
+        // A few pixels of slack, as for a reaction, so a click is not taken for a move.
+        if !g.moved && (ev.client.x - g.client.x).abs() + (ev.client.y - g.client.y).abs() <= 4.0 {
+            return;
+        }
+        let at = stage.screen_to_map(ev.client);
+        let offset = Point::new(g.start_offset.x + at.x - g.press.x, g.start_offset.y + at.y - g.press.y);
+        if !host.set_reaction_label_offset(&g.reaction_id, offset) {
+            return;
+        }
+        g.moved = true;
+        self.paint = true;
+    }
+
+    fn finish_reaction_label_drag(&mut self, pointer_id: PointerId, cancel: bool, host: &mut dyn MapHost) -> Option<ReactionLabelDrag> {
+        let g = self.reaction_label_drag.as_ref()?;
+        if g.pointer_id != pointer_id {
+            return None;
+        }
+        let g = self.reaction_label_drag.take()?;
+        if self.captured == Some(pointer_id) {
+            self.captured = None;
+        }
+        if cancel {
+            host.restore_reaction_label_offset(&g.reaction_id, g.label_offset_before);
+        } else if g.moved {
+            host.commit_map_edit(g.history.clone());
+        }
+        self.paint = true;
+        Some(g)
+    }
+
+    /// `finishReactionLabelDragForHistory()`: undo must not land in the
+    /// middle of a name drag.
+    pub fn finish_reaction_label_drag_for_history(&mut self, host: &mut dyn MapHost) {
+        if let Some(g) = &self.reaction_label_drag {
+            let id = g.pointer_id;
+            self.finish_reaction_label_drag(id, false, host);
+        }
     }
 
     // Text drag
@@ -1219,9 +1323,7 @@ impl Gestures {
         // line says so rather than leaving a silent no-op.
         let rect = span(g.start_map, g.current_map);
         if !g.moved || rect.w < MIN_DRAWN_SIZE || rect.h < MIN_DRAWN_SIZE {
-            self.emit(CanvasEvent::StatusHint(
-                "Drag to draw the compartment: press inside the highlighted parent and pull out a rectangle.".into(),
-            ));
+            self.emit(CanvasEvent::StatusHint("Drag inside the highlighted parent to draw the compartment.".into()));
             self.paint = true;
             return false;
         }
@@ -1490,6 +1592,11 @@ impl Gestures {
         self.release(ev);
         if g.moved {
             host.select_in_rect(g.start_map.x, g.start_map.y, g.current_map.x, g.current_map.y, true);
+            // A sweep that catches several things is about them: the inspector
+            // turns from whatever was picked before to the selection.
+            if host.multi_selection_size() >= 2 && (host.selected_reaction().is_some() || host.selected_entity().is_some()) {
+                host.select(None);
+            }
         } else {
             host.clear_multi_selection();
         }
@@ -1624,6 +1731,10 @@ impl Gestures {
         if let Some(g) = &self.metabolite_label_drag {
             let id = g.pointer_id;
             self.finish_metabolite_label_drag(id, false, host);
+        }
+        if let Some(g) = &self.reaction_label_drag {
+            let id = g.pointer_id;
+            self.finish_reaction_label_drag(id, false, host);
         }
         if let Some(g) = self.text_drag.take()
             && g.moved {
@@ -1828,6 +1939,34 @@ impl Gestures {
                 return;
             }
 
+        // A reaction's name is moved by the tools that move things. With any
+        // other tool, or with shift, it stands for its reaction (reaction_at,
+        // multi_selectable_at), and the press goes on below as one on the
+        // marker.
+        if let Some(label_reaction_id) = targets::reaction_label_at(&target, host)
+            && !geometry_edit
+            && !selecting
+            && self.moves_things()
+        {
+            let stack = if self.tool == Tool::Edit { stage.elements_from_point(ev.client, self.hit_filter()) } else { Vec::new() };
+            if let Some(handle) = targets::edit_handle_under(&stack) {
+                if let Some(rotating) = targets::rotate_handle_at(handle, host) {
+                    self.begin_rotate_drag(rotating, ev, host);
+                    return;
+                }
+                if let Some(control) = targets::control_handle_at(handle) {
+                    self.begin_control_drag(control, ev, host);
+                    return;
+                }
+                if let Some(marker) = targets::draggable_reaction_at(handle, host) {
+                    self.begin_reaction_drag(marker, ev, true, stage, host);
+                    return;
+                }
+            }
+            self.begin_reaction_label_drag(label_reaction_id, ev, stage, host);
+            return;
+        }
+
         if selecting && !geometry_edit {
             if let Some((kind, id)) = multi_hit {
                 if host.is_multi_selected(kind, &id) && host.multi_selection_size() >= 2 && self.moves_things() {
@@ -1973,6 +2112,10 @@ impl Gestures {
             self.update_metabolite_label_drag(ev, stage, host);
             return;
         }
+        if self.reaction_label_drag.is_some() {
+            self.update_reaction_label_drag(ev, stage, host);
+            return;
+        }
         if self.text_drag.is_some() {
             self.update_text_drag(ev, stage, host);
             return;
@@ -2085,6 +2228,15 @@ impl Gestures {
             if let Some(g) = self.finish_metabolite_label_drag(ev.pointer_id, false, host)
                 && !g.moved {
                     host.select_entity("metabolite", &g.node_id, None);
+                }
+            return;
+        }
+        if self.reaction_label_drag.is_some() {
+            // A press on the name that never moved is a click on the reaction.
+            if let Some(g) = self.finish_reaction_label_drag(ev.pointer_id, false, host)
+                && !g.moved {
+                    self.close_map_menus();
+                    host.select(Some(&g.reaction_id));
                 }
             return;
         }
@@ -2347,6 +2499,10 @@ impl Gestures {
             self.finish_metabolite_label_drag(ev.pointer_id, true, host);
             return;
         }
+        if self.reaction_label_drag.is_some() {
+            self.finish_reaction_label_drag(ev.pointer_id, true, host);
+            return;
+        }
         if self.text_drag.is_some() {
             self.finish_text_drag(ev, host);
             return;
@@ -2425,6 +2581,9 @@ impl Gestures {
         };
         if let Some(g) = self.metabolite_label_drag.take() {
             host.restore_metabolite_label_angle(&g.node_id, g.label_angle_before);
+        }
+        if let Some(g) = self.reaction_label_drag.take() {
+            host.restore_reaction_label_offset(&g.reaction_id, g.label_offset_before);
         }
         if let Some(g) = self.node_drag.take() {
             keep(g.moved, g.history);
@@ -2518,6 +2677,7 @@ impl Gestures {
         }
         if mods.command && key == CanvasKey::Z {
             self.finish_metabolite_label_drag_for_history(host);
+            self.finish_reaction_label_drag_for_history(host);
             self.close_map_menus();
             if mods.shift { host.redo_map() } else { host.undo_map() };
             self.paint = true;
@@ -2525,6 +2685,7 @@ impl Gestures {
         }
         if mods.command && key == CanvasKey::Y {
             self.finish_metabolite_label_drag_for_history(host);
+            self.finish_reaction_label_drag_for_history(host);
             self.close_map_menus();
             host.redo_map();
             self.paint = true;

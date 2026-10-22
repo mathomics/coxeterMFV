@@ -165,5 +165,5 @@ test('FVA mode marks reactions whose range is still pending', () => {
     showCrossFeeding: false,
   });
 
-  assert.ok(svg.includes('R1  [calculando…]'));
+  assert.ok(svg.includes('R1  [computing…]'));
 });

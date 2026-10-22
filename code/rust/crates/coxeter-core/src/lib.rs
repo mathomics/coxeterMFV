@@ -16,6 +16,7 @@ pub mod label_sources;
 pub mod mapdata;
 pub mod metabolite_label;
 pub mod model;
+pub mod reaction_label;
 pub mod testkit;
 pub mod text_style;
 

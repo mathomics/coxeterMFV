@@ -1,4 +1,5 @@
-//! `markDraggedNode()` and `markDraggedMetaboliteLabel()` of `app.js`: the
+//! `markDraggedNode()`, `markDraggedMetaboliteLabel()` and
+//! `markDraggedReactionLabel()` of `app.js`: the
 //! classes a drag puts on the drawing (`is-dragging`, `is-merge-target`),
 //! applied to each tree the renderer draws so a repaint keeps them, as the
 //! JavaScript re-applies them after `paintMap()`.
@@ -43,6 +44,10 @@ pub fn apply_marks(tree: &mut Element, marks: &Marks) {
         let id = id.clone();
         mark_first(tree, &move |e: &Element| e.get("data-metabolite-label") == Some(id.as_str()), "is-dragging");
     }
+    if let Some(id) = &marks.dragging_reaction_label {
+        let id = id.clone();
+        mark_first(tree, &move |e: &Element| e.has_class("emc-label-rxn") && e.get("data-rxn") == Some(id.as_str()), "is-dragging");
+    }
 }
 
 #[cfg(test)]
@@ -57,7 +62,12 @@ mod tests {
             .child(Element::paired("g").with("class", "emc-label-draggable").with("data-metabolite-label", "a"));
         apply_marks(
             &mut tree,
-            &Marks { dragging_node: Some("a".into()), merge_target: Some("b".into()), dragging_label: Some("a".into()) },
+            &Marks {
+                dragging_node: Some("a".into()),
+                merge_target: Some("b".into()),
+                dragging_label: Some("a".into()),
+                dragging_reaction_label: None,
+            },
         );
         let kids: Vec<&Element> = tree.elements().collect();
         assert_eq!(kids[0].get("class"), Some("emc-node is-dragging"));

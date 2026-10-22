@@ -1,0 +1,9 @@
+[
+ {
+  "name": "selection-turn",
+  "start": "file",
+  "input": "models/maps/consorcio-anaerobio.json",
+  "home": false,
+  "file": "map/edits-selection-turn.json"
+ }
+]

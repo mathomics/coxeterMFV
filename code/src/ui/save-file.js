@@ -117,9 +117,9 @@ function confirmDownload(env) {
     dialog.setAttribute('aria-labelledby', 'save-dialog-title');
     dialog.innerHTML = `<form method="dialog">
       <h2 id="save-dialog-title">Choose where to save?</h2>
-      <p>${name} saves this file straight to your Downloads folder unless it is set to ask. To pick the folder and the name each time, turn on:</p>
+      <p>${name} saves this file straight to your Downloads folder. To choose the folder each time, turn on:</p>
       <p class="save-dialog-setting">${path} → <strong>“${option}”</strong></p>
-      <p class="hint">A web page cannot read or change your browser's settings, so this has to be done there. Change it, then press Save.</p>
+      <p class="hint">Change it in the browser, then press Save.</p>
       <label class="save-dialog-check"><input type="checkbox" data-save-notice-off> It is set: don't show this again</label>
       <div class="save-dialog-actions">
         <button type="button" data-save-cancel>Cancel</button>

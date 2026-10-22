@@ -494,15 +494,11 @@ impl MapView {
                     .show(ui, |ui| {
                         ui.set_max_width(card.width() - 48.0);
                         ui.label(egui::RichText::new("Nothing drawn yet").size(16.0).strong().color(colors.ink));
-                        let waiting = if available > 0 {
-                            if shell { format!(" — {available} reactions are waiting") } else { format!(" — {available} reactions are still there") }
-                        } else {
-                            String::new()
-                        };
-                        let p = if shell {
-                            format!("The cells and compartments are drawn but nothing is inside them; the model is untouched{waiting}.")
-                        } else {
-                            format!("The map is empty; the model is untouched{waiting}.")
+                        let p = match (shell, available > 0) {
+                            (true, true) => format!("The cells are drawn but empty; {available} reactions can be added."),
+                            (true, false) => "The cells are drawn but empty.".to_string(),
+                            (false, true) => format!("The map is empty; the model has {available} reactions."),
+                            (false, false) => "The map is empty.".to_string(),
                         };
                         ui.label(egui::RichText::new(p).size(13.0).color(colors.ink2));
                         let steps: &[&str] = if shell {
@@ -643,7 +639,7 @@ impl MapView {
     /// what is under the pointer.
     fn cursor(&self, p: Pos2) -> CursorIcon {
         let g = &self.canvas.gestures;
-        if g.pan.is_some() || g.node_drag.is_some() || g.group_drag.is_some() || g.metabolite_label_drag.is_some() {
+        if g.pan.is_some() || g.node_drag.is_some() || g.group_drag.is_some() || g.metabolite_label_drag.is_some() || g.reaction_label_drag.is_some() {
             return CursorIcon::Grabbing;
         }
         if g.compartment_label_drag.is_some() || g.text_drag.is_some() || g.control_drag.is_some() {
@@ -730,6 +726,7 @@ fn element_cursor(e: &coxeter_render::Element, tool: Tool) -> Option<CursorIcon>
         || has("emc-map-text")
         || has("emc-hit-node")
         || has("emc-label-draggable")
+        || has("emc-label-rxn")
     {
         return Some(CursorIcon::Grab);
     }

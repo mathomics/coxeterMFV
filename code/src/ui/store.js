@@ -64,7 +64,7 @@ import { reactionsInCompartment } from '../map/compartment-reactions.js';
 import {
   pruneMapToModel, reconcileCompartments, describeReconciliation,
 } from '../map/reconcile-map.js';
-import { emptySelection, parseCompartmentKey, selectionSize } from '../map/multi-selection.js';
+import { emptySelection, parseCompartmentKey, selectionSize, TURN_REFUSAL } from '../map/multi-selection.js';
 import { normalizeHexColor } from '../core/colors.js';
 import { exportFileName } from './file-names.js';
 import { TEXT_SIZE, DEFAULT_TEXT_FONT, clampTextSize, normalizeTextFont } from '../core/text-style.js';
@@ -106,6 +106,13 @@ const LOG_LIMIT = 200;
  */
 const AUTO_DRAW_REACTION_LIMIT = 350;
 const AUTO_DRAW_METABOLITE_LIMIT = 500;
+
+// What the status line says when the map refuses to turn a selection (rotateSelection).
+const TURN_WARNINGS = Object.freeze({
+  [TURN_REFUSAL.transporter]: 'Transporters stay on their membranes; leave them out to turn the selection.',
+  [TURN_REFUSAL.compartment]: 'Compartments cannot be turned; leave them out.',
+  [TURN_REFUSAL.room]: 'No room to turn the selection here.',
+});
 
 export class Store {
   constructor(base = '.') {
@@ -294,7 +301,7 @@ export class Store {
 
   /** Throw when the Zuñiga case is open, whose objective, medium and bounds are the authors' and stay fixed. */
   assertPublishedStudyConstraints() {
-    if (this.isZunigaStudy) throw new Error('The Zuñiga case preserves the authors’ objective, medium, bounds and population coefficients. Choose a documented case scenario to change these conditions. Map geometry remains editable.');
+    if (this.isZunigaStudy) throw new Error('The Zuñiga case keeps the authors’ objective, medium, bounds and population coefficients.');
   }
 
   /** Listen to store changes: `fn(store, reason)`. Returns the function that unsubscribes. */
@@ -466,7 +473,7 @@ export class Store {
       this.status = {
         ...this.status,
         state: 'ok',
-        message: `${loaded} · curated map of ${this.map.reactions.size} reactions.${this.mapLoadNote} Run Analysis when you want FBA.`,
+        message: `${loaded} · curated map of ${this.map.reactions.size} reactions.${this.mapLoadNote}`,
       };
     } else {
       // The generic automatic canvas is sized for all 4,105 reactions. The
@@ -482,7 +489,7 @@ export class Store {
       this.status = {
         ...this.status,
         state: 'ok',
-        message: `${loaded} · ${preview.placed} representative reactions drawn across ${preview.coveredCompartments}/${YEAST9_PREVIEW_COMPARTMENTS.length} compartments. Run Analysis when you want FBA.`,
+        message: `${loaded} · ${preview.placed} representative reactions drawn across ${preview.coveredCompartments}/${YEAST9_PREVIEW_COMPARTMENTS.length} compartments.`,
       };
     }
     this.settleOpenedWork();
@@ -626,16 +633,16 @@ export class Store {
       this.mapMode = 'full';
       drawn = ` Drawn in full: ${this.map?.reactions?.size ?? 0} reactions.`;
     } else if (this.showCoreMetabolismOverview({ recordHistory: false })) {
-      drawn = ' Drawing central carbon metabolism only — this model is too large to lay out in full automatically; use Map options ▸ Full map for everything.';
+      drawn = ' Central carbon metabolism only: the model is too large to lay out in full. Map options ▸ Full map draws everything.';
     } else {
       this.mapMode = 'empty';
-      drawn = ' The drawing was left empty: this model is too large to lay out automatically. Build it up from Map structure, or use Map options ▸ Full map.';
+      drawn = ' The drawing was left empty: this model is too large to lay out automatically. Build it from Map structure or Map options ▸ Full map.';
     }
 
     this.status = {
       ...this.status,
       state: 'ok',
-      message: `Imported ${prepared.entries.length} model(s): ${totalReactions} reactions, ${totalMetabolites} metabolites.${autoSolve ? '' : ' Analysis was deferred for this genome-scale model; use Run Analysis when needed.'}${drawn}`,
+      message: `Imported ${prepared.entries.length} model(s): ${totalReactions} reactions, ${totalMetabolites} metabolites.${autoSolve ? '' : ' Analysis deferred (genome-scale model).'}${drawn}`,
     };
     this.settleOpenedWork();
     this.drawWaitingMap();
@@ -674,6 +681,18 @@ export class Store {
     }
     this.crossFeedingExplorer.selectedAt = at;
     return this.selectCrossFeedingEvent(event.id);
+  }
+
+  /**
+   * Whether the map is drawn with its cross-feeding highlighted: asked for in
+   * the view, there are cells to feed one another, and the solution has them
+   * pass something. The highlight dims all but the transfers between cells, so
+   * without one it would only dim the map (on a map of one cell with no
+   * control in sight to undo it); the view setting is kept for when there is.
+   */
+  crossFeedingHighlighted() {
+    return Boolean(this.view.showCrossFeeding) && (this.community?.activeSpecies?.length ?? 0) > 1
+      && this.crossFeedingMetabolites().length > 0;
   }
 
   /** The metabolites species pass to each other, most important first (protons and water left out). */
@@ -910,7 +929,7 @@ export class Store {
 
   /** The reproducibility bundle of the current FBA-family analysis. Throws for a fixed-µ SteadyCom solution. */
   async reproducibilityBundle() {
-    if (this.solution?.steadyCom) throw new Error('Fixed-μ SteadyCom replay is saved through Scenario JSON. This reproducibility bundle supports ordinary FBA analyses; export the scenario and flux CSV for this solution.');
+    if (this.solution?.steadyCom) throw new Error('Reproducibility bundles cover ordinary FBA only; save a SteadyCom solution as Scenario JSON.');
     return createReproducibilityBundle(this);
   }
 
@@ -1213,7 +1232,7 @@ export class Store {
     result.zuniga.crossFeeding = this.community.crossFeeding(result.fluxes);
     this.zunigaSolutions.set(id, result);
     this.applySolution(result, { allowFVA: false });
-    this.status = { ...this.status, state: result.status === 'optimal' ? 'ok' : 'error', message: `${scenario.name} · exact source constraints · stationary FBA adaptation of the authors’ community model.` };
+    this.status = { ...this.status, state: result.status === 'optimal' ? 'ok' : 'error', message: `${scenario.name} · exact source constraints · stationary FBA.` };
     if (emit) this.emit('solution');
     return result;
   }
@@ -1417,8 +1436,7 @@ export class Store {
       this.mapMode = 'published-case';
       this.scenarioMapFile = `published/${id}/${manifest.map}`;
       const members = manifest.members?.length ?? 0;
-      const next = STEADYCOM_COMMUNITIES.has(id) ? ' Calculate the permitted μ range to run SteadyCom.' : '';
-      this.status = { ...this.status, state: 'ok', message: `Full ${members}-member model loaded with its curated map.${this.mapLoadNote}${next}` };
+      this.status = { ...this.status, state: 'ok', message: `Full ${members}-member model loaded with its curated map.${this.mapLoadNote}` };
       this.emit('map');
       return;
     }
@@ -1431,7 +1449,7 @@ export class Store {
     const drawing = new CommunityModel({ name: this.scenario.name, objective: this.objective, species: entries, medium: this.mediumSpec() });
     this.map = EditableMap.fromCommunity(drawing, layoutEngineOptions(this.layoutSettings));
     this.mapHistory.clear();
-    this.status = { ...this.status, state: 'ok', message: 'Full nine-species model loaded; the map shows an excerpt. Calculate the permitted μ range to run SteadyCom.' };
+    this.status = { ...this.status, state: 'ok', message: 'Full nine-species model loaded; the map shows an excerpt.' };
     this.emit('map');
   }
 
@@ -1887,7 +1905,7 @@ export class Store {
   setFVA(enabled) {
     this.assertPublishedStudyConstraints();
     if (enabled && this.solution?.steadyCom) {
-      this.status = { ...this.status, state: 'warn', message: 'Ordinary FVA does not apply to the fixed-μ SteadyCom LP. Run an ordinary analysis first.' };
+      this.status = { ...this.status, state: 'warn', message: 'FVA does not apply to a fixed-μ SteadyCom solution.' };
       this.emit('status');
       return this.fvaRanges;
     }
@@ -2022,7 +2040,7 @@ export class Store {
       return { supported: false, reason: 'Open this community first to load its models.' };
     }
     if (this.scenario?.published && !STEADYCOM_COMMUNITIES.has(communityId)) {
-      return { supported: false, reason: 'This published example does not supply a validated SteadyCom formulation and its full constraints.' };
+      return { supported: false, reason: 'No validated SteadyCom formulation for this example.' };
     }
     if (!this.community || !this.species.some((sp) => sp.enabled !== false)) {
       return { supported: false, reason: 'No active member models are available.' };
@@ -2031,7 +2049,7 @@ export class Store {
     const manifest = this.publishedManifests.get(communityId);
     if (embedded && this.scenario?.published && !(manifest?.members ?? []).every((member) =>
       `models/published/${communityId}/${member.model}` in embedded)) {
-      return { supported: false, reason: 'This older standalone contains only map excerpts. Open the updated standalone or serve the application to calculate growth rates.' };
+      return { supported: false, reason: 'This older standalone has only map excerpts; growth rates need the updated one.' };
     }
     return { supported: true, communityId, kind: communityId === 'steadycom-gut-nine' ? 'joint' : 'separate', reason: '' };
   }
@@ -2084,7 +2102,7 @@ export class Store {
     }
     this.invalidateSteadyCom();
     this.steadyComConfig.fiber = rate === null ? null : { bacteroides: rate, faecalibacterium: 5 };
-    this.status = { ...this.status, state: 'ok', message: 'Condition changed. Calculate the permitted growth-rate range again.' };
+    this.status = { ...this.status, state: 'ok', message: 'Condition changed; recalculate the growth-rate range.' };
     this.emit('steadycom');
   }
 
@@ -2217,8 +2235,14 @@ export class Store {
     const key = this.steadyComKey();
     const state = this.steadyComState?.key === key && Number.isFinite(this.steadyComState.max)
       ? this.steadyComState : await this.steadyComRange();
-    if (mu < state.min || mu > state.max) throw new Error(`Choose μ inside the computed range ${state.min}–${state.max} h⁻¹.`);
-    return this.solveSteadyComFixed(mu, state, key);
+    // The µ field reads a bound back to 15 significant digits, which can land
+    // a hair outside it (0.7886886596679688 comes back as 0.788688659667969):
+    // that much is the bound itself.
+    const slack = 1e-9 * Math.max(1, Math.abs(state.max));
+    if (mu < state.min - slack || mu > state.max + slack) {
+      throw new Error(`Choose μ inside the computed range ${+state.min.toFixed(6)}–${+state.max.toFixed(6)} h⁻¹.`);
+    }
+    return this.solveSteadyComFixed(Math.min(state.max, Math.max(state.min, mu)), state, key);
   }
 
   /**
@@ -2258,7 +2282,7 @@ export class Store {
     this._steadyComController = controller;
     const parsimonious = Boolean(this.steadyComConfig?.parsimonious);
     state.phase = 'fixed'; state.parsimonious = parsimonious; state.error = null;
-    this.status = { ...this.status, state: 'busy', message: `Calculating ${parsimonious ? 'the least total flux' : 'fluxes'} at fixed μ = ${mu} h⁻¹…` };
+    this.status = { ...this.status, state: 'busy', message: `Calculating ${parsimonious ? 'the least total flux' : 'fluxes'} at fixed μ = ${+mu.toFixed(6)} h⁻¹…` };
     this.emit('steadycom');
     const started = performance.now();
     try {
@@ -2272,7 +2296,7 @@ export class Store {
       if (generation !== this._steadyComGeneration || this.steadyComKey() !== key) throw staleSteadyComError();
       if (at.status !== 'optimal' || !at.feasible) {
         throw new Error(at.status === 'infeasible' ? `No feasible flux distribution was found at μ = ${mu} h⁻¹.`
-          : `The solver did not finish the fixed-μ calculation (${at.status}). Its last solution has been retained.`);
+          : `The solver did not finish the fixed-μ calculation (${at.status}).${this.solution ? ' The previous solution is kept.' : ''}`);
       }
       const owners = spec.metadata?.reactionOwners ?? null;
       // An absent member's abundance is an LP column at its zero bound, which
@@ -2297,8 +2321,8 @@ export class Store {
         steadyCom: { mu, key, abundances: at.abundances, totalBiomass: at.total, spec, originalFluxes: at.fluxes,
           parsimonious, totalFlux: state.totalFlux } }, { allowFVA: false });
       this.status = { ...this.status, state: 'ok', message: parsimonious
-        ? `SteadyCom at fixed μ = ${mu} h⁻¹, parsimonious: the composition and fluxes with the least total member flux (${at.totalFlux.toFixed(3)} mmol h⁻¹).`
-        : `SteadyCom at fixed μ = ${mu} h⁻¹; one feasible population composition and flux distribution.`, solveMs: state.solveMs };
+        ? `SteadyCom at fixed μ = ${+mu.toFixed(6)} h⁻¹, least total member flux (${at.totalFlux.toFixed(3)} mmol h⁻¹).`
+        : `SteadyCom at fixed μ = ${+mu.toFixed(6)} h⁻¹: one feasible composition.`, solveMs: state.solveMs };
       this.emit('steadycom');
       return state;
     } catch (error) {
@@ -2337,7 +2361,7 @@ export class Store {
       this.status = {
         ...this.status,
         state: 'warn',
-        message: `${id} is simulated again but is not drawn on this hand-built map. Draw its cell with the Cell tool, or use Draw full model.`,
+        message: `${id} is simulated again but is not drawn on this hand-built map; the Cell tool draws it.`,
       };
       this.emit('status');
     }
@@ -3207,7 +3231,7 @@ export class Store {
     this.status = {
       ...this.status,
       state: failed ? 'error' : (unknown.length || ambiguous.length || errors.length ? 'warn' : 'ok'),
-      message: `Bounds from ${name}: ${parts.join(' · ')}.${failed ? ` The LP has no optimum now (${this.solution?.status}); Revert last change takes the import back.` : ''}`,
+      message: `Bounds from ${name}: ${parts.join(' · ')}.${failed ? ` The LP has no optimum now (${this.solution?.status}); Revert last change takes it back.` : ''}`,
     };
     this.emit('constraints');
     return { applied, unchanged, unknown, ambiguous, errors, rows: parsed.rows.length };
@@ -3841,6 +3865,50 @@ export class Store {
     return { ...result, changed };
   }
 
+  /** Space the selection evenly along its own line, in any direction, as one undoable edit. */
+  spaceMultiSelectionEvenly() {
+    this.assertMapOperation('spaceMultiSelectionEvenly');
+    if (!this.map) return null;
+    const before = this.map.toJSON();
+    const result = this.map.spaceSelectionEvenly(this.multiSelection);
+    if (!result || result.count < 3) return null;
+    const changed = this.mapHistory.record(before, this.map.toJSON(), 'Space evenly');
+    if (changed) this.emit('map');
+    return { ...result, changed };
+  }
+
+  /** Turn the selection as one rigid piece by `angle` radians (clockwise on screen), as one undoable edit. */
+  rotateMultiSelection(angle) {
+    this.assertMapOperation('rotateMultiSelection');
+    return this.turnMultiSelection('Rotate selection', (map) => map.rotateSelection(this.multiSelection, angle));
+  }
+
+  /** Turn the selection so that its main line points `direction` ('N', 'NE', ... 'NW'), the way it runs. */
+  pointMultiSelection(direction) {
+    this.assertMapOperation('pointMultiSelection');
+    return this.turnMultiSelection(`Point selection ${direction}`, (map) =>
+      map.pointSelection(this.multiSelection, direction));
+  }
+
+  /*
+   * One turn of the selection: recorded when it moved anything. A turn the
+   * map refuses has moved nothing, and the status line says why.
+   */
+  turnMultiSelection(label, turn) {
+    if (!this.map) return null;
+    const before = this.map.toJSON();
+    const result = turn(this.map);
+    if (!result) return null;
+    if (!result.turned) {
+      this.status = { ...this.status, state: 'warn', message: TURN_WARNINGS[result.reason] ?? TURN_WARNINGS.room };
+      this.emit('status');
+      return result;
+    }
+    const changed = this.mapHistory.record(before, this.map.toJSON(), label);
+    if (changed) this.emit('map');
+    return { ...result, changed };
+  }
+
   /**
    * Replace what is drawn, without touching the model or the solution.
    *
@@ -3930,7 +3998,7 @@ export class Store {
       ...this.status,
       state: 'ok',
       message: `Removed ${result.cellRemoved ? 'the cell ' : ''}${result.label} from the map`
-        + `${what.length ? `, with ${what.join(', ')}` : ''}. The model is unchanged; Ctrl+Z brings it back.`,
+        + `${what.length ? `, with ${what.join(', ')}` : ''}. Ctrl+Z undoes.`,
     };
     this.emit('map');
     return result;
@@ -3978,7 +4046,7 @@ export class Store {
       this.status = {
         ...this.status,
         state: 'warn',
-        message: 'This community does not contain enough annotated central-carbon reactions for the core metabolism overview.',
+        message: 'Too few annotated central-carbon reactions for the core overview.',
       };
       this.emit('status');
       return null;
@@ -4520,6 +4588,22 @@ export class Store {
     this.mapHistory.record(before, this.map.toJSON(), label);
     this.emit('map');
     return result;
+  }
+
+  /**
+   * Write a reaction's name somewhere else while it is dragged. Like
+   * setMetaboliteLabelAngle, no history and no emit: the drag gesture owns
+   * the repaint and its single history transaction.
+   */
+  setReactionLabelOffset(reactionId, offset) {
+    this.assertMapOperation('setReactionLabelOffset');
+    return this.map?.setReactionLabelOffset(reactionId, offset) ?? null;
+  }
+
+  /** Put a moved reaction name back in its default place, as one undoable edit. */
+  resetReactionLabel(reactionId) {
+    this.assertMapOperation('resetReactionLabel');
+    return this.editMapReaction('Reset reaction label', (map) => map.resetReactionLabel(reactionId));
   }
 
   /** Turn a reaction's backbone by a fixed step, as one undoable edit. */

@@ -29,7 +29,7 @@ use indexmap::IndexMap;
 use serde_json::Value;
 
 use crate::app::{Deferred, Shell};
-use crate::panels::left::{current_analysis_method, format_percent};
+use crate::panels::left::format_percent;
 use crate::theme::{Palette, bold, to_hex};
 use crate::ui_state::SteadyComDraft;
 use crate::widgets::{self, Btn, Field, FieldEvent};
@@ -289,7 +289,7 @@ fn solver_controls(ui: &mut Ui, shell: &mut Shell) {
     let current = shell.store.solver.kind();
     let option = |kind: SolverKind| {
         let usable = shell.solvers.info(kind).is_some_and(|i| i.usable());
-        (kind.id().to_string(), shell.solvers.option_label(kind), usable || kind == current)
+        (kind.id().to_string(), shell.solvers.option_label(kind), usable || kind == current, String::new())
     };
     let groups = vec![
         ("Built in".to_string(), vec![option(SolverKind::Highs)]),
@@ -301,10 +301,7 @@ fn solver_controls(ui: &mut Ui, shell: &mut Shell) {
         shell.choose_solver(kind);
     }
     ui.add_space(4.0);
-    widgets::hint(
-        ui,
-        "Every analysis runs on it: FBA, pFBA, FVA, Loopless, SteadyCom and GIMME. Where the optimum is not unique, two solvers can return different fluxes for the same objective value.",
-    );
+    widgets::hint(ui, "Solvers may return different fluxes when the optimum is not unique.");
     for kind in [SolverKind::Gurobi, SolverKind::Cplex] {
         widgets::hint(ui, shell.solvers.detail(kind));
     }
@@ -325,7 +322,7 @@ fn solver_controls(ui: &mut Ui, shell: &mut Shell) {
         }
         for kind in [SolverKind::Gurobi, SolverKind::Cplex] {
             let label = format!("Locate {}…", kind.name());
-            let title = format!("Choose the {} library by hand, when it is installed where it was not found", kind.name());
+            let title = format!("Pick the {} library by hand", kind.name());
             let aria = format!("Locate the {} library", kind.name());
             if Btn::new(label).enabled(!checking).title(&title).aria(&aria).show(ui).clicked() {
                 shell.locate_solver_library(kind);
@@ -351,17 +348,8 @@ fn objective_controls(ui: &mut Ui, shell: &mut Shell) {
         ui.label(widgets::strong("Authors’ original objective").size(12.5).color(p.ink));
         let shown = if coefficients.is_empty() { "Source model objective".to_string() } else { coefficients };
         ui.add(egui::Label::new(widgets::code(shown).color(p.ink_2)).wrap());
-        widgets::hint(
-            ui,
-            "The documented medium, reaction bounds and population coefficients are fixed for this case. Choose a case scenario to compare the WT, mutant and coculture. The drawing remains editable.",
-        );
-        widgets::hint(
-            ui,
-            format!(
-                "Stationary FBA · {}. This comparison does not reproduce dynamic culture trajectories or measured experimental growth rates.",
-                shell.store.solver.label()
-            ),
-        );
+        widgets::hint(ui, "Medium, bounds and population coefficients are fixed for this case.");
+        widgets::hint(ui, format!("Stationary FBA · {}.", shell.store.solver.label()));
         return;
     }
     let fixed_mu = shell.store.solution.as_ref().is_some_and(|s| s.steady_com.is_some());
@@ -396,8 +384,9 @@ fn objective_controls(ui: &mut Ui, shell: &mut Shell) {
     }
 
     ui.add_space(10.0);
-    let label = Rich::new(ui, 12.5).ink(p.ink, p.ink).bold("pFBA").plain(" · Parsimonious Flux Balance Analysis").job;
-    let (_, changed) = widgets::checkbox(ui, shell.store.parsimonious, label, true, Some("Use Parsimonious Flux Balance Analysis"));
+    let label = RichText::new("pFBA").size(12.5).family(bold()).color(p.ink);
+    let (response, changed) = widgets::checkbox(ui, shell.store.parsimonious, label, true, Some("Use Parsimonious Flux Balance Analysis"));
+    response.on_hover_text("Parsimonious FBA: least total flux at the target biomass");
     if let Some(on) = changed {
         if let Err(error) = shell.store.set_parsimonious(on) {
             shell.status_error(error.to_string());
@@ -419,19 +408,11 @@ fn objective_controls(ui: &mut Ui, shell: &mut Shell) {
             }
         });
     });
-    let method = current_analysis_method(shell);
-    let tail = if fixed_mu {
-        "The map shows a fixed-µ SteadyCom solution. Run FBA, pFBA or Loopless to return to ordinary analysis.".to_string()
-    } else if shell.store.loopless {
-        "Loopless uses a MILP to exclude thermodynamically impossible internal cycles.".to_string()
-    } else {
-        format!("pFBA fixes {}% of the optimum, then minimises total flux.", format_percent(shell.store.pfba_biomass_percent))
-    };
-    Rich::new(ui, 12.0).plain("Current method: ").bold(&method).plain(&format!(". {tail}")).show(ui);
 
     ui.add_space(10.0);
-    let label = Rich::new(ui, 12.5).ink(p.ink, p.ink).bold("Loopless").plain(" · Loopless FBA").job;
-    let (_, changed) = widgets::checkbox(ui, shell.store.loopless, label, true, Some("Enable Loopless Flux Balance Analysis"));
+    let label = RichText::new("Loopless").size(12.5).family(bold()).color(p.ink);
+    let (response, changed) = widgets::checkbox(ui, shell.store.loopless, label, true, Some("Enable Loopless Flux Balance Analysis"));
+    response.on_hover_text("Excludes internal cycles with a MILP; can be much slower");
     if let Some(on) = changed {
         if let Err(error) = shell.store.set_loopless(on) {
             shell.status_error(error.to_string());
@@ -440,10 +421,12 @@ fn objective_controls(ui: &mut Ui, shell: &mut Shell) {
     loopless_progress_line(ui, shell);
 
     ui.add_space(10.0);
-    let label = Rich::new(ui, 12.5).ink(p.ink, p.ink).bold("FVA").plain(" · Flux Variability Analysis").job;
+    let label = RichText::new("FVA").size(12.5).family(bold()).color(p.ink);
     let (response, changed) = widgets::checkbox(ui, shell.store.fva_enabled, label, !fixed_mu, Some("Enable Flux Variability Analysis"));
     if fixed_mu {
         response.on_disabled_hover_text("Run an ordinary analysis before enabling FVA");
+    } else {
+        response.on_hover_text("Flux Variability Analysis: each reaction’s range at the optimum");
     }
     if let Some(on) = changed {
         // A fixed-µ result cannot take ordinary FVA.
@@ -459,7 +442,6 @@ fn objective_controls(ui: &mut Ui, shell: &mut Shell) {
 /// `looplessProgressLine(store)`.
 fn loopless_progress_line(ui: &mut Ui, shell: &Shell) {
     if !shell.store.loopless {
-        widgets::hint(ui, "Removes internal cycles with a MILP. Can be much slower than FBA/pFBA.");
         return;
     }
     let Some(solution) = shell.store.solution.as_ref() else {
@@ -486,7 +468,6 @@ fn loopless_progress_line(ui: &mut Ui, shell: &Shell) {
 /// `fvaProgressLine(store)`.
 fn fva_progress_line(ui: &mut Ui, shell: &Shell) {
     if !shell.store.fva_enabled {
-        widgets::hint(ui, "Computes the minimum and maximum flux of every reaction while holding the objective at its optimum.");
         return;
     }
     let progress = shell.store.fva_progress;
@@ -503,7 +484,7 @@ fn fva_progress_line(ui: &mut Ui, shell: &Shell) {
             .plain(&format!(" reactions · {} ms.", js::number_to_string(progress.ms)))
             .show(ui);
     } else {
-        widgets::hint(ui, "FVA enabled. It runs on the next solve.");
+        widgets::hint(ui, "FVA runs on the next solve.");
     }
 }
 
@@ -658,14 +639,8 @@ fn conditions_block(ui: &mut Ui, shell: &mut Shell, c: &Value, assets: Option<&V
     let id = text_of(c.get("id"));
     if id == ZUNIGA_ID {
         pc_heading(ui, "Source conditions");
-        widgets::hint(
-            ui,
-            "Complete author models are downloaded directly from the pinned public source and verified by SHA-256. They are cached privately on this computer. Coxeter distributes the case specification and calculated results; the original models are not redistributed.",
-        );
-        widgets::hint(
-            ui,
-            "The reference medium, original reaction bounds, biomass definitions and population coefficients are preserved. Monoculture and coculture have different source models; differences are documented as adaptations.",
-        );
+        widgets::hint(ui, "The author models are downloaded from the pinned source, verified by SHA-256, and not redistributed.");
+        widgets::hint(ui, "Monoculture and coculture use different source models.");
         return;
     }
     let Some(assets) = assets else {
@@ -677,8 +652,8 @@ fn conditions_block(ui: &mut Ui, shell: &mut Shell, c: &Value, assets: Option<&V
     };
     pc_heading(ui, "Conditions");
     let rows = [
-        ("Medium", "the exchange reactions the diet opens, with their bounds", "media", "Download the medium CSV"),
-        ("Bounds", "every reaction's lower and upper bound and objective coefficient", "bounds", "Download the bounds CSV"),
+        ("Medium", "open exchanges", "media", "Download the medium CSV"),
+        ("Bounds", "every reaction", "bounds", "Download the bounds CSV"),
     ];
     for (name, what, key, aria) in rows {
         let file = text_of(assets.get(key));
@@ -687,7 +662,7 @@ fn conditions_block(ui: &mut Ui, shell: &mut Shell, c: &Value, assets: Option<&V
             let p = Palette::current(ui.ctx());
             ui.label(RichText::new("•").size(12.0).color(p.ink_3));
             ui.label(RichText::new(name).size(12.0).family(bold()).color(p.ink));
-            ui.label(RichText::new(format!("— {what}")).size(12.0).color(p.ink));
+            ui.label(RichText::new(format!("· {what}")).size(12.0).color(p.ink));
             if pc_dl(ui, "CSV", true, "", aria).clicked() {
                 shell.download_community_csv(&id, &file);
             }
@@ -770,10 +745,7 @@ fn create_growth_for_case(store: &Store, scenario_id: &str, species_id: &str) ->
 /// `zunigaCaseBlock(store)`.
 fn zuniga_case_block(ui: &mut Ui, shell: &mut Shell) {
     if !shell.store.is_zuniga_study() {
-        widgets::hint(
-            ui,
-            "Loading requires an internet connection the first time. The original models remain in a private cache on this computer for subsequent use.",
-        );
+        widgets::hint(ui, "Loading needs an internet connection the first time.");
         return;
     }
     let store = &shell.store;
@@ -818,20 +790,10 @@ fn zuniga_case_block(ui: &mut Ui, shell: &mut Shell) {
             shell.status_error(error.to_string());
         }
     }
-    let shows = if difference {
-        "Δv = selected − WT; blue means decrease, red means increase. Arrows retain the direction of the selected solved flux"
-    } else {
-        "the magnitude of the solved flux; arrows show its direction"
-    };
-    widgets::hint(
-        ui,
-        format!(
-            "Geometry and the flux scale are shared across the three scenarios. Color and width show {shows}. The reference magnitude is {} in source-model flux units.",
-            format_flux(reference, 4)
-        ),
-    );
+    let shows = if difference { "Blue is a decrease and red an increase relative to WT" } else { "Color and width show the solved flux" };
+    widgets::hint(ui, format!("{shows} (reference magnitude {}).", format_flux(reference, 4)));
     sweep_like_table(ui, "zuniga-growth", &["Scenario", "E. coli (h⁻¹)", "S. elongatus (h⁻¹)"], &rows.iter().map(|(a, b, c)| vec![a.clone(), b.clone(), c.clone()]).collect::<Vec<_>>());
-    Rich::new(ui, 12.0).bold("Perturbation:").plain(" Ec PPNDH (pheA) is disabled in both mutant scenarios. The WT has its original bounds.").show(ui);
+    Rich::new(ui, 12.0).bold("Perturbation:").plain(" Ec PPNDH (pheA) is disabled in both mutant scenarios.").show(ui);
     Rich::new(ui, 12.0)
         .bold("Calculated phenylalanine transfer:")
         .plain(&format!(" S. elongatus → E. coli {} in source-model shared-pool flux units.", format_flux(phe_transfer, 6)))
@@ -839,15 +801,12 @@ fn zuniga_case_block(ui: &mut Ui, shell: &mut Shell) {
     widgets::hint(
         ui,
         if rescued {
-            "Calculated growth is restored in the mutant coculture relative to mutant monoculture. The displayed phenylalanine transfer identifies the calculated complementing route."
+            "The calculated phenylalanine transfer restores growth in the mutant coculture."
         } else {
-            "Growth and exchange values shown here are calculated stationary solutions. Interpret rescue only where the mutant coculture supports growth and the relevant transfer is positive."
+            "Rescue applies only where the mutant coculture grows and the transfer is positive."
         },
     );
-    widgets::hint(
-        ui,
-        "S. elongatus is absent from both monoculture calculations; its faint cell preserves the visual comparison. Δ values for its reactions use a zero baseline. This is a stationary adaptation, not a comparison of experimental monoculture and coculture measurements.",
-    );
+    widgets::hint(ui, "A stationary FBA adaptation, not a comparison of experimental cultures over time.");
     ui.horizontal_wrapped(|ui| {
         if widgets::button(ui, "Export SVG").clicked() {
             shell.export_svg();
@@ -1052,25 +1011,18 @@ fn steady_com_block(ui: &mut Ui, shell: &mut Shell, c: Option<&Value>) {
     let top_y = ui.cursor().top();
     ui.painter().hline(ui.max_rect().x_range(), top_y - 4.0, Stroke::new(1.0, p.line));
     pc_heading(ui, "Fix a growth rate · SteadyCom");
-    if c.is_some_and(|c| js::truthy(c.get("computed").unwrap_or(&Value::Null))) {
-        widgets::hint(
-            ui,
-            "The published results above are historical benchmarks. Calculate the range for the current model and conditions before choosing µ.",
-        );
-    }
-    widgets::hint(ui, "Fixing µ solves a community LP at total biomass 1; abundances are outputs of this analysis.");
 
     // `.sc-steadycom-condition`: the diet of the nine-species example.
     if nine {
         ui.add_space(6.0);
         sc_label(ui, "Diet / fiber condition");
         let options = [
-            ("baseline".to_string(), "Baseline diet (no additional fiber limits)".to_string()),
-            ("figure4".to_string(), "Figure 4 fiber limits".to_string()),
+            ("baseline".to_string(), "Baseline diet".to_string(), "No additional fiber limits".to_string()),
+            ("figure4".to_string(), "Figure 4 fiber limits".to_string(), String::new()),
         ];
         let current = if fiber.is_some() { "figure4" } else { "baseline" }.to_string();
         let width = ui.available_width() - 8.0;
-        if let Some(choice) = widgets::select(ui, "steadycom-fiber-condition", &current, &options, width, !view.busy, "SteadyCom fiber condition") {
+        if let Some(choice) = widgets::select_titled(ui, "steadycom-fiber-condition", &current, &options, width, !view.busy, "SteadyCom fiber condition") {
             shell.ui.steady_com_draft = None;
             if let Err(error) = shell.store.set_steady_com_fiber(if choice == "figure4" { Some(30.0) } else { None }) {
                 shell.status_error(error.to_string());
@@ -1108,7 +1060,7 @@ fn steady_com_block(ui: &mut Ui, shell: &mut Shell, c: Option<&Value>) {
                     FieldEvent::None => {}
                 }
             });
-            widgets::hint(ui, "F. prausnitzii is held at 5 C-mmol/gDW/h. Changing these limits invalidates the calculated range.");
+            widgets::hint(ui, "F. prausnitzii is held at 5 C-mmol/gDW/h; changing a limit invalidates the calculated range.");
         }
     }
 
@@ -1116,7 +1068,10 @@ fn steady_com_block(ui: &mut Ui, shell: &mut Shell, c: Option<&Value>) {
     ui.add_space(4.0);
     let range = match view.top {
         None => "Not calculated for the current inputs".to_string(),
-        Some(top) => format!("{} – {} h⁻¹", js::number_to_string(view.minimum), js::number_to_string(top)),
+        Some(top) => {
+            let six = |v: f64| js::number_to_string(js::to_fixed(v, 6).parse().unwrap_or(v));
+            format!("{} – {} h⁻¹", six(view.minimum), six(top))
+        }
     };
     bullet(ui, |r| r.bold("Calculated µ range:").plain(&format!(" {range}")));
     if let (true, Some(resolution)) = (view.computed, view.resolution) {
@@ -1213,13 +1168,10 @@ fn steady_com_block(ui: &mut Ui, shell: &mut Shell, c: Option<&Value>) {
         ui.add(egui::Label::new(RichText::new(error).size(11.0).color(p.danger)).wrap());
     }
 
-    let (_, changed) = widgets::checkbox(
-        ui,
-        shell.store.steady_com_config.parsimonious,
-        RichText::new("Parsimonious: least total flux at this µ").size(11.0).color(p.ink_2),
-        !view.busy,
-        None,
-    );
+    let (response, changed) =
+        widgets::checkbox(ui, shell.store.steady_com_config.parsimonious, RichText::new("Parsimonious").size(11.0).color(p.ink_2), !view.busy, None);
+    let title = "Least summed member flux at this µ; slower";
+    if view.busy { response.on_disabled_hover_text(title) } else { response.on_hover_text(title) };
     if let Some(on) = changed {
         shell.store.set_steady_com_parsimonious(on);
     }
@@ -1247,16 +1199,7 @@ fn steady_com_block(ui: &mut Ui, shell: &mut Shell, c: Option<&Value>) {
             shell.store.cancel_steady_com(false);
         }
     });
-    widgets::hint(ui, "Range calculation runs several LPs and can take time for genome-scale models. Cancel stops the pending calculation.");
-    widgets::hint(
-        ui,
-        "The composition is one feasible solution and may be non-unique, even at the maximum. Species with X = 0 are inactive. At µ = 0, present members still obey their maintenance bounds.",
-    );
-    widgets::hint(
-        ui,
-        "Parsimonious picks, among all solutions at this µ, the one with the least summed member flux (abundance × flux). It drops the cycles the community does not need, loops between two members included, and takes longer.",
-    );
-    widgets::hint(ui, "The map displays per-gDW fluxes for present members. Abundance sliders adopt the returned composition.");
+    widgets::hint(ui, "Composition may be non-unique.");
     let _ = view.key;
 }
 

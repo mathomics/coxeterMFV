@@ -149,8 +149,12 @@ fn computed_styles_are_what_the_browser_computes() {
         let styles = case["styles"].as_array().unwrap();
         for (k, index) in case["elements"].as_array().unwrap().iter().enumerate() {
             let theirs = styles[index.as_u64().unwrap() as usize].as_array().unwrap();
+            // Reaction names take the pointer since the reference was
+            // recorded (common::NEW_RULES), so a drag can pick them up.
+            let reaction_name = elements[k].get("class").is_some_and(|c| c.split(' ').any(|c| c == "emc-label-rxn"));
             for (property, expected) in properties.iter().zip(theirs) {
                 let expected = expected.as_str().unwrap();
+                let expected = if reaction_name && *property == "pointer-events" && expected == "none" { "all" } else { expected };
                 let actual = ours[k].get(property);
                 compared += 1;
                 if !same(property, actual, expected) && failures.len() < 40 {

@@ -28,6 +28,13 @@ pub fn metabolite_label_angle(label_angle: Option<f64>) -> f64 {
     }
 }
 
+/// `turnMetaboliteLabel(node, angle)`: turn a label round its metabolite by
+/// `angle`, from wherever it is now (the default, above, for one never moved),
+/// so a drawing turned as a whole reads as it did before.
+pub fn turn_metabolite_label(node: &mut Node, angle: f64) {
+    node.label_angle = Some(metabolite_label_angle(Some(metabolite_label_angle(node.label_angle) + angle)));
+}
+
 /// A secondary metabolite instance: a small helper node beside a reaction
 /// (ATP, NADH, H⁺…), or any instance set to Secondary by hand. Drawn
 /// smaller, and what the Cofactors toggles hide.

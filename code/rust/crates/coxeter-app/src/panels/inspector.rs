@@ -5,7 +5,8 @@
 //! `localMetabolite`, `metaboliteReactionLinks`, `textInspector`,
 //! `textStyleFields`, `colorField`, `cellColorFields`,
 //! `compartmentColorFields`, `cellInspector`, `compartmentInspector`,
-//! `inspectorCard`, `omicsReactionReadout` and `reactionDrawingControls`),
+//! `inspectorCard`, `omicsReactionReadout`, `reactionDrawingControls`,
+//! `showsSelectionInspector`, `selectionCounts` and `selectionInspector`),
 //! with the handlers of `onSidebarClick` / `onSidebarInput` of
 //! `src/ui/app.js` for their controls (`acceptNumber`,
 //! `selectModelMetabolite`).
@@ -32,6 +33,8 @@ use coxeter_core::text_style::{DEFAULT_TEXT_FONT, TEXT_FONTS, TEXT_SIZE};
 use coxeter_io::provenance::annotation_links;
 use coxeter_map::editable_map::{ColorChange, DuplicateOptions};
 use coxeter_map::layout_settings::RawLayoutSettings;
+use coxeter_map::multi_selection::{Selection, selection_main_axis, spacing_items};
+use coxeter_core::reaction_label::reaction_label_offset;
 use coxeter_render::format_flux;
 use coxeter_state::map_edit::GeometryColors;
 use coxeter_state::{SelectedEntity, Store, UserNumber};
@@ -44,7 +47,7 @@ use crate::theme::{Palette, bold};
 use crate::widgets::{self, Btn, Field, FieldEvent, Look, aria_label, aria_pressed, text};
 
 /// `acceptNumber`'s warning when a field is left empty or not a number.
-pub const NOT_A_NUMBER: &str = "That field was empty or not a number, so nothing changed; it shows the value still in force.";
+pub const NOT_A_NUMBER: &str = "Invalid number; value unchanged.";
 
 /// What the user did in the panel: the `data-action`s of the controls drawn.
 #[derive(Debug, Clone)]
@@ -64,6 +67,12 @@ enum Act {
     ReactionFlip(String),
     ReactionMirror(String),
     ReactionRotate(String, f64),
+    ReactionLabelReset(String),
+    Arrange(&'static str),
+    SelectionSpaceEvenly,
+    SelectionPoint(&'static str),
+    SelectionRotate(f64),
+    ClearMultiSelection,
     Knockout(String),
     GeneKo(String),
     ResetReaction(String),
@@ -105,15 +114,11 @@ pub fn render_inspector(ui: &mut Ui, shell: &mut Shell) {
         ui.spacing_mut().item_spacing.y = 5.0;
         if store.selected_reaction.is_some() {
             inspector_card(ui, store, &p, focus_lower, &mut acts);
+        } else if shows_selection_inspector(store) {
+            selection_inspector(ui, store, &p, &mut acts);
         } else {
             match store.selected_entity.as_ref() {
-                None => inspector_empty(
-                    ui,
-                    &p,
-                    true,
-                    "No selection",
-                    "Select a reaction, metabolite, cell, compartment, or text element to inspect its properties.",
-                ),
+                None => inspector_empty(ui, &p, true, "No selection", "Select something on the map to inspect it."),
                 Some(selected) => match selected.kind.as_str() {
                     "metabolite" => metabolite_inspector(ui, store, &p, &selected.id, &mut acts),
                     "gene" => {
@@ -202,6 +207,29 @@ fn apply(shell: &mut Shell, acts: Vec<Act>) {
             }
             Act::ReactionRotate(rid, degrees) => {
                 shell.store.rotate_map_reaction(&rid, (degrees * std::f64::consts::PI) / 180.0);
+            }
+            Act::ReactionLabelReset(rid) => {
+                shell.store.reset_reaction_label(&rid);
+            }
+            Act::Arrange(action) => {
+                shell.close_map_menus();
+                shell.store.arrange_multi_selection(action);
+            }
+            Act::SelectionSpaceEvenly => {
+                shell.close_map_menus();
+                shell.store.space_multi_selection_evenly();
+            }
+            Act::SelectionPoint(direction) => {
+                shell.close_map_menus();
+                shell.store.point_multi_selection(direction);
+            }
+            Act::SelectionRotate(degrees) => {
+                shell.close_map_menus();
+                shell.store.rotate_multi_selection((degrees * std::f64::consts::PI) / 180.0);
+            }
+            Act::ClearMultiSelection => {
+                shell.close_map_menus();
+                shell.store.clear_multi_selection(true);
             }
             Act::Knockout(rid) => {
                 if let Err(error) = shell.store.knockout(&rid) {
@@ -328,7 +356,7 @@ fn select_model_metabolite(shell: &mut Shell, merged_id: &str) {
             shell.store.selected_entity = Some(SelectedEntity::new("metabolite", &id));
             shell.store.emit("selection");
         }
-        None => shell.status_ok(format!("Metabolite {merged_id} exists in the model but is not currently drawn on the map.")),
+        None => shell.status_ok(format!("Metabolite {merged_id} is not drawn on the map.")),
     }
 }
 
@@ -355,13 +383,19 @@ fn inspector_empty(ui: &mut Ui, p: &Palette, icon: bool, title: &str, body: &str
 /// `inspectorHeader(kind, title, subtitle)`: the kind, the × that clears the
 /// selection (`clear-selection`), the title and what it belongs to.
 fn inspector_header(ui: &mut Ui, p: &Palette, kind: &str, title: &str, subtitle: &str, acts: &mut Vec<Act>) {
+    inspector_header_closing(ui, p, kind, title, subtitle, Act::ClearSelection, acts);
+}
+
+/// `inspectorHeader(kind, title, subtitle, closeAction)`: one whose ×
+/// does `close`.
+fn inspector_header_closing(ui: &mut Ui, p: &Palette, kind: &str, title: &str, subtitle: &str, close: Act, acts: &mut Vec<Act>) {
     ui.add_space(10.0);
     ui.horizontal(|ui| {
         ui.label(RichText::new(kind.to_uppercase()).size(10.0).family(bold()).color(p.ink_3).extra_letter_spacing(0.5));
         ui.with_layout(Layout::right_to_left(Align::Center), |ui| {
-            let close = Btn::new(RichText::new("×").size(18.0).color(p.ink_2)).look(Look::Flat).title("Close").aria("Clear selection").height(24.0).show(ui);
-            if close.clicked() {
-                acts.push(Act::ClearSelection);
+            let button = Btn::new(RichText::new("×").size(18.0).color(p.ink_2)).look(Look::Flat).title("Close").aria("Clear selection").height(24.0).show(ui);
+            if button.clicked() {
+                acts.push(close);
             }
         });
     });
@@ -720,7 +754,7 @@ fn metabolite_inspector(ui: &mut Ui, store: &Store, p: &Palette, node_id: &str, 
             // A cofactor the layout placed beside one reaction is secondary by
             // construction; the map refuses to make it primary, so offering
             // the button would only make it look broken.
-            note_rich(ui, p, &["Cofactor helper placed beside its reaction: always secondary. Hide cofactors from ", "View → Cofactors", "."]);
+            widgets::note(ui, "Cofactor beside its reaction: always secondary.");
         } else {
             ui.horizontal(|ui| {
                 role_label(ui, p, "Visual role");
@@ -750,10 +784,9 @@ fn metabolite_inspector(ui: &mut Ui, store: &Store, p: &Palette, node_id: &str, 
                 acts.push(Act::RemoveMapNode(node_id.to_string()));
             }
         } else {
-            widgets::note(ui, "To delete this instance, first remove the drawn reactions that use it.");
+            widgets::note(ui, "Remove the drawn reactions that use it before deleting it.");
         }
     });
-    widgets::note(ui, "Visual changes affect the map only and do not alter the biological model.");
 }
 
 /// `geneInspector(store, speciesId, geneId)`.
@@ -818,7 +851,7 @@ fn text_inspector(ui: &mut Ui, store: &Store, p: &Palette, text_id: &str, acts: 
     ui.add_space(6.0);
     widgets::section_label(ui, "STYLE");
     text_style_fields(ui, p, item.font_size, item.font_family.as_deref(), text_id, acts);
-    widgets::note(ui, "The size and font chosen here are also used for the next text you write.");
+    widgets::note(ui, "Also used for the next text you write.");
     if Btn::new("Delete text").look(Look::DangerBox).wide().height(34.0).show(ui).clicked() {
         acts.push(Act::RemoveMapText(text_id.to_string()));
     }
@@ -892,14 +925,10 @@ fn cell_inspector(ui: &mut Ui, store: &Store, p: &Palette, cell_id: &str, acts: 
     if Btn::new("Edit Boundary").look(Look::Secondary).wide().show(ui).clicked() {
         acts.push(Act::EditBoundary(Some(cell_id.to_string())));
     }
-    widgets::note(ui, "Edit Boundary changes only map geometry; the species, compartments and biological model are unchanged.");
     if Btn::new("Delete cell").look(Look::DangerBox).wide().show(ui).clicked() {
         acts.push(Act::RemoveMapCompartment { cell: cell_id.to_string(), compartment: None });
     }
-    widgets::note(
-        ui,
-        "Takes the cell off the map with its compartments and everything drawn in them; the model is unchanged. The Delete key does the same, and Ctrl+Z brings it back.",
-    );
+    widgets::note(ui, "Delete key also works; Ctrl+Z undoes.");
 }
 
 /// `compartmentShapeFields(cellId, comp)`: ready-made shapes for a
@@ -917,13 +946,7 @@ fn compartment_shape_fields(ui: &mut Ui, p: &Palette, cell_id: &str, comp: &coxe
             }
         }
     });
-    note_rich(ui, p, &[
-        "Or drag the ",
-        "◆ orange diamond",
-        " along the top to soften the corners, and the ",
-        "◆ yellow diamond",
-        " down the side to make it oval. On an oval, the orange diamond makes it rounder or boxier.",
-    ]);
+    note_rich(ui, p, &["Or drag the ", "◆ orange diamond", " to round the corners and the ", "◆ yellow diamond", " to make it oval."]);
 }
 
 /// `compartmentInspector(store, cellId, compartmentId)`, the shared medium
@@ -943,7 +966,6 @@ fn compartment_inspector(ui: &mut Ui, store: &Store, p: &Palette, cell_id: Optio
         property(ui, "Position", format!("x {}, y {}", round_text(env.rect.x), round_text(env.rect.y)));
         ui.add_space(6.0);
         widgets::section_label(ui, "MAP");
-        widgets::note(ui, "Map geometry does not change the biological model.");
         if Btn::new("Edit Boundary").look(Look::Secondary).wide().show(ui).clicked() {
             acts.push(Act::EditBoundary(None));
         }
@@ -963,17 +985,7 @@ fn compartment_inspector(ui: &mut Ui, store: &Store, p: &Palette, cell_id: Optio
     property(ui, "Depth", js::number_to_string(comp.depth));
     property(ui, "Membrane", if comp.membrane.is_empty() { "—".to_string() } else { comp.membrane.clone() });
     property(ui, "Bounds", format!("{} × {}", round_text(comp.rect.w), round_text(comp.rect.h)));
-    note_rich(ui, p, &[
-        "Drag the ",
-        "centre handle",
-        " to move this compartment and everything in it; drag a ",
-        "corner",
-        " or its ",
-        "membrane",
-        " to resize it, or the middle of a ",
-        "side",
-        " to change only its width or height. The space inside belongs to what is drawn there.",
-    ]);
+    note_rich(ui, p, &["Drag the ", "centre", " to move it, a ", "corner", " or ", "side", " to resize it."]);
     ui.add_space(6.0);
     if let Some(cell) = cell_id {
         compartment_shape_fields(ui, p, cell, comp, acts);
@@ -999,18 +1011,11 @@ fn compartment_inspector(ui: &mut Ui, store: &Store, p: &Palette, cell_id: Optio
     if Btn::new("Edit Boundary").look(Look::Secondary).wide().show(ui).clicked() {
         acts.push(Act::EditBoundary(None));
     }
-    widgets::note(ui, "Edit Boundary changes only map geometry; metabolite compartment identities are unchanged.");
     let nested = comp.parent_id.is_some();
     if Btn::new(if nested { "Delete compartment" } else { "Delete cell" }).look(Look::DangerBox).wide().show(ui).clicked() {
         acts.push(Act::RemoveMapCompartment { cell: cell_key.clone(), compartment: Some(comp.id.clone()) });
     }
-    widgets::note(
-        ui,
-        format!(
-            "Takes it off the map with {}everything drawn there; the model is unchanged. The Delete key does the same, and Ctrl+Z brings it back.",
-            if nested { "the compartments inside it and " } else { "its compartments and " }
-        ),
-    );
+    widgets::note(ui, "Delete key also works; Ctrl+Z undoes.");
 }
 
 // Reactions
@@ -1018,7 +1023,7 @@ fn compartment_inspector(ui: &mut Ui, store: &Store, p: &Palette, cell_id: Optio
 /// `inspectorCard(store)`: the selected reaction.
 fn inspector_card(ui: &mut Ui, store: &Store, p: &Palette, focus_lower: bool, acts: &mut Vec<Act>) {
     let (Some(rid), Some(map)) = (store.selected_reaction.clone(), store.layout()) else {
-        inspector_empty(ui, p, true, "No reaction selected", "Select a reaction on the map to view and edit its properties.");
+        inspector_empty(ui, p, true, "No reaction selected", "Select a reaction on the map.");
         return;
     };
     let info = map.reaction(&rid);
@@ -1040,17 +1045,9 @@ fn inspector_card(ui: &mut Ui, store: &Store, p: &Palette, focus_lower: bool, ac
         let title = info.and_then(|r| r.local_id.clone()).unwrap_or_else(|| rid.clone());
         inspector_header(ui, p, "Reaction", &title, if sp.is_some() { &name } else { "" }, acts);
         match sp {
-            Some(sp) if !sp.enabled => note_rich(ui, p, &[
-                "This reaction belongs to ",
-                &name,
-                ", which is switched off: it stays on the map, dimmed, and is not simulated. Enable the species to see its flux and edit its bounds.",
-            ]),
-            Some(_) if held_out => note_rich(ui, p, &[
-                "This reaction belongs to ",
-                &name,
-                ", which has zero abundance in this community, so its reactions are held at zero. Give it an abundance to see its flux and edit its bounds.",
-            ]),
-            _ => widgets::note(ui, "This reaction is drawn but is not in the active model."),
+            Some(sp) if !sp.enabled => note_rich(ui, p, &["", &name, " is switched off, so this reaction is not simulated."]),
+            Some(_) if held_out => note_rich(ui, p, &["", &name, " has zero abundance, so this reaction is held at zero."]),
+            _ => widgets::note(ui, "Drawn, but not in the active model."),
         };
         return;
     };
@@ -1207,11 +1204,9 @@ fn inspector_card(ui: &mut Ui, store: &Store, p: &Palette, focus_lower: bool, ac
             });
         }
         None if store.fva_enabled => {
-            widgets::hint(ui, "Computing the FVA range for this reaction…");
+            widgets::hint(ui, "Computing the FVA range…");
         }
-        None => {
-            widgets::hint(ui, "Enable FVA to see the minimum and maximum flux compatible with the optimal objective.");
-        }
+        None => {}
     }
 
     if map.has_reaction(&rid) {
@@ -1225,23 +1220,20 @@ fn inspector_card(ui: &mut Ui, store: &Store, p: &Palette, focus_lower: bool, ac
     widgets::section_title(ui, "Bounds");
     let zuniga = store.is_zuniga_study();
     if zuniga {
-        widgets::hint(ui, "Source bounds are fixed for this case; select a documented scenario to apply its perturbation.");
+        widgets::hint(ui, "Source bounds are fixed for this case.");
     }
     // `<fieldset disabled>` around the bounds of the Zuñiga case.
     if !gene_closed_by.is_empty() {
         let names: Vec<String> = gene_closed_by.iter().map(|k| store.gene_title(k)).collect();
-        let (plural, them) = if names.len() == 1 { ("", "it") } else { ("s", "them") };
-        widgets::hint(
-            ui,
-            format!("Closed by the knockout of gene{plural} {}: restore {them} (KO in the gene list above) to reopen the reaction.", names.join(", ")),
-        );
+        let plural = if names.len() == 1 { "" } else { "s" };
+        widgets::hint(ui, format!("Closed by the knockout of gene{plural} {}.", names.join(", ")));
     }
     ui.add_enabled_ui(!zuniga, |ui| {
         ui.add_enabled_ui(gene_closed_by.is_empty(), |ui| {
             bound_row(ui, p, &rid, &shown_id, true, bounds.lower, focus_lower && !zuniga, acts);
             bound_row(ui, p, &rid, &shown_id, false, bounds.upper, false, acts);
         });
-        ui.add(egui::Label::new(text("Sliders are logarithmic (±0.001 to ±1000, 0 in the middle); type exact values in the boxes.", 10.5, p.ink_3)).wrap());
+        ui.add(egui::Label::new(text("Log sliders, 0 in the middle.", 10.5, p.ink_3)).wrap());
         ui.add_space(6.0);
         ui.horizontal(|ui| {
             if knocked_out {
@@ -1270,7 +1262,6 @@ fn inspector_card(ui: &mut Ui, store: &Store, p: &Palette, focus_lower: bool, ac
     if Btn::new("Delete reaction from map").look(Look::DangerBox).wide().height(34.0).show(ui).clicked() {
         acts.push(Act::RemoveMapReaction(rid.clone()));
     }
-    widgets::hint(ui, "Removing it from the map is not a knockout: the reaction still exists in the model and in the FBA.");
     widgets::hint(ui, format!("Original bounds: [{}, {}]", format_flux(Some(defaults.lower), 3), format_flux(Some(defaults.upper), 3)));
 }
 
@@ -1327,7 +1318,7 @@ fn omics_reaction_readout(ui: &mut Ui, store: &Store, p: &Palette, rid: &str) {
     ui.add_space(6.0);
     if overlay.mode == "compare" {
         let (Some(a), Some(b), Some(value)) = (a, b, value) else {
-            widgets::hint(ui, "Omics: no GPR-derived value is available for both conditions.");
+            widgets::hint(ui, "Omics: no value for both conditions.");
             return;
         };
         let metric = if overlay.metric == "log2fc" { "log₂FC" } else { "Δ" };
@@ -1340,7 +1331,7 @@ fn omics_reaction_readout(ui: &mut Ui, store: &Store, p: &Palette, rid: &str) {
         return;
     }
     let Some(value) = value else {
-        widgets::hint(ui, "Omics: no GPR-derived value is available for this reaction.");
+        widgets::hint(ui, "Omics: no value for this reaction.");
         return;
     };
     widgets::boxed(ui, |ui| {
@@ -1393,11 +1384,7 @@ fn reaction_drawing_controls(ui: &mut Ui, store: &Store, p: &Palette, rid: &str,
                         acts.push(Act::ReactionLinear(rid.to_string(), false));
                     }
                 } else {
-                    let title = if membrane {
-                        "A transporter stays on its membrane"
-                    } else {
-                        "Draw the reaction as a straight line between two metabolites; the marker follows them when they are moved"
-                    };
+                    let title = if membrane { "A transporter stays on its membrane" } else { "Straight line between the two marked metabolites" };
                     let r = Btn::new("Linear").active(linear).enabled(can_linear).title(title).show(ui);
                     aria_pressed(&r, linear);
                     if r.clicked() {
@@ -1407,9 +1394,7 @@ fn reaction_drawing_controls(ui: &mut Ui, store: &Store, p: &Palette, rid: &str,
             });
         });
         if linear {
-            widgets::note(ui, format!("Kept straight between {}. Move either one and the reaction follows.", ends.join(" and ")));
-        } else {
-            widgets::note(ui, "Linear keeps the marker on the line between the two marked metabolites.");
+            widgets::note(ui, format!("Kept straight between {}.", ends.join(" and ")));
         }
         // Each metabolite is a button that runs the reaction's line through
         // it, and between each pair of neighbours a ⇄ exchanges their places:
@@ -1423,7 +1408,7 @@ fn reaction_drawing_controls(ui: &mut Ui, store: &Store, p: &Palette, rid: &str,
                 ui.spacing_mut().item_spacing = Vec2::new(4.0, 4.0);
                 for (i, entry) in entries.iter().enumerate() {
                     let on = end.as_deref() == Some(entry.node_id.as_str());
-                    let title = if membrane { entry.label.clone() } else { format!("Run the reaction's line through {}", entry.label) };
+                    let title = if membrane { entry.label.clone() } else { format!("Run the line through {}", entry.label) };
                     let r = line_end_chip(ui, p, &entry.label, on, !membrane, &title);
                     if r.clicked() {
                         acts.push(Act::ReactionLineEnd(rid.to_string(), entry.node_id.clone()));
@@ -1431,9 +1416,9 @@ fn reaction_drawing_controls(ui: &mut Ui, store: &Store, p: &Palette, rid: &str,
                     let Some(next) = entries.get(i + 1) else { continue };
                     let allowed = entry.group == next.group;
                     let title = if allowed {
-                        format!("Exchange the places of {} and {}", entry.label, next.label)
+                        format!("Swap {} and {}", entry.label, next.label)
                     } else {
-                        "These two are in different compartments and cannot trade places".to_string()
+                        "In different compartments; cannot swap".to_string()
                     };
                     let aria = format!("Swap {} and {}", entry.label, next.label);
                     let r = Btn::new(RichText::new("⇄").size(12.0)).enabled(allowed).title(&title).aria(&aria).height(22.0).show(ui);
@@ -1466,7 +1451,7 @@ fn reaction_drawing_controls(ui: &mut Ui, store: &Store, p: &Palette, rid: &str,
                         });
                     } else {
                         let arrow = glyph::COMPASS.iter().find(|(d, _)| d == direction).map_or("?", |(_, a)| *a);
-                        let title = format!("Lay the reaction out {way}, substrate to product, with the two marked metabolites in line with its marker");
+                        let title = format!("Lay the reaction out {way}");
                         let aria = format!("Align {direction}");
                         let r = ui.add_enabled(
                             can_linear,
@@ -1489,12 +1474,11 @@ fn reaction_drawing_controls(ui: &mut Ui, store: &Store, p: &Palette, rid: &str,
                 }
             });
         });
-        widgets::note(ui, "Sets the two marked metabolites in line with the marker, substrate to product, and tidies the rest.");
         widgets::grow_row(ui, 2, |ui, i| {
             let (label, axis, title) = if i == 0 {
-                ("Vertical", "vertical", "As Escher's Align vertical: the reaction and its two marked metabolites on one vertical line, keeping the way it runs")
+                ("Vertical", "vertical", "Reaction and marked metabolites on one vertical line")
             } else {
-                ("Horizontal", "horizontal", "As Escher's Align horizontal: the reaction and its two marked metabolites on one horizontal line, keeping the way it runs")
+                ("Horizontal", "horizontal", "Reaction and marked metabolites on one horizontal line")
             };
             if Btn::new(label).enabled(can_linear).title(title).show(ui).clicked() {
                 acts.push(Act::ReactionAlignAxis(rid.to_string(), axis));
@@ -1502,7 +1486,7 @@ fn reaction_drawing_controls(ui: &mut Ui, store: &Store, p: &Palette, rid: &str,
         });
         let flip = Btn::new("Swap substrates ⇄ products")
             .enabled(!membrane)
-            .title("Put the substrates where the products are drawn and the products where the substrates are")
+            .title("Swap the places of substrates and products")
             .wide()
             .show(ui);
         if flip.clicked() {
@@ -1510,9 +1494,9 @@ fn reaction_drawing_controls(ui: &mut Ui, store: &Store, p: &Palette, rid: &str,
         }
         widgets::grow_row(ui, 3, |ui, i| {
             let r = match i {
-                0 => Btn::new("Mirror").title("Mirror the reaction in its own line: what hangs off one side hangs off the other").show(ui),
-                1 => Btn::new("⟲ 90°").enabled(can_rotate).title("Turn the reaction marker a quarter turn anticlockwise").show(ui),
-                _ => Btn::new("⟳ 90°").enabled(can_rotate).title("Turn the reaction marker a quarter turn clockwise").show(ui),
+                0 => Btn::new("Mirror").title("Mirror the reaction across its own line").show(ui),
+                1 => Btn::new("⟲ 90°").enabled(can_rotate).title("Rotate 90° anticlockwise").show(ui),
+                _ => Btn::new("⟳ 90°").enabled(can_rotate).title("Rotate 90° clockwise").show(ui),
             };
             if r.clicked() {
                 acts.push(match i {
@@ -1522,18 +1506,132 @@ fn reaction_drawing_controls(ui: &mut Ui, store: &Store, p: &Palette, rid: &str,
                 });
             }
         });
-        let tidy = Btn::new("Tidy curves")
-            .title("Put this reaction's cofactors back in their places around it and redraw its curves in their base shape")
-            .wide()
-            .show(ui);
+        let tidy = Btn::new("Tidy curves").title("Reset cofactor places and curve shapes").wide().show(ui);
         if tidy.clicked() {
             acts.push(Act::ReactionTidy(rid.to_string()));
         }
+        if reaction_label_offset(rxn).is_some() {
+            let reset = Btn::new("Reset label").title("Put the name back beside the marker").wide().show(ui);
+            if reset.clicked() {
+                acts.push(Act::ReactionLabelReset(rid.to_string()));
+            }
+        }
     });
-    widgets::note(
-        ui,
-        "These change the drawing only and do not alter the biological model. To pick the two metabolites on the map instead, shift-click them. For any angle, use Edit Control Points and drag the green lever.",
-    );
+    widgets::note(ui, "Shift-click two metabolites to pick them.");
+}
+
+// Selection
+
+/// `showsSelectionInspector(store)`: whether the inspector is about the
+/// multi-selection: nothing is selected on its own (a selected reaction keeps
+/// its inspector, which takes the line ends from shift-clicked metabolites),
+/// and there is something to arrange, two objects or one reaction to lay on a
+/// line.
+pub fn shows_selection_inspector(store: &Store) -> bool {
+    if store.selected_reaction.is_some() || store.selected_entity.is_some() || store.map.is_none() {
+        return false;
+    }
+    store.multi_selection_size() >= 2 || store.can_arrange_selection("align-vertical")
+}
+
+/// `selectionCounts(selection)`: "3 reactions · 4 metabolites", kinds with
+/// none left out.
+fn selection_counts(selection: &Selection) -> String {
+    [
+        (selection.reactions.len(), "reaction"),
+        (selection.nodes.len(), "metabolite"),
+        (selection.texts.len(), "text"),
+        (selection.compartments.len(), "compartment"),
+    ]
+    .into_iter()
+    .filter(|(count, _)| *count > 0)
+    .map(|(count, noun)| format!("{count} {noun}{}", if count == 1 { "" } else { "s" }))
+    .collect::<Vec<_>>()
+    .join(" · ")
+}
+
+/// `selectionInspector(store)`: arrange the multi-selection as a whole: align
+/// and distribute it, space it evenly along its own line, and turn it,
+/// rigidly, to a compass direction or by 45°. All map-only.
+fn selection_inspector(ui: &mut Ui, store: &Store, p: &Palette, acts: &mut Vec<Act>) {
+    let Some(map) = store.map.as_ref() else { return };
+    let selection = &store.multi_selection;
+    let spaced = spacing_items(map, selection).len();
+    let has_line = selection_main_axis(map, selection).is_some();
+    inspector_header_closing(ui, p, "Map", "Selection", &selection_counts(selection), Act::ClearMultiSelection, acts);
+
+    widgets::section_title(ui, "Align & distribute");
+    controls_box(ui, p, |ui| {
+        if let Some(action) = crate::panels::map_options::arrange_selection_block(ui, store) {
+            acts.push(Act::Arrange(action));
+        }
+    });
+
+    widgets::section_title(ui, "Spacing");
+    controls_box(ui, p, |ui| {
+        let even = Btn::new("Even spacing").enabled(spaced >= 3).title("Equal steps along the selection's own line").wide().show(ui);
+        if even.clicked() {
+            acts.push(Act::SelectionSpaceEvenly);
+        }
+    });
+
+    widgets::section_title(ui, "Rotate");
+    controls_box(ui, p, |ui| {
+        // The way the selection runs, as on a compass with north at the top of the map.
+        ui.horizontal(|ui| {
+            role_label(ui, p, "Point");
+            ui.add_space(6.0);
+            egui::Grid::new("selection-compass").spacing([3.0, 3.0]).show(ui, |ui| {
+                let ways = [
+                    ("NW", "up-left"),
+                    ("N", "up"),
+                    ("NE", "up-right"),
+                    ("W", "left"),
+                    ("", ""),
+                    ("E", "right"),
+                    ("SW", "down-left"),
+                    ("S", "down"),
+                    ("SE", "down-right"),
+                ];
+                for (i, (direction, way)) in ways.iter().enumerate() {
+                    if direction.is_empty() {
+                        ui.allocate_ui_with_layout(Vec2::new(30.0, 26.0), Layout::centered_and_justified(egui::Direction::TopDown), |ui| {
+                            ui.label(text("●", 9.0, p.ink_3));
+                        });
+                    } else {
+                        let arrow = glyph::COMPASS.iter().find(|(d, _)| d == direction).map_or("?", |(_, a)| *a);
+                        let title = format!("Point {way}");
+                        let aria = format!("Point {direction}");
+                        let r = ui.add_enabled(
+                            has_line,
+                            egui::Button::new(RichText::new(arrow).size(14.0).color(p.ink))
+                                .fill(p.panel)
+                                .stroke(Stroke::new(1.0, p.line))
+                                .corner_radius(CornerRadius::same(7))
+                                .min_size(Vec2::new(30.0, 26.0)),
+                        );
+                        aria_label(&r, &aria);
+                        let r = if has_line { r.on_hover_text(&title) } else { r.on_disabled_hover_text(&title) };
+                        if r.clicked() {
+                            let direction: &'static str = ["NW", "N", "NE", "W", "", "E", "SW", "S", "SE"][i];
+                            acts.push(Act::SelectionPoint(direction));
+                        }
+                    }
+                    if i % 3 == 2 {
+                        ui.end_row();
+                    }
+                }
+            });
+        });
+        widgets::grow_row(ui, 2, |ui, i| {
+            let (label, degrees, title) =
+                if i == 0 { ("⟲ 45°", -45.0, "Rotate 45° anticlockwise") } else { ("⟳ 45°", 45.0, "Rotate 45° clockwise") };
+            if Btn::new(label).title(title).wide().show(ui).clicked() {
+                acts.push(Act::SelectionRotate(degrees));
+            }
+        });
+    });
+    widgets::note(ui, "Turns as one piece; cofactors follow.");
 }
 
 /// `.chip.reaction-line-end`: a metabolite the reaction's line may run
@@ -1601,14 +1699,11 @@ fn layout_slider(
 }
 
 /// `.layout-settings-section`: a block with a rule under it.
-fn layout_section<R>(ui: &mut Ui, p: &Palette, fill: Option<egui::Color32>, add: impl FnOnce(&mut Ui) -> R) -> R {
-    let inner = Frame::new()
-        .fill(fill.unwrap_or(egui::Color32::TRANSPARENT))
-        .inner_margin(Margin::symmetric(4, 13))
-        .show(ui, |ui| {
-            ui.set_width(ui.available_width());
-            add(ui)
-        });
+fn layout_section<R>(ui: &mut Ui, p: &Palette, add: impl FnOnce(&mut Ui) -> R) -> R {
+    let inner = Frame::new().inner_margin(Margin::symmetric(4, 13)).show(ui, |ui| {
+        ui.set_width(ui.available_width());
+        add(ui)
+    });
     let rect = inner.response.rect;
     ui.painter().hline(rect.x_range(), rect.bottom(), Stroke::new(1.0, p.line));
     inner.inner
@@ -1624,13 +1719,12 @@ fn layout_settings(ui: &mut Ui, store: &Store, p: &Palette, acts: &mut Vec<Act>)
     let height = round_text(store.map.as_ref().map_or(800.0, |m| m.height()));
     ui.spacing_mut().item_spacing.y = 5.0;
 
-    layout_section(ui, p, None, |ui| {
+    layout_section(ui, p, |ui| {
         widgets::section_label(ui, "Automatic layout");
         ui.label(RichText::new("Layout settings").size(17.0).family(bold()).color(p.ink));
-        ui.add(Label::new(text("Give pathways more room without changing the biological model or the analysis.", 11.5, p.ink_3)).wrap());
     });
 
-    layout_section(ui, p, None, |ui| {
+    layout_section(ui, p, |ui| {
         ui.label(RichText::new("Preset").size(11.0).family(bold()).color(p.ink));
         ui.add_space(4.0);
         widgets::grow_row(ui, 3, |ui, i| {
@@ -1652,7 +1746,7 @@ fn layout_settings(ui: &mut Ui, store: &Store, p: &Palette, acts: &mut Vec<Act>)
         }
     });
 
-    layout_section(ui, p, None, |ui| {
+    layout_section(ui, p, |ui| {
         let why = blocked.as_deref();
         layout_slider(
             ui,
@@ -1701,10 +1795,10 @@ fn layout_settings(ui: &mut Ui, store: &Store, p: &Palette, acts: &mut Vec<Act>)
         if let Some(why) = why {
             widgets::hint(ui, why);
         }
-        widgets::hint(ui, "Cell area scales the space assigned to every cell. Spacious uses 6× area. Controls rerun only the drawing; Undo restores the previous map.");
+        widgets::hint(ui, "Undo restores the previous layout.");
     });
 
-    layout_section(ui, p, None, |ui| {
+    layout_section(ui, p, |ui| {
         ui.label(RichText::new("Canvas size").size(11.0).family(bold()).color(p.ink));
         ui.add_space(4.0);
         widgets::grow_row(ui, 2, |ui, i| {
@@ -1729,15 +1823,5 @@ fn layout_settings(ui: &mut Ui, store: &Store, p: &Palette, acts: &mut Vec<Act>)
         if Btn::new("⤢ Fit to screen").wide().height(34.0).show(ui).clicked() {
             acts.push(Act::ZoomFit);
         }
-    });
-
-    layout_section(ui, p, Some(p.panel_2), |ui| {
-        ui.label(RichText::new("For dense community maps").size(11.0).family(bold()).color(p.ink));
-        ui.add(Label::new(text(
-            "Spacious now assigns roughly six times the automatic area to each cell, in addition to longer springs and stronger repulsion.",
-            10.5,
-            p.ink_3,
-        ))
-        .wrap());
     });
 }

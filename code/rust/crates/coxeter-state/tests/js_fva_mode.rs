@@ -140,5 +140,5 @@ fn fva_mode_marks_reactions_whose_range_is_still_pending() {
     let state = store.map_render_state(RenderOptions::default());
     let svg = render_map_svg(store.map.as_ref().unwrap().graph(), &state);
 
-    assert!(svg.contains("R1  [calculando…]"));
+    assert!(svg.contains("R1  [computing…]"));
 }

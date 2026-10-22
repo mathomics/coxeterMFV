@@ -9,6 +9,7 @@
 //! [`EditableMapHost::compartments`] list what the models would offer.
 
 use coxeter_core::mapdata::{Point, Rect};
+use coxeter_core::reaction_label::set_reaction_label_offset;
 use coxeter_core::text_style::{clamp_text_size, normalize_text_font};
 use coxeter_map::editable_map::{CellSpec, CompartmentSpec, TextOptions};
 use coxeter_map::history::MapHistory;
@@ -303,6 +304,18 @@ impl MapHost for EditableMapHost {
             map.edit_graph(|g| {
                 if let Some(n) = g.nodes.get_mut(node_id) {
                     n.label_angle = angle;
+                }
+            });
+        }
+    }
+    fn set_reaction_label_offset(&mut self, reaction_id: &str, offset: Point) -> bool {
+        self.map.as_mut().is_some_and(|m| m.set_reaction_label_offset(reaction_id, offset).is_some())
+    }
+    fn restore_reaction_label_offset(&mut self, reaction_id: &str, offset: Option<Point>) {
+        if let Some(map) = self.map.as_mut() {
+            map.edit_graph(|g| {
+                if let Some(rxn) = g.reactions.get_mut(reaction_id) {
+                    set_reaction_label_offset(rxn, offset);
                 }
             });
         }

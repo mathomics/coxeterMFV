@@ -789,6 +789,31 @@ pub struct ArrangeResult {
     pub changed: bool,
 }
 
+/// What `space_multi_selection_evenly` did.
+#[derive(Debug, Clone, PartialEq, Default)]
+pub struct SpaceResult {
+    /// Every object placed, as `(kind, id)`.
+    pub moved: Vec<(String, String)>,
+    /// How many items were spaced, the two that stayed included.
+    pub count: usize,
+    pub changed: bool,
+}
+
+/// What `rotate_multi_selection` or `point_multi_selection` did: refused, and
+/// why, or turned (and whether that changed anything).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub struct TurnResult {
+    pub refused: Option<coxeter_map::multi_selection::TurnRefusal>,
+    pub changed: bool,
+}
+
+impl TurnResult {
+    /// `result.turned`.
+    pub fn turned(&self) -> bool {
+        self.refused.is_none()
+    }
+}
+
 /// `unsavedWork()`.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub struct UnsavedWork {

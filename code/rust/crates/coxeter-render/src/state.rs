@@ -65,7 +65,7 @@ pub struct MultiSelection {
     pub compartments: HashSet<(String, String)>,
 }
 
-/// A flux variability range; missing or non-finite ends read "calculando…".
+/// A flux variability range; missing or non-finite ends read "computing…".
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct FvaRange {
     pub min: f64,

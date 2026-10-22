@@ -305,20 +305,17 @@ fn summary(ui: &mut Ui, shell: &Shell, state: &TabState, p: &Palette) {
         ui.horizontal_top(|ui| {
             ui.label(RichText::new(if state.optimal { "✓" } else { "!" }).size(14.0).family(bold()).color(if state.optimal { p.ok } else { p.danger }));
             ui.vertical(|ui| {
-                let head = if state.optimal { format!("{mode} completed successfully") } else { format!("{mode} {status_label}") };
-                ui.label(RichText::new(head).size(12.5).family(bold()));
-                let small = if state.optimal {
-                    "Optimal solution found.".to_string()
-                } else {
-                    store
+                ui.label(RichText::new(format!("{mode} · {status_label}")).size(12.5).family(bold()));
+                if !state.optimal {
+                    let small = store
                         .solution
                         .as_ref()
                         .map(|s| s.message.clone())
                         .filter(|m| !m.is_empty())
                         .or_else(|| Some(store.status().message.clone()).filter(|m| !m.is_empty()))
-                        .unwrap_or_else(|| "No solution available.".into())
-                };
-                ui.add(egui::Label::new(RichText::new(small).size(11.0).color(p.ink_2)).wrap());
+                        .unwrap_or_else(|| "No solution available.".into());
+                    ui.add(egui::Label::new(RichText::new(small).size(11.0).color(p.ink_2)).wrap());
+                }
             });
         });
     });
@@ -370,7 +367,7 @@ fn analysis_tab_content(ui: &mut Ui, shell: &mut Shell, tab: AnalysisTab, state:
         return reproducibility_report(ui, shell, p);
     }
     if !state.optimal {
-        widgets::empty(ui, "Run an analysis to see numerical results.");
+        widgets::empty(ui, "Run an analysis to see results.");
         return;
     }
     let limit = if full { usize::MAX } else { 20 };
@@ -575,7 +572,7 @@ fn cell(ui: &mut Ui, width: f32, add: impl FnOnce(&mut Ui)) {
 /// `reproducibilityReport(store)`.
 fn reproducibility_report(ui: &mut Ui, shell: &Shell, p: &Palette) {
     let Some(state) = shell.store.reproducibility_replay.as_ref().filter(|s| s.get("replay").is_some_and(js::truthy)) else {
-        widgets::empty(ui, "Import a Reproducibility Bundle to run replay verification.");
+        widgets::empty(ui, "Import a reproducibility bundle to replay it.");
         return;
     };
     let r = &state["replay"];
@@ -606,7 +603,6 @@ fn reproducibility_report(ui: &mut Ui, shell: &Shell, p: &Palette) {
     let (fill, line) = if pass { (p.success_bg, p.success_line) } else { (p.danger_bg, p.danger_line) };
     widgets::tinted(ui, fill, line, |ui| {
         ui.label(RichText::new(format!("{} {}", if pass { "✓" } else { "✕" }, if pass { "Reproducibility verified" } else { "Reproducibility warning" })).family(bold()));
-        widgets::hint(ui, "Integrity and numerical replay are evaluated independently.");
     });
     let objective = r.get("objective").filter(|o| truthy(o)).map(|o| format!("|Δ| {}", exp(num(o.get("absError")), 2))).unwrap_or_default();
     let rows: Vec<(&str, bool, String)> = vec![
@@ -674,7 +670,6 @@ fn logs(ui: &mut Ui, shell: &mut Shell, p: &Palette) {
         line(ui, "Duals", d.interpretation.clone().unwrap_or_else(|| "optimal LP basis".into()));
     }
     render_log_entries(ui, shell, p);
-    widgets::note(ui, "This panel reports real application state; unsupported solver outputs are not synthesized.");
 }
 
 /// `renderLogEntries(log)`: newest first, each with when it last happened.

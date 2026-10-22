@@ -230,11 +230,11 @@ test('a shared-medium metabolite belongs to the shared medium, not to a cell cal
 test('label options, Add Metabolite help and blocked layout sliders say what they do', async () => {
   const store = await makeStore();
   const view = renderViewControls(store);
-  assert.match(view, />Major fluxes</);
+  assert.match(view, />Labels: major fluxes</);
   assert.doesNotMatch(view, /Primary only/);
 
   const build = renderTaskPanel(store, { leftTab: 'build', tool: 'metabolite' });
-  assert.match(build, /Click inside a compartment, then pick one of its model metabolites/);
+  assert.match(build, /Click a compartment, then pick a metabolite\./);
   assert.doesNotMatch(build, /biological model form/);
 
   const open = renderLayoutSettings(store);
@@ -368,8 +368,8 @@ test('PNG scales fit each browser canvas ceiling, largest first', async () => {
 
   // The hand-built Yeast9 map this was found on.
   const scales = rasterScales(10000, 10200);
-  assert.deepEqual(scales, [1.62, 1.1, 0.4]);
-  for (const [scale, area, side] of [[1.62, 268_435_456, 32_767], [1.1, 124_000_000, 32_767], [0.4, 16_777_216, 16_384]]) {
+  assert.deepEqual(scales, [0.99, 0.4], 'at most 100 million pixels, then Safari\'s ceiling');
+  for (const [scale, area, side] of [[0.99, 100_000_000, 32_767], [0.4, 16_777_216, 16_384]]) {
     const w = Math.round(10000 * scale);
     const h = Math.round(10200 * scale);
     assert.ok(w * h <= area && w <= side && h <= side, `${scale}x must fit ${area} px`);
@@ -421,7 +421,7 @@ test('switching a species off keeps a hand-built map, its undo history and every
 
   store.selectedReaction = 'other@At';
   const inspector = renderInspector(store);
-  assert.match(inspector, /switched off: it stays on the map, dimmed, and is not simulated/);
+  assert.match(inspector, /is switched off, so this reaction is not simulated/);
   assert.doesNotMatch(inspector, /data-action="bound-upper/, 'no bounds to edit for a reaction the analysis cannot see');
   store.selectedReaction = null;
 
@@ -620,7 +620,7 @@ test('a zero-abundance joint member is held out like a switched-off one', async 
   assert.equal(store.speciesHeldOut('demo'), false);
   store.selectedReaction = 'other@At';
   const html = renderInspector(store);
-  assert.match(html, /zero abundance in this community, so its reactions are held at zero/);
+  assert.match(html, /has zero abundance, so this reaction is held at zero/);
   assert.doesNotMatch(html, /data-action="bound-upper/);
 });
 

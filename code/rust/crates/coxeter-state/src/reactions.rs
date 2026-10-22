@@ -911,11 +911,7 @@ impl Store {
         } else {
             StatusState::Ok
         };
-        let tail = if failed {
-            format!(" The LP has no optimum now ({}); Revert last change takes the import back.", self.solution_status())
-        } else {
-            String::new()
-        };
+        let tail = if failed { format!(" The LP has no optimum now ({}); Revert last change takes it back.", self.solution_status()) } else { String::new() };
         self.set_status_message(state, format!("Bounds from {name}: {}.{tail}", parts.join(" · ")));
         self.emit("constraints");
         Ok(report)

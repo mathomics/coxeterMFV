@@ -6,7 +6,8 @@ use coxeter_core::community::CommunityModel;
 use coxeter_core::mapdata::{Point, Rect};
 use coxeter_map::EditableMap;
 use coxeter_map::editable_map::{CellSpec, ColorChange, CompartmentSpec, DuplicateOptions, TextOptions};
-use coxeter_map::multi_selection::{Selection, SelectionRect};
+use coxeter_core::reaction_label::{normalize_reaction_label_offset, reaction_label_placement_in};
+use coxeter_map::multi_selection::{Selection, SelectionRect, SelectionTurn, pointing_angle, spacing_items};
 use coxeter_map::place_reaction::PlaceOptions;
 use coxeter_map::reaction_edit::Handle;
 use serde_json::{Map, Value, json};
@@ -40,7 +41,25 @@ fn selection(v: &Value) -> Selection {
         nodes: list(v, "nodes").into_iter().collect(),
         reactions: list(v, "reactions").into_iter().collect(),
         texts: list(v, "texts").into_iter().collect(),
-        ..Default::default()
+        compartments: v
+            .get("compartments")
+            .and_then(Value::as_array)
+            .map(|l| {
+                l.iter()
+                    .filter_map(|k| Some((k.get(0)?.as_str()?.to_string(), k.get(1)?.as_str()?.to_string())))
+                    .collect()
+            })
+            .unwrap_or_default(),
+    }
+}
+fn turned(r: Option<SelectionTurn>) -> Value {
+    match r {
+        Some(SelectionTurn::Turned { angle, pivot, nodes, reactions, texts }) => json!({
+            "turned": true, "angle": angle, "pivot": { "x": pivot.x, "y": pivot.y },
+            "nodes": nodes, "reactions": reactions, "texts": texts,
+        }),
+        Some(SelectionTurn::Refused(reason)) => json!({ "turned": false, "reason": reason.as_str() }),
+        None => Value::Null,
     }
 }
 fn color(v: &Value, k: &str) -> ColorChange {
@@ -154,6 +173,36 @@ pub fn apply_edit(map: &mut EditableMap, community: &CommunityModel, op: &str, a
         "distributeSelection" => arranged(&map.distribute_selection(&selection(&a["selection"]), &s(a, "axis").unwrap_or_default())),
         "alignSelectionInLine" => match map.align_selection_in_line(&selection(&a["selection"]), &s(a, "mode").unwrap_or_default()) {
             Some(r) => json!({ "nodes": r.nodes, "reactions": r.reactions, "texts": r.texts, "held": r.held }),
+            None => Value::Null,
+        },
+        "spaceSelectionEvenly" => {
+            let r = map.space_selection_evenly(&selection(&a["selection"]));
+            json!({
+                "moved": r.moved.iter().map(|(k, id)| json!({ "kind": k.as_str(), "id": id })).collect::<Vec<_>>(),
+                "count": r.count,
+                "axis": r.axis.map(|p| json!({ "x": p.x, "y": p.y })),
+                "step": r.step,
+            })
+        }
+        "rotateSelection" => {
+            let pivot = a.get("pivot").and_then(point);
+            turned(map.rotate_selection(&selection(&a["selection"]), f(a, "angle"), pivot))
+        }
+        "pointSelection" => turned(map.point_selection(&selection(&a["selection"]), &s(a, "direction").unwrap_or_default())),
+        "pointingAngle" => json!(pointing_angle(map, &selection(&a["selection"]), &s(a, "direction").unwrap_or_default())),
+        "spacingItems" => Value::Array(
+            spacing_items(map, &selection(&a["selection"])).iter().map(|(k, id)| json!({ "kind": k.as_str(), "id": id })).collect(),
+        ),
+        "setReactionLabelOffset" => match a.get("offset").and_then(normalize_reaction_label_offset) {
+            Some(offset) => yes(map.set_reaction_label_offset(&id, offset)),
+            None => Value::Null,
+        },
+        "resetReactionLabel" => yes(map.reset_reaction_label(&id)),
+        "reactionLabelPlacement" => match map.reaction(&id) {
+            Some(rxn) => {
+                let p = reaction_label_placement_in(map.graph(), rxn);
+                json!({ "x": p.x, "y": p.y, "anchor": p.anchor.as_str(), "placement": p.placement })
+            }
             None => Value::Null,
         },
         "editGeometryRect" => {

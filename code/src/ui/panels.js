@@ -18,6 +18,7 @@ import { TEXT_FONTS, TEXT_SIZE, DEFAULT_TEXT_FONT } from '../core/text-style.js'
 import { OBJECTIVES } from '../core/community.js';
 import { ZUNIGA_ID, ZUNIGA_SCENARIOS } from '../communities/zuniga.js';
 import { boundControl, renderCompactReactionsTable, renderReactionsPage } from './reactions-panel.js';
+import { selectionMainAxis, selectionSize, spacingItems } from '../map/multi-selection.js';
 
 const esc = (s) => String(s ?? '')
   .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
@@ -68,10 +69,10 @@ export function renderSidebar(store) {
  */
 export function renderTaskPanel(store, ui = {}) {
   const tab = ui.leftTab ?? 'build';
-  const link = (workspace, icon, title, description) =>
+  const link = (workspace, icon, title) =>
     `<button class="task-link" data-action="open-workspace" data-workspace="${workspace}" type="button">
       <span class="task-link-icon" aria-hidden="true">${icon}</span>
-      <span class="task-link-copy"><strong>${title}</strong><small>${description}</small></span>
+      <span class="task-link-copy"><strong>${title}</strong></span>
       <span class="task-link-arrow" aria-hidden="true">›</span>
     </button>`;
 
@@ -79,17 +80,16 @@ export function renderTaskPanel(store, ui = {}) {
     const count = store.species.filter((species) => species.enabled).length;
     return `<section class="task-deck task-hub" data-task-hub="model">
       <div class="tool-context task-context"><span class="section-label">Community model</span>
-        <strong>${count} active species</strong><p>Edit the biological inputs used by the analysis.</p>
+        <strong>${count} active species</strong>
       </div>
       <nav class="task-links" aria-label="Model editors">
-        ${link('scenario', '◇', 'Scenario & objective', 'Setup and published communities')}
-        ${link('community', '⬡', 'Species & abundance', 'Models and community composition')}
-        ${link('medium', '◌', 'Shared medium', 'Nutrient supply and exchange')}
-        ${link('reactions', '☰', 'Reactions & bounds', 'Every reaction’s constraints')}
-        ${link('model', '⌁', 'Biological model', 'Create reactions and metabolites')}
-        ${link('omics', '≋', 'Omics & expression', 'Visual overlays and GIMME')}
+        ${link('scenario', '◇', 'Scenario & objective')}
+        ${link('community', '⬡', 'Species & abundance')}
+        ${link('medium', '◌', 'Shared medium')}
+        ${link('reactions', '☰', 'Reactions & bounds')}
+        ${link('model', '⌁', 'Biological model')}
+        ${link('omics', '≋', 'Omics & expression')}
       </nav>
-      <p class="task-footnote">Model edits affect the analysis. Map edits affect the drawing.</p>
     </section>`;
   }
 
@@ -105,7 +105,7 @@ export function renderTaskPanel(store, ui = {}) {
     const parameters = fixedMu ? 'Abundances are outputs of this solve' : store.omics?.gimmeEnabled
       ? `Objective target: ${Math.round(100 * (store.omics.gimmeObjectiveFraction ?? 0.9))}%`
       : store.loopless ? 'Internal cycles excluded'
-        : store.cycleFree ? 'Internal cycles removed from the FBA optimum'
+        : store.cycleFree ? 'Internal cycles removed'
         : store.parsimonious ? `Biomass target: ${formatPercent(store.pfbaBiomassPercent)}% of optimum`
           : 'Community objective maximisation';
     return `<section class="task-deck task-hub" data-task-hub="analysis">
@@ -114,42 +114,51 @@ export function renderTaskPanel(store, ui = {}) {
         <small class="task-parameters">${esc(parameters)}</small>
       </div>
       <div class="analysis-methods" role="group" aria-label="Run simulation">
-        <button data-action="run-fba" type="button"><strong>FBA</strong><small>Flux balance</small></button>
-        <button data-action="run-pfba" type="button"><strong>pFBA</strong><small>Minimum total flux</small></button>
-        <button data-action="run-fva" type="button"${fixedMu ? ' disabled title="Run an ordinary analysis before FVA"' : ''}><strong>FVA</strong><small>Flux ranges</small></button>
-        <button data-action="run-loopless" type="button"><strong>Loopless</strong><small>Exclude internal cycles</small></button>
-        <button data-action="run-cyclefree" type="button"><strong>CycleFreeFlux</strong><small>Remove cycles with one LP</small></button>
+        <button data-action="run-fba" type="button"><strong>FBA</strong></button>
+        <button data-action="run-pfba" type="button"><strong>pFBA</strong></button>
+        <button data-action="run-fva" type="button"${fixedMu ? ' disabled title="Run an ordinary analysis before FVA"' : ''}><strong>FVA</strong></button>
+        <button data-action="run-loopless" type="button"><strong>Loopless</strong></button>
+        <button data-action="run-cyclefree" type="button"><strong>CycleFreeFlux</strong></button>
       </div>
       <nav class="task-links" aria-label="Analysis tools">
-        ${link('analysis', '⚙', 'Simulation settings', 'Objective and solver options')}
-        ${link('reactions', '☰', 'Reactions & bounds', 'Bounds, objective and fluxes')}
-        ${link('crossfeeding', '⇄', 'Cross-feeding explorer', 'Producer and consumer transfers')}
+        ${link('analysis', '⚙', 'Simulation settings')}
+        ${link('reactions', '☰', 'Reactions & bounds')}
+        ${link('crossfeeding', '⇄', 'Cross-feeding explorer')}
       </nav>
       <button class="task-results-button" data-action="show-results" type="button">View simulation results <span aria-hidden="true">↗</span></button>
-      <p class="task-footnote">Input changes recalculate the current method automatically.</p>
     </section>`;
   }
 
   const tool = ui.tool ?? 'select';
   const help = {
-    select: ['Select & inspect', 'Click an object to inspect it. Drag an object to reposition it. Drag a metabolite label to place it around its circle.'],
-    edit: ['Edit Control Points', 'Show and move reaction control points to adjust reaction paths. Drag metabolites, reaction centres, or Bézier handles directly.'],
-    reaction: ['Add Reaction mode', 'Click a metabolite on the map to see only the model reactions that can be added from it.'],
-    metabolite: ['Add Metabolite mode', 'Click inside a compartment, then pick one of its model metabolites to draw it there. This adds a map instance; the biological model is unchanged.'],
-    text: ['Add map text', 'Click the map, type a label, choose its size and font beside it, and press Enter. Select a text later to restyle it.'],
-    compartment: ['Add Compartment', 'Choose a model compartment and a shape, then drag inside its highlighted parent to add it to the map.'],
-    cell: ['Add Cell', 'Choose an existing model species, then drag on the map to add its cell boundary.'],
-  }[tool] ?? ['Edit your map', 'Choose an editing tool to work on the map.'];
+    select: ['Select & inspect', 'Click an object to inspect it, or drag it to move it.'],
+    edit: ['Edit Control Points', 'Drag control points and Bézier handles to reshape reaction paths.'],
+    reaction: ['Add Reaction mode', 'Click a metabolite to add a reaction from it.'],
+    metabolite: ['Add Metabolite mode', 'Click a compartment, then pick a metabolite.'],
+    text: ['Add map text', 'Click the map, type, and press Enter.'],
+    compartment: ['Add Compartment', 'Pick a compartment and a shape, then drag inside its highlighted parent.'],
+    cell: ['Add Cell', cellToolHelp(store)],
+  }[tool] ?? ['Edit your map', 'Choose an editing tool.'];
 
   return `<section class="task-deck task-hub" data-task-hub="build">
     <div class="tool-context task-context"><span class="section-label">${esc(help[0])}</span><p>${esc(help[1])}</p>${tool === 'compartment' ? compartmentToolControls(store) : ''}</div>
     <nav class="task-links" aria-label="Map editors">
-      ${link('library', '⌕', 'Reaction library', 'Find and add model reactions')}
-      ${link('structure', '⬡', 'Structure', 'Cells and nested compartments')}
-      ${link('map', '⚙', 'Map options', 'Appearance, pathways and canvas')}
+      ${link('library', '⌕', 'Reaction library')}
+      ${link('structure', '⬡', 'Structure')}
+      ${link('map', '⚙', 'Map options')}
     </nav>
-    <p class="task-footnote">Map edits change the drawing. The biological model is preserved.</p>
   </section>`;
+}
+
+/**
+ * What a drag with the Cell tool draws, picked as addMapCell picks it (the
+ * species chosen in Structure, else the first not on the map), or that there
+ * is nothing left to draw, where a drag would otherwise do nothing at all.
+ */
+function cellToolHelp(store) {
+  const available = store.availableMapCells?.() ?? [];
+  const next = available.find((cell) => cell.speciesId === store.cellPlacementSpeciesId) ?? available[0];
+  return next ? `Drag on the map to draw ${next.speciesName}.` : 'Every species is on the map.';
 }
 
 function currentAnalysisMethod(store) {
@@ -199,6 +208,38 @@ export function renderWorkspace(store, workspace, { fluxColorDraft = null, stead
   return `<div class="workspace-cards" data-workspace-content="${esc(workspace)}">${content ? content() : '<p class="empty">Choose a workspace from the task panel.</p>'}</div>`;
 }
 
+/**
+ * The display options used most, for the map toolbar. Two groups, so that a
+ * narrow toolbar can hand the second (`quick-b`) and then both over to the View
+ * popover, which carries the same controls for that (see renderViewControls).
+ */
+export function renderMapQuickControls(store) {
+  const v = store.view;
+  const toggle = (action, on, label, title) =>
+    `<button class="quick-toggle" data-action="${action}" aria-pressed="${on}" title="${esc(title)}" type="button">${label}</button>`;
+  const option = (value, current, label) => `<option value="${value}"${current === value ? ' selected' : ''}>${label}</option>`;
+  const color = v.reactionColorMode ?? 'flux';
+  const multicell = (store.community?.activeSpecies?.length ?? 0) > 1;
+  return `<span class="quick quick-a">
+      <select data-action="labels" aria-label="Map labels" title="Which labels are shown">
+        ${option('auto', v.labels, 'Labels: major fluxes')}
+        ${option('active', v.labels, 'Labels: all active')}
+        ${option('all', v.labels, 'Labels: all')}
+        ${option('none', v.labels, 'Labels: none')}
+      </select>
+      ${toggle('toggle-currency', v.showCurrency, 'Cofactors', 'Show cofactors such as ATP, NADH and H⁺')}
+      ${multicell ? toggle('toggle-crossfeed', v.showCrossFeeding, '⇄ Cross-feeding', 'Highlight transfers between cells') : ''}
+    </span>
+    <span class="quick quick-b">
+      <select data-action="reaction-color-mode" aria-label="Line color" title="What colors the reaction lines">
+        ${option('flux', color, 'Color: flux')}
+        ${option('pathway', color, 'Color: pathway')}
+        ${option('subsystem', color, 'Color: subsystem')}
+      </select>
+      ${toggle('toggle-width-by-flux', Boolean(v.widthByFlux), 'Width by flux', 'Line width follows flux')}
+    </span>`;
+}
+
 /** View options affect presentation only; the theme control lives in the app. */
 export function renderViewControls(store) {
   const v = store.view;
@@ -206,34 +247,24 @@ export function renderViewControls(store) {
     `<button data-action="${action}" aria-pressed="${on}" title="${esc(title)}" type="button">${label}</button>`;
   const overview = store.coreMetabolismOverviewSupport?.() ?? { supported:false };
   return `<div class="view-controls">
+    <div class="view-folded">${renderMapQuickControls(store)}</div>
     <span class="section-label">Map view</span>
     <div class="toggle-list map-mode-toggle">
       <button data-action="map-core-overview" aria-pressed="${store.mapMode === 'core-overview'}"
         ${overview.supported ? '' : 'disabled'}
-        title="Curated glycolysis, PPP, TCA and amino-acid synthesis layout">Core metabolism</button>
+        title="Glycolysis, PPP, TCA and amino-acid synthesis">Core metabolism</button>
       <button data-action="map-full" aria-pressed="${store.mapMode === 'full'}"
-        title="Draw every reaction available in the active map model">Full network</button>
+        title="Every reaction in the map's model">Full network</button>
     </div>
-    <span class="section-label">Map visibility</span>
+    <span class="section-label">Cofactors</span>
     <div class="toggle-list">
-      ${toggle('toggle-currency', v.showCurrency, 'Cofactors', 'Show secondary metabolites: cofactors such as ATP, NADH and H⁺, and every node set to Secondary')}
-      ${toggle('toggle-currency-labels', v.currencyLabels, 'Cofactor labels', 'Name the small secondary metabolite nodes. They appear once the map is zoomed in past 34%')}
-      ${toggle('toggle-quiet-cofactors', store.map?.cofactorStyle === 'quiet', 'Quiet cofactors', 'Draw this map’s secondary metabolites small and light, so the pathways stand out. Saved with the map')}
-      ${toggle('toggle-crossfeed', v.showCrossFeeding, 'Highlight cross-feeding', 'Dim the metabolic network and highlight active metabolite transfers between cells')}
+      ${toggle('toggle-currency-labels', v.currencyLabels, 'Cofactor labels', 'Shown past 34% zoom')}
+      ${toggle('toggle-quiet-cofactors', store.map?.cofactorStyle === 'quiet', 'Quiet cofactors', 'Small and light; saved with the map')}
     </div>
     ${crossFeedingTopControl(store)}
     ${crossFeedingWidthControl(store)}
-    <label class="view-label-control">Labels
-      <select data-action="labels" aria-label="Map labels">
-        <option value="auto"${v.labels === 'auto' ? ' selected' : ''}>Major fluxes</option>
-        <option value="active"${v.labels === 'active' ? ' selected' : ''}>All active</option>
-        <option value="all"${v.labels === 'all' ? ' selected' : ''}>All</option>
-        <option value="none"${v.labels === 'none' ? ' selected' : ''}>None</option>
-      </select>
-    </label>
     ${mapLabelControl(store, 'metabolite')}
     ${mapLabelControl(store, 'reaction')}
-    <p class="hint">Missing names or database IDs use the usual label. Individual labels can override these choices in the inspector.</p>
     <label class="view-label-control">Scrolling
       <select data-action="scroll-input" aria-label="Scrolling input">
         <option value="auto"${(v.scrollInput ?? 'auto') === 'auto' ? ' selected' : ''}>Automatic</option>
@@ -263,16 +294,21 @@ export function modelKindLabel(store) {
   return { text, title };
 }
 
-/** The right-hand inspector as HTML, for the selected reaction or the selected entity (metabolite, gene, text, cell, compartment). */
+/**
+ * The right-hand inspector as HTML, for the selected reaction or the selected
+ * entity (metabolite, gene, text, cell, compartment), or else for the
+ * multi-selection (showsSelectionInspector).
+ */
 export function renderInspector(store) {
   if (store.selectedReaction) return inspectorCard(store);
+  if (showsSelectionInspector(store)) return selectionInspector(store);
 
   const selected = store.selectedEntity;
   if (!selected) {
     return `<section class="inspector-empty">
       <div class="inspector-empty-icon">⌁</div>
       <h2>No selection</h2>
-      <p>Select a reaction, metabolite, cell, compartment, or text element to inspect its properties.</p>
+      <p>Select something on the map to inspect it.</p>
     </section>`;
   }
 
@@ -312,8 +348,8 @@ export function renderResults(store, analysisTab = 'flux', { table = null } = {}
   return `<div class="result-pane" data-result-pane="analysis">
     <div class="analysis-summary">
       <div class="analysis-message ${optimal ? 'is-success' : 'is-error'}">
-        <span>${optimal ? '✓' : '!'}</span><div><strong>${mode} ${optimal ? 'completed successfully' : statusLabel}</strong>
-        <small>${optimal ? 'Optimal solution found.' : esc(solution?.message ?? store.status?.message ?? 'No solution available.')}</small></div>
+        <span>${optimal ? '✓' : '!'}</span><div><strong>${mode} · ${esc(statusLabel)}</strong>
+        ${optimal ? '' : `<small>${esc(solution?.message ?? store.status?.message ?? 'No solution available.')}</small>`}</div>
       </div>
       <dl class="analysis-metrics">
         <div><dt>Objective value</dt><dd>${optimal ? formatFlux(solution.objectiveValue, 5) : '—'}</dd></div>
@@ -342,7 +378,6 @@ export function renderResults(store, analysisTab = 'flux', { table = null } = {}
     ${store.fvaEnabled ? `<p><span>FVA</span> ${progress.running ? `Computing ${progress.done ?? 0}/${progress.total ?? 0}` : `Available for ${store.fvaRanges.size} reactions`}</p>` : ''}
     ${solution?.dualAnalysis?.available ? `<p><span>Duals</span> ${esc(solution.dualAnalysis.context ?? solution.dualAnalysis.interpretation ?? 'optimal LP basis')}</p>` : ''}
     ${renderLogEntries(store.log)}
-    <p class="muted">This panel reports real application state; unsupported solver outputs are not synthesized.</p>
   </div>`;
 }
 
@@ -390,7 +425,7 @@ function analysisTabContent(store, tab, state) {
   const { optimal, dualAvailable, fvaAvailable, progress, full=false } = state;
   const wrap = (html) => `<div class="analysis-tab-content ${full?'full-table':''}" data-analysis-content="${tab}">${html}</div>`;
   if (tab === 'repro') return wrap(reproducibilityReport(store));
-  if (!optimal) return wrap('<div class="analysis-empty">Run an analysis to see numerical results.</div>');
+  if (!optimal) return wrap('<div class="analysis-empty">Run an analysis to see results.</div>');
 
   if (tab === 'flux') {
     const rows=[...store.solution.fluxes].sort((a,b)=>Math.abs(b[1])-Math.abs(a[1])||a[0].localeCompare(b[0]));
@@ -418,7 +453,7 @@ function analysisTabContent(store, tab, state) {
 
 function reproducibilityReport(store) {
  const state=store.reproducibilityReplay;
- if(!state?.replay)return '<div class="analysis-empty">Import a Reproducibility Bundle to run replay verification.</div>';
+ if(!state?.replay)return '<div class="analysis-empty">Import a reproducibility bundle to replay it.</div>';
  const r=state.replay, integrity=state.integrity??{};
  const icon=(ok)=>ok?'✓':'✕', cls=(ok)=>ok?'is-pass':'is-fail';
  const metric=(label,key,detail='')=>`<div class="repro-check ${cls(Boolean(r.checks?.[key]))}"><span class="repro-icon">${icon(Boolean(r.checks?.[key]))}</span><div><strong>${label}</strong><small>${detail}</small></div></div>`;
@@ -426,7 +461,7 @@ function reproducibilityReport(store) {
  const models=Object.values(integrity.modelChecks??{}); const modelsOK=models.length?models.every(Boolean):true;
  const mapOK=Boolean(state.restored?.map); const omicsExpected=Boolean(state.restored?.omicsExpected); const omicsOK=!omicsExpected||Boolean(state.restored?.omics);
  return `<div class="repro-report">
-   <div class="repro-verdict ${cls(r.pass&&integrity.valid)}"><span>${icon(r.pass&&integrity.valid)}</span><div><strong>${r.pass&&integrity.valid?'Reproducibility verified':'Reproducibility warning'}</strong><small>Integrity and numerical replay are evaluated independently.</small></div></div>
+   <div class="repro-verdict ${cls(r.pass&&integrity.valid)}"><span>${icon(r.pass&&integrity.valid)}</span><div><strong>${r.pass&&integrity.valid?'Reproducibility verified':'Reproducibility warning'}</strong></div></div>
    <div class="repro-grid">
     ${metric('Bundle integrity','integrity',integrity.payloadValid?'SHA-256 payload verified':'SHA-256 payload mismatch')}
     ${metric('Models','models',`${models.length} embedded model hash(es) verified`)}
@@ -513,7 +548,6 @@ export function renderLayoutSettings(store) {
       <div>
         <span class="section-label">Automatic layout</span>
         <h2>Layout settings</h2>
-        <p>Give pathways more room without changing the biological model or the analysis.</p>
       </div>
     </section>
 
@@ -556,7 +590,7 @@ export function renderLayoutSettings(store) {
           min="0.65" max="1.90" step="0.05" value="${settings.nodeSpacing}">
       </div>
       ${blocked ? `<p class="hint layout-blocked-note">${esc(blocked)}</p>` : ''}
-      <p class="hint">Cell area scales the space assigned to every cell. Spacious uses 6× area. Controls rerun only the drawing; Undo restores the previous map.</p>
+      <p class="hint">Undo restores the previous layout.</p>
     </section>
 
     <section class="layout-settings-section">
@@ -570,11 +604,6 @@ export function renderLayoutSettings(store) {
         </label>
       </div>
       <button class="layout-fit-button" data-action="zoom-fit" type="button">⤢ Fit to screen</button>
-    </section>
-
-    <section class="layout-settings-section layout-settings-tip">
-      <strong>For dense community maps</strong>
-      <p>Spacious now assigns roughly six times the automatic area to each cell, in addition to longer springs and stronger repulsion.</p>
     </section>
   </div>`;
 }
@@ -637,15 +666,15 @@ function scenarioCard(store, steadyComUI = {}) {
  */
 function solverNote(store) {
   return `<h2 class="sc-solver-title">Solver</h2>
-    <p class="hint"><strong>${esc(solverLabel(store))}</strong> in the browser. The desktop app can also run on the Gurobi or CPLEX installed on a computer, with its licence.</p>`;
+    <p class="hint"><strong>${esc(solverLabel(store))}</strong> · Gurobi/CPLEX: desktop app only.</p>`;
 }
 
 function objectiveControls(store) {
   if (store.isZunigaStudy) {
     const coefficients = Object.entries(store.problem?.objective ?? {}).map(([id, value]) => `${value} × ${id}`).join(' + ');
     return `<p><strong>Authors’ original objective</strong></p><p class="hint"><code>${esc(coefficients || 'Source model objective')}</code></p>
-      <p class="hint">The documented medium, reaction bounds and population coefficients are fixed for this case. Choose a case scenario to compare the WT, mutant and coculture. The drawing remains editable.</p>
-      <p class="hint">Stationary FBA · GLPK. This comparison does not reproduce dynamic culture trajectories or measured experimental growth rates.</p>`;
+      <p class="hint">Medium, bounds and population coefficients are fixed for this case.</p>
+      <p class="hint">Stationary FBA · GLPK.</p>`;
   }
   const fixedMu = Boolean(store.solution?.steadyCom);
   const objectives = [
@@ -659,10 +688,10 @@ function objectiveControls(store) {
     <select id="objective-select" data-action="objective">${edited}${objectives}</select>
     <button type="button" class="sc-objective-edit" data-action="open-workspace" data-workspace="reactions"
       title="Any reaction, any coefficient, maximised or minimised">Edit objective in Reactions ↗</button>
-    <label class="row" style="margin-top:10px;cursor:pointer">
+    <label class="row" style="margin-top:10px;cursor:pointer" title="Parsimonious FBA: least total flux at the target biomass">
       <input type="checkbox" data-action="parsimonious" ${store.parsimonious ? 'checked' : ''}
         aria-label="Use Parsimonious Flux Balance Analysis">
-      <span class="grow"><strong>pFBA</strong> · Parsimonious Flux Balance Analysis</span>
+      <span class="grow"><strong>pFBA</strong></span>
     </label>
     <div class="row pfba-biomass-row">
       <label class="grow" for="pfba-biomass-percent">Target biomass (% of optimum)</label>
@@ -671,20 +700,16 @@ function objectiveControls(store) {
         value="${esc(formatPercent(store.pfbaBiomassPercent))}"
         aria-label="Percentage of the optimal objective fixed for pFBA">
     </div>
-    <p class="hint">Current method: <strong>${currentAnalysisMethod(store)}</strong>.
-    ${fixedMu ? 'The map shows a fixed-µ SteadyCom solution. Run FBA, pFBA or Loopless to return to ordinary analysis.' : store.loopless
-      ? 'Loopless uses a MILP to exclude thermodynamically impossible internal cycles.'
-      : `pFBA fixes ${formatPercent(store.pfbaBiomassPercent)}% of the optimum, then minimises total flux.`}</p>
-    <label class="row" style="margin-top:10px;cursor:pointer">
+    <label class="row" style="margin-top:10px;cursor:pointer" title="Excludes internal cycles with a MILP; can be much slower">
       <input type="checkbox" data-action="loopless" ${store.loopless ? 'checked' : ''}
         aria-label="Enable Loopless Flux Balance Analysis">
-      <span class="grow"><strong>Loopless</strong> · Loopless FBA</span>
+      <span class="grow"><strong>Loopless</strong></span>
     </label>
     ${looplessProgressLine(store)}
-    <label class="row" style="margin-top:10px;cursor:pointer">
+    <label class="row" style="margin-top:10px;cursor:pointer"${fixedMu ? '' : ' title="Flux Variability Analysis: each reaction’s range at the optimum"'}>
       <input type="checkbox" data-action="fva" ${store.fvaEnabled ? 'checked' : ''}
         aria-label="Enable Flux Variability Analysis"${fixedMu ? ' disabled title="Run an ordinary analysis before enabling FVA"' : ''}>
-      <span class="grow"><strong>FVA</strong> · Flux Variability Analysis</span>
+      <span class="grow"><strong>FVA</strong></span>
     </label>
     ${fvaProgressLine(store)}`;
 }
@@ -696,9 +721,7 @@ function formatPercent(value) {
 }
 
 function looplessProgressLine(store) {
-  if (!store.loopless) {
-    return '<p class="hint">Removes internal cycles with a MILP. Can be much slower than FBA/pFBA.</p>';
-  }
+  if (!store.loopless) return '';
 
   const solution = store.solution;
   if (!solution) return '<p class="hint">Loopless enabled.</p>';
@@ -713,9 +736,7 @@ function looplessProgressLine(store) {
 }
 
 function fvaProgressLine(store) {
-  if (!store.fvaEnabled) {
-    return '<p class="hint">Computes the minimum and maximum flux of every reaction while holding the objective at its optimum.</p>';
-  }
+  if (!store.fvaEnabled) return '';
   const progress = store.fvaProgress ?? {};
   if (progress.running) {
     return `<p class="hint">FVA running… <strong>${progress.done ?? 0}/${progress.total ?? 0}</strong> reactions.</p>`;
@@ -723,7 +744,7 @@ function fvaProgressLine(store) {
   if ((progress.total ?? 0) > 0) {
     return `<p class="hint">FVA done: <strong>${progress.done}/${progress.total}</strong> reactions · ${progress.ms ?? 0} ms.</p>`;
   }
-  return '<p class="hint">FVA enabled. It runs on the next solve.</p>';
+  return '<p class="hint">FVA runs on the next solve.</p>';
 }
 
 // Published communities
@@ -834,7 +855,7 @@ function speciesBlock(c, assets, base, store) {
 }
 
 function zunigaCaseBlock(store) {
-  if (!store.isZunigaStudy) return `<p class="hint">Loading requires an internet connection the first time. The original models remain in a private browser cache for subsequent use.</p>`;
+  if (!store.isZunigaStudy) return `<p class="hint">Loading needs an internet connection the first time.</p>`;
   const co = store.zunigaSolutions.get('mutant-coculture');
   const monoGrowth = createGrowthForCase(store, 'mutant-monoculture', 'Ec');
   const coGrowth = co?.zuniga?.growth?.Ec ?? createGrowthForCase(store, 'mutant-coculture', 'Ec');
@@ -846,12 +867,12 @@ function zunigaCaseBlock(store) {
     <select id="zuniga-scenario" data-action="zuniga-scenario" aria-label="Zuñiga case scenario">${ZUNIGA_SCENARIOS.map(s => `<option value="${esc(s.id)}"${s.id === store.zunigaScenarioId ? ' selected' : ''}>${esc(s.name)}</option>`).join('')}</select>
     <label class="sc-label" for="zuniga-comparison">Flux display</label>
     <select id="zuniga-comparison" data-action="zuniga-comparison" aria-label="Zuñiga flux comparison"><option value="absolute"${store.zunigaComparison === 'absolute' ? ' selected' : ''}>Solved fluxes</option><option value="difference"${store.zunigaComparison === 'difference' ? ' selected' : ''}>Δ flux vs WT monoculture</option></select>
-    <p class="hint">Geometry and the flux scale are shared across the three scenarios. Color and width show ${store.zunigaComparison === 'difference' ? 'Δv = selected − WT; blue means decrease, red means increase. Arrows retain the direction of the selected solved flux' : 'the magnitude of the solved flux; arrows show its direction'}. The reference magnitude is ${formatFlux(store.zunigaState()?.fluxReference, 4)} in source-model flux units.</p>
+    <p class="hint">${store.zunigaComparison === 'difference' ? 'Blue is a decrease and red an increase relative to WT' : 'Color and width show the solved flux'} (reference magnitude ${formatFlux(store.zunigaState()?.fluxReference, 4)}).</p>
     <table class="pc-sweep"><thead><tr><th>Scenario</th><th>E. coli (h⁻¹)</th><th>S. elongatus (h⁻¹)</th></tr></thead><tbody>${rows}</tbody></table>
-    <p class="hint"><strong>Perturbation:</strong> Ec PPNDH (pheA) is disabled in both mutant scenarios. The WT has its original bounds.</p>
+    <p class="hint"><strong>Perturbation:</strong> Ec PPNDH (pheA) is disabled in both mutant scenarios.</p>
     <p class="hint"><strong>Calculated phenylalanine transfer:</strong> S. elongatus → E. coli ${formatFlux(pheTransfer, 6)} in source-model shared-pool flux units.</p>
-    <p class="hint">${rescued ? 'Calculated growth is restored in the mutant coculture relative to mutant monoculture. The displayed phenylalanine transfer identifies the calculated complementing route.' : 'Growth and exchange values shown here are calculated stationary solutions. Interpret rescue only where the mutant coculture supports growth and the relevant transfer is positive.'}</p>
-    <p class="hint">S. elongatus is absent from both monoculture calculations; its faint cell preserves the visual comparison. Δ values for its reactions use a zero baseline. This is a stationary adaptation, not a comparison of experimental monoculture and coculture measurements.</p>
+    <p class="hint">${rescued ? 'The calculated phenylalanine transfer restores growth in the mutant coculture.' : 'Rescue applies only where the mutant coculture grows and the transfer is positive.'}</p>
+    <p class="hint">A stationary FBA adaptation, not a comparison of experimental cultures over time.</p>
     <div class="row"><button data-action="export-svg">Export SVG</button><button data-action="export-png">Export PNG</button><button data-action="export-reproducibility">Private reproducibility bundle</button></div>`;
 }
 
@@ -871,8 +892,8 @@ function createGrowthForCase(store, scenarioId, speciesId) {
  * lossy second copy of a download.
  */
 function conditionsBlock(c, assets, base) {
-  if (c.id === ZUNIGA_ID) return `<h3>Source conditions</h3><p class="hint">Complete author models are downloaded directly from the pinned public source and verified by SHA-256. They are cached privately on this computer. Coxeter distributes the case specification and calculated results; the original models are not redistributed.</p>
-    <p class="hint">The reference medium, original reaction bounds, biomass definitions and population coefficients are preserved. Monoculture and coculture have different source models; differences are documented as adaptations.</p>`;
+  if (c.id === ZUNIGA_ID) return `<h3>Source conditions</h3><p class="hint">The author models are downloaded from the pinned source, verified by SHA-256, and not redistributed.</p>
+    <p class="hint">Monoculture and coculture use different source models.</p>`;
   if (!assets) {
     return c.conditions
       ? `<h3>Conditions</h3><p class="hint">${esc(c.conditions.medium ?? '')}</p>`
@@ -886,9 +907,9 @@ function conditionsBlock(c, assets, base) {
     : `<a class="pc-dl" download href="${esc(`${base}/${file}`)}">${label}</a>`;
   return `<h3>Conditions</h3>
     <ul class="pc-list pc-downloads">
-      <li><b>Medium</b> — the exchange reactions the diet opens, with their bounds
+      <li><b>Medium</b> · open exchanges
         ${link(assets.media, 'CSV')}</li>
-      <li><b>Bounds</b> — every reaction's lower and upper bound and objective coefficient
+      <li><b>Bounds</b> · every reaction
         ${link(assets.bounds, 'CSV')}</li>
     </ul>`;
 }
@@ -973,20 +994,18 @@ function steadyComBlock(c, store, { steadyComDraft = null, steadyComPending = fa
   const fiberValue = Number.isFinite(fiber?.bacteroides) ? fiber.bacteroides : 30;
   const condition = nine ? `<div class="sc-steadycom-condition">
       <label>Diet / fiber condition<select data-action="steadycom-fiber-condition" aria-label="SteadyCom fiber condition"${busy ? ' disabled' : ''}>
-        <option value="baseline"${!fiber ? ' selected' : ''}>Baseline diet (no additional fiber limits)</option>
+        <option value="baseline"${!fiber ? ' selected' : ''} title="No additional fiber limits">Baseline diet</option>
         <option value="figure4"${fiber ? ' selected' : ''}>Figure 4 fiber limits</option>
       </select></label>
       ${fiber ? `<label class="sc-steadycom-fiber">B. thetaiotaomicron<input type="number" step="any" min="1" max="30" value="${esc(draft?.fiberValue ?? String(fiberValue))}" data-action="steadycom-fiber" aria-label="Bacteroides maximum specific fiber uptake"${busy ? ' disabled' : ''}${draft?.invalidField === 'fiber' ? ' aria-invalid="true"' : ''}><span>C-mmol/gDW/h</span></label>
-        <p class="hint">F. prausnitzii is held at 5 C-mmol/gDW/h. Changing these limits invalidates the calculated range.</p>` : ''}
+        <p class="hint">F. prausnitzii is held at 5 C-mmol/gDW/h; changing a limit invalidates the calculated range.</p>` : ''}
     </div>` : '';
 
   return `<section class="sc-steadycom" data-steadycom-community="${esc(communityId)}">
     <h3>Fix a growth rate · SteadyCom</h3>
-    ${c?.computed ? '<p class="hint">The published results above are historical benchmarks. Calculate the range for the current model and conditions before choosing µ.</p>' : ''}
-    <p class="hint">Fixing µ solves a community LP at total biomass 1; abundances are outputs of this analysis.</p>
     ${condition}
     <ul class="pc-list">
-      <li><b>Calculated µ range:</b> <span data-steadycom-range-value>${top === null ? 'Not calculated for the current inputs' : `${esc(String(minimum))} – ${esc(String(top))} h⁻¹`}</span></li>
+      <li><b>Calculated µ range:</b> <span data-steadycom-range-value>${top === null ? 'Not calculated for the current inputs' : `${esc(String(+Number(minimum).toFixed(6)))} – ${esc(String(+top.toFixed(6)))} h⁻¹`}</span></li>
       ${computed && Number.isFinite(state.resolution) ? `<li class="hint">Search resolution: ${esc(String(state.resolution))} h⁻¹${Number.isFinite(state.upperBound) ? `; upper search bound: ${esc(String(state.upperBound))} h⁻¹` : ''}.</li>` : ''}
       ${composition}
       ${refused}
@@ -1000,17 +1019,14 @@ function steadyComBlock(c, store, { steadyComDraft = null, steadyComPending = fa
       <span class="hint">h⁻¹</span>
     </div>
     <p class="sc-steadycom-error" data-steadycom-error role="alert"${draft?.error ? '' : ' hidden'}>${esc(draft?.error ?? '')}</p>
-    <label class="sc-steadycom-parsimonious"><input type="checkbox" data-action="steadycom-parsimonious"${store.steadyComConfig?.parsimonious ? ' checked' : ''}${busy ? ' disabled' : ''}>
-      Parsimonious: least total flux at this µ</label>
+    <label class="sc-steadycom-parsimonious" title="Least summed member flux at this µ; slower"><input type="checkbox" data-action="steadycom-parsimonious"${store.steadyComConfig?.parsimonious ? ' checked' : ''}${busy ? ' disabled' : ''}>
+      Parsimonious</label>
     <div class="sc-mu-actions">
       <button class="primary" data-action="steadycom-recompute"${busy ? ' disabled' : ''}>${computed ? 'Recalculate range' : 'Calculate range'}</button>
       <button data-action="steadycom-solve" ${top === null || busy ? 'disabled' : ''}>Solve at this µ</button>
       <button data-action="steadycom-cancel"${busy ? '' : ' hidden'}>Cancel</button>
     </div>
-    <p class="hint">Range calculation runs several LPs and can take time for genome-scale models. Cancel stops the pending calculation.</p>
-    <p class="hint">The composition is one feasible solution and may be non-unique, even at the maximum. Species with X = 0 are inactive. At µ = 0, present members still obey their maintenance bounds.</p>
-    <p class="hint">Parsimonious picks, among all solutions at this µ, the one with the least summed member flux (abundance × flux). It drops the cycles the community does not need, loops between two members included, and takes longer.</p>
-    <p class="hint">The map displays per-gDW fluxes for present members. Abundance sliders adopt the returned composition.</p>
+    <p class="hint">Composition may be non-unique.</p>
   </section>`;
 }
 
@@ -1186,8 +1202,8 @@ function speciesCard(store) {
     ${['Ec', 'Se'].map(id => {
       const sp = store.species.find(item => item.id === id), model = store.models.get(sp?.file);
       const present = id === 'Ec' || store.zunigaScenarioId === 'mutant-coculture';
-      return `<div class="species-item${present ? '' : ' is-off'}"><b>${esc(model?.cell?.organism ?? (id === 'Ec' ? 'Escherichia coli' : 'Synechococcus elongatus'))}</b><p class="hint">${present ? `Growth: ${formatFlux(store.growth.get(id), 6)} h⁻¹` : 'Absent from this monoculture calculation; shown faintly to preserve map geometry.'}</p></div>`;
-    }).join('')}<p class="hint">Population coefficients come from the source community model. Generic abundance sliders would change its stoichiometry and are disabled for this reproducible case.</p></section>`;
+      return `<div class="species-item${present ? '' : ' is-off'}"><b>${esc(model?.cell?.organism ?? (id === 'Ec' ? 'Escherichia coli' : 'Synechococcus elongatus'))}</b><p class="hint">${present ? `Growth: ${formatFlux(store.growth.get(id), 6)} h⁻¹` : 'Absent from this monoculture; drawn faintly.'}</p></div>`;
+    }).join('')}<p class="hint">Abundances are fixed by the source model’s population coefficients.</p></section>`;
   const items = store.species.map((sp) => {
     const model = store.models.get(sp.file);
     const mu = store.growth?.get(sp.id);
@@ -1224,18 +1240,15 @@ function speciesCard(store) {
       <button class="primary grow" data-action="import-models">Load model(s)</button>
       <button class="grow" data-action="load-yeast9" title="Load the official yeast-GEM 9.1.1 SBML model">Yeast9 9.1.1</button>
     </div>
-    <p class="hint">Accepts COBRApy/BiGG JSON, SBML, and COBRA Toolbox MATLAB (.mat) or Excel (.xlsx). You can pick several files at once:
-    each becomes one species/cell. Imported models start with an empty compartment map.
-    The Yeast9 shortcut loads the official pinned model and preserves all 14 subcellular compartments.</p>
-    <p class="hint">Abundances are normalised to 1. They turn each species' per-gDW flux
-    into community per-gDW flux, which is what travels through the shared medium.</p>
+    <p class="hint">JSON, SBML, MAT or XLSX; one species per file.</p>
+    <p class="hint">Abundances sum to 1.</p>
   </section>`;
 }
 
 // Map structure
 
 const SHAPE_LABELS = {
-  auto: 'Its usual shape (organelles round)',
+  auto: 'Auto',
   rectangle: 'Rectangle',
   rounded: 'Rounded corners',
   capsule: 'Capsule',
@@ -1256,7 +1269,7 @@ function compartmentPlacementControls(store, idPrefix) {
   const option = (item) => {
     const key = `${item.speciesId}|${item.compartmentId}`;
     const who = manySpecies ? `${item.speciesName} · ` : '';
-    return `<option value="${esc(key)}"${key === currentKey ? ' selected' : ''}${item.status === 'ready' ? '' : ' disabled'}>${esc(who)}${esc(item.compartmentName)} (${esc(item.compartmentId)}) — ${esc(item.reason)}</option>`;
+    return `<option value="${esc(key)}"${key === currentKey ? ' selected' : ''}${item.status === 'ready' ? '' : ' disabled'}${item.reason ? ` title="${esc(item.reason)}"` : ''}>${esc(who)}${esc(item.compartmentName)} (${esc(item.compartmentId)})</option>`;
   };
   const groups = [
     ['ready', 'Ready to draw'],
@@ -1268,7 +1281,7 @@ function compartmentPlacementControls(store, idPrefix) {
     return items.length ? `<optgroup label="${label}">${items.map(option).join('')}</optgroup>` : '';
   }).join('');
   const shapes = ['auto', ...Object.keys(COMPARTMENT_SHAPES)].map((name) =>
-    `<option value="${name}"${(store.compartmentShapePreset ?? 'auto') === name ? ' selected' : ''}>${SHAPE_LABELS[name]}</option>`
+    `<option value="${name}"${(store.compartmentShapePreset ?? 'auto') === name ? ' selected' : ''}${name === 'auto' ? ' title="Its usual shape; organelles are round"' : ''}>${SHAPE_LABELS[name]}</option>`
   ).join('');
   return `<label for="${idPrefix}-compartment-select">Compartment to draw</label>
     <select id="${idPrefix}-compartment-select" data-action="compartment-placement"
@@ -1288,8 +1301,8 @@ function compartmentToolControls(store) {
   return `<div class="compartment-tool-controls">
     ${compartmentPlacementControls(store, 'tool')}
     <p class="hint">${current
-      ? `Drag inside <strong>${esc(parent ?? current.parentId)}</strong>, highlighted on the map. Once drawn, drag the <strong>orange diamond</strong> to soften its corners and the <strong>yellow diamond</strong> to make it oval.`
-      : 'Nothing can be drawn yet: the list says what each compartment is waiting for.'}</p>
+      ? `Drag inside <strong>${esc(parent ?? current.parentId)}</strong>, highlighted on the map.`
+      : 'Nothing can be drawn yet.'}</p>
   </div>`;
 }
 
@@ -1308,8 +1321,6 @@ function mapStructureCard(store) {
 
   const cells = store.map?.cells?.length ?? 0;
   const compartments = store.map?.cells?.reduce((n, cell) => n + cell.compartments.length, 0) ?? 0;
-  const width = Math.round(store.map?.width ?? 0);
-  const height = Math.round(store.map?.height ?? 0);
 
   return `<section class="card">
     <h2>Map structure <span>${cells} cells · ${compartments} compartments</span></h2>
@@ -1320,8 +1331,7 @@ function mapStructureCard(store) {
         <label for="cell-species-select">Species to draw</label>
         <select id="cell-species-select" data-action="cell-placement-species"
           aria-label="Species to draw a cell for">${cellOptions}</select>
-        <p class="hint">Pick the <strong>Cell</strong> tool and drag to draw the cell boundary.
-        Inside is that species' extracellular compartment; outside is the shared medium.</p>
+        <p class="hint">Pick the <strong>Cell</strong> tool and drag on the map.</p>
       </div>`
       : '<p class="hint">Every active species already has a cell boundary drawn.</p>'}
 
@@ -1333,11 +1343,9 @@ function mapStructureCard(store) {
             <button class="primary grow" data-action="tool-compartment" type="button">Draw compartment</button>
             <button data-action="add-map-compartment" type="button" title="Skip drawing and fit it inside the parent automatically">Place automatically</button>
           </div>`
-        : '<p class="empty">Nothing can be drawn yet: draw a cell first, or every compartment is already on the map.</p>'}
-      <p class="hint">Pick the <strong>Compartment</strong> tool and drag inside the highlighted parent. The model's hierarchy decides what may go where: the periplasm holds the cytosol, the cytosol holds the organelles, and a mitochondrial intermembrane space holds the matrix.</p>
+        : '<p class="empty">Nothing to draw: draw a cell first, or all compartments are on the map.</p>'}
+      <p class="hint">Drag inside the highlighted parent.</p>
     </div>
-
-    <p class="hint">Canvas <strong>${width} × ${height}</strong>. Drag the right edge, bottom edge or canvas corner to resize it.</p>
   </section>`;
 }
 
@@ -1346,8 +1354,8 @@ function mapStructureCard(store) {
 function modelEditorCard(store) {
   if (store.isZunigaStudy) return `<section class="card"><h2>Complete source models</h2>
     <label class="row">Model <select class="grow" data-action="model-editor-species">${store.species.map(sp => `<option value="${esc(sp.id)}"${store.modelEditorSpeciesId === sp.id ? ' selected' : ''}>${esc(sp.id)}</option>`).join('')}</select></label>
-    <p class="hint">All reactions and metabolites are retained for the calculation and model inspection. Only selected complementing pathways appear on the editable map.</p>
-    <p class="hint">Source biology is read-only in this reproducible case. Choose a documented scenario to apply its perturbation and conditions; use the reaction library to add any existing model reaction to the drawing.</p></section>`;
+    <p class="hint">The map shows only the complementing pathways.</p>
+    <p class="hint">Source models are read-only in this case.</p></section>`;
   const speciesOptions = store.species.map((sp) => {
     const model = store.models.get(sp.file);
     return `<option value="${esc(sp.id)}"${sp.id === store.modelEditorSpeciesId ? ' selected' : ''}>
@@ -1401,7 +1409,7 @@ function modelEditorCard(store) {
       <label>Stoichiometry *</label>
       <textarea name="stoichiometry" rows="5"
         placeholder="pyr_c:-1, nadh_c:-1, h_c:-1, lac__L_c:1, nad_c:1"></textarea>
-      <p class="hint">Negative coefficient = substrate, positive = product. JSON is accepted too.</p>
+      <p class="hint">Negative = substrate, positive = product.</p>
       <div class="model-editor-two">
         <div><label>Lower bound *</label><input type="number" name="lower" value="0" step="any"></div>
         <div><label>Upper bound *</label><input type="number" name="upper" value="1000" step="any"></div>
@@ -1434,9 +1442,7 @@ function modelEditorCard(store) {
       <button class="grow" data-action="export-model-json" type="button">Export COBRA JSON</button>
       <button class="grow" data-action="export-model-sbml" type="button">Export SBML</button>
     </div>
-    <p class="hint">Additions change the selected biological model and travel with both exports.
-      The SBML is Level 3 Version 1 with the fbc package, Version 2 — what cobrapy and the
-      COBRA Toolbox read.</p>
+    <p class="hint">SBML L3V1 + fbc v2.</p>
     ${form}
   </section>`;
 }
@@ -1444,8 +1450,7 @@ function modelEditorCard(store) {
 // Medium
 
 function mediumCard(store) {
-  if (store.isZunigaStudy) return `<section class="card"><h2>Source medium</h2><p class="hint">The complete source model fixes the available nutrients and exchange bounds for each case scenario. Select WT monoculture, mutant monoculture or mutant coculture under Scenario & objective.</p>
-    <p class="hint">The shared-medium drawing is a visual excerpt. It does not change the medium or the mathematical solution.</p></section>`;
+  if (store.isZunigaStudy) return `<section class="card"><h2>Source medium</h2><p class="hint">The source model fixes the medium for each case scenario.</p></section>`;
   const bases = new Set(Object.keys(store.medium));
   if (store.community) for (const b of store.community.transfersByBase.keys()) bases.add(b);
 
@@ -1473,8 +1478,7 @@ function mediumCard(store) {
   return `<section class="card">
     <h2>Shared medium</h2>
     ${rows || '<p class="empty">No exchangeable medium components.</p>'}
-    <p class="hint">Maximum supply in mmol · gDW⁻¹ · h⁻¹. Zero means the medium does not
-    supply it: it is then only available if another species secretes it.</p>
+    <p class="hint">mmol·gDW⁻¹·h⁻¹; 0 = only from secretion.</p>
   </section>`;
 }
 
@@ -1487,18 +1491,17 @@ function communityOmicsCard(store) {
   return `<section class="card">
     <h2>Metatranscriptomics</h2>
     <div class="row"><button class="grow" data-action="import-metatranscriptomics">${d?'Replace':'Import'} CSV/TSV</button>${d?`<button data-action="omics-toggle">${o.enabled?'Hide':'Show'}</button>`:''}</div>
-    ${!d?'<p class="hint">Long format: species/MAG, gene, condition, expression (TPM, FPKM, RPKM, CPM or counts also work).</p>':`
+    ${!d?'<p class="hint">Columns: species/MAG, gene, condition, expression.</p>':`
       <p class="hint"><strong>${esc(d.source)}</strong> · ${d.rowCount} genes/MAG · ${d.conditions.length} condition(s)</p>
       <div class="row"><button data-action="omics-single" aria-pressed="${o.mode==='single'}">Condition</button><button data-action="omics-compare" aria-pressed="${o.mode==='compare'}">A vs B</button></div>
       <div class="row"><label>A</label><select class="grow" data-action="community-omics-condition-a" aria-label="Community expression condition A">${opts(o.conditionA)}</select></div>
       ${o.mode==='compare'?`<div class="row"><label>B</label><select class="grow" data-action="community-omics-condition-b" aria-label="Community expression condition B">${opts(o.conditionB)}</select></div>
       <div class="row"><select class="grow" data-action="community-omics-metric" aria-label="Community expression comparison"><option value="log2fc"${o.metric==='log2fc'?' selected':''}>log₂(B/A)</option><option value="difference"${o.metric==='difference'?' selected':''}>B − A</option></select><input style="width:70px" type="number" min="0" step="0.1" value="${o.pseudocount}" data-action="community-omics-pseudocount" title="Pseudocount" aria-label="Community expression pseudocount"></div>`:''}
-      <h3 class="inspector-section-title">GIMME context-specific model</h3>
-      <p class="hint">Penalises flux through reactions below the expression threshold while holding a minimum fraction of the metabolic objective.</p>
+      <h3 class="inspector-section-title" title="Penalises flux through reactions below the expression threshold">GIMME context-specific model</h3>
       <div class="row"><label>Objective</label><input style="width:75px" type="number" min="0" max="100" step="1" value="${Math.round(100*(o.gimmeObjectiveFraction??0.9))}" data-action="gimme-objective-fraction"><span>%</span></div>
       <div class="row"><label>Threshold</label><input class="grow" type="number" step="any" placeholder="auto: P25" value="${o.gimmeThreshold??''}" data-action="gimme-threshold"></div>
       <div class="row"><button class="grow" data-action="run-gimme"${store.solution?.steadyCom ? ' disabled title="Run an ordinary analysis before GIMME"' : ''}>Run GIMME · ${esc(o.conditionA??'')}</button>${o.gimmeEnabled?'<button data-action="disable-gimme">Return FBA</button>':''}</div>
-      ${store.solution?.steadyCom ? '<p class="hint">Run FBA, pFBA or Loopless before using GIMME with this model.</p>' : ''}
+      ${store.solution?.steadyCom ? '<p class="hint">Run FBA, pFBA or Loopless before GIMME.</p>' : ''}
       ${o.gimmeResult?.status==='optimal'?`<p class="hint">Threshold <strong>${Number(o.gimmeResult.threshold).toPrecision(4)}</strong> · inconsistency <strong>${Number(o.gimmeResult.inconsistencyScore).toPrecision(4)}</strong> · inactive penalized <strong>${o.gimmeResult.inactive?.size??0}</strong></p>`:''}
       <h3 class="inspector-section-title">Mapping report</h3>
       <p class="hint">Genes: <strong>${r?.measuredGenes??0}/${r?.genesInModels??0}</strong> (${Math.round(100*(r?.geneCoverage??0))}%) · GPR reactions: <strong>${r?.mappedReactions??0}/${r?.gprReactions??0}</strong> (${Math.round(100*(r?.reactionCoverage??0))}%)</p>
@@ -1524,7 +1527,7 @@ function reactionSearchCard(store) {
 export function renderReactionSearchResults(store, query) {
   const q = String(query ?? '').trim();
   if (!q) {
-    return '<p class="empty">Type to search every reaction in the model, drawn or not.</p>';
+    return '<p class="empty">Search every reaction in the model.</p>';
   }
 
   const results = store.searchReactions(q, { limit: 30 });
@@ -1596,10 +1599,9 @@ function pathwayManagerCard(store) {
 
   return `<section class="card pathway-manager-card">
     <h2>Pathway Manager <span>${entries.length}</span></h2>
-    <p class="hint">Manage drawn pathways, change their colors, hide ribbons, select or focus a pathway. Manual pathways preserve the model stoichiometry and FBA.</p>
     ${createBlock}
     <div class="pathway-manager-list">
-      ${items || '<p class="empty">No pathways are annotated among the drawn reactions. Create a manual pathway from a selection.</p>'}
+      ${items || '<p class="empty">No annotated pathways among the drawn reactions.</p>'}
     </div>
   </section>`;
 }
@@ -1630,8 +1632,8 @@ function omicsOverlayCard(store) {
       <div class="row" style="margin-top:9px">
         <button class="primary grow" data-action="import-omics">Load CSV</button>
       </div>
-      <p class="hint">Wide format: <code>id,Condition_A,Condition_B</code>. For communities, add an optional <code>species</code> column.</p>
-      <p class="hint">IDs map to each reaction's GPR. AND = minimum across subunits; OR = maximum across isoenzymes. This visual overlay preserves the FBA.</p>
+      <p class="hint">Columns: <code>id,Condition_A,Condition_B</code>, optional <code>species</code>.</p>
+      <p class="hint">IDs map through each reaction's GPR (AND = minimum, OR = maximum).</p>
     </section>`;
   }
 
@@ -1698,13 +1700,11 @@ function omicsOverlayCard(store) {
 
     <p class="hint">${overlay.enabled
       ? `<strong>${overlay.matchedReactions}/${overlay.totalDrawn}</strong> drawn reactions have a GPR-derived omics value.`
-      : 'Overlay is hidden. Enable Show overlay to display GPR-derived values.'}</p>
-    <p class="hint">When both overlays are enabled, this overlay takes precedence for its matches; community expression fills other matches. Unmatched reactions appear in gray.</p>
+      : 'Overlay is hidden.'}</p>
     <div class="row" style="margin-top:8px">
       <button data-action="import-omics" class="grow">Replace CSV</button>
       <button data-action="clear-omics">Remove</button>
     </div>
-    <p class="hint">In comparisons, blue = higher in A and red = higher in B. Arrowheads show the direction of the solved flux.</p>
   </section>`;
 }
 
@@ -1719,7 +1719,7 @@ function omicsReactionReadout(store, reactionId) {
 
   if (overlay.mode === 'compare') {
     if (!Number.isFinite(a) || !Number.isFinite(b) || !Number.isFinite(value)) {
-      return '<p class="hint omics-inspector">Omics: no GPR-derived value is available for both conditions.</p>';
+      return '<p class="hint omics-inspector">Omics: no value for both conditions.</p>';
     }
     const metric = overlay.metric === 'log2fc' ? 'log₂FC' : 'Δ';
     return `<div class="omics-inspector">
@@ -1733,7 +1733,7 @@ function omicsReactionReadout(store, reactionId) {
   }
 
   if (!Number.isFinite(value)) {
-    return '<p class="hint omics-inspector">Omics: no GPR-derived value is available for this reaction.</p>';
+    return '<p class="hint omics-inspector">Omics: no value for this reaction.</p>';
   }
   return `<div class="omics-inspector">
     <div class="omics-inspector-head"><strong>Omics</strong><span>${esc(overlay.conditionA)}</span></div>
@@ -1741,9 +1741,75 @@ function omicsReactionReadout(store, reactionId) {
   </div>`;
 }
 
-function inspectorHeader(kind, title, subtitle = '') {
-  return `<header class="inspector-heading"><span>${esc(kind)}</span><button class="icon" data-action="clear-selection" title="Close">×</button>
+function inspectorHeader(kind, title, subtitle = '', closeAction = 'clear-selection') {
+  return `<header class="inspector-heading"><span>${esc(kind)}</span><button class="icon" data-action="${closeAction}" title="Close">×</button>
     <h2>${esc(title)}</h2>${subtitle ? `<p>${esc(subtitle)}</p>` : ''}</header>`;
+}
+
+/**
+ * Whether the inspector is about the multi-selection: nothing is selected on
+ * its own (a selected reaction keeps its inspector, which takes the line ends
+ * from shift-clicked metabolites), and there is something to arrange, two
+ * objects or one reaction to lay on a line.
+ */
+export function showsSelectionInspector(store) {
+  if (store.selectedReaction || store.selectedEntity || !store.map) return false;
+  return selectionSize(store.multiSelection) >= 2 || Boolean(store.canArrangeSelection?.());
+}
+
+/** "3 reactions · 4 metabolites": what a selection holds, kinds with none left out. */
+function selectionCounts(selection) {
+  return [
+    [selection?.reactions?.size ?? 0, 'reaction'],
+    [selection?.nodes?.size ?? 0, 'metabolite'],
+    [selection?.texts?.size ?? 0, 'text'],
+    [selection?.compartments?.size ?? 0, 'compartment'],
+  ].filter(([count]) => count > 0)
+    .map(([count, noun]) => `${count} ${noun}${count === 1 ? '' : 's'}`)
+    .join(' · ');
+}
+
+/**
+ * Arrange the multi-selection as a whole: align and distribute it, space it
+ * evenly along its own line, and turn it, rigidly, to a compass direction or
+ * by 45°. All map-only.
+ */
+function selectionInspector(store) {
+  const selection = store.multiSelection;
+  const spaced = spacingItems(store.map, selection).length;
+  const hasLine = Boolean(selectionMainAxis(store.map, selection));
+  // The way the selection runs, as on a compass with north at the top of the map.
+  const compass = [
+    ['NW', '↖', 'up-left'], ['N', '↑', 'up'], ['NE', '↗', 'up-right'],
+    ['W', '←', 'left'], null, ['E', '→', 'right'],
+    ['SW', '↙', 'down-left'], ['S', '↓', 'down'], ['SE', '↘', 'down-right'],
+  ].map((cell) => (cell
+    ? `<button data-action="selection-point" data-direction="${cell[0]}" type="button"${hasLine ? '' : ' disabled'}
+        title="Point ${cell[2]}" aria-label="Point ${cell[0]}">${cell[1]}</button>`
+    : '<span class="reaction-compass-centre" aria-hidden="true">●</span>')).join('');
+
+  return `<section class="inspector-detail selection-inspector">
+    ${inspectorHeader('Map', 'Selection', selectionCounts(selection), 'clear-multi-selection')}
+    <h3 class="inspector-section-title">Align &amp; distribute</h3>
+    <div class="metabolite-inspector-controls">${arrangeSelectionBlock(store)}</div>
+    <h3 class="inspector-section-title">Spacing</h3>
+    <div class="metabolite-inspector-controls">
+      <button data-action="selection-space-evenly" type="button"${spaced < 3 ? ' disabled' : ''}
+        title="Equal steps along the selection's own line">Even spacing</button>
+    </div>
+    <h3 class="inspector-section-title">Rotate</h3>
+    <div class="metabolite-inspector-controls selection-turn-controls">
+      <div class="reaction-align-row">
+        <span class="metabolite-role-label">Point</span>
+        <div class="reaction-compass" role="group" aria-label="Point the selection">${compass}</div>
+      </div>
+      <div class="row">
+        <button class="grow" data-action="selection-rotate" data-angle="-45" type="button" title="Rotate 45° anticlockwise">⟲ 45°</button>
+        <button class="grow" data-action="selection-rotate" data-angle="45" type="button" title="Rotate 45° clockwise">⟳ 45°</button>
+      </div>
+    </div>
+    <p class="inspector-note">Turns as one piece; cofactors follow.</p>
+  </section>`;
 }
 
 function propertyRow(label, value, className = '') {
@@ -1823,7 +1889,7 @@ function metaboliteInspector(store, nodeId) {
         // A cofactor the layout placed beside one reaction is secondary by
         // construction; the map refuses to make it primary, so offering the
         // button only made it look broken.
-        ? '<p class="inspector-note cofactor-role-note">Cofactor helper placed beside its reaction: always secondary. Hide cofactors from <b>View → Cofactors</b>.</p>'
+        ? '<p class="inspector-note cofactor-role-note">Cofactor beside its reaction: always secondary.</p>'
         : `<div class="metabolite-role-row">
         <span class="metabolite-role-label">Visual role</span>
         <div class="metabolite-role-buttons">
@@ -1837,9 +1903,8 @@ function metaboliteInspector(store, nodeId) {
       <button class="grow danger" data-action="hide-metabolite" data-node="${esc(nodeId)}" type="button">Hide metabolite</button>
       ${removable
         ? `<button class="danger inspector-delete" data-action="remove-map-node" data-node="${esc(nodeId)}" type="button">Delete metabolite from map</button>`
-        : '<p class="inspector-note">To delete this instance, first remove the drawn reactions that use it.</p>'}
+        : '<p class="inspector-note">Remove the drawn reactions that use it before deleting it.</p>'}
     </div>
-    <p class="inspector-note">Visual changes affect the map only and do not alter the biological model.</p>
   </section>`;
 }
 
@@ -1878,7 +1943,7 @@ function reactionColorRow(store, reactionIds) {
       <label>Color <input type="color" data-action="reaction-line-color" data-rxn-ids="${ids}" value="${esc(own ?? '#64748b')}" aria-label="Reaction line color"></label>
       <button data-action="reaction-color-reset" data-rxn-ids="${ids}" type="button"${own ? '' : ' disabled'}>Pathway color</button>
     </div>
-    ${byFlux ? '<p class="inspector-note">Shown when lines are not colored by flux (Map options ▸ Color lines by flux).</p>' : ''}`;
+    ${byFlux ? '<p class="inspector-note">Used when lines are not colored by flux.</p>' : ''}`;
 }
 
 function geneInspector(store, speciesId, geneId) {
@@ -1940,7 +2005,7 @@ function textInspector(store, textId) {
     </dl>
     <div class="inspector-section-label">STYLE</div>
     ${textStyleFields({ fontSize: item.fontSize, fontFamily: item.fontFamily }, `data-text="${esc(item.id)}"`)}
-    <p class="inspector-note">The size and font chosen here are also used for the next text you write.</p>
+    <p class="inspector-note">Also used for the next text you write.</p>
     <button class="inspector-delete danger" data-action="remove-map-text" data-text="${esc(item.id)}">Delete text</button>
   </section>`;
 }
@@ -2006,9 +2071,8 @@ function cellInspector(store, cellId) {
     <div class="inspector-section-label">MAP</div>
     ${cellColorFields(store, cell)}
     <button class="secondary wide" data-action="edit-selected-cell-boundary" data-cell-id="${esc(cellId)}" type="button">Edit Boundary</button>
-    <p class="inspector-note">Edit Boundary changes only map geometry; the species, compartments and biological model are unchanged.</p>
     <button class="danger wide" data-action="remove-map-compartment" data-cell-id="${esc(cellId)}" type="button">Delete cell</button>
-    <p class="inspector-note">Takes the cell off the map with its compartments and everything drawn in them; the model is unchanged. The Delete key does the same, and Ctrl+Z brings it back.</p>
+    <p class="inspector-note">Delete key also works; Ctrl+Z undoes.</p>
   </section>`;
 }
 
@@ -2023,9 +2087,7 @@ function compartmentShapeFields(cellId, comp) {
   ).join('');
   return `<div class="inspector-section-label">SHAPE</div>
     <div class="compartment-shape-presets" role="group" aria-label="Compartment shape">${buttons}</div>
-    <p class="inspector-note">Or drag the <b class="shape-key shape-key-corner">orange diamond</b> along the top
-      to soften the corners, and the <b class="shape-key shape-key-oval">yellow diamond</b> down the side to make it oval.
-      On an oval, the orange diamond makes it rounder or boxier.</p>`;
+    <p class="inspector-note">Or drag the <b class="shape-key shape-key-corner">orange diamond</b> to round the corners and the <b class="shape-key shape-key-oval">yellow diamond</b> to make it oval.</p>`;
 }
 
 function compartmentInspector(store, cellId, compartmentId) {
@@ -2039,7 +2101,7 @@ function compartmentInspector(store, cellId, compartmentId) {
         ${propertyRow('Bounds', `${Math.round(env.rect.w)} × ${Math.round(env.rect.h)}`)}
         ${propertyRow('Position', `x ${Math.round(env.rect.x)}, y ${Math.round(env.rect.y)}`)}
       </dl>
-      <div class="inspector-section-label">MAP</div><p class="inspector-note">Map geometry does not change the biological model.</p><button class="secondary wide" data-action="edit-selected-compartment-boundary" type="button">Edit Boundary</button>
+      <div class="inspector-section-label">MAP</div><button class="secondary wide" data-action="edit-selected-compartment-boundary" type="button">Edit Boundary</button>
     </section>`;
   }
 
@@ -2056,14 +2118,11 @@ function compartmentInspector(store, cellId, compartmentId) {
       ${propertyRow('Membrane', esc(comp.membrane ?? '—'))}
       ${propertyRow('Bounds', `${Math.round(comp.rect.w)} × ${Math.round(comp.rect.h)}`)}
     </dl>
-    <p class="inspector-note compartment-move-hint">Drag the <b>centre handle</b> to move this
-      compartment and everything in it; drag a <b>corner</b> or its <b>membrane</b> to resize it,
-      or the middle of a <b>side</b> to change only its width or height.
-      The space inside belongs to what is drawn there.</p>
+    <p class="inspector-note compartment-move-hint">Drag the <b>centre</b> to move it, a <b>corner</b> or <b>side</b> to resize it.</p>
     ${compartmentShapeFields(cellId, comp)}
-    <div class="inspector-section-label">MAP</div>${compartmentColorFields(store, cellId, comp)}<button class="secondary wide" data-action="edit-selected-compartment-boundary" type="button">Edit Boundary</button><p class="inspector-note">Edit Boundary changes only map geometry; metabolite compartment identities are unchanged.</p>
+    <div class="inspector-section-label">MAP</div>${compartmentColorFields(store, cellId, comp)}<button class="secondary wide" data-action="edit-selected-compartment-boundary" type="button">Edit Boundary</button>
     <button class="danger wide" data-action="remove-map-compartment" data-cell-id="${esc(cellId)}" data-compartment-id="${esc(comp.id)}" type="button">${comp.parentId ? 'Delete compartment' : 'Delete cell'}</button>
-    <p class="inspector-note">Takes it off the map with ${comp.parentId ? 'the compartments inside it and ' : 'its compartments and '}everything drawn there; the model is unchanged. The Delete key does the same, and Ctrl+Z brings it back.</p>
+    <p class="inspector-note">Delete key also works; Ctrl+Z undoes.</p>
   </section>`;
 }
 
@@ -2071,7 +2130,7 @@ function inspectorCard(store) {
   const rid = store.selectedReaction;
   if (!rid || !store.layout) {
     return `<section class="inspector-empty"><div class="inspector-empty-icon">⌁</div>
-      <h2>No reaction selected</h2><p>Select a reaction on the map to view and edit its properties.</p></section>`;
+      <h2>No reaction selected</h2><p>Select a reaction on the map.</p></section>`;
   }
 
   const info = store.layout.reactions.get(rid);
@@ -2085,12 +2144,12 @@ function inspectorCard(store) {
   if (!merged || heldOut) {
     const sp = store.species.find((item) => item.id === speciesId);
     const name = store.models.get(sp?.file)?.cell?.name ?? speciesId;
-    const why = !sp ? 'This reaction is drawn but is not in the active model.'
+    const why = !sp ? 'Drawn, but not in the active model.'
       : sp.enabled === false
-        ? `This reaction belongs to <b>${esc(name)}</b>, which is switched off: it stays on the map, dimmed, and is not simulated. Enable the species to see its flux and edit its bounds.`
+        ? `<b>${esc(name)}</b> is switched off, so this reaction is not simulated.`
         : heldOut
-          ? `This reaction belongs to <b>${esc(name)}</b>, which has zero abundance in this community, so its reactions are held at zero. Give it an abundance to see its flux and edit its bounds.`
-          : 'This reaction is drawn but is not in the active model.';
+          ? `<b>${esc(name)}</b> has zero abundance, so this reaction is held at zero.`
+          : 'Drawn, but not in the active model.';
     return `<section class="inspector-detail">
       ${inspectorHeader('Reaction', info?.localId ?? rid, sp ? name : '')}
       <p class="inspector-note">${why}</p>
@@ -2138,8 +2197,8 @@ function inspectorCard(store) {
   }).join(' ') || '—';
 
   let fvaBlock = store.fvaEnabled
-    ? '<p class="hint">Computing the FVA range for this reaction…</p>'
-    : '<p class="hint">Enable FVA to see the minimum and maximum flux compatible with the optimal objective.</p>';
+    ? '<p class="hint">Computing the FVA range…</p>'
+    : '';
   if (store.fvaEnabled && fva && Number.isFinite(fva.min) && Number.isFinite(fva.max)) {
     const range = Math.max(hi - lo, 1e-9);
     const left = ((fva.min - lo) / range) * 100;
@@ -2182,8 +2241,8 @@ function inspectorCard(store) {
 
     ${store.map?.reactions.has(rid) ? mapLabelControl(store, 'reaction', rid) + reactionColorRow(store, [rid]) : ''}
     <h3 class="inspector-section-title">Bounds</h3>
-    ${store.isZunigaStudy ? '<p class="hint">Source bounds are fixed for this case; select a documented scenario to apply its perturbation.</p><fieldset disabled style="border:0;padding:0;margin:0">' : ''}
-    ${geneClosedBy.length ? `<p class="hint">Closed by the knockout of gene${geneClosedBy.length === 1 ? '' : 's'} ${esc(geneClosedBy.map((key) => store.geneTitle(key)).join(', '))}: restore ${geneClosedBy.length === 1 ? 'it' : 'them'} (KO in the gene list above) to reopen the reaction.</p>` : ''}
+    ${store.isZunigaStudy ? '<p class="hint">Source bounds are fixed for this case.</p><fieldset disabled style="border:0;padding:0;margin:0">' : ''}
+    ${geneClosedBy.length ? `<p class="hint">Closed by the knockout of gene${geneClosedBy.length === 1 ? '' : 's'} ${esc(geneClosedBy.map((key) => store.geneTitle(key)).join(', '))}.</p>` : ''}
     <div class="bound-row">
       <label>Lower</label>
       ${boundControl({ rid, side: 'lower', value: bounds.lower, label: owner.originalId ?? rid, disabled: geneClosedBy.length > 0 })}
@@ -2192,7 +2251,7 @@ function inspectorCard(store) {
       <label>Upper</label>
       ${boundControl({ rid, side: 'upper', value: bounds.upper, label: owner.originalId ?? rid, disabled: geneClosedBy.length > 0 })}
     </div>
-    <p class="hint bound-scale-note">Sliders are logarithmic (±0.001 to ±1000, 0 in the middle); type exact values in the boxes.</p>
+    <p class="hint bound-scale-note">Log sliders, 0 in the middle.</p>
 
     <div class="row" style="margin-top:10px">
       ${knockedOut
@@ -2208,7 +2267,6 @@ function inspectorCard(store) {
     <div class="row" style="margin-top:8px">
       <button class="danger grow inspector-delete" data-action="remove-map-reaction" data-rxn="${esc(rid)}">Delete reaction from map</button>
     </div>
-    <p class="hint">Removing it from the map is not a knockout: the reaction still exists in the model and in the FBA.</p>
     <p class="hint">Original bounds: [${formatFlux(defaults.lower, 3)}, ${formatFlux(defaults.upper, 3)}]</p>
   </section>`;
 }
@@ -2246,15 +2304,15 @@ function reactionDrawingControls(store, rid) {
       const on = lineEnd(entry, side);
       const chip = `<button class="chip reaction-line-end${on ? ' is-active' : ''}" data-action="reaction-line-end"
         data-rxn="${esc(rid)}" data-node="${esc(entry.nodeId)}" type="button" aria-pressed="${on}"${membrane ? ' disabled' : ''}
-        title="${membrane ? esc(entry.label) : `Run the reaction's line through ${esc(entry.label)}`}">${esc(entry.label)}</button>`;
+        title="${membrane ? esc(entry.label) : `Run the line through ${esc(entry.label)}`}">${esc(entry.label)}</button>`;
       const next = entries[i + 1];
       if (!next) return chip;
       const allowed = entry.group === next.group;
       return `${chip}<button class="reaction-swap" data-action="reaction-swap" data-rxn="${esc(rid)}"
         data-a="${esc(entry.nodeId)}" data-b="${esc(next.nodeId)}" type="button"${allowed ? '' : ' disabled'}
         title="${allowed
-          ? `Exchange the places of ${esc(entry.label)} and ${esc(next.label)}`
-          : 'These two are in different compartments and cannot trade places'}"
+          ? `Swap ${esc(entry.label)} and ${esc(next.label)}`
+          : 'In different compartments; cannot swap'}"
         aria-label="Swap ${esc(entry.label)} and ${esc(next.label)}">⇄</button>`;
     }).join('');
     return `<div class="reaction-swap-row"><span class="metabolite-role-label">${label}</span><div class="reaction-swap-list">${parts}</div></div>`;
@@ -2267,7 +2325,7 @@ function reactionDrawingControls(store, rid) {
     ['SW', '↙', 'down and to the left'], ['S', '↓', 'downwards'], ['SE', '↘', 'down and to the right'],
   ].map((cell) => (cell
     ? `<button data-action="reaction-align" data-rxn="${esc(rid)}" data-direction="${cell[0]}" type="button"${canLinear ? '' : ' disabled'}
-        title="Lay the reaction out ${cell[2]}, substrate to product, with the two marked metabolites in line with its marker"
+        title="Lay the reaction out ${cell[2]}"
         aria-label="Align ${cell[0]}">${cell[1]}</button>`
     : '<span class="reaction-compass-centre" aria-hidden="true">●</span>')).join('');
 
@@ -2280,39 +2338,38 @@ function reactionDrawingControls(store, rid) {
           <button class="${linear ? 'is-active' : ''}" data-action="reaction-linear" data-rxn="${esc(rid)}" type="button"${canLinear ? '' : ' disabled'}
             title="${membrane
               ? 'A transporter stays on its membrane'
-              : 'Draw the reaction as a straight line between two metabolites; the marker follows them when they are moved'}">Linear</button>
+              : 'Straight line between the two marked metabolites'}">Linear</button>
         </div>
       </div>
-      <p class="metabolite-size-note">${linear
-        ? `Kept straight between ${esc(ends.join(' and '))}. Move either one and the reaction follows.`
-        : 'Linear keeps the marker on the line between the two marked metabolites.'}</p>
+      ${linear ? `<p class="metabolite-size-note">Kept straight between ${esc(ends.join(' and '))}.</p>` : ''}
       ${sideRow('Substrates', sides.substrates, 'from')}
       ${sideRow('Products', sides.products, 'to')}
       <div class="reaction-align-row">
         <span class="metabolite-role-label">Align</span>
         <div class="reaction-compass" role="group" aria-label="Lay the reaction out in a direction">${compass}</div>
-        <p class="metabolite-size-note">Sets the two marked metabolites in line with the marker, substrate to product, and tidies the rest.</p>
       </div>
       <div class="row reaction-axis-row">
         <button class="grow" data-action="reaction-align-axis" data-rxn="${esc(rid)}" data-axis="vertical" type="button"${canLinear ? '' : ' disabled'}
-          title="As Escher's Align vertical: the reaction and its two marked metabolites on one vertical line, keeping the way it runs">Vertical</button>
+          title="Reaction and marked metabolites on one vertical line">Vertical</button>
         <button class="grow" data-action="reaction-align-axis" data-rxn="${esc(rid)}" data-axis="horizontal" type="button"${canLinear ? '' : ' disabled'}
-          title="As Escher's Align horizontal: the reaction and its two marked metabolites on one horizontal line, keeping the way it runs">Horizontal</button>
+          title="Reaction and marked metabolites on one horizontal line">Horizontal</button>
       </div>
       <button data-action="reaction-flip" data-rxn="${esc(rid)}" type="button"${membrane ? ' disabled' : ''}
-        title="Put the substrates where the products are drawn and the products where the substrates are">Swap substrates ⇄ products</button>
+        title="Swap the places of substrates and products">Swap substrates ⇄ products</button>
       <div class="row">
         <button class="grow" data-action="reaction-mirror" data-rxn="${esc(rid)}" type="button"
-          title="Mirror the reaction in its own line: what hangs off one side hangs off the other">Mirror</button>
+          title="Mirror the reaction across its own line">Mirror</button>
         <button class="grow" data-action="reaction-rotate" data-rxn="${esc(rid)}" data-angle="-90" type="button"${map.canRotateReaction(rid) ? '' : ' disabled'}
-          title="Turn the reaction marker a quarter turn anticlockwise">⟲ 90°</button>
+          title="Rotate 90° anticlockwise">⟲ 90°</button>
         <button class="grow" data-action="reaction-rotate" data-rxn="${esc(rid)}" data-angle="90" type="button"${map.canRotateReaction(rid) ? '' : ' disabled'}
-          title="Turn the reaction marker a quarter turn clockwise">⟳ 90°</button>
+          title="Rotate 90° clockwise">⟳ 90°</button>
       </div>
       <button data-action="reaction-tidy" data-rxn="${esc(rid)}" type="button"
-        title="Put this reaction's cofactors back in their places around it and redraw its curves in their base shape">Tidy curves</button>
+        title="Reset cofactor places and curve shapes">Tidy curves</button>
+      ${rxn.labelOffset ? `<button data-action="reaction-label-reset" data-rxn="${esc(rid)}" type="button"
+        title="Put the name back beside the marker">Reset label</button>` : ''}
     </div>
-    <p class="inspector-note">These change the drawing only and do not alter the biological model. To pick the two metabolites on the map instead, shift-click them. For any angle, use Edit Control Points and drag the green lever.</p>`;
+    <p class="inspector-note">Shift-click two metabolites to pick them.</p>`;
 }
 
 // Cross-feeding
@@ -2342,10 +2399,10 @@ function crossFeedingTopControl(store) {
   const custom = Array.isArray(store.view.crossFeedingShown);
   const shown = store.crossFeedingVisibleBases().size;
   return `<div class="crossfeed-top-control">
-      <label title="The most important exchanged metabolites: short-chain fatty acids and lactate first, then carbon sources, then the rest by flux. 0 shows them all">Exchanged metabolites shown
+      <label title="SCFAs and lactate first, then carbon sources; 0 shows all">Exchanged metabolites shown
         <input type="number" min="0" max="${all.length}" step="1" data-action="crossfeed-top" value="${custom ? shown : store.view.crossFeedingTop}" aria-label="Number of exchanged metabolites shown"></label>
       <span class="hint">of ${all.length}${custom ? ' · picked by hand' : ''}</span>
-      <button type="button" data-action="crossfeed-choose" title="Pick the metabolites one by one">Choose…</button>
+      <button type="button" data-action="crossfeed-choose" title="Pick them one by one">Choose…</button>
     </div>`;
 }
 
@@ -2354,7 +2411,7 @@ function crossFeedingWidthControl(store) {
   if (!store.crossFeedingMetabolites().length) return '';
   const { min, max, step } = CROSSFEED_WIDTH_RANGE;
   const value = store.view.crossFeedingWidth ?? CROSSFEED_WIDTH_RANGE.default;
-  return `<label class="view-label-control crossfeed-width-control" title="Thickness of the cross-feeding lines. At 100% a line is about as thick as a cell's boundary with the whole map in view; lines side by side keep apart at any width">Cross-feeding line width
+  return `<label class="view-label-control crossfeed-width-control" title="100% is about a cell boundary's width">Cross-feeding line width
       <span class="crossfeed-width-row">
         <input class="grow" type="range" min="${min}" max="${max}" step="${step}" data-action="crossfeed-width" value="${esc(value)}" aria-label="Cross-feeding line width">
         <span data-crossfeed-width-output>${Math.round(value * 100)}%</span>
@@ -2401,7 +2458,7 @@ function crossFeedingMetabolitePicker(store) {
         <button type="button" data-action="crossfeed-show-none">None</button>
       </div>
       <div class="crossfeed-pick-list">${rows}</div>
-      <p class="hint">A line between two species splits a metabolite in proportion to what each produces and takes up; FBA does not say which cell feeds which.</p>
+      <p class="hint">FBA does not say which cell feeds which; lines split each metabolite by production and uptake.</p>
     </div>`;
 }
 
@@ -2425,15 +2482,15 @@ function crossFeedingCard(store) {
   const nameOf=(id)=>{const sp=store.species.find(s=>s.id===id);return store.models.get(sp?.file)?.cell.name??id;};
   if(!x.enabled){
     const n=(store.crossFeeding?.links??[]).filter(l=>l.from&&l.to).length;
-    return `<section class="card"><h2>Cross-Feeding Explorer</h2><p class="hint">${n} active producer→consumer event(s) detected in the current flux solution.</p><button class="grow" data-action="open-crossfeeding-explorer">Explore cross-feeding</button>${crossFeedingMetabolitePicker(store)}</section>`;
+    return `<section class="card"><h2>Cross-Feeding Explorer</h2><p class="hint">${n} active producer→consumer event(s).</p><button class="grow" data-action="open-crossfeeding-explorer">Explore cross-feeding</button>${crossFeedingMetabolitePicker(store)}</section>`;
   }
   const option=(v,label,selected)=>`<option value="${esc(v)}"${v===selected?' selected':''}>${esc(label)}</option>`;
   const names=exchangeNames(store);
   const mets=(idx?.metabolites??[]).map(v=>option(v,crossFeedingLabel(names,v),x.metabolite)).join('');
   const species=(idx?.species??[]).map(v=>option(v,nameOf(v),x.producer)).join('');
   const selected=idx?.events.find(e=>e.id===x.selectedId);
-  return `<section class="card crossfeed-explorer"><div class="row"><h2 class="grow">Cross-Feeding Explorer</h2><button data-action="close-crossfeeding-explorer">×</button></div>
-    <p class="hint crossfeed-event-count"><strong>${visible.length}</strong> of ${idx?.events.length??0} active events · flux solution evidence.</p>
+  return `<section class="card crossfeed-explorer"><div class="row"><h2 class="grow">Cross-Feeding Explorer</h2><button data-action="close-crossfeeding-explorer" title="Close" aria-label="Close explorer">×</button></div>
+    <p class="hint crossfeed-event-count"><strong>${visible.length}</strong> of ${idx?.events.length??0} active events</p>
     <input class="grow" data-action="crossfeeding-query" value="${esc(x.query)}" placeholder="Search metabolite or species">
     <div class="crossfeed-filters">
       <select data-action="crossfeeding-metabolite"><option value="">All metabolites</option>${mets}</select>
@@ -2517,8 +2574,8 @@ function legendCard(store) {
     : '';
   const units = steadyCom ? `<div class="legend-units">
       <strong>Units</strong>
-      <p><b>Reaction arrows</b>, including each cell's exchange with the medium: mmol per gram dry weight <i>of that species</i> per hour. A species with little biomass can show large numbers here.</p>
-      ${store.view.showCrossFeeding ? `<p><b>Cross-feeding lines</b> between cells: mmol per gram dry weight <i>of the whole community</i> per hour (abundance × flux), so they add up across species. Each line splits a metabolite in proportion to what each species produces and takes up.</p>` : ''}
+      <p><b>Reaction arrows</b>: mmol·gDW⁻¹·h⁻¹ <i>of that species</i>.</p>
+      ${store.crossFeedingHighlighted() ? `<p><b>Cross-feeding lines</b>: mmol·gDW⁻¹·h⁻¹ <i>of the whole community</i> (abundance × flux).</p>` : ''}
     </div>` : '';
 
   return `<section class="card">
@@ -2526,17 +2583,12 @@ function legendCard(store) {
     <div class="legend-grid">${items}</div>
     ${categorical ? `<div class="reaction-category-legend">
       <div class="reaction-category-head"><strong>${groupTitle}</strong><span>${coloring.legend.length}</span></div>
-      ${categoryItems || '<p class="empty">No hay reacciones dibujadas.</p>'}
-      ${extraGroups ? `<p class="hint">+${extraGroups} additional categories.</p>` : ''}
+      ${categoryItems || '<p class="empty">No drawn reactions.</p>'}
+      ${extraGroups ? `<p class="hint">+${extraGroups} more</p>` : ''}
     </div>` : ''}
     ${customFluxColors ? `<div class="flux-color-legend" data-flux-color-preview>${renderFluxColorPreview(store)}</div>` : `<div class="flux-scale" style="margin-top:12px">${bars}</div>${ticks}`}
-    ${store.view.showCrossFeeding ? crossFeedingLegend(store) : ''}
+    ${store.crossFeedingHighlighted() ? crossFeedingLegend(store) : ''}
     ${units}
-    <p class="hint">${ribbonMode !== 'off'
-      ? `The translucent ribbon marks the ${mode === 'pathway' ? 'pathway' : 'subsystem'}; arrow colors ${customFluxColors ? 'use the signed flux palette' : 'encode flux magnitude'}.`
-      : (categorical
-        ? `Color marks the ${mode === 'pathway' ? 'pathway' : 'subsystem'}; arrowheads show the direction of the solved flux.`
-        : (customFluxColors ? 'Flux colors represent signed values; arrowheads show the solved direction.' : 'Flux colors encode magnitude; arrowheads show the actual direction in the solution.'))}</p>
   </section>`;
 }
 
@@ -2548,7 +2600,7 @@ export function renderFluxColorPreview(store) {
   const stops = custom
     ? [...store.view.fluxColorStops].sort((a, b) => a.value - b.value)
     : (store.scale?.legendStops(7) ?? []);
-  if (!stops.length) return '<p class="hint">The automatic scale appears after an analysis.</p>';
+  if (!stops.length) return '<p class="hint">The scale appears after an analysis.</p>';
   const first = stops[0].value;
   const last = stops[stops.length - 1].value;
   const position = (stop) => {
@@ -2585,7 +2637,7 @@ function fluxColorEditor(store, draft) {
       <button data-action="flux-colors-reset" type="button" aria-pressed="${!custom}">Automatic</button>
       <button data-action="flux-colors-customize" type="button" aria-pressed="${custom}">Custom colors</button>
     </div>
-    ${omicsActive ? '<p class="hint flux-color-omics-hint">An Omics overlay is active. Disable it in Omics &amp; expression to display flux colors.</p>' : ''}
+    ${omicsActive ? '<p class="hint flux-color-omics-hint">An omics overlay is active and hides flux colors.</p>' : ''}
     <div data-flux-color-preview>${renderFluxColorPreview(store)}</div>
     ${custom ? `<div class="flux-color-columns" aria-hidden="true"><span>Color</span><span>Flux value</span><span></span></div>
       <div class="flux-color-stops">${rows.map((stop, index) => `<div class="flux-color-stop" data-flux-color-stop="${index}">
@@ -2595,16 +2647,16 @@ function fluxColorEditor(store, draft) {
       </div>`).join('')}</div>
       <p class="flux-color-error" data-flux-color-error role="alert"${draft?.error ? '' : ' hidden'}>${esc(draft?.error ?? '')}</p>
       <button class="flux-color-add" data-action="flux-color-add" type="button">+ Add color point</button>
-      <p class="hint">Signed flux values. Colors blend linearly between points; values outside the range use the nearest end color. Each point needs a unique value.</p>`
-      : '<p class="hint">Automatic colors follow flux magnitude. Choose Custom colors to set a signed gradient.</p>'}
+      <p class="hint">Each point needs a unique value.</p>`
+      : ''}
   </div>`;
 }
 
 /** A switch in the map appearance card: one way of drawing the lines, on or off. */
-function lineToggle(action, checked, title, detail) {
+function lineToggle(action, checked, title) {
   return `<label class="row map-line-toggle">
       <input type="checkbox" data-action="${action}"${checked ? ' checked' : ''}>
-      <span class="grow"><strong>${esc(title)}</strong>${detail ? ` · ${esc(detail)}` : ''}</span>
+      <span class="grow"><strong>${esc(title)}</strong></span>
     </label>`;
 }
 
@@ -2617,8 +2669,7 @@ function nodeStyleControls(store) {
       <label>Fill <input type="color" data-action="node-style-fill" value="${esc(style.fill ?? theme.fill)}" aria-label="Fill of metabolite circles"></label>
       <label>Outline <input type="color" data-action="node-style-stroke" value="${esc(style.stroke ?? theme.stroke)}" aria-label="Outline of metabolite circles"></label>
       <button data-action="node-style-reset" type="button"${style.fill || style.stroke ? '' : ' disabled'}>Theme colors</button>
-    </div>
-    <p class="hint">For every circle on the map. One metabolite, or a selection, can be given its own in the Inspector.</p>`;
+    </div>`;
 }
 
 /** The circle colours of the theme, as the renderer draws them. */
@@ -2630,19 +2681,17 @@ function mapAppearanceCard(store, fluxColorDraft = null) {
   const view = store.view;
   const byFlux = (view.reactionColorMode ?? 'flux') === 'flux';
   return `<section class="card map-appearance-card">
-    <h2>Reaction lines, metabolites & pathway ribbons</h2>
-    ${lineToggle('color-by-flux', byFlux, 'Color lines by flux', 'off: by pathway or subsystem')}
+    <h2>Lines, circles & ribbons</h2>
+    ${lineToggle('color-by-flux', byFlux, 'Color lines by flux')}
     ${byFlux ? fluxColorEditor(store, fluxColorDraft) : `<label class="view-label-control">Color lines by
       <select data-action="reaction-color-mode" aria-label="Reaction color mode">
         <option value="pathway"${view.reactionColorMode === 'pathway' ? ' selected' : ''}>Pathway</option>
         <option value="subsystem"${view.reactionColorMode === 'subsystem' ? ' selected' : ''}>Subsystem</option>
       </select>
-    </label>
-    <p class="hint">A color set on a reaction in the Inspector is used over its pathway's. Your flux palette is retained.</p>`}
-    ${lineToggle('width-by-flux', view.widthByFlux, 'Line width follows flux', '')}
-    ${lineToggle('dash-no-flux', view.dashNoFlux !== false, 'Grey dashed lines', 'reactions with no flux in the solution')}
-    ${lineToggle('line-hops', view.lineHops !== false, 'Gap where lines cross', 'the line underneath is cut where another passes over it')}
-    <p class="hint">Arrowheads show the direction of the solved flux.</p>
+    </label>`}
+    ${lineToggle('width-by-flux', view.widthByFlux, 'Line width follows flux')}
+    ${lineToggle('dash-no-flux', view.dashNoFlux !== false, 'Dash lines with no flux')}
+    ${lineToggle('line-hops', view.lineHops !== false, 'Gap where lines cross')}
     ${nodeStyleControls(store)}
     <label class="view-label-control">Pathway ribbons
       <select data-action="pathway-ribbon-mode" aria-label="Pathway ribbon mode">
@@ -2661,7 +2710,6 @@ function mapAppearanceCard(store, fluxColorDraft = null) {
         <span>${esc(Math.round((view.pathwayRibbonOpacity ?? 0.18) * 100))}%</span>
       </label>
     </div>` : ''}
-    <p class="hint">Ribbons follow the current reaction geometry. Enabling them returns the reaction arrows to flux colors.</p>
   </section>`;
 }
 
@@ -2676,27 +2724,24 @@ function displayCard(store, { workspace = false } = {}) {
       ${toggle('toggle-geometry-edit', v.geometryEdit, 'Edit geometry', 'Move and resize cells and compartments')}
       ${toggle('toggle-multi-select', v.multiSelect, 'Multi-select', 'Select and move several metabolites and reactions')}
     </div>
-    <p class="hint">Geometry editing uses a centre handle to move a compartment, corner handles to resize it and side handles to change only its width or height. Multi-select lets you click several objects or drag a selection area.</p>
-    ${selectionArrangeControls(store)}
     ${selectionColorBlock(store)}
   </section>`;
 
   return `<section class="card">
     <h2>View</h2>
-    ${v.geometryEdit ? '<p class="hint geometry-edit-hint"><strong>Geometry editor on.</strong> Click a membrane or compartment. The centre handle moves it; the four corners resize it; the middle of each side moves that side alone.</p>' : ''}
-    ${v.multiSelect ? `<p class="hint"><strong>Multi-select on.</strong> Click objects to add them, or drag the background to select an area. Selected: ${store.multiSelectionSize}.</p>` : ''}
+    ${v.geometryEdit ? '<p class="hint geometry-edit-hint"><strong>Geometry editor on.</strong> Click a membrane or compartment.</p>' : ''}
+    ${v.multiSelect ? `<p class="hint"><strong>Multi-select on.</strong> Selected: ${store.multiSelectionSize}.</p>` : ''}
     ${v.textTool ? '<p class="hint"><strong>Text tool on.</strong> Click the map, type, and press Enter.</p>' : ''}
     <div class="toggle-list">
-      ${toggle('toggle-currency', v.showCurrency, 'Cofactors', 'Show secondary metabolites (ATP, NADH, H⁺… and nodes set to Secondary)')}
-      ${toggle('toggle-quiet-cofactors', store.map?.cofactorStyle === 'quiet', 'Quiet cofactors', 'Draw this map’s secondary metabolites small and light, so the pathways stand out')}
-      ${toggle('toggle-crossfeed', v.showCrossFeeding, 'Highlight cross-feeding', 'Dim the network and highlight active producer and consumer transfer reactions')}
+      ${toggle('toggle-currency', v.showCurrency, 'Cofactors', 'Show secondary metabolites (ATP, NADH, H⁺…)')}
+      ${toggle('toggle-quiet-cofactors', store.map?.cofactorStyle === 'quiet', 'Quiet cofactors', 'Draw secondary metabolites small and light')}
+      ${toggle('toggle-crossfeed', v.showCrossFeeding, 'Highlight cross-feeding', 'Dim the network and highlight transfers between cells')}
       ${toggle('toggle-dark', v.dark, 'Dark', 'Switch the colour scheme')}
       ${toggle('toggle-geometry-edit', v.geometryEdit, 'Edit geometry', 'Move and resize cells and compartments')}
       ${toggle('toggle-multi-select', v.multiSelect, 'Multi-select', 'Select and move several metabolites and reactions')}
       ${toggle('toggle-text-tool', v.textTool, 'Text', 'Add free text to the map')}
     </div>
 
-    ${store.canArrangeSelection?.() ? arrangeSelectionBlock(store) : ''}
     ${selectionColorBlock(store)}
     ${store.hiddenMetaboliteCount > 0 ? `<div class="row" style="margin-top:10px">
       <button class="grow" data-action="show-hidden-metabolites">Show hidden metabolites (${store.hiddenMetaboliteCount})</button>
@@ -2709,7 +2754,6 @@ function displayCard(store, { workspace = false } = {}) {
         <option value="pathway"${v.reactionColorMode === 'pathway' ? ' selected' : ''}>Pathway</option>
       </select>
     </div>
-    <p class="hint">Subsystem and pathway colors group reactions. Arrowheads show the direction of the solved flux.</p>
 
     <div class="pathway-ribbon-controls">
       <div class="row" style="margin-top:10px">
@@ -2732,7 +2776,6 @@ function displayCard(store, { workspace = false } = {}) {
         <span>${esc(Math.round((v.pathwayRibbonOpacity ?? 0.18) * 100))}%</span>
       </div>` : ''}
     </div>
-    <p class="hint">Ribbons follow the current reaction geometry. Enabling them returns the reaction arrows to flux colors.</p>
 
     <div class="row" style="margin-top:10px">
       <label style="width:74px">Labels</label>
@@ -2751,14 +2794,7 @@ function displayCard(store, { workspace = false } = {}) {
       <button class="grow" data-action="map-empty">Empty map</button>
       <button class="grow" data-action="map-full">Full map</button>
     </div>
-    <p class="hint"><strong>Empty map</strong> clears the canvas so you can build one by hand from <strong>Map structure</strong>; nothing is removed from the model. Undo/redo affects the map only, never the FBA.
-    Use <strong>File</strong> at the top of the window to import, export, or save a local copy.</p>
   </section>`;
-}
-
-function selectionArrangeControls(store) {
-  if (!store.canArrangeSelection?.()) return '<p class="hint">Select a reaction, or at least two objects, to align them; three to distribute them evenly.</p>';
-  return arrangeSelectionBlock(store);
 }
 
 /**
@@ -2771,20 +2807,17 @@ function arrangeSelectionBlock(store) {
   const withReactions = Boolean(store.map?.selectionHasLineReactions?.(store.multiSelection));
   const few = size < 2 ? ' disabled' : '';
   const lineTitle = (axis, same) => (withReactions
-    ? `Put the selected reactions and their metabolites on one ${axis} line, kept straight`
+    ? `Put the selected reactions and their metabolites on one ${axis} line`
     : `Same ${same}: a ${axis} line`);
-  return `<div class="selection-arrange">
-    <div class="selection-arrange-head"><strong>Arrange selection</strong><span>${size} object${size === 1 ? '' : 's'}</span></div>
-    <div class="selection-arrange-grid">
-      <button data-action="align-horizontal" title="${lineTitle('horizontal', 'y')}">Horizontal</button>
-      <button data-action="align-vertical" title="${lineTitle('vertical', 'x')}">Vertical</button>
-      <button data-action="align-left"${few} title="Align left edges">Left</button>
-      <button data-action="align-right"${few} title="Align right edges">Right</button>
-      <button data-action="align-top"${few} title="Align top edges">Top</button>
-      <button data-action="align-bottom"${few} title="Align bottom edges">Bottom</button>
-      <button data-action="distribute-horizontal" ${size < 3 ? 'disabled' : ''} title="Space centres evenly, horizontally">Distribute ↔</button>
-      <button data-action="distribute-vertical" ${size < 3 ? 'disabled' : ''} title="Space centres evenly, vertically">Distribute ↕</button>
-    </div>
+  return `<div class="selection-arrange-grid">
+    <button data-action="align-horizontal" title="${lineTitle('horizontal', 'y')}">Horizontal</button>
+    <button data-action="align-vertical" title="${lineTitle('vertical', 'x')}">Vertical</button>
+    <button data-action="align-left"${few} title="Align left edges">Left</button>
+    <button data-action="align-right"${few} title="Align right edges">Right</button>
+    <button data-action="align-top"${few} title="Align top edges">Top</button>
+    <button data-action="align-bottom"${few} title="Align bottom edges">Bottom</button>
+    <button data-action="distribute-horizontal" ${size < 3 ? 'disabled' : ''} title="Space centres evenly, horizontally">Distribute ↔</button>
+    <button data-action="distribute-vertical" ${size < 3 ? 'disabled' : ''} title="Space centres evenly, vertically">Distribute ↕</button>
   </div>`;
 }
 
@@ -2807,12 +2840,12 @@ function mapCanvasCard(store) {
   return `<section class="card map-canvas-card">
     <h2>Canvas</h2>
     <dl class="overview-list"><div><dt>Dimensions</dt><dd>${width} × ${height}</dd></div></dl>
-    <p class="hint">Drag the canvas right edge, bottom edge or corner to resize it.</p>
+    <p class="hint">Drag the canvas edge or corner to resize it.</p>
     <div class="row">
       <button class="grow" data-action="map-empty" type="button">Clear drawing</button>
       <button class="grow" data-action="map-full" type="button">Draw full model</button>
     </div>
-    <p class="hint">These actions replace the map drawing. The biological model and its analysis are preserved. Use Undo in the map toolbar to restore the previous drawing.</p>
+    <p class="hint">Replaces the drawing; Undo restores it.</p>
   </section>`;
 }
 

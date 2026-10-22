@@ -28,7 +28,19 @@ const STALE_OPS: &[&str] = &["editGeometryRect"];
 
 #[test]
 fn edit_sequences_match_javascript_step_by_step() {
-    let index = fixture("map/index-edits.json").expect("run: node rust/tools/fixtures-map.mjs edits");
+    replay_index("edits");
+}
+
+/// Sequence D: a curated scenario map laid out selection by selection (even
+/// spacing, turns, compass points, refusals) and reaction names moved.
+#[test]
+fn selection_turns_and_moved_reaction_names_match_javascript_step_by_step() {
+    replay_index("selection-turn");
+}
+
+/// Replay every script listed in `map/index-<section>.json`.
+fn replay_index(section: &str) {
+    let index = fixture(&format!("map/index-{section}.json")).unwrap_or_else(|| panic!("run: node rust/tools/fixtures-map.mjs {section}"));
     let mut checked = 0;
     let mut stale = 0;
     for entry in index.as_array().unwrap() {
@@ -93,5 +105,5 @@ fn edit_sequences_match_javascript_step_by_step() {
             checked += 1;
         }
     }
-    eprintln!("edits: {checked} steps compared, {stale} stale ones skipped");
+    eprintln!("{section}: {checked} steps compared, {stale} stale ones skipped");
 }

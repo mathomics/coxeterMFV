@@ -75,7 +75,7 @@ pub fn cross_feeding_card(ui: &mut Ui, shell: &mut Shell) {
     if !shell.store.cross_feeding_explorer.enabled {
         let n = shell.store.cross_feeding.links.iter().filter(|l| l.from.as_deref().is_some_and(|f| !f.is_empty()) && l.to.as_deref().is_some_and(|t| !t.is_empty())).count();
         widgets::card(ui, "Cross-Feeding Explorer", None, |ui| {
-            widgets::hint(ui, format!("{n} active producer→consumer event(s) detected in the current flux solution."));
+            widgets::hint(ui, format!("{n} active producer→consumer event(s)."));
             ui.add_space(4.0);
             if Btn::new("Explore cross-feeding").wide().show(ui).clicked() {
                 // `open-crossfeeding-explorer`.
@@ -92,7 +92,7 @@ pub fn cross_feeding_card(ui: &mut Ui, shell: &mut Shell) {
         ui.horizontal(|ui| {
             ui.label(RichText::new("Cross-Feeding Explorer").size(13.0).family(bold()).color(p.ink));
             ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
-                if Btn::new("×").aria("Close cross-feeding explorer").show(ui).clicked() {
+                if Btn::new("×").title("Close").aria("Close explorer").show(ui).clicked() {
                     // `close-crossfeeding-explorer`.
                     shell.store.cross_feeding_explorer.selected_id = None;
                     shell.store.set_cross_feeding_explorer(ExplorerPatch { enabled: Some(false), ..Default::default() });
@@ -113,7 +113,7 @@ fn explorer(ui: &mut Ui, shell: &mut Shell, p: &Palette) {
     let visible = shell.store.cross_feeding_explorer_events();
     let total = x.index.as_ref().map_or(0, |i| i.events.len());
     let count = visible.len().to_string();
-    let rest = format!(" of {total} active events · flux solution evidence.");
+    let rest = format!(" of {total} active events");
     widgets::hint_rich(ui, &["", count.as_str(), rest.as_str()]);
     ui.add_space(4.0);
 
@@ -295,9 +295,8 @@ pub fn cross_feeding_top_control(ui: &mut Ui, shell: &mut Shell) {
     ui.add_space(10.0);
     ui.horizontal_wrapped(|ui| {
         ui.spacing_mut().item_spacing.x = 8.0;
-        ui.label(RichText::new("Exchanged metabolites shown").size(12.5).color(p.ink_2)).on_hover_text(
-            "The most important exchanged metabolites: short-chain fatty acids and lactate first, then carbon sources, then the rest by flux. 0 shows them all",
-        );
+        ui.label(RichText::new("Exchanged metabolites shown").size(12.5).color(p.ink_2))
+            .on_hover_text("SCFAs and lactate first, then carbon sources; 0 shows all");
         let (_, event) = widgets::number_field(
             ui,
             egui::Id::new("crossfeed-top"),
@@ -311,7 +310,7 @@ pub fn cross_feeding_top_control(ui: &mut Ui, shell: &mut Shell) {
         }
         let hint = format!("of {}{}", all.len(), if custom { " · picked by hand" } else { "" });
         ui.label(RichText::new(hint).size(12.0).color(p.ink_2));
-        if Btn::new("Choose…").title("Pick the metabolites one by one").show(ui).clicked() {
+        if Btn::new("Choose…").title("Pick them one by one").show(ui).clicked() {
             // `crossfeed-choose`.
             shell.open_workspace(Workspace::Crossfeeding);
             ui.close();
@@ -335,9 +334,7 @@ pub fn cross_feeding_width_control(ui: &mut Ui, shell: &mut Shell) {
     ui.add_space(10.0);
     ui.horizontal(|ui| {
         ui.spacing_mut().item_spacing.x = 8.0;
-        ui.label(RichText::new("Cross-feeding line width").size(12.5).color(p.ink_2)).on_hover_text(
-            "Thickness of the cross-feeding lines. At 100% a line is about as thick as a cell's boundary with the whole map in view; lines side by side keep apart at any width",
-        );
+        ui.label(RichText::new("Cross-feeding line width").size(12.5).color(p.ink_2)).on_hover_text("100% is about a cell boundary's width");
         ui.spacing_mut().slider_width = 110.0;
         let (_, event) = widgets::slider(ui, value, range.min, range.max, range.step, true, "Cross-feeding line width");
         match event {
@@ -469,8 +466,5 @@ fn cross_feeding_metabolite_picker(ui: &mut Ui, shell: &mut Shell) {
         // `crossfeed-metabolite`.
         shell.store.toggle_cross_feeding_metabolite(&base, on);
     }
-    widgets::hint(
-        ui,
-        "A line between two species splits a metabolite in proportion to what each produces and takes up; FBA does not say which cell feeds which.",
-    );
+    widgets::hint(ui, "FBA does not say which cell feeds which; lines split each metabolite by production and uptake.");
 }

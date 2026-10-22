@@ -186,7 +186,7 @@ function actionsRegion(store, view, locked) {
   const off = locked ? ' disabled' : '';
   return `<button type="button" data-action="rx-undo"${history.canUndo && !locked ? ` title="Undo: ${esc(history.undoLabel)}"` : ' disabled title="No constraint edit to undo"'}>↶ Undo</button>
     <button type="button" data-action="rx-redo"${history.canRedo && !locked ? ` title="Redo: ${esc(history.redoLabel)}"` : ' disabled title="No constraint edit to redo"'}>↷ Redo</button>
-    <button type="button" data-action="rx-changes-toggle" aria-pressed="${Boolean(view.showChanges)}" title="Every reaction whose bounds differ from the model's, and every gene knocked out">Changes (${listed + (store.customObjective ? 1 : 0)})</button>
+    <button type="button" data-action="rx-changes-toggle" aria-pressed="${Boolean(view.showChanges)}" title="Changed bounds and gene knockouts">Changes (${listed + (store.customObjective ? 1 : 0)})</button>
     <button type="button" data-action="rx-import-csv" title="Apply a CSV of id, lower, upper"${off}>Import CSV</button>
     <button type="button" data-action="rx-export-csv" title="Every reaction's bounds in force, as CSV">Export CSV</button>
     <button type="button" data-action="rx-split-toggle" aria-pressed="${Boolean(view.split)}" title="Show the map above the table">Map</button>`;
@@ -206,19 +206,19 @@ function objectiveRegion(store, locked) {
   if (locked) {
     return `<div class="rx-objective-line"><span class="rx-objective-title">Objective</span>
       <span class="rx-terms">${shown || '—'}${more}</span>
-      <small>The authors’ objective, medium and bounds are fixed for this case.</small></div>`;
+      <small>Fixed for this case.</small></div>`;
   }
   const bases = [...(store.mediumReactions?.().byBase?.keys?.() ?? [])].sort((a, b) => a.localeCompare(b));
   const product = !custom && store.objective === OBJECTIVES.PRODUCT ? store.productTarget : '';
   const preset = (id, label, title) => `<button type="button" data-action="rx-objective-preset" data-preset="${id}"
       aria-pressed="${!custom && store.objective === id}" title="${esc(title)}">${label}</button>`;
   return `<div class="rx-objective-line">
-    <span class="rx-objective-title" title="Type a coefficient in any row’s Objective column to add that reaction; 0 takes it out">Objective</span>
+    <span class="rx-objective-title" title="Set a coefficient in a row’s Objective column; 0 removes it">Objective</span>
     <select data-action="rx-objective-sense" aria-label="Maximise or minimise the objective">
       <option value="max"${sense === 'max' ? ' selected' : ''}>Maximise</option>
       <option value="min"${sense === 'min' ? ' selected' : ''}>Minimise</option>
     </select>
-    <span class="rx-terms">${shown || '<em>no reaction: any feasible flux</em>'}${more}<span class="rx-term-help">add any reaction from its Objective column</span></span>
+    <span class="rx-terms">${shown || '<em>no reaction: any feasible flux</em>'}${more}</span>
     ${custom ? '<span class="rx-custom-tag" title="Edited here, on top of the preset">Edited</span>' : ''}
     <span class="rx-presets"><span>Presets</span>
       ${preset(OBJECTIVES.EQUAL_GROWTH, 'Equal growth', 'Every species grows at one shared rate')}
@@ -236,7 +236,7 @@ function objectiveRegion(store, locked) {
 function geneSearchRegion(store, locked) {
   const any = store.geneIndex().genes.size > 0;
   const placeholder = locked ? 'Fixed for this case' : any ? 'Search a gene to knock out…' : 'No gene rules in this model';
-  return `<span class="rx-objective-title" title="A knocked-out gene closes every reaction whose gene rule it makes false; an isozyme left keeps a reaction open">Genes</span>
+  return `<span class="rx-objective-title" title="A knockout closes reactions whose gene rule becomes false">Genes</span>
     <input type="search" class="rx-gene-input" data-action="rx-gene-search" value="${esc(store.reactionTable.geneQuery ?? '')}"
       placeholder="${placeholder}" aria-label="Search genes to knock out" autocomplete="off" spellcheck="false"${locked || !any ? ' disabled' : ''}>`;
 }
@@ -269,7 +269,7 @@ function genesRegion(store, locked) {
 }
 
 function alertRegion(store, locked) {
-  if (locked) return '<p class="rx-note">Zuñiga case: the source bounds are fixed. Choose a documented case scenario to apply its perturbation.</p>';
+  if (locked) return '<p class="rx-note">Zuñiga case: the source bounds are fixed.</p>';
   const culprits = store.constraintCulprits;
   const solution = store.solution;
   if (culprits) {
@@ -282,7 +282,7 @@ function alertRegion(store, locked) {
   if (solution && solution.status !== 'optimal') {
     return `<div class="rx-alert-box"><span><strong>No optimum (${esc(solution.status)}).</strong> ${esc(solution.message || 'Check the bounds of the flagged or modified reactions.')}</span></div>`;
   }
-  if (!solution && store.community) return '<p class="rx-note">Not solved yet: run an analysis to see fluxes. Bounds can be edited now.</p>';
+  if (!solution && store.community) return '<p class="rx-note">Not solved yet.</p>';
   return '';
 }
 
@@ -325,8 +325,8 @@ function changesRegion(store, locked) {
       ${locked ? '' : `<button type="button" class="rx-icon" data-action="rx-reset" data-rid="${esc(change.id)}" title="Reset to the bounds as opened">↺</button>`}
     </li>`).join('');
   return `<div class="rx-changes-head"><h3>Changes</h3>
-      <button type="button" data-action="reset-all"${(changes.length || genes) && !locked ? '' : ' disabled'} title="Every reaction back to the bounds it was opened with, and every gene restored">Reset all</button></div>
-    ${rows || objective || genes ? `<ol class="rx-change-list">${objective}${genes}${rows}</ol>` : '<p class="empty">No reaction differs from the bounds it was opened with.</p>'}`;
+      <button type="button" data-action="reset-all"${(changes.length || genes) && !locked ? '' : ' disabled'} title="Restore all original bounds and genes">Reset all</button></div>
+    ${rows || objective || genes ? `<ol class="rx-change-list">${objective}${genes}${rows}</ol>` : '<p class="empty">No changes.</p>'}`;
 }
 
 function headRow(store, model, mode) {
@@ -505,7 +505,7 @@ export function renderCompactReactionsTable(store, view = {}) {
   const state = { ...view, model };
   const columns = reactionColumns(model, 'compact');
   const filters = store.reactionTable.filters.length || store.reactionTable.query
-    ? ' · filtered as on the Reactions page' : '';
+    ? ' · filtered' : '';
   return `<div class="rx-compact-body">
     <div class="rx-compact-scroll" data-rx-scroll="compact">
       <table class="rx-table is-compact" style="min-width:${columns.reduce((sum, column) => sum + column.width, 0)}px">

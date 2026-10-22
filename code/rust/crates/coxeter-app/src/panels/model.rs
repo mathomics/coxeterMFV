@@ -110,15 +110,12 @@ pub fn species_card(ui: &mut Ui, shell: &mut Shell) {
                     if present {
                         widgets::hint(ui, format!("Growth: {} h⁻¹", format_flux(growth, 6)));
                     } else {
-                        widgets::hint(ui, "Absent from this monoculture calculation; shown faintly to preserve map geometry.");
+                        widgets::hint(ui, "Absent from this monoculture; drawn faintly.");
                     }
                 });
                 ui.add_space(10.0);
             }
-            widgets::hint(
-                ui,
-                "Population coefficients come from the source community model. Generic abundance sliders would change its stoichiometry and are disabled for this reproducible case.",
-            );
+            widgets::hint(ui, "Abundances are fixed by the source model’s population coefficients.");
         });
         return;
     }
@@ -144,14 +141,8 @@ pub fn species_card(ui: &mut Ui, shell: &mut Shell) {
         if yeast9 {
             shell.load_yeast9();
         }
-        widgets::hint(
-            ui,
-            "Accepts COBRApy/BiGG JSON, SBML, and COBRA Toolbox MATLAB (.mat) or Excel (.xlsx). You can pick several files at once: each becomes one species/cell. Imported models start with an empty compartment map. The Yeast9 shortcut loads the official pinned model and preserves all 14 subcellular compartments.",
-        );
-        widgets::hint(
-            ui,
-            "Abundances are normalised to 1. They turn each species' per-gDW flux into community per-gDW flux, which is what travels through the shared medium.",
-        );
+        widgets::hint(ui, "JSON, SBML, MAT or XLSX; one species per file.");
+        widgets::hint(ui, "Abundances sum to 1.");
     });
 }
 
@@ -227,11 +218,7 @@ fn species_row(ui: &mut Ui, shell: &mut Shell, sp: &coxeter_state::Species, p: &
 pub fn medium_card(ui: &mut Ui, shell: &mut Shell) {
     if shell.store.is_zuniga_study() {
         widgets::card(ui, "Source medium", None, |ui| {
-            widgets::hint(
-                ui,
-                "The complete source model fixes the available nutrients and exchange bounds for each case scenario. Select WT monoculture, mutant monoculture or mutant coculture under Scenario & objective.",
-            );
-            widgets::hint(ui, "The shared-medium drawing is a visual excerpt. It does not change the medium or the mathematical solution.");
+            widgets::hint(ui, "The source model fixes the medium for each case scenario.");
         });
         return;
     }
@@ -252,10 +239,7 @@ pub fn medium_card(ui: &mut Ui, shell: &mut Shell) {
         for base in &ordered {
             medium_row(ui, shell, base);
         }
-        widgets::hint(
-            ui,
-            "Maximum supply in mmol · gDW⁻¹ · h⁻¹. Zero means the medium does not supply it: it is then only available if another species secretes it.",
-        );
+        widgets::hint(ui, "mmol·gDW⁻¹·h⁻¹; 0 = only from secretion.");
     });
 }
 
@@ -298,7 +282,7 @@ fn medium_row(ui: &mut Ui, shell: &mut Shell, base: &str) {
             shell.debounce("medium", 0.12, Deferred::Medium { base: base.to_string(), value: text });
         } else if change {
             ui.data_mut(|d| d.remove::<bool>(invalid_id));
-            shell.status_warn("That field was empty or not a number, so nothing changed; it shows the value still in force.");
+            shell.status_warn(crate::panels::inspector::NOT_A_NUMBER);
         } else {
             ui.data_mut(|d| d.insert_temp(invalid_id, true));
         }
@@ -384,14 +368,8 @@ pub fn model_editor_card(ui: &mut Ui, shell: &mut Shell) {
                     shell.store.set_model_editor_species(&id);
                 }
             });
-            widgets::hint(
-                ui,
-                "All reactions and metabolites are retained for the calculation and model inspection. Only selected complementing pathways appear on the editable map.",
-            );
-            widgets::hint(
-                ui,
-                "Source biology is read-only in this reproducible case. Choose a documented scenario to apply its perturbation and conditions; use the reaction library to add any existing model reaction to the drawing.",
-            );
+            widgets::hint(ui, "The map shows only the complementing pathways.");
+            widgets::hint(ui, "Source models are read-only in this case.");
         });
         return;
     }
@@ -456,10 +434,7 @@ pub fn model_editor_card(ui: &mut Ui, shell: &mut Shell) {
         if clicked[3] {
             shell.export_model(true);
         }
-        widgets::hint(
-            ui,
-            "Additions change the selected biological model and travel with both exports. The SBML is Level 3 Version 1 with the fbc package, Version 2 — what cobrapy and the COBRA Toolbox read.",
-        );
+        widgets::hint(ui, "SBML L3V1 + fbc v2.");
         let mode = shell.store.model_editor_mode.clone();
         if let (Some(mode), Some((_, _, compartments))) = (mode, summary) {
             ui.add_space(10.0);
@@ -546,7 +521,7 @@ fn reaction_form(ui: &mut Ui, shell: &mut Shell) {
         "New reaction stoichiometry",
         Some(5),
     );
-    widgets::hint(ui, "Negative coefficient = substrate, positive = product. JSON is accepted too.");
+    widgets::hint(ui, "Negative = substrate, positive = product.");
     ui.columns(2, |cols| {
         form_field(&mut cols[0], shell, &key, "lower", ("Lower bound *", ""), "0", "", "New reaction lower bound", None);
         form_field(&mut cols[1], shell, &key, "upper", ("Upper bound *", ""), "1000", "", "New reaction upper bound", None);
@@ -671,7 +646,7 @@ pub fn community_omics_card(ui: &mut Ui, shell: &mut Shell) {
             }
         });
         let Some(dataset) = shell.store.omics.dataset.clone() else {
-            widgets::hint(ui, "Long format: species/MAG, gene, condition, expression (TPM, FPKM, RPKM, CPM or counts also work).");
+            widgets::hint(ui, "Columns: species/MAG, gene, condition, expression.");
             return;
         };
         let o = shell.store.omics.clone();
@@ -723,8 +698,7 @@ pub fn community_omics_card(ui: &mut Ui, shell: &mut Shell) {
                 }
             });
         }
-        widgets::section_title(ui, "GIMME context-specific model");
-        widgets::hint(ui, "Penalises flux through reactions below the expression threshold while holding a minimum fraction of the metabolic objective.");
+        widgets::section_title(ui, "GIMME context-specific model").on_hover_text("Penalises flux through reactions below the expression threshold");
         ui.horizontal(|ui| {
             row_label(ui, "Objective");
             let (_, event) = widgets::number_field(
@@ -766,7 +740,7 @@ pub fn community_omics_card(ui: &mut Ui, shell: &mut Shell) {
             }
         });
         if fixed_mu {
-            widgets::hint(ui, "Run FBA, pFBA or Loopless before using GIMME with this model.");
+            widgets::hint(ui, "Run FBA, pFBA or Loopless before GIMME.");
         }
         if let Some(result) = o.gimme_result.as_ref().filter(|r| r.solution.status.is_optimal()) {
             Rich::new(ui, 12.0)
@@ -846,17 +820,8 @@ pub fn omics_overlay_card(ui: &mut Ui, shell: &mut Shell) {
             if Btn::new("Load CSV").primary().wide().show(ui).clicked() {
                 shell.import_omics();
             }
-            Rich::new(ui, 12.0)
-                .plain("Wide format: ")
-                .bold("id,Condition_A,Condition_B")
-                .plain(". For communities, add an optional ")
-                .bold("species")
-                .plain(" column.")
-                .show(ui);
-            widgets::hint(
-                ui,
-                "IDs map to each reaction's GPR. AND = minimum across subunits; OR = maximum across isoenzymes. This visual overlay preserves the FBA.",
-            );
+            Rich::new(ui, 12.0).plain("Columns: ").bold("id,Condition_A,Condition_B").plain(", optional ").bold("species").plain(".").show(ui);
+            widgets::hint(ui, "IDs map through each reaction's GPR (AND = minimum, OR = maximum).");
             return;
         };
         let overlay = shell.store.omics_overlay();
@@ -965,12 +930,8 @@ pub fn omics_overlay_card(ui: &mut Ui, shell: &mut Shell) {
                 .plain(" drawn reactions have a GPR-derived omics value.")
                 .show(ui);
         } else {
-            widgets::hint(ui, "Overlay is hidden. Enable Show overlay to display GPR-derived values.");
+            widgets::hint(ui, "Overlay is hidden.");
         }
-        widgets::hint(
-            ui,
-            "When both overlays are enabled, this overlay takes precedence for its matches; community expression fills other matches. Unmatched reactions appear in gray.",
-        );
         ui.add_space(8.0);
         ui.horizontal(|ui| {
             let width = ui.available_width() - 80.0;
@@ -981,6 +942,5 @@ pub fn omics_overlay_card(ui: &mut Ui, shell: &mut Shell) {
                 shell.store.clear_omics(true);
             }
         });
-        widgets::hint(ui, "In comparisons, blue = higher in A and red = higher in B. Arrowheads show the direction of the solved flux.");
     });
 }

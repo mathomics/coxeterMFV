@@ -59,8 +59,8 @@ fn panels_collapse_and_focus_mode() {
     let mut h = common::harness(None);
     common::click(&mut h, "Collapse task panel");
     assert!(h.state().ui.left_collapsed);
-    common::click(&mut h, "Tools");
-    assert!(!h.state().ui.left_collapsed, "the toolbar's Tools button brings it back");
+    common::click(&mut h, "Tools panel");
+    assert!(!h.state().ui.left_collapsed, "the toolbar's Tools panel button brings it back");
     common::click(&mut h, "Focus mode");
     assert!(h.state().ui.focus_mode);
     assert!(common::has(&h, "Expand task panel"));
@@ -74,6 +74,56 @@ fn panels_collapse_and_focus_mode() {
 }
 
 #[test]
+fn a_narrow_window_opens_the_task_panel_over_the_map_on_request() {
+    let mut h = common::harness(None);
+    h.set_size(egui::vec2(800.0, 900.0));
+    common::settle(&mut h);
+    assert!(!common::has(&h, "Collapse task panel"), "no room beside the map: hidden until asked for");
+    common::click(&mut h, "Tools panel");
+    assert!(h.state().ui.task_overlay);
+    assert!(common::has(&h, "Collapse task panel"));
+    common::click(&mut h, "Collapse task panel");
+    assert!(!h.state().ui.task_overlay, "the panel's own button closes it, as the toolbar's does");
+    assert!(!common::has(&h, "Collapse task panel"));
+    assert!(!h.state().ui.left_collapsed);
+}
+
+#[test]
+fn focus_mode_opens_the_task_panel_over_the_map_and_stays() {
+    let mut h = common::harness(None);
+    common::click(&mut h, "Focus mode");
+    common::click(&mut h, "Expand task panel");
+    assert!(h.state().ui.focus_mode && h.state().ui.task_overlay, "toggle-left in focus mode, as in app.js");
+    common::click(&mut h, "Collapse task panel");
+    assert!(h.state().ui.focus_mode && !h.state().ui.task_overlay);
+}
+
+#[test]
+fn a_narrow_window_floats_the_inspector_over_the_map() {
+    let mut h = common::harness(None);
+    h.set_size(egui::vec2(1000.0, 800.0));
+    h.state_mut().ui.inspector_pinned = true;
+    h.state_mut().ui.inspector_collapsed = false;
+    common::settle(&mut h);
+    assert!(common::has(&h, "Collapse right panel"));
+    let map = h.state().map_rect.unwrap();
+    assert!(map.width() > 900.0, "the map keeps the window's width ({})", map.width());
+    common::click(&mut h, "Collapse right panel");
+    assert!(h.state().ui.inspector_collapsed);
+    assert!(!common::has(&h, "Expand right panel"), "closed, it is not drawn; the toolbar's Inspector button opens it");
+    common::click(&mut h, "Toggle inspector");
+    assert!(common::has(&h, "Collapse right panel"));
+}
+
+#[test]
+fn the_cell_tool_says_when_every_species_is_drawn() {
+    let mut h = common::harness(None);
+    assert!(h.state().store.available_map_cells().is_empty(), "the scenario's map draws every species");
+    common::click(&mut h, "Add Cell");
+    assert!(common::shows(&h, "Every species is on the map."), "a drag would do nothing, so the hub says so");
+}
+
+#[test]
 fn right_tabs_and_layout_presets() {
     let mut h = common::harness(None);
     h.state_mut().ui.inspector_collapsed = false;
@@ -82,10 +132,11 @@ fn right_tabs_and_layout_presets() {
     assert_eq!(h.state().ui.right_tab, RightTab::Layout);
     common::click(&mut h, "Inspector");
     assert_eq!(h.state().ui.right_tab, RightTab::Inspector);
-    common::click(&mut h, "Compact");
+    // The presets re-run the whole layout, so they live in the Layout tab only.
+    common::click(&mut h, "Layout");
+    common::click(&mut h, "Compact layout preset");
     assert_eq!(h.state().store.layout_settings.preset, "compact");
-    assert_eq!(h.state().ui.right_tab, RightTab::Layout, "a preset shows the layout settings");
-    assert!(common::pressed(&h, "Compact"));
+    assert!(common::pressed(&h, "Compact layout preset"));
 }
 
 #[test]
@@ -101,7 +152,7 @@ fn results_dock() {
     common::click(&mut h, "Clear");
     assert!(h.state().store.log.is_empty(), "clear-log");
     common::click(&mut h, "Analysis results");
-    assert!(common::shows(&h, "completed successfully"));
+    assert!(common::shows(&h, "FBA · Optimal") && !common::shows(&h, "completed successfully"));
     common::click(&mut h, "Maximize results");
     assert!(h.state().ui.results_maximized);
     common::click(&mut h, "Restore results dock");

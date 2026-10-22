@@ -639,7 +639,7 @@ fn toolbar(ui: &mut Ui, shell: &Shell, model: &ReactionTableModel, p: &Palette, 
             let changes = reactions + store.gene_knockout_changes().len() + usize::from(store.custom_objective.is_some());
             let r = Btn::new(format!("Changes ({changes})"))
                 .pressed(shell.ui.rx.show_changes)
-                .title("Every reaction whose bounds differ from the model's, and every gene knocked out")
+                .title("Changed bounds and gene knockouts")
                 .height(26.0)
                 .show(ui);
             if r.clicked() {
@@ -673,7 +673,7 @@ fn objective_line(ui: &mut Ui, store: &Store, p: &Palette, acts: &mut Vec<Act>) 
         ui.horizontal_wrapped(|ui| {
             ui.spacing_mut().item_spacing = vec2(6.0, 4.0);
             ui.label(RichText::new("Objective").size(12.0).family(bold()).color(p.ink))
-                .on_hover_text("Type a coefficient in any row’s Objective column to add that reaction; 0 takes it out");
+                .on_hover_text("Set a coefficient in a row’s Objective column; 0 removes it");
             if !locked {
                 let sense = store.objective_sense();
                 let options = [(ObjectiveSense::Max, "Maximise".to_string()), (ObjectiveSense::Min, "Minimise".to_string())];
@@ -701,10 +701,9 @@ fn objective_line(ui: &mut Ui, store: &Store, p: &Palette, acts: &mut Vec<Act>) 
                 ui.label(RichText::new(format!("+ {} more", coefficients.len() - 6)).size(11.5).color(p.ink_3));
             }
             if locked {
-                ui.label(RichText::new("The authors’ objective, medium and bounds are fixed for this case.").size(11.0).color(p.ink_3));
+                ui.label(RichText::new("Fixed for this case.").size(11.0).color(p.ink_3));
                 return;
             }
-            ui.label(RichText::new("add any reaction from its Objective column").size(11.0).color(p.ink_3));
             if custom {
                 pill(ui, "Edited", hue(MODIFIED, p, 0.8, 0.12, 0.4), "Edited here, on top of the preset");
             }
@@ -774,7 +773,7 @@ fn gene_line(ui: &mut Ui, shell: &Shell, p: &Palette, acts: &mut Vec<Act>) {
         ui.horizontal_wrapped(|ui| {
             ui.spacing_mut().item_spacing = vec2(6.0, 4.0);
             ui.label(RichText::new("Genes").size(12.0).family(bold()).color(p.ink))
-                .on_hover_text("A knocked-out gene closes every reaction whose gene rule it makes false; an isozyme left keeps a reaction open");
+                .on_hover_text("A knockout closes reactions whose gene rule becomes false");
             let field = Field::new().width(220.0).placeholder(placeholder).aria("Search genes to knock out").enabled(!locked && any);
             let (_, event) = widgets::text_field(ui, gene_search_id(), &query, field);
             if let Some(q) = event.value() {
@@ -840,7 +839,7 @@ fn gene_line(ui: &mut Ui, shell: &Shell, p: &Palette, acts: &mut Vec<Act>) {
 /// lost the optimum.
 fn alert(ui: &mut Ui, store: &Store, p: &Palette, acts: &mut Vec<Act>) {
     if store.is_zuniga_study() {
-        widgets::hint(ui, "Zuñiga case: the source bounds are fixed. Choose a documented case scenario to apply its perturbation.");
+        widgets::hint(ui, "Zuñiga case: the source bounds are fixed.");
         return;
     }
     if let Some(culprits) = &store.constraint_culprits {
@@ -882,7 +881,7 @@ fn alert(ui: &mut Ui, store: &Store, p: &Palette, acts: &mut Vec<Act>) {
             ui.add_space(4.0);
         }
         None if store.community.is_some() => {
-            widgets::hint(ui, "Not solved yet: run an analysis to see fluxes. Bounds can be edited now.");
+            widgets::hint(ui, "Not solved yet.");
         }
         _ => {}
     }
@@ -946,7 +945,7 @@ fn changes_panel(ui: &mut Ui, store: &Store, p: &Palette, acts: &mut Vec<Act>) {
             ui.with_layout(Layout::right_to_left(Align::Center), |ui| {
                 let r = Btn::new("Reset all")
                     .enabled((!changes.is_empty() || !genes.is_empty()) && !locked)
-                    .title("Every reaction back to the bounds it was opened with, and every gene restored")
+                    .title("Restore all original bounds and genes")
                     .height(24.0)
                     .show(ui);
                 if r.clicked() {
@@ -956,7 +955,7 @@ fn changes_panel(ui: &mut Ui, store: &Store, p: &Palette, acts: &mut Vec<Act>) {
         });
         ui.separator();
         if changes.is_empty() && genes.is_empty() && store.custom_objective.is_none() {
-            widgets::empty(ui, "No reaction differs from the bounds it was opened with.");
+            widgets::empty(ui, "No changes.");
             return;
         }
         let bound = |b: &coxeter_state::Bounds| format!("[{}, {}]", format_bound_text(b.lower), format_bound_text(b.upper));
@@ -1483,7 +1482,7 @@ pub fn table_view(ui: &mut Ui, shell: &mut Shell, shadow: impl FnOnce(&mut Ui, &
     let count_rect = Rect::from_min_max(pos2(rect.min.x, rect.max.y - count_h), rect.max);
     ui.scope_builder(UiBuilder::new().max_rect(count_rect), |ui| {
         let table = &shell.store.reaction_table;
-        let filtered = if !table.filters.is_empty() || !table.query.is_empty() { " · filtered as on the Reactions page" } else { "" };
+        let filtered = if !table.filters.is_empty() || !table.query.is_empty() { " · filtered" } else { "" };
         let modified = if model.modified > 0 { format!(" · {} modified", model.modified) } else { String::new() };
         ui.label(RichText::new(format!("{} of {} reactions{modified}{filtered}", model.shown, model.total)).size(11.5).color(p.ink_3));
     });

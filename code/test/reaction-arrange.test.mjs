@@ -458,7 +458,7 @@ test('the reaction inspector offers linear, swap, mirror and rotate as map optio
   }
   // One swap between each pair of neighbours: 1 for two substrates, 2 for three products.
   assert.equal((html.match(/data-action="reaction-swap"/g) ?? []).length, 3);
-  assert.match(html, /These change the drawing only/);
+  assert.match(html, /Shift-click two metabolites to pick them/);
 });
 
 test('the inspector options are undoable edits that leave the model alone', async () => {

@@ -26,7 +26,7 @@ use indexmap::IndexMap;
 use serde_json::{Map, Value, json};
 
 use crate::error::{Result, StoreError};
-use crate::steadycom::{STEADYCOM_COMMUNITIES, steady_com_open_mu};
+use crate::steadycom::steady_com_open_mu;
 use crate::store::{AUTO_DRAW_METABOLITE_LIMIT, AUTO_DRAW_REACTION_LIMIT, AUTO_SOLVE_REACTION_LIMIT, Store, objectives};
 use crate::types::*;
 use crate::util::normalize_pfba_percent;
@@ -269,12 +269,12 @@ impl Store {
             self.map_mode = "full".into();
             format!(" Drawn in full: {} reactions.", self.map.as_ref().map_or(0, |m| m.reactions().len()))
         } else if self.show_core_metabolism_overview(false).is_some() {
-            " Drawing central carbon metabolism only — this model is too large to lay out in full automatically; use Map options ▸ Full map for everything.".to_string()
+            " Central carbon metabolism only: the model is too large to lay out in full. Map options ▸ Full map draws everything.".to_string()
         } else {
             self.map_mode = "empty".into();
-            " The drawing was left empty: this model is too large to lay out automatically. Build it up from Map structure, or use Map options ▸ Full map.".to_string()
+            " The drawing was left empty: this model is too large to lay out automatically. Build it from Map structure or Map options ▸ Full map.".to_string()
         };
-        let deferred = if auto_solve { "" } else { " Analysis was deferred for this genome-scale model; use Run Analysis when needed." };
+        let deferred = if auto_solve { "" } else { " Analysis deferred (genome-scale model)." };
         self.set_status_message(
             StatusState::Ok,
             format!("Imported {count} model(s): {total_reactions} reactions, {total_metabolites} metabolites.{deferred}{drawn}"),
@@ -444,7 +444,7 @@ impl Store {
             let note = self.map_load_note.clone();
             self.set_status_message(
                 StatusState::Ok,
-                format!("{loaded} · curated map of {drawn} reactions.{note} Run Analysis when you want FBA."),
+                format!("{loaded} · curated map of {drawn} reactions.{note}"),
             );
             None
         } else {
@@ -467,7 +467,7 @@ impl Store {
             self.set_status_message(
                 StatusState::Ok,
                 format!(
-                    "{loaded} · {} representative reactions drawn across {}/{} compartments. Run Analysis when you want FBA.",
+                    "{loaded} · {} representative reactions drawn across {}/{} compartments.",
                     preview.placed,
                     preview.covered_compartments,
                     YEAST9_PREVIEW_COMPARTMENTS.len()
@@ -719,9 +719,8 @@ impl Store {
             self.map_mode = "published-case".into();
             self.scenario_map_file = Some(format!("published/{id}/{map_file}"));
             let members = manifest.as_ref().and_then(|m| m.get("members")).and_then(Value::as_array).map_or(0, Vec::len);
-            let next = if STEADYCOM_COMMUNITIES.contains(&id) { " Calculate the permitted μ range to run SteadyCom." } else { "" };
             let note = self.map_load_note.clone();
-            self.set_status_message(StatusState::Ok, format!("Full {members}-member model loaded with its curated map.{note}{next}"));
+            self.set_status_message(StatusState::Ok, format!("Full {members}-member model loaded with its curated map.{note}"));
             self.emit("map");
             return Ok(());
         }
@@ -747,10 +746,7 @@ impl Store {
         })?;
         self.map = Some(EditableMap::from_community(&drawing, &layout_engine_options(&(&self.layout_settings).into())));
         self.map_history.clear();
-        self.set_status_message(
-            StatusState::Ok,
-            "Full nine-species model loaded; the map shows an excerpt. Calculate the permitted μ range to run SteadyCom.",
-        );
+        self.set_status_message(StatusState::Ok, "Full nine-species model loaded; the map shows an excerpt.");
         self.emit("map");
         Ok(())
     }

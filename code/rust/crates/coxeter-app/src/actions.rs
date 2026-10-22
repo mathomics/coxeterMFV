@@ -498,9 +498,9 @@ impl Shell {
         let cleared = self.store.map.as_ref().map_or(0, |m| m.reactions().len());
         self.store.show_empty_map();
         self.status_ok(if cleared > 0 {
-            format!("Map cleared — {cleared} drawn reactions removed. The model is unchanged; Ctrl+Z undoes this.")
+            format!("Map cleared: {cleared} drawn reactions removed. Ctrl+Z undoes.")
         } else {
-            "Map cleared. The model is unchanged.".to_string()
+            "Map cleared.".to_string()
         });
     }
 
@@ -516,6 +516,7 @@ impl Shell {
     pub fn undo_redo(&mut self, redo: bool) {
         let mut host = StoreHost::new(&mut self.store);
         self.map.canvas.gestures.finish_metabolite_label_drag_for_history(&mut host);
+        self.map.canvas.gestures.finish_reaction_label_drag_for_history(&mut host);
         self.close_map_menus();
         if redo {
             self.store.redo_map();
@@ -596,10 +597,7 @@ impl Shell {
                 let file = name.map_or_else(|| "The map".to_string(), |n| format!("“{n}”"));
                 self.store.set_status_message(
                     StatusState::Warn,
-                    format!(
-                        "{file} does not fit what is open: {} The map is kept and will be drawn as soon as {} is loaded (File ▸ Model). The current drawing is unchanged.",
-                        waiting.reason, waiting.needs
-                    ),
+                    format!("{file} does not fit what is open: {} It will be drawn once {} is loaded; the current drawing is kept.", waiting.reason, waiting.needs),
                 );
                 self.store.emit("status");
             }
@@ -830,15 +828,15 @@ impl Shell {
         if let Err(error) = std::fs::write(&path, &png.png) {
             return self.status_error(format!("Could not write {}: {error}", files::display_name(&path)));
         }
-        if png.scale >= coxeter_render::PREFERRED_SCALE {
+        // Short of 2× is still a sharp picture; smaller than the map itself is worth a word.
+        if png.scale >= 1.0 {
             self.log_ok(&format!("Map exported as {} ({} × {} px)", files::display_name(&path), png.width, png.height));
         } else {
             self.status_warn(format!(
-                "PNG exported at {}× ({} × {} px): a {}× image of this map exceeds the canvas limit. The SVG keeps full resolution.",
+                "PNG exported at {}× ({} × {} px), smaller than the map: a larger one does not fit in memory. The SVG keeps full resolution.",
                 coxeter_core::js::number_to_string(png.scale),
                 png.width,
-                png.height,
-                coxeter_core::js::number_to_string(coxeter_render::PREFERRED_SCALE)
+                png.height
             ));
         }
     }

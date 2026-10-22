@@ -91,9 +91,11 @@ test('one selected reaction is enough to align, and the panel offers it', async 
   assert.equal(store.canArrangeSelection('align-vertical'), true);
   assert.equal(store.canArrangeSelection('align-left'), false, 'edge alignment still needs two objects');
   store.view.multiSelect = true;
-  const html = renderWorkspace(store, 'map');
+  // The inspector turns to the selection, which is where Align lives.
+  const html = renderInspector(store);
   assert.match(html, /data-action="align-vertical"(?![^>]*disabled)[^>]*title="Put the selected reactions and their metabolites on one vertical line/);
   assert.match(html, /data-action="align-left" disabled/);
+  assert.doesNotMatch(renderWorkspace(store, 'map'), /data-action="align-/, 'Map options no longer holds it');
 });
 
 test('a selection without reactions keeps the plain alignment of centres', async () => {

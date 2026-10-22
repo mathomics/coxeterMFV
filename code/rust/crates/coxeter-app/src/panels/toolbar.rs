@@ -1,16 +1,38 @@
 //! The map toolbar (`.canvas-toolbar` of `index.html`): the task panel
-//! toggle, undo and redo, zoom, the zoom read-out and active tool, the
-//! layout presets, the View popover (`renderViewControls` of
-//! `src/ui/panels.js`) and the inspector toggle.
+//! toggle, undo and redo, zoom and its read-out, the display options used
+//! most (`renderMapQuickControls` of `src/ui/panels.js`), the Image menu, the
+//! View popover (`renderViewControls`) and the inspector toggle.
 
 use egui::{Frame, Margin, RichText, Stroke, Ui, Vec2};
 
 use crate::app::Shell;
-use crate::theme::{Palette, bold};
+use crate::theme::Palette;
 use crate::widgets::{self, Btn, Look, aria_label};
 
 /// `--toolbar-h`.
 pub const HEIGHT: f32 = 44.0;
+
+/// How much of the quick options a toolbar this wide hands over to View
+/// (the container queries on `.canvas-toolbar` in `app.css`): line color and
+/// width first, then the rest.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum QuickFold {
+    None,
+    Second,
+    All,
+}
+
+impl QuickFold {
+    pub fn for_width(width: f32) -> Self {
+        if width <= 860.0 {
+            QuickFold::All
+        } else if width <= 1090.0 {
+            QuickFold::Second
+        } else {
+            QuickFold::None
+        }
+    }
+}
 
 /// Draw the map toolbar.
 pub fn show(ui: &mut Ui, shell: &mut Shell) {
@@ -19,14 +41,14 @@ pub fn show(ui: &mut Ui, shell: &mut Shell) {
         .exact_size(HEIGHT)
         .frame(Frame::new().fill(p.panel).inner_margin(Margin::symmetric(10, 5)).stroke(Stroke::new(1.0, p.line)))
         .show(ui, |ui| {
+            let fold = QuickFold::for_width(ui.max_rect().width());
             ui.horizontal_centered(|ui| {
                 ui.spacing_mut().item_spacing.x = 5.0;
                 let expanded = shell.ui.task_overlay || (!shell.ui.left_collapsed && !shell.ui.focus_mode);
-                let tools = Btn::new("☷ Tools").look(Look::Secondary).aria("Tools").show(ui);
+                let tools = icon(ui, "☷", "Tools panel", "Show or hide the tools panel", true, &p);
                 widgets::aria_pressed(&tools, expanded);
                 if tools.clicked() {
-                    let narrow = ui.ctx().content_rect().width() <= 1000.0 || ui.ctx().content_rect().height() <= 620.0;
-                    shell.toggle_left(narrow);
+                    shell.toggle_left(crate::panels::left::narrow(ui.ctx()));
                 }
                 let undo = icon(ui, "↶", "Undo map edit", "Undo map edit (Ctrl+Z)", shell.store.can_undo_map(), &p);
                 if undo.clicked() {
@@ -50,14 +72,17 @@ pub fn show(ui: &mut Ui, shell: &mut Shell) {
                 egui::Frame::new().stroke(Stroke::new(1.0, p.line)).corner_radius(egui::CornerRadius::same(7)).inner_margin(Margin::symmetric(8, 3)).show(ui, |ui| {
                     ui.label(RichText::new(readout).size(11.5).color(p.ink_2));
                 });
-                ui.label(RichText::new(shell.map.tool().label()).size(11.5).color(p.ink_3));
-                layout_presets(ui, shell, &p);
+                if fold != QuickFold::All {
+                    separator(ui, &p);
+                    render_quick_controls(ui, shell, true, fold == QuickFold::None, "toolbar");
+                }
                 ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
                     let inspector = Btn::new("Inspector").look(Look::Secondary).title("Show or hide selection properties").aria("Toggle inspector").show(ui);
                     if inspector.clicked() {
                         shell.toggle_inspector();
                     }
-                    view_menu(ui, shell, &p);
+                    view_menu(ui, shell, &p, fold);
+                    image_menu(ui, shell, &p);
                 });
             });
         });
@@ -80,35 +105,69 @@ fn separator(ui: &mut Ui, p: &Palette) {
     ui.painter().vline(rect.center().x, rect.y_range(), Stroke::new(1.0, p.line));
 }
 
-/// `.layout-preset-toolbar`: the presets, refused (and said why on the
-/// button) while a re-layout is blocked.
-fn layout_presets(ui: &mut Ui, shell: &mut Shell, p: &Palette) {
-    let blocked = shell.store.relayout_blocked();
-    let current = shell.store.layout_settings.preset.clone();
-    Frame::new().stroke(Stroke::new(1.0, p.line)).corner_radius(egui::CornerRadius::same(8)).inner_margin(Margin::symmetric(6, 2)).show(ui, |ui| {
-        ui.horizontal(|ui| {
-            ui.spacing_mut().item_spacing.x = 3.0;
-            ui.label(RichText::new("LAYOUT:").size(10.0).family(bold()).color(p.ink_3));
-            for (name, label) in [("compact", "Compact"), ("normal", "Normal"), ("spacious", "Spacious")] {
-                let on = current == name;
-                let mut b = Btn::new(RichText::new(label).size(11.5)).look(if on { Look::Active } else { Look::Flat }).enabled(blocked.is_none()).height(26.0);
-                if let Some(why) = &blocked {
-                    b = b.title(why);
-                }
-                let r = b.show(ui);
-                widgets::aria_pressed(&r, on);
-                if r.clicked() {
-                    shell.layout_preset(name);
-                }
-            }
-        });
+/// `renderMapQuickControls(store)`: the display options used most, in two
+/// groups (`quick-a`, `quick-b`) so that a narrow toolbar can hand the second
+/// and then both over to View. `salt` keeps the selects of the toolbar and of
+/// View apart.
+pub fn render_quick_controls(ui: &mut Ui, shell: &mut Shell, first: bool, second: bool, salt: &str) {
+    let v = shell.store.view.clone();
+    let patch = |shell: &mut Shell, patch: coxeter_state::ViewPatch| {
+        let _ = shell.store.set_view(patch);
+    };
+    if first {
+        let options = [("auto", "Labels: major fluxes"), ("active", "Labels: all active"), ("all", "Labels: all"), ("none", "Labels: none")]
+            .map(|(value, label)| (value.to_string(), label.to_string()));
+        if let Some(value) = widgets::select(ui, (salt, "labels"), &v.labels, &options, 140.0, true, "Map labels") {
+            patch(shell, coxeter_state::ViewPatch { labels: Some(value), ..Default::default() });
+        }
+        if widgets::toggle_button(ui, "Cofactors", v.show_currency, "Show cofactors such as ATP, NADH and H⁺").clicked() {
+            patch(shell, coxeter_state::ViewPatch { show_currency: Some(!v.show_currency), ..Default::default() });
+        }
+        let multicell = shell.store.community.as_ref().is_some_and(|c| c.active_species().count() > 1);
+        if multicell && widgets::toggle_button(ui, "⇄ Cross-feeding", v.show_cross_feeding, "Highlight transfers between cells").clicked() {
+            patch(shell, coxeter_state::ViewPatch { show_cross_feeding: Some(!v.show_cross_feeding), ..Default::default() });
+        }
+    }
+    if second {
+        let current = v.reaction_color_mode.as_str().to_string();
+        let options = [("flux", "Color: flux"), ("pathway", "Color: pathway"), ("subsystem", "Color: subsystem")]
+            .map(|(value, label)| (value.to_string(), label.to_string()));
+        if let Some(value) = widgets::select(ui, (salt, "line-color"), &current, &options, 120.0, true, "Line color") {
+            // A group chosen here is what "Color lines by flux" goes back to.
+            let group = (value != "flux").then(|| value.clone());
+            patch(shell, coxeter_state::ViewPatch { reaction_color_mode: Some(value), line_color_group: group, ..Default::default() });
+        }
+        if widgets::toggle_button(ui, "Width by flux", v.width_by_flux, "Line width follows flux").clicked() {
+            patch(shell, coxeter_state::ViewPatch { width_by_flux: Some(!v.width_by_flux), ..Default::default() });
+        }
+    }
+}
+
+/// `details.canvas-export`: the map as a figure, SVG or PNG.
+fn image_menu(ui: &mut Ui, shell: &mut Shell, p: &Palette) {
+    let hovered = widgets::hovered_next(ui);
+    let button = egui::Button::new(RichText::new("⤓ Image ⌄").size(12.5).color(p.ink))
+        .fill(if hovered { p.hover } else { p.panel })
+        .stroke(Stroke::new(1.0, p.line));
+    let (response, _) = egui::containers::menu::MenuButton::from_button(button).ui(ui, |ui| {
+        ui.set_min_width(110.0);
+        if Btn::new("SVG").look(Look::Flat).aria("Export SVG image").show(ui).clicked() {
+            ui.close();
+            shell.export_svg();
+        }
+        if Btn::new("PNG").look(Look::Flat).aria("Export PNG image").show(ui).clicked() {
+            ui.close();
+            shell.export_png();
+        }
     });
+    aria_label(&response, "Image menu");
+    response.on_hover_text("Export the map as a figure");
 }
 
 /// `details.canvas-view` and its popover: an area under the button that
 /// stays open while its own selects open their lists (a popup would close),
 /// and closes on the button, Escape, or a press elsewhere.
-fn view_menu(ui: &mut Ui, shell: &mut Shell, p: &Palette) {
+fn view_menu(ui: &mut Ui, shell: &mut Shell, p: &Palette, fold: QuickFold) {
     let hovered = widgets::hovered_next(ui);
     let button = egui::Button::new(RichText::new("View ⌄").size(12.5).color(p.ink))
         .fill(if shell.ui.view_open { p.accent_soft } else if hovered { p.hover } else { p.panel })
@@ -131,7 +190,7 @@ fn view_menu(ui: &mut Ui, shell: &mut Shell, p: &Palette) {
         .show(&ctx, |ui| {
             Frame::popup(ui.style()).fill(p.panel).stroke(Stroke::new(1.0, p.line)).inner_margin(Margin::same(12)).show(ui, |ui| {
                 ui.set_width(300.0);
-                render_view_controls(ui, shell);
+                render_view_controls(ui, shell, fold);
             });
         });
     let pressed_elsewhere = ctx.input(|i| i.pointer.any_pressed())
@@ -142,47 +201,44 @@ fn view_menu(ui: &mut Ui, shell: &mut Shell, p: &Palette) {
     }
 }
 
-/// `renderViewControls(store)`: presentation only; nothing here changes a flux.
-pub fn render_view_controls(ui: &mut Ui, shell: &mut Shell) {
+/// `renderViewControls(store)`: presentation only; nothing here changes a
+/// flux. It starts with the quick options the toolbar had no room for.
+pub fn render_view_controls(ui: &mut Ui, shell: &mut Shell, fold: QuickFold) {
     let v = shell.store.view.clone();
+    if fold != QuickFold::None {
+        ui.horizontal_wrapped(|ui| render_quick_controls(ui, shell, fold == QuickFold::All, true, "view"));
+        ui.add_space(6.0);
+    }
     widgets::section_label(ui, "Map view");
     let overview = shell.store.core_metabolism_overview_support().is_some_and(|s| s.supported);
     ui.horizontal_wrapped(|ui| {
         let core = Btn::new("Core metabolism")
             .pressed(shell.store.map_mode == "core-overview")
             .enabled(overview)
-            .title("Curated glycolysis, PPP, TCA and amino-acid synthesis layout")
+            .title("Glycolysis, PPP, TCA and amino-acid synthesis")
             .show(ui);
         if core.clicked() {
             shell.map_core_overview();
         }
-        let full = Btn::new("Full network").pressed(shell.store.map_mode == "full").title("Draw every reaction available in the active map model").show(ui);
+        let full = Btn::new("Full network").pressed(shell.store.map_mode == "full").title("Every reaction in the map's model").show(ui);
         if full.clicked() {
             shell.map_full();
         }
     });
-    widgets::section_label(ui, "Map visibility");
+    widgets::section_label(ui, "Cofactors");
     ui.horizontal_wrapped(|ui| {
-        if widgets::toggle_button(ui, "Cofactors", v.show_currency, "Show secondary metabolites: cofactors such as ATP, NADH and H⁺, and every node set to Secondary").clicked() {
-            let _ = shell.store.set_view(coxeter_state::ViewPatch { show_currency: Some(!v.show_currency), ..Default::default() });
-        }
-        if widgets::toggle_button(ui, "Cofactor labels", v.currency_labels, "Name the small secondary metabolite nodes. They appear once the map is zoomed in past 34%").clicked() {
+        if widgets::toggle_button(ui, "Cofactor labels", v.currency_labels, "Shown past 34% zoom").clicked() {
             let _ = shell.store.set_view(coxeter_state::ViewPatch { currency_labels: Some(!v.currency_labels), ..Default::default() });
         }
         let quiet = shell.store.map.as_ref().and_then(|m| m.cofactor_style()) == Some("quiet");
-        if widgets::toggle_button(ui, "Quiet cofactors", quiet, "Draw this map’s secondary metabolites small and light, so the pathways stand out. Saved with the map").clicked() {
+        if widgets::toggle_button(ui, "Quiet cofactors", quiet, "Small and light; saved with the map").clicked() {
             shell.store.set_map_cofactor_style(if quiet { None } else { Some("quiet") });
-        }
-        if widgets::toggle_button(ui, "Highlight cross-feeding", v.show_cross_feeding, "Dim the metabolic network and highlight active metabolite transfers between cells").clicked() {
-            let _ = shell.store.set_view(coxeter_state::ViewPatch { show_cross_feeding: Some(!v.show_cross_feeding), ..Default::default() });
         }
     });
     crate::panels::cross_feeding::cross_feeding_top_control(ui, shell);
     crate::panels::cross_feeding::cross_feeding_width_control(ui, shell);
-    labels_select(ui, shell, "view-labels");
     crate::panels::inspector::map_label_control(ui, shell, "metabolite", None);
     crate::panels::inspector::map_label_control(ui, shell, "reaction", None);
-    widgets::hint(ui, "Missing names or database IDs use the usual label. Individual labels can override these choices in the inspector.");
     ui.horizontal(|ui| {
         ui.label(RichText::new("Scrolling").size(12.5).color(p_ink2(ui)));
         let options = [

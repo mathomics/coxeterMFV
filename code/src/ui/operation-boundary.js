@@ -25,6 +25,9 @@ const MAP_OPERATIONS = [
   'moveCompartmentLabel',
   'setMapLabelSource',
   'arrangeMultiSelection',
+  'spaceMultiSelectionEvenly',
+  'rotateMultiSelection',
+  'pointMultiSelection',
   'removeMultiSelection',
   'setMap',
   'addMapReaction',
@@ -60,6 +63,8 @@ const MAP_OPERATIONS = [
   'removeMapText',
   'duplicateMapMetabolite',
   'setMetaboliteLabelAngle',
+  'setReactionLabelOffset',
+  'resetReactionLabel',
   'setMapNodePrimary',
   'removeMapNode',
 ];
