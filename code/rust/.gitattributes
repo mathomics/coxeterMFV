@@ -1,3 +1,0 @@
-# Fixtures are compared byte for byte with what the JavaScript app writes, so
-# they must reach the disk exactly as committed, whatever core.autocrlf says.
-fixtures/** -text

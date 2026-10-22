@@ -20,6 +20,3 @@ miniz_oxide = "0.9.1"
 unicode-normalization = "0.1.25"
 # Local time for dated export names and the bundle's creation time.
 chrono = { version = "0.4.45", default-features = false, features = ["clock", "std"] }
-
-[dev-dependencies]
-base64 = "0.23.1"

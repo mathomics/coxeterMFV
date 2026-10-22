@@ -45,6 +45,3 @@ egui_kittest = { version = "0.36", features = ["wgpu", "eframe"] }
 image = { version = "0.25", default-features = false, features = ["png"] }
 # `toLocaleTimeString()` of the log and the results bar.
 chrono = { version = "0.4.45", default-features = false, features = ["clock", "std"] }
-
-[dev-dependencies]
-egui_kittest = { version = "0.36", features = ["wgpu", "snapshot", "eframe"] }

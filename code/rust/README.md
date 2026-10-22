@@ -6,8 +6,7 @@ or the Gurobi or CPLEX installed on the computer; see *Solvers*).
 It reads and writes the same files as the JavaScript app (maps, models,
 scenarios), so a map can move between the two.
 
-The JavaScript app in `../src` is the specification. Every crate here is tested
-against outputs of the JavaScript modules themselves (see *Testing*).
+The JavaScript app in `../src` is the specification.
 
 ## Prebuilt
 
@@ -35,7 +34,6 @@ compiler.
 ```bash
 cd rust
 cargo run --release -p coxeter-app      # the application
-cargo test                              # every test
 ```
 
 ## Layout
@@ -79,27 +77,3 @@ coxeter --check-solvers    # a battery of problems with known answers on each
 coxeter --solver gurobi    # start on Gurobi (or highs, cplex)
 ```
 
-The tests run Gurobi and CPLEX where they are installed with a licence:
-`coxeter-solver/tests/backends.rs` against the JS fixtures and
-`coxeter-state/tests/solver_choice.rs` through the Store. Where they are not,
-those tests say so and pass.
-
-## Testing
-
-`tools/fixtures-<area>.mjs` run the JavaScript modules on the bundled models,
-scenarios and maps and write their outputs to `fixtures/<area>/`. The Rust
-tests read those files and require the same answer — exactly, where the
-computation is deterministic. To regenerate after changing the JS app:
-
-```bash
-for f in rust/tools/fixtures-*.mjs; do node "$f"; done   # from the repo root
-```
-
-Genome-scale references are written to `fixtures/large/` (not committed);
-the tests that need them skip when they are absent.
-
-## Working on it
-
-`AGENTS.md` holds the rules every part of the port follows: which JavaScript
-behaviours need the helpers in `coxeter_core::js`, how points shared with a
-reaction's axis are handled, and how parity is tested.

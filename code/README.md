@@ -32,7 +32,6 @@ Requires [Rust](https://rustup.rs) 1.85 or later. The HiGHS solver is compiled f
 ```bash
 cd code/rust
 cargo run --release -p coxeter-app      # build and start the application
-cargo test                              # run every test
 ```
 
 On Windows, the Microsoft C++ Build Tools provide the compiler, and CMake and libclang can be installed with `pip install cmake libclang`. Point the `LIBCLANG_PATH` environment variable at the `clang/native` folder of that package.

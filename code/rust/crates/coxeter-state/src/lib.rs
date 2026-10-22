@@ -1,6 +1,6 @@
 //! The application's state and every action it can take: a port of `Store`
 //! in `src/ui/store.js`, with no GUI. It never draws and never opens a
-//! dialog (see `../coxeter-app/DESIGN.md`).
+//! dialog.
 //!
 //! ```no_run
 //! use coxeter_state::Store;

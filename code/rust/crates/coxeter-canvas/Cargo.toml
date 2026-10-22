@@ -23,11 +23,6 @@ harfrust = "0.12.0"
 skrifa = "0.44"
 # The layers of a repainted tree are compared with the drawn one in parallel.
 rayon = "1.12.0"
-# The settled layer: the visible map rasterised once the camera is still (and
-# the painter parity tests' reference), the version coxeter-render exports with.
+# The settled layer: the visible map rasterised once the camera is still, with
+# the version coxeter-render exports with.
 resvg = { version = "0.48.1", default-features = false, features = ["text", "system-fonts", "memmap-fonts"] }
-
-[dev-dependencies]
-eframe = "0.36"
-egui_kittest = { version = "0.36", features = ["wgpu", "snapshot"] }
-image = { version = "0.25", default-features = false, features = ["png"] }

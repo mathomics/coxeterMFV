@@ -1,7 +1,7 @@
 //! Coxeter Multicell Flux Visualizer: the native application, on eframe.
 //!
-//! It replaces the interface half of `src/ui/` of the JavaScript app (see
-//! `DESIGN.md`): `coxeter-state` holds the Store, `coxeter-canvas` the map
+//! It replaces the interface half of `src/ui/` of the JavaScript app:
+//! `coxeter-state` holds the Store, `coxeter-canvas` the map
 //! widget, and this crate everything around them.
 //!
 //! | Rust module | JavaScript |
