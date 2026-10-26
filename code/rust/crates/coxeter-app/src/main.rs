@@ -15,6 +15,10 @@
 //!   --version              print the version and exit
 //! ```
 
+// A window program on Windows: double-clicked, it opens no console beside its
+// window. Started from a terminal it writes to that one (attach_parent_console).
+#![cfg_attr(windows, windows_subsystem = "windows")]
+
 use std::path::PathBuf;
 use std::time::Duration;
 
@@ -224,7 +228,28 @@ fn brand_icon() -> egui::IconData {
     egui::IconData { rgba, width: N as u32, height: N as u32 }
 }
 
+/// A window program has no console of its own, so what it prints (`--help`,
+/// `--solvers`, errors) would go nowhere. Started from a terminal, it takes
+/// that terminal's console instead. Output already sent to a file or a pipe
+/// keeps going there.
+#[cfg(windows)]
+fn attach_parent_console() {
+    const ATTACH_PARENT_PROCESS: u32 = u32::MAX;
+    const STD_OUTPUT_HANDLE: u32 = -11i32 as u32;
+    #[link(name = "kernel32")]
+    unsafe extern "system" {
+        fn AttachConsole(process_id: u32) -> i32;
+        fn GetStdHandle(handle: u32) -> *mut std::ffi::c_void;
+    }
+    let out = unsafe { GetStdHandle(STD_OUTPUT_HANDLE) };
+    if out.is_null() || out as isize == -1 {
+        unsafe { AttachConsole(ATTACH_PARENT_PROCESS) };
+    }
+}
+
 fn main() {
+    #[cfg(windows)]
+    attach_parent_console();
     let args = parse_args();
     if args.list_solvers || args.check_solvers {
         std::process::exit(solvers_report(args.check_solvers));

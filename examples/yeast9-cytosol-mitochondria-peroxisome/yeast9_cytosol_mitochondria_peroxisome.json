@@ -2,7 +2,7 @@
   "format": "EscherMCMCMap",
   "version": 3,
   "metadata": {
-    "createdAt": "2026-10-20T16:47:36.204Z",
+    "createdAt": "2026-10-23T04:38:22.925Z",
     "scenario": "uploaded-models",
     "species": [
       {
@@ -11,7 +11,7 @@
       }
     ],
     "reactionCount": 135,
-    "nodeCount": 404,
+    "nodeCount": 408,
     "segmentCount": 711,
     "textCount": 60
   },
@@ -6120,14 +6120,14 @@
         "formula": "C4H7O7P",
         "compartment": "c",
         "cellId": "yeastGEM_v9.1.1",
-        "x": 1618.3031198395233,
-        "y": 1496.0003787193077,
+        "x": 1750,
+        "y": 1830,
         "r": 13,
         "primary": true,
         "visualRole": "primary",
         "reactionLocal": false,
         "sharedInstance": true,
-        "labelAngle": 0
+        "labelAngle": 1.5707963267948966
       },
       {
         "id": "met:yeastGEM_v9.1.1@r_1050:yeastGEM_v9.1.1@s_0581",
@@ -6139,14 +6139,14 @@
         "formula": "C5H9O8P",
         "compartment": "c",
         "cellId": "yeastGEM_v9.1.1",
-        "x": 1824.059765749438,
-        "y": 1369.4669896710222,
+        "x": 1750,
+        "y": 1369,
         "r": 13,
         "primary": true,
         "visualRole": "primary",
         "reactionLocal": false,
         "sharedInstance": true,
-        "labelAngle": 1.5707963267948966,
+        "labelAngle": -2.5,
         "hidden": false
       },
       {
@@ -6159,14 +6159,14 @@
         "formula": "C7H13O10P",
         "compartment": "c",
         "cellId": "yeastGEM_v9.1.1",
-        "x": 1857.295859494348,
-        "y": 1591.8282802570916,
+        "x": 1750,
+        "y": 1600,
         "r": 13,
         "primary": true,
         "visualRole": "primary",
         "reactionLocal": false,
         "sharedInstance": true,
-        "labelAngle": -1.5707963267948966,
+        "labelAngle": -3.141592653589793,
         "hidden": false
       },
       {
@@ -6179,8 +6179,8 @@
         "formula": "C5H9O8P",
         "compartment": "c",
         "cellId": "yeastGEM_v9.1.1",
-        "x": 2054.2162364608657,
-        "y": 1371.0916069521795,
+        "x": 1990,
+        "y": 1369,
         "r": 13,
         "primary": true,
         "visualRole": "primary",
@@ -6561,15 +6561,15 @@
         "formula": "C7H12O13P2",
         "compartment": "c",
         "cellId": "yeastGEM_v9.1.1",
-        "x": 1536.519781587311,
-        "y": 1795.7231158854272,
+        "x": 1520,
+        "y": 1715,
         "r": 13,
         "primary": true,
         "visualRole": "primary",
         "reactionLocalFor": "yeastGEM_v9.1.1@r_0990",
         "reactionLocal": true,
         "sharedInstance": true,
-        "labelAngle": 1.2
+        "labelAngle": -3.141592653589793
       },
       {
         "id": "met:yeastGEM_v9.1.1@r_0990:yeastGEM_v9.1.1@s_0629",
@@ -6581,15 +6581,15 @@
         "formula": "C3H5O6P",
         "compartment": "c",
         "cellId": "yeastGEM_v9.1.1",
-        "x": 1308.8814833797458,
-        "y": 1966.495700421468,
+        "x": 1400,
+        "y": 2062,
         "r": 13,
         "primary": true,
         "visualRole": "primary",
         "reactionLocalFor": "yeastGEM_v9.1.1@r_0990",
         "reactionLocal": true,
         "sharedInstance": true,
-        "labelAngle": -0.3229628248274504,
+        "labelAngle": 0,
         "hidden": false
       },
       {
@@ -6850,13 +6850,14 @@
         "formula": "H2O",
         "compartment": "c",
         "cellId": "yeastGEM_v9.1.1",
-        "x": 1563.900963254694,
-        "y": 1714.337109400841,
+        "x": 1540.637931349509,
+        "y": 1632.0088250565022,
         "r": 7,
         "primary": false,
         "visualRole": "secondary",
         "reactionLocalFor": "yeastGEM_v9.1.1@r_2126",
-        "reactionLocal": true
+        "reactionLocal": true,
+        "labelAngle": -2.0344439357957027
       },
       {
         "id": "met:yeastGEM_v9.1.1@r_2126:yeastGEM_v9.1.1@s_1322",
@@ -6868,14 +6869,14 @@
         "formula": "HO4P",
         "compartment": "c",
         "cellId": "yeastGEM_v9.1.1",
-        "x": 1701,
-        "y": 1750,
+        "x": 1671.2243012354966,
+        "y": 1566.7156401135085,
         "r": 7,
         "primary": false,
         "visualRole": "secondary",
         "reactionLocalFor": "yeastGEM_v9.1.1@r_2126",
         "reactionLocal": true,
-        "labelAngle": -1.5707963267948966
+        "labelAngle": -2.0344439357957027
       },
       {
         "id": "met:yeastGEM_v9.1.1@s_0069:peroxisome",
@@ -7374,14 +7375,14 @@
         "formula": "C3H7O6P",
         "compartment": "c",
         "cellId": "yeastGEM_v9.1.1",
-        "x": 1545,
-        "y": 2215,
+        "x": 1400,
+        "y": 2330,
         "r": 13,
         "primary": true,
         "visualRole": "primary",
         "reactionLocal": false,
         "sharedInstance": true,
-        "labelAngle": 1.5707963267948966
+        "labelAngle": 0
       },
       {
         "id": "met:yeastGEM_v9.1.1@s_1322:pi_c",
@@ -7451,12 +7452,12 @@
         "compartment": "c",
         "cellId": "yeastGEM_v9.1.1",
         "reactionId": "yeastGEM_v9.1.1@r_0491",
-        "x": 1380,
-        "y": 2130,
+        "x": 1465,
+        "y": 2123,
         "r": 7,
         "primary": false,
         "visualRole": "secondary",
-        "labelAngle": -3.141592653589793
+        "labelAngle": 0
       },
       {
         "id": "cur:yeastGEM_v9.1.1@r_0491:s_1203",
@@ -7469,12 +7470,12 @@
         "compartment": "c",
         "cellId": "yeastGEM_v9.1.1",
         "reactionId": "yeastGEM_v9.1.1@r_0491",
-        "x": 1395,
-        "y": 2165,
+        "x": 1504,
+        "y": 2146,
         "r": 7,
         "primary": false,
         "visualRole": "secondary",
-        "labelAngle": -3.141592653589793
+        "labelAngle": 0
       },
       {
         "id": "cur:yeastGEM_v9.1.1@r_0491:s_1198",
@@ -7487,12 +7488,12 @@
         "compartment": "c",
         "cellId": "yeastGEM_v9.1.1",
         "reactionId": "yeastGEM_v9.1.1@r_0491",
-        "x": 1440,
-        "y": 2200,
+        "x": 1465,
+        "y": 2269,
         "r": 7,
         "primary": false,
         "visualRole": "secondary",
-        "labelAngle": -3.141592653589793
+        "labelAngle": 0
       },
       {
         "id": "cur:yeastGEM_v9.1.1@r_1245:s_0794",
@@ -8188,6 +8189,94 @@
         "primary": false,
         "visualRole": "secondary",
         "labelAngle": 0
+      },
+      {
+        "id": "met:yeastGEM_v9.1.1@r_0450:yeastGEM_v9.1.1@s_0764#2",
+        "kind": "metabolite",
+        "mergedId": "yeastGEM_v9.1.1@s_0764",
+        "localId": "s_0764",
+        "base": "glyceraldehyde 3-phosphate",
+        "name": "glyceraldehyde 3-phosphate",
+        "formula": "C3H5O6P",
+        "compartment": "c",
+        "cellId": "yeastGEM_v9.1.1",
+        "x": 1990,
+        "y": 1600,
+        "r": 13,
+        "primary": true,
+        "visualRole": "primary",
+        "reactionLocal": false,
+        "sharedInstance": false,
+        "labelAngle": 0,
+        "hidden": false,
+        "manualDuplicate": true,
+        "duplicateOf": "met:yeastGEM_v9.1.1@r_0450:yeastGEM_v9.1.1@s_0764"
+      },
+      {
+        "id": "met:yeastGEM_v9.1.1@r_0886:yeastGEM_v9.1.1@s_0557#2",
+        "kind": "metabolite",
+        "mergedId": "yeastGEM_v9.1.1@s_0557",
+        "localId": "s_0557",
+        "base": "D-fructose 6-phosphate",
+        "name": "D-fructose 6-phosphate",
+        "formula": "C6H11O9P",
+        "compartment": "c",
+        "cellId": "yeastGEM_v9.1.1",
+        "x": 1990,
+        "y": 1830,
+        "r": 13,
+        "primary": true,
+        "visualRole": "primary",
+        "reactionLocal": false,
+        "sharedInstance": false,
+        "labelAngle": 0,
+        "hidden": false,
+        "manualDuplicate": true,
+        "duplicateOf": "met:yeastGEM_v9.1.1@r_0886:yeastGEM_v9.1.1@s_0557"
+      },
+      {
+        "id": "met:yeastGEM_v9.1.1@r_0450:yeastGEM_v9.1.1@s_0764#3",
+        "kind": "metabolite",
+        "mergedId": "yeastGEM_v9.1.1@s_0764",
+        "localId": "s_0764",
+        "base": "glyceraldehyde 3-phosphate",
+        "name": "glyceraldehyde 3-phosphate",
+        "formula": "C3H5O6P",
+        "compartment": "c",
+        "cellId": "yeastGEM_v9.1.1",
+        "x": 1330,
+        "y": 1268,
+        "r": 13,
+        "primary": true,
+        "visualRole": "primary",
+        "reactionLocal": false,
+        "sharedInstance": false,
+        "labelAngle": -1.5707963267948966,
+        "hidden": false,
+        "manualDuplicate": true,
+        "duplicateOf": "met:yeastGEM_v9.1.1@r_0450:yeastGEM_v9.1.1@s_0764"
+      },
+      {
+        "id": "met:yeastGEM_v9.1.1@r_1050:yeastGEM_v9.1.1@s_0551#2",
+        "kind": "metabolite",
+        "mergedId": "yeastGEM_v9.1.1@s_0551",
+        "localId": "s_0551",
+        "base": "D-erythrose 4-phosphate",
+        "name": "D-erythrose 4-phosphate",
+        "formula": "C4H7O7P",
+        "compartment": "c",
+        "cellId": "yeastGEM_v9.1.1",
+        "x": 1520,
+        "y": 1480,
+        "r": 13,
+        "primary": true,
+        "visualRole": "primary",
+        "reactionLocal": false,
+        "sharedInstance": false,
+        "labelAngle": 1.5707963267948966,
+        "hidden": false,
+        "manualDuplicate": true,
+        "duplicateOf": "met:yeastGEM_v9.1.1@r_1050:yeastGEM_v9.1.1@s_0551"
       }
     ],
     "reactions": [
@@ -12483,24 +12572,24 @@
         "membrane": null,
         "onMembrane": false,
         "normal": null,
-        "x": 1506.4744525464698,
-        "y": 1369.4669896710222,
+        "x": 1452.4964024842914,
+        "y": 1369.233494835511,
         "bounds": {
           "lower": -1000,
           "upper": 1000
         },
         "axis": {
           "a1": {
-            "x": 1523.474452546471,
-            "y": 1369.4669896710234
+            "x": 1469.4963972484227,
+            "y": 1369.220152438934
           },
           "a2": {
-            "x": 1489.4744525464687,
-            "y": 1369.466989671021
+            "x": 1435.49640772016,
+            "y": 1369.246837232088
           },
           "dir": {
-            "x": -1,
-            "y": -6.687461042447554e-14
+            "x": -0.9999996920076577,
+            "y": 0.0007848468574709371
           }
         },
         "boundaryId": null,
@@ -12522,7 +12611,7 @@
         "linear": {
           "from": "met:yeastGEM_v9.1.1@r_1050:yeastGEM_v9.1.1@s_0581",
           "to": "met:yeastGEM_v9.1.1@r_0886:yeastGEM_v9.1.1@s_0557",
-          "t": 0.4746689521663428
+          "t": 0.5
         }
       },
       {
@@ -12538,24 +12627,24 @@
         "membrane": null,
         "onMembrane": false,
         "normal": null,
-        "x": 1721.1509871458516,
-        "y": 1591.7091614179149,
+        "x": 1870,
+        "y": 1715,
         "bounds": {
           "lower": -1000,
           "upper": 1000
         },
         "axis": {
           "a1": {
-            "x": 1738.1509871458516,
-            "y": 1591.7091614179121
+            "x": 1870,
+            "y": 1698
           },
           "a2": {
-            "x": 1704.1509871458516,
-            "y": 1591.7091614179176
+            "x": 1870,
+            "y": 1732
           },
           "dir": {
-            "x": -1,
-            "y": 1.6049906501875205e-13
+            "x": 1.2162792292206775e-16,
+            "y": 1
           }
         },
         "boundaryId": null,
@@ -12588,20 +12677,20 @@
         "membrane": null,
         "onMembrane": false,
         "normal": null,
-        "x": 2056.2135803818146,
-        "y": 1505.4452253020177,
+        "x": 1870,
+        "y": 1484.5,
         "bounds": {
           "lower": -1000,
           "upper": 1000
         },
         "axis": {
           "a1": {
-            "x": 2056.2135803818146,
-            "y": 1488.4452253020177
+            "x": 1870,
+            "y": 1467.5
           },
           "a2": {
-            "x": 2056.2135803818146,
-            "y": 1522.4452253020177
+            "x": 1870,
+            "y": 1501.5
           },
           "dir": {
             "x": 0,
@@ -12983,24 +13072,24 @@
         "membrane": null,
         "onMembrane": false,
         "normal": null,
-        "x": 1455.8398351838182,
-        "y": 1796.3297479548344,
+        "x": 1635,
+        "y": 1772.5,
         "bounds": {
           "lower": -1000,
           "upper": 1000
         },
         "axis": {
           "a1": {
-            "x": 1472.8398351838182,
-            "y": 1796.3297479548357
+            "x": 1619.7947377530015,
+            "y": 1764.8973688765009
           },
           "a2": {
-            "x": 1438.8398351838182,
-            "y": 1796.329747954833
+            "x": 1650.2052622469985,
+            "y": 1780.1026311234991
           },
           "dir": {
-            "x": -1,
-            "y": -8.024953250937603e-14
+            "x": 0.8944271909999159,
+            "y": 0.4472135954999579
           }
         },
         "boundaryId": null,
@@ -13014,7 +13103,12 @@
         },
         "terminalMetaboliteId": null,
         "transportMode": null,
-        "transportLanes": null
+        "transportLanes": null,
+        "linear": {
+          "from": "met:yeastGEM_v9.1.1@r_0990:yeastGEM_v9.1.1@s_1426",
+          "to": "met:yeastGEM_v9.1.1@r_1050:yeastGEM_v9.1.1@s_0551",
+          "t": 0.5
+        }
       },
       {
         "id": "yeastGEM_v9.1.1@r_0958",
@@ -13230,8 +13324,8 @@
         "membrane": null,
         "onMembrane": false,
         "normal": null,
-        "x": 1644.4202767634767,
-        "y": 1795.7231158854272,
+        "x": 1635,
+        "y": 1657.5,
         "equation": "yeastGEM_v9.1.1@s_0803 + yeastGEM_v9.1.1@s_1426 --> yeastGEM_v9.1.1@s_1322 + yeastGEM_v9.1.1@s_1427",
         "bounds": {
           "lower": 0,
@@ -13239,16 +13333,16 @@
         },
         "axis": {
           "a1": {
-            "x": 1627.4202767634758,
-            "y": 1795.7231158854281
+            "x": 1619.7947377530006,
+            "y": 1665.1026311234998
           },
           "a2": {
-            "x": 1661.4202767634777,
-            "y": 1795.7231158854263
+            "x": 1650.2052622469994,
+            "y": 1649.8973688765002
           },
           "dir": {
-            "x": 1,
-            "y": -5.3499688339581154e-14
+            "x": 0.8944271909999159,
+            "y": -0.4472135954999579
           }
         },
         "boundaryId": null,
@@ -13269,7 +13363,7 @@
         },
         "linear": {
           "from": "met:yeastGEM_v9.1.1@r_0990:yeastGEM_v9.1.1@s_1426",
-          "to": "met:yeastGEM_v9.1.1@r_2126:yeastGEM_v9.1.1@s_1322",
+          "to": "met:yeastGEM_v9.1.1@r_1048:yeastGEM_v9.1.1@s_1427",
           "t": 0.5
         }
       },
@@ -13880,24 +13974,24 @@
         "membrane": null,
         "onMembrane": false,
         "normal": null,
-        "x": 1231.940741689873,
-        "y": 2014.1058217273405,
+        "x": 1277.5,
+        "y": 2061.8579715166065,
         "bounds": {
           "lower": -1000,
           "upper": 1000
         },
         "axis": {
           "a1": {
-            "x": 1246.396919041986,
-            "y": 2005.1604913050332
+            "x": 1294.4999885739212,
+            "y": 2061.8776815786055
           },
           "a2": {
-            "x": 1217.48456433776,
-            "y": 2023.0511521496478
+            "x": 1260.5000114260788,
+            "y": 2061.8382614546076
           },
           "dir": {
-            "x": -0.850363373653704,
-            "y": 0.5261959071945459
+            "x": -0.9999993278777256,
+            "y": -0.0011594154116975747
           }
         },
         "boundaryId": null,
@@ -13912,7 +14006,12 @@
         "sbmlReversible": true,
         "genes": [
           "YDR050C"
-        ]
+        ],
+        "linear": {
+          "from": "met:yeastGEM_v9.1.1@r_0990:yeastGEM_v9.1.1@s_0629",
+          "to": "met:yeastGEM_v9.1.1@r_0450:yeastGEM_v9.1.1@s_0764",
+          "t": 0.5
+        }
       },
       {
         "id": "yeastGEM_v9.1.1@r_0491",
@@ -13926,24 +14025,24 @@
         "membrane": null,
         "onMembrane": false,
         "normal": null,
-        "x": 1445,
-        "y": 2112,
+        "x": 1400,
+        "y": 2196,
         "bounds": {
           "lower": 0,
           "upper": 1000
         },
         "axis": {
           "a1": {
-            "x": 1433.2902313076445,
-            "y": 2099.6759861582545
+            "x": 1400,
+            "y": 2178.9999999999995
           },
           "a2": {
-            "x": 1456.7097686923555,
-            "y": 2124.3240138417455
+            "x": 1400,
+            "y": 2213.0000000000005
           },
           "dir": {
-            "x": 0.6888099230797311,
-            "y": 0.7249419906909069
+            "x": 0,
+            "y": 1
           }
         },
         "boundaryId": null,
@@ -13959,7 +14058,12 @@
         "genes": [
           "YDL022W",
           "YOL059W"
-        ]
+        ],
+        "linear": {
+          "from": "met:yeastGEM_v9.1.1@r_0990:yeastGEM_v9.1.1@s_0629",
+          "to": "met:yeastGEM_v9.1.1@s_0767:g3p_c",
+          "t": 0.5
+        }
       },
       {
         "id": "yeastGEM_v9.1.1@r_1245",
@@ -14830,24 +14934,24 @@
         "membrane": null,
         "onMembrane": false,
         "normal": null,
-        "x": 1847.029882874719,
-        "y": 1255.733494835511,
+        "x": 1810,
+        "y": 1255.5,
         "bounds": {
           "lower": -1000,
           "upper": 1000
         },
         "axis": {
           "a1": {
-            "x": 1850.3953261168676,
-            "y": 1239.0699480406695
+            "x": 1817.9449638078618,
+            "y": 1240.4707767967948
           },
           "a2": {
-            "x": 1843.6644396325705,
-            "y": 1272.3970416303525
+            "x": 1802.0550361921382,
+            "y": 1270.5292232032052
           },
           "dir": {
-            "x": -0.1979672495381528,
-            "y": 0.9802086349906833
+            "x": -0.4673508122271674,
+            "y": 0.884071953129725
           }
         },
         "boundaryId": null,
@@ -14862,7 +14966,12 @@
         "sbmlReversible": true,
         "genes": [
           "YJL121C"
-        ]
+        ],
+        "linear": {
+          "from": "met:yeastGEM_v9.1.1@s_0577:ru5p_c",
+          "to": "met:yeastGEM_v9.1.1@r_1050:yeastGEM_v9.1.1@s_0581",
+          "t": 0.5
+        }
       },
       {
         "id": "yeastGEM_v9.1.1@r_0982",
@@ -14876,24 +14985,24 @@
         "membrane": null,
         "onMembrane": false,
         "normal": null,
-        "x": 1962.1081182304329,
-        "y": 1256.5458034760898,
+        "x": 1930,
+        "y": 1255.5,
         "bounds": {
           "lower": -1000,
           "upper": 1000
         },
         "axis": {
           "a1": {
-            "x": 1951.4550858174498,
-            "y": 1243.297675291024
+            "x": 1922.0550361921382,
+            "y": 1240.4707767967946
           },
           "a2": {
-            "x": 1972.761150643416,
-            "y": 1269.7939316611555
+            "x": 1937.9449638078618,
+            "y": 1270.5292232032054
           },
           "dir": {
-            "x": 0.6266489654695887,
-            "y": 0.779301657945044
+            "x": 0.4673508122271674,
+            "y": 0.884071953129725
           }
         },
         "boundaryId": null,
@@ -14908,7 +15017,12 @@
         "sbmlReversible": true,
         "genes": [
           "YOR095C"
-        ]
+        ],
+        "linear": {
+          "from": "met:yeastGEM_v9.1.1@s_0577:ru5p_c",
+          "to": "met:yeastGEM_v9.1.1@r_1049:yeastGEM_v9.1.1@s_1408",
+          "t": 0.5
+        }
       },
       {
         "id": "yeastGEM_v9.1.1@r_0471",
@@ -25454,7 +25568,7 @@
         },
         "to": {
           "x": 1155,
-          "y": 1872.215943033213
+          "y": 1876.975943033213
         },
         "arrow": false,
         "nodeId": "met:yeastGEM_v9.1.1@r_0886:yeastGEM_v9.1.1@s_0555",
@@ -25475,11 +25589,11 @@
         "kind": "primary",
         "from": {
           "x": 1155,
-          "y": 1906.215943033213
+          "y": 1893.975943033213
         },
         "to": {
-          "x": 1308.8814833797458,
-          "y": 1966.495700421468
+          "x": 1400,
+          "y": 2062
         },
         "arrow": true,
         "nodeId": "met:yeastGEM_v9.1.1@r_0990:yeastGEM_v9.1.1@s_0629",
@@ -25487,12 +25601,12 @@
         "side": "product",
         "backboneAnchor": true,
         "b1": {
-          "x": 1224.8872355483286,
-          "y": 1963.4797792829468
+          "x": 1400,
+          "y": 1962
         },
         "b2": {
-          "x": 1151.6105994445684,
-          "y": 1960.9958255167176
+          "x": 1155,
+          "y": 2028.3951886066427
         }
       },
       {
@@ -25500,7 +25614,7 @@
         "kind": "primary",
         "from": {
           "x": 1155,
-          "y": 1906.215943033213
+          "y": 1903.835943033213
         },
         "to": {
           "x": 1155,
@@ -26152,12 +26266,12 @@
         "reactionId": "yeastGEM_v9.1.1@r_1050",
         "kind": "axis",
         "from": {
-          "x": 1523.474452546471,
-          "y": 1369.4669896710234
+          "x": 1469.4963972484227,
+          "y": 1369.220152438934
         },
         "to": {
-          "x": 1489.4744525464687,
-          "y": 1369.466989671021
+          "x": 1435.49640772016,
+          "y": 1369.246837232088
         },
         "arrow": false
       },
@@ -26165,37 +26279,37 @@
         "reactionId": "yeastGEM_v9.1.1@r_1050",
         "kind": "primary",
         "from": {
-          "x": 1618.3031198395233,
-          "y": 1496.0003787193077
+          "x": 1520,
+          "y": 1480
         },
         "to": {
-          "x": 1523.474452546471,
-          "y": 1369.4669896710234
+          "x": 1457.2564010182482,
+          "y": 1369.2297589644695
         },
         "arrow": false,
-        "nodeId": "met:yeastGEM_v9.1.1@r_1050:yeastGEM_v9.1.1@s_0551",
+        "nodeId": "met:yeastGEM_v9.1.1@r_1050:yeastGEM_v9.1.1@s_0551#2",
         "coefficient": -1,
         "side": "substrate",
         "backboneAnchor": true,
         "b1": {
-          "x": 1618.3031198395233,
-          "y": 1426.4070147427508
+          "x": 1519.9521630361594,
+          "y": 1419.0493207027507
         },
         "b2": {
-          "x": 1596.8893863809126,
-          "y": 1369.4669896710222
+          "x": 1507.3816991653362,
+          "y": 1369.1904182696223
         }
       },
       {
         "reactionId": "yeastGEM_v9.1.1@r_1050",
         "kind": "primary",
         "from": {
-          "x": 1824.059765749438,
-          "y": 1369.4669896710222
+          "x": 1750,
+          "y": 1369
         },
         "to": {
-          "x": 1523.474452546471,
-          "y": 1369.4669896710234
+          "x": 1467.1163979814444,
+          "y": 1369.2220203744548
         },
         "arrow": false,
         "nodeId": "met:yeastGEM_v9.1.1@r_1050:yeastGEM_v9.1.1@s_0581",
@@ -26203,20 +26317,20 @@
         "side": "substrate",
         "backboneAnchor": true,
         "b1": {
-          "x": 1723.0713280151156,
-          "y": 1369.4669896710222
+          "x": 1655.7054659938149,
+          "y": 1369.0740067914849
         },
         "b2": {
-          "x": 1622.0828902807932,
-          "y": 1369.4669896710222
+          "x": 1561.4109319876295,
+          "y": 1369.14801358297
         }
       },
       {
         "reactionId": "yeastGEM_v9.1.1@r_1050",
         "kind": "primary",
         "from": {
-          "x": 1489.4744525464687,
-          "y": 1369.466989671021
+          "x": 1447.7364039503345,
+          "y": 1369.2372307065525
         },
         "to": {
           "x": 1154.9928049685827,
@@ -26228,49 +26342,49 @@
         "side": "product",
         "backboneAnchor": true,
         "b1": {
-          "x": 1270.566687494545,
-          "y": 1369.4669896710222
+          "x": 1252.5740046291667,
+          "y": 1369.3904033495323
         },
         "b2": {
-          "x": 1386.1405700205073,
-          "y": 1369.4669896710222
+          "x": 1350.1552042897506,
+          "y": 1369.3138170280424
         }
       },
       {
         "reactionId": "yeastGEM_v9.1.1@r_1050",
         "kind": "primary",
         "from": {
-          "x": 1489.4744525464687,
-          "y": 1369.466989671021
+          "x": 1437.8764069871384,
+          "y": 1369.2449692965672
         },
         "to": {
-          "x": 1155,
-          "y": 2061.715943033213
+          "x": 1330,
+          "y": 1268
         },
         "arrow": true,
-        "nodeId": "met:yeastGEM_v9.1.1@r_0450:yeastGEM_v9.1.1@s_0764",
+        "nodeId": "met:yeastGEM_v9.1.1@r_0450:yeastGEM_v9.1.1@s_0764#3",
         "coefficient": 1,
         "side": "product",
         "backboneAnchor": true,
         "b1": {
-          "x": 1155,
-          "y": 1680.9790186840082
+          "x": 1330.0437405219448,
+          "y": 1323.731265350293
         },
         "b2": {
-          "x": 1301.8898023014328,
-          "y": 1373.5407598035206
+          "x": 1351.638903974802,
+          "y": 1369.3126525506484
         }
       },
       {
         "reactionId": "yeastGEM_v9.1.1@r_1048",
         "kind": "axis",
         "from": {
-          "x": 1738.1509871458516,
-          "y": 1591.7091614179121
+          "x": 1870,
+          "y": 1698
         },
         "to": {
-          "x": 1704.1509871458516,
-          "y": 1591.7091614179176
+          "x": 1870,
+          "y": 1732
         },
         "arrow": false
       },
@@ -26278,37 +26392,37 @@
         "reactionId": "yeastGEM_v9.1.1@r_1048",
         "kind": "primary",
         "from": {
-          "x": 1155,
-          "y": 2061.715943033213
+          "x": 1990,
+          "y": 1600
         },
         "to": {
-          "x": 1738.1509871458516,
-          "y": 1591.7091614179121
+          "x": 1870,
+          "y": 1710.24
         },
         "arrow": false,
-        "nodeId": "met:yeastGEM_v9.1.1@r_0450:yeastGEM_v9.1.1@s_0764",
+        "nodeId": "met:yeastGEM_v9.1.1@r_0450:yeastGEM_v9.1.1@s_0764#2",
         "coefficient": -1,
         "side": "substrate",
         "backboneAnchor": true,
         "b1": {
-          "x": 2408.472184657443,
-          "y": 1993.814439328966
+          "x": 1924,
+          "y": 1600
         },
         "b2": {
-          "x": 1886.3793740644933,
-          "y": 1588.059929128942
+          "x": 1870,
+          "y": 1622.048
         }
       },
       {
         "reactionId": "yeastGEM_v9.1.1@r_1048",
         "kind": "primary",
         "from": {
-          "x": 1857.295859494348,
-          "y": 1591.8282802570916
+          "x": 1750,
+          "y": 1600
         },
         "to": {
-          "x": 1738.1509871458516,
-          "y": 1591.7091614179121
+          "x": 1870,
+          "y": 1700.38
         },
         "arrow": false,
         "nodeId": "met:yeastGEM_v9.1.1@r_1048:yeastGEM_v9.1.1@s_1427",
@@ -26316,24 +26430,24 @@
         "side": "substrate",
         "backboneAnchor": true,
         "b1": {
-          "x": 1726.8737661151827,
-          "y": 1592.0370069958108
+          "x": 1816,
+          "y": 1600
         },
         "b2": {
-          "x": 1773.3592709263903,
-          "y": 1592.367628686923
+          "x": 1870,
+          "y": 1620.076
         }
       },
       {
         "reactionId": "yeastGEM_v9.1.1@r_1048",
         "kind": "primary",
         "from": {
-          "x": 1704.1509871458516,
-          "y": 1591.7091614179176
+          "x": 1870,
+          "y": 1719.76
         },
         "to": {
-          "x": 1618.3031198395233,
-          "y": 1496.0003787193077
+          "x": 1750,
+          "y": 1830
         },
         "arrow": true,
         "nodeId": "met:yeastGEM_v9.1.1@r_1050:yeastGEM_v9.1.1@s_0551",
@@ -26341,49 +26455,49 @@
         "side": "product",
         "backboneAnchor": true,
         "b1": {
-          "x": 1650.2067715723126,
-          "y": 1588.5369219983252
+          "x": 1816,
+          "y": 1830
         },
         "b2": {
-          "x": 1686.6058097006112,
-          "y": 1591.0506941489066
+          "x": 1870,
+          "y": 1807.952
         }
       },
       {
         "reactionId": "yeastGEM_v9.1.1@r_1048",
         "kind": "primary",
         "from": {
-          "x": 1704.1509871458516,
-          "y": 1591.7091614179176
+          "x": 1870,
+          "y": 1729.62
         },
         "to": {
-          "x": 1154.9928049685827,
-          "y": 1369.4669896710222
+          "x": 1990,
+          "y": 1830
         },
         "arrow": true,
-        "nodeId": "met:yeastGEM_v9.1.1@r_0886:yeastGEM_v9.1.1@s_0557",
+        "nodeId": "met:yeastGEM_v9.1.1@r_0886:yeastGEM_v9.1.1@s_0557#2",
         "coefficient": 1,
         "side": "product",
         "backboneAnchor": true,
         "b1": {
-          "x": 1465.920957416598,
-          "y": 1593.0885712624543
+          "x": 1924,
+          "y": 1830
         },
         "b2": {
-          "x": 1630.9760321514445,
-          "y": 1586.719359973137
+          "x": 1870,
+          "y": 1809.924
         }
       },
       {
         "reactionId": "yeastGEM_v9.1.1@r_1049",
         "kind": "axis",
         "from": {
-          "x": 2056.2135803818146,
-          "y": 1488.4452253020177
+          "x": 1870,
+          "y": 1467.5
         },
         "to": {
-          "x": 2056.2135803818146,
-          "y": 1522.4452253020177
+          "x": 1870,
+          "y": 1501.5
         },
         "arrow": false
       },
@@ -26391,12 +26505,12 @@
         "reactionId": "yeastGEM_v9.1.1@r_1049",
         "kind": "primary",
         "from": {
-          "x": 1824.059765749438,
-          "y": 1369.4669896710222
+          "x": 1750,
+          "y": 1369
         },
         "to": {
-          "x": 2056.2135803818146,
-          "y": 1488.4452253020177
+          "x": 1870,
+          "y": 1479.74
         },
         "arrow": false,
         "nodeId": "met:yeastGEM_v9.1.1@r_1050:yeastGEM_v9.1.1@s_0581",
@@ -26404,24 +26518,24 @@
         "side": "substrate",
         "backboneAnchor": true,
         "b1": {
-          "x": 2033.197902426578,
-          "y": 1366.5908180203535
+          "x": 1816,
+          "y": 1369
         },
         "b2": {
-          "x": 2055.1099597690786,
-          "y": 1468.252339063672
+          "x": 1870,
+          "y": 1391.148
         }
       },
       {
         "reactionId": "yeastGEM_v9.1.1@r_1049",
         "kind": "primary",
         "from": {
-          "x": 2054.2162364608657,
-          "y": 1371.0916069521795
+          "x": 1990,
+          "y": 1369
         },
         "to": {
-          "x": 2056.2135803818146,
-          "y": 1488.4452253020177
+          "x": 1870,
+          "y": 1469.88
         },
         "arrow": false,
         "nodeId": "met:yeastGEM_v9.1.1@r_1049:yeastGEM_v9.1.1@s_1408",
@@ -26429,49 +26543,49 @@
         "side": "substrate",
         "backboneAnchor": true,
         "b1": {
-          "x": 2055.5774183341614,
-          "y": 1433.4410269889595
+          "x": 1924,
+          "y": 1369
         },
         "b2": {
-          "x": 2055.188789812838,
-          "y": 1470.9089737949835
+          "x": 1870,
+          "y": 1389.176
         }
       },
       {
         "reactionId": "yeastGEM_v9.1.1@r_1049",
         "kind": "primary",
         "from": {
-          "x": 2056.2135803818146,
-          "y": 1522.4452253020177
+          "x": 1870,
+          "y": 1489.26
         },
         "to": {
-          "x": 1155,
-          "y": 2061.715943033213
+          "x": 1990,
+          "y": 1600
         },
         "arrow": true,
-        "nodeId": "met:yeastGEM_v9.1.1@r_0450:yeastGEM_v9.1.1@s_0764",
+        "nodeId": "met:yeastGEM_v9.1.1@r_0450:yeastGEM_v9.1.1@s_0764#2",
         "coefficient": 1,
         "side": "product",
         "backboneAnchor": true,
         "b1": {
-          "x": 2083.5609537403393,
-          "y": 2077.782140571524
+          "x": 1924,
+          "y": 1600
         },
         "b2": {
-          "x": 2067.3436628840127,
-          "y": 1964.6363648187555
+          "x": 1870,
+          "y": 1577.852
         }
       },
       {
         "reactionId": "yeastGEM_v9.1.1@r_1049",
         "kind": "primary",
         "from": {
-          "x": 2056.2135803818146,
-          "y": 1522.4452253020177
+          "x": 1870,
+          "y": 1499.12
         },
         "to": {
-          "x": 1857.295859494348,
-          "y": 1591.8282802570916
+          "x": 1750,
+          "y": 1600
         },
         "arrow": true,
         "nodeId": "met:yeastGEM_v9.1.1@r_1048:yeastGEM_v9.1.1@s_1427",
@@ -26479,12 +26593,12 @@
         "side": "product",
         "backboneAnchor": true,
         "b1": {
-          "x": 2052.5785360640507,
-          "y": 1592.3576113689621
+          "x": 1816,
+          "y": 1600
         },
         "b2": {
-          "x": 2053.3133083071593,
-          "y": 1543.9067016721633
+          "x": 1870,
+          "y": 1579.824
         }
       },
       {
@@ -27257,12 +27371,12 @@
         "reactionId": "yeastGEM_v9.1.1@r_0990",
         "kind": "axis",
         "from": {
-          "x": 1472.8398351838182,
-          "y": 1796.3297479548357
+          "x": 1619.7947377530015,
+          "y": 1764.8973688765009
         },
         "to": {
-          "x": 1438.8398351838182,
-          "y": 1796.329747954833
+          "x": 1650.2052622469985,
+          "y": 1780.1026311234991
         },
         "arrow": false
       },
@@ -27270,12 +27384,12 @@
         "reactionId": "yeastGEM_v9.1.1@r_0990",
         "kind": "primary",
         "from": {
-          "x": 1536.519781587311,
-          "y": 1795.7231158854272
+          "x": 1520,
+          "y": 1715
         },
         "to": {
-          "x": 1472.8398351838182,
-          "y": 1796.3297479548357
+          "x": 1624.052211182161,
+          "y": 1767.0261055910805
         },
         "arrow": false,
         "nodeId": "met:yeastGEM_v9.1.1@r_0990:yeastGEM_v9.1.1@s_1426",
@@ -27283,24 +27397,24 @@
         "side": "substrate",
         "backboneAnchor": true,
         "b1": {
-          "x": 1501.0784085325488,
-          "y": 1795.854232238278
+          "x": 1554.6840703940536,
+          "y": 1732.342035197027
         },
         "b2": {
-          "x": 1497.26684828774,
-          "y": 1796.2217697818994
+          "x": 1589.3681407881074,
+          "y": 1749.6840703940536
         }
       },
       {
         "reactionId": "yeastGEM_v9.1.1@r_0990",
         "kind": "primary",
         "from": {
-          "x": 1438.8398351838182,
-          "y": 1796.329747954833
+          "x": 1639.2574734291595,
+          "y": 1774.6287367145799
         },
         "to": {
-          "x": 1618.3031198395233,
-          "y": 1496.0003787193077
+          "x": 1750,
+          "y": 1830
         },
         "arrow": true,
         "nodeId": "met:yeastGEM_v9.1.1@r_1050:yeastGEM_v9.1.1@s_0551",
@@ -27308,24 +27422,24 @@
         "side": "product",
         "backboneAnchor": true,
         "b1": {
-          "x": 1472.8312439401877,
-          "y": 1629.606540907912
+          "x": 1713.0858244763865,
+          "y": 1811.5429122381934
         },
         "b2": {
-          "x": 1257.2169600207355,
-          "y": 1790.5241628949977
+          "x": 1676.171648952773,
+          "y": 1793.0858244763865
         }
       },
       {
         "reactionId": "yeastGEM_v9.1.1@r_0990",
         "kind": "primary",
         "from": {
-          "x": 1438.8398351838182,
-          "y": 1796.329747954833
+          "x": 1648.0765255324186,
+          "y": 1779.0382627662093
         },
         "to": {
-          "x": 1308.8814833797458,
-          "y": 1966.495700421468
+          "x": 1400,
+          "y": 2062
         },
         "arrow": true,
         "nodeId": "met:yeastGEM_v9.1.1@r_0990:yeastGEM_v9.1.1@s_0629",
@@ -27333,12 +27447,12 @@
         "side": "product",
         "backboneAnchor": true,
         "b1": {
-          "x": 1312.8176084111547,
-          "y": 1911.1901929941528
+          "x": 1499.4229576597256,
+          "y": 1987.1114788298628
         },
         "b2": {
-          "x": 1394.6491685171559,
-          "y": 1796.3297479548296
+          "x": 1598.653567872693,
+          "y": 1873.9267839363465
         }
       },
       {
@@ -27847,12 +27961,12 @@
         "reactionId": "yeastGEM_v9.1.1@r_2126",
         "kind": "axis",
         "from": {
-          "x": 1627.4202767634758,
-          "y": 1795.7231158854281
+          "x": 1619.7947377530006,
+          "y": 1665.1026311234998
         },
         "to": {
-          "x": 1661.4202767634777,
-          "y": 1795.7231158854263
+          "x": 1650.2052622469994,
+          "y": 1649.8973688765002
         },
         "arrow": false
       },
@@ -27860,12 +27974,12 @@
         "reactionId": "yeastGEM_v9.1.1@r_2126",
         "kind": "primary",
         "from": {
-          "x": 1563.900963254694,
-          "y": 1714.337109400841
+          "x": 1540.637931349509,
+          "y": 1632.0088250565022
         },
         "to": {
-          "x": 1627.4202767634758,
-          "y": 1795.7231158854281
+          "x": 1619.7947377530015,
+          "y": 1665.1026311234993
         },
         "arrow": false,
         "nodeId": "met:yeastGEM_v9.1.1@r_2126:yeastGEM_v9.1.1@s_0803",
@@ -27873,24 +27987,24 @@
         "side": "substrate",
         "backboneAnchor": true,
         "b1": {
-          "x": 1563.900963254694,
-          "y": 1759.0994129673634
+          "x": 1556.6258173886324,
+          "y": 1663.9845971347493
         },
         "b2": {
-          "x": 1579.052825956449,
-          "y": 1795.7231158854324
+          "x": 1581.334368540005,
+          "y": 1684.3328157299975
         }
       },
       {
         "reactionId": "yeastGEM_v9.1.1@r_2126",
         "kind": "primary",
         "from": {
-          "x": 1536.519781587311,
-          "y": 1795.7231158854272
+          "x": 1520,
+          "y": 1715
         },
         "to": {
-          "x": 1627.4202767634758,
-          "y": 1795.7231158854281
+          "x": 1621.9234744675805,
+          "y": 1664.0382627662098
         },
         "arrow": false,
         "nodeId": "met:yeastGEM_v9.1.1@r_0990:yeastGEM_v9.1.1@s_1426",
@@ -27898,24 +28012,24 @@
         "side": "substrate",
         "backboneAnchor": true,
         "b1": {
-          "x": 1566.8199466460328,
-          "y": 1795.7231158854272
+          "x": 1553.9744914891935,
+          "y": 1698.0127542554033
         },
         "b2": {
-          "x": 1597.1201117047544,
-          "y": 1795.7231158854272
+          "x": 1587.948982978387,
+          "y": 1681.0255085108065
         }
       },
       {
         "reactionId": "yeastGEM_v9.1.1@r_2126",
         "kind": "primary",
         "from": {
-          "x": 1661.42,
-          "y": 1795.72
+          "x": 1650.2052622469985,
+          "y": 1649.8973688765007
         },
         "to": {
-          "x": 1701,
-          "y": 1750
+          "x": 1671.2243012354966,
+          "y": 1566.7156401135085
         },
         "arrow": true,
         "nodeId": "met:yeastGEM_v9.1.1@r_2126:yeastGEM_v9.1.1@s_1322",
@@ -27923,24 +28037,24 @@
         "side": "product",
         "backboneAnchor": true,
         "b1": {
-          "x": 1698.93,
-          "y": 1757.73
+          "x": 1687.21218727462,
+          "y": 1598.6914121917555
         },
         "b2": {
-          "x": 1693.42,
-          "y": 1795.72
+          "x": 1688.665631459995,
+          "y": 1630.6671842700025
         }
       },
       {
         "reactionId": "yeastGEM_v9.1.1@r_2126",
         "kind": "primary",
         "from": {
-          "x": 1661.4202767634777,
-          "y": 1795.7231158854263
+          "x": 1648.0765255324195,
+          "y": 1650.9617372337902
         },
         "to": {
-          "x": 1857.295859494348,
-          "y": 1591.8282802570916
+          "x": 1750,
+          "y": 1600
         },
         "arrow": true,
         "nodeId": "met:yeastGEM_v9.1.1@r_1048:yeastGEM_v9.1.1@s_1427",
@@ -27948,12 +28062,12 @@
         "side": "product",
         "backboneAnchor": true,
         "b1": {
-          "x": 1857.295859494348,
-          "y": 1692.6316077196032
+          "x": 1716.0255085108065,
+          "y": 1616.9872457445967
         },
         "b2": {
-          "x": 1707.6594540953413,
-          "y": 1795.9474607014565
+          "x": 1682.051017021613,
+          "y": 1633.9744914891935
         }
       },
       {
@@ -29337,12 +29451,12 @@
         "reactionId": "yeastGEM_v9.1.1@r_1054",
         "kind": "axis",
         "from": {
-          "x": 1246.396919041986,
-          "y": 2005.1604913050332
+          "x": 1294.4999885739212,
+          "y": 2061.8776815786055
         },
         "to": {
-          "x": 1217.48456433776,
-          "y": 2023.0511521496478
+          "x": 1260.5000114260788,
+          "y": 2061.8382614546076
         },
         "arrow": false
       },
@@ -29351,12 +29465,12 @@
         "reactionId": "yeastGEM_v9.1.1@r_1054",
         "kind": "primary",
         "from": {
-          "x": 1308.8814833797458,
-          "y": 1966.495700421468
+          "x": 1400,
+          "y": 2062
         },
         "to": {
-          "x": 1246.396919041986,
-          "y": 2005.1604913050332
+          "x": 1289.7399917732232,
+          "y": 2061.872162761246
         },
         "arrow": false,
         "nodeId": "met:yeastGEM_v9.1.1@r_0990:yeastGEM_v9.1.1@s_0629",
@@ -29364,12 +29478,12 @@
         "side": "substrate",
         "backboneAnchor": true,
         "b1": {
-          "x": 1293.8851879386834,
-          "y": 1975.7752502335236
+          "x": 1363.2466639244078,
+          "y": 2061.957387587082
         },
         "b2": {
-          "x": 1271.3907447770898,
-          "y": 1989.6945749516071
+          "x": 1326.4933278488154,
+          "y": 2061.914775174164
         }
       },
       {
@@ -29377,8 +29491,8 @@
         "reactionId": "yeastGEM_v9.1.1@r_1054",
         "kind": "primary",
         "from": {
-          "x": 1217.48456433776,
-          "y": 2023.0511521496478
+          "x": 1265.2600082267768,
+          "y": 2061.8437802719673
         },
         "to": {
           "x": 1155,
@@ -29390,12 +29504,12 @@
         "side": "product",
         "backboneAnchor": true,
         "b1": {
-          "x": 1169.9962954410623,
-          "y": 2052.4363932211572
+          "x": 1191.7533360755922,
+          "y": 2061.758555446131
         },
         "b2": {
-          "x": 1192.490738602656,
-          "y": 2038.517068503074
+          "x": 1228.5066721511846,
+          "y": 2061.801167859049
         }
       },
       {
@@ -29403,12 +29517,12 @@
         "reactionId": "yeastGEM_v9.1.1@r_0491",
         "kind": "axis",
         "from": {
-          "x": 1433.2902313076445,
-          "y": 2099.6759861582545
+          "x": 1400,
+          "y": 2178.9999999999995
         },
         "to": {
-          "x": 1456.7097686923555,
-          "y": 2124.3240138417455
+          "x": 1400,
+          "y": 2213.0000000000005
         },
         "arrow": false
       },
@@ -29417,12 +29531,12 @@
         "reactionId": "yeastGEM_v9.1.1@r_0491",
         "kind": "primary",
         "from": {
-          "x": 1308.8814833797458,
-          "y": 1966.495700421468
+          "x": 1400,
+          "y": 2062
         },
         "to": {
-          "x": 1433.2902313076445,
-          "y": 2099.6759861582545
+          "x": 1400,
+          "y": 2191.24
         },
         "arrow": false,
         "nodeId": "met:yeastGEM_v9.1.1@r_0990:yeastGEM_v9.1.1@s_0629",
@@ -29430,12 +29544,12 @@
         "side": "substrate",
         "backboneAnchor": true,
         "b1": {
-          "x": 1346.2464039354702,
-          "y": 2006.7188588837462
+          "x": 1400,
+          "y": 2105.08
         },
         "b2": {
-          "x": 1402.2937847690566,
-          "y": 2067.0535965771637
+          "x": 1400,
+          "y": 2148.16
         }
       },
       {
@@ -29443,12 +29557,12 @@
         "reactionId": "yeastGEM_v9.1.1@r_0491",
         "kind": "currency",
         "from": {
-          "x": 1380,
-          "y": 2130
+          "x": 1465,
+          "y": 2123
         },
         "to": {
-          "x": 1433.2902313076445,
-          "y": 2099.6759861582545
+          "x": 1400,
+          "y": 2179
         },
         "arrow": false,
         "nodeId": "cur:yeastGEM_v9.1.1@r_0491:s_0794",
@@ -29456,12 +29570,12 @@
         "side": "substrate",
         "backboneAnchor": true,
         "b1": {
-          "x": 1394.5587126729429,
-          "y": 2110.7585509252553
+          "x": 1429.25,
+          "y": 2123
         },
         "b2": {
-          "x": 1416.3967816823572,
-          "y": 2081.896377313138
+          "x": 1400,
+          "y": 2136
         }
       },
       {
@@ -29469,12 +29583,12 @@
         "reactionId": "yeastGEM_v9.1.1@r_0491",
         "kind": "currency",
         "from": {
-          "x": 1395,
-          "y": 2165
+          "x": 1504,
+          "y": 2146
         },
         "to": {
-          "x": 1433.2902313076445,
-          "y": 2099.6759861582545
+          "x": 1400,
+          "y": 2179
         },
         "arrow": false,
         "nodeId": "cur:yeastGEM_v9.1.1@r_0491:s_1203",
@@ -29482,12 +29596,12 @@
         "side": "substrate",
         "backboneAnchor": true,
         "b1": {
-          "x": 1401.9711315612246,
-          "y": 2130.0876919945845
+          "x": 1446.8,
+          "y": 2146
         },
         "b2": {
-          "x": 1412.4278289030615,
-          "y": 2077.7192299864614
+          "x": 1400,
+          "y": 2140
         }
       },
       {
@@ -29495,12 +29609,12 @@
         "reactionId": "yeastGEM_v9.1.1@r_0491",
         "kind": "primary",
         "from": {
-          "x": 1456.7097686923555,
-          "y": 2124.3240138417455
+          "x": 1400,
+          "y": 2200.76
         },
         "to": {
-          "x": 1545,
-          "y": 2215
+          "x": 1400,
+          "y": 2330
         },
         "arrow": true,
         "nodeId": "met:yeastGEM_v9.1.1@s_0767:g3p_c",
@@ -29508,12 +29622,12 @@
         "side": "product",
         "backboneAnchor": true,
         "b1": {
-          "x": 1522.0824860923774,
-          "y": 2191.7785613691344
+          "x": 1400,
+          "y": 2286.92
         },
         "b2": {
-          "x": 1487.7062152309434,
-          "y": 2156.9464034228363
+          "x": 1400,
+          "y": 2243.84
         }
       },
       {
@@ -29521,12 +29635,12 @@
         "reactionId": "yeastGEM_v9.1.1@r_0491",
         "kind": "currency",
         "from": {
-          "x": 1456.7097686923555,
-          "y": 2124.3240138417455
+          "x": 1400,
+          "y": 2213
         },
         "to": {
-          "x": 1440,
-          "y": 2200
+          "x": 1465,
+          "y": 2269
         },
         "arrow": true,
         "nodeId": "cur:yeastGEM_v9.1.1@r_0491:s_1198",
@@ -29534,12 +29648,12 @@
         "side": "product",
         "backboneAnchor": true,
         "b1": {
-          "x": 1455.2250234261967,
-          "y": 2178.718752457361
+          "x": 1429.25,
+          "y": 2269
         },
         "b2": {
-          "x": 1478.0625585654916,
-          "y": 2146.796881143403
+          "x": 1400,
+          "y": 2256
         }
       },
       {
@@ -31343,12 +31457,12 @@
         "reactionId": "yeastGEM_v9.1.1@r_0984",
         "kind": "axis",
         "from": {
-          "x": 1850.3953261168676,
-          "y": 1239.0699480406695
+          "x": 1817.9449638078618,
+          "y": 1240.4707767967948
         },
         "to": {
-          "x": 1843.6644396325705,
-          "y": 1272.3970416303525
+          "x": 1802.0550361921382,
+          "y": 1270.5292232032052
         },
         "arrow": false
       },
@@ -31361,8 +31475,8 @@
           "y": 1142
         },
         "to": {
-          "x": 1850.3953261168676,
-          "y": 1239.0699480406695
+          "x": 1815.7203739416605,
+          "y": 1244.6789592936923
         },
         "arrow": false,
         "nodeId": "met:yeastGEM_v9.1.1@s_0577:ru5p_c",
@@ -31370,12 +31484,12 @@
         "side": "substrate",
         "backboneAnchor": true,
         "b1": {
-          "x": 1865.2948782680483,
-          "y": 1165.2967875297606
+          "x": 1851.9067913138867,
+          "y": 1176.226319764564
         },
         "b2": {
-          "x": 1858.2371956701206,
-          "y": 1200.2419688244017
+          "x": 1833.8135826277737,
+          "y": 1210.4526395291282
         }
       },
       {
@@ -31383,12 +31497,12 @@
         "reactionId": "yeastGEM_v9.1.1@r_0984",
         "kind": "primary",
         "from": {
-          "x": 1843.6644396325705,
-          "y": 1272.3970416303525
+          "x": 1804.2796260583395,
+          "y": 1266.3210407063077
         },
         "to": {
-          "x": 1824.059765749438,
-          "y": 1369.4669896710222
+          "x": 1750,
+          "y": 1369
         },
         "arrow": true,
         "nodeId": "met:yeastGEM_v9.1.1@r_1050:yeastGEM_v9.1.1@s_0581",
@@ -31396,12 +31510,12 @@
         "side": "product",
         "backboneAnchor": true,
         "b1": {
-          "x": 1828.7648874813897,
-          "y": 1346.1702021412616
+          "x": 1768.0932086861133,
+          "y": 1334.773680235436
         },
         "b2": {
-          "x": 1835.8225700793175,
-          "y": 1311.2250208466205
+          "x": 1786.1864173722263,
+          "y": 1300.5473604708718
         }
       },
       {
@@ -31409,12 +31523,12 @@
         "reactionId": "yeastGEM_v9.1.1@r_0982",
         "kind": "axis",
         "from": {
-          "x": 1951.4550858174498,
-          "y": 1243.297675291024
+          "x": 1922.0550361921382,
+          "y": 1240.4707767967946
         },
         "to": {
-          "x": 1972.761150643416,
-          "y": 1269.7939316611555
+          "x": 1937.9449638078618,
+          "y": 1270.5292232032054
         },
         "arrow": false
       },
@@ -31427,8 +31541,8 @@
           "y": 1142
         },
         "to": {
-          "x": 1951.4550858174498,
-          "y": 1243.297675291024
+          "x": 1924.2796260583395,
+          "y": 1244.678959293692
         },
         "arrow": false,
         "nodeId": "met:yeastGEM_v9.1.1@s_0577:ru5p_c",
@@ -31436,12 +31550,12 @@
         "side": "substrate",
         "backboneAnchor": true,
         "b1": {
-          "x": 1891.3023529485274,
-          "y": 1168.4916402733988
+          "x": 1888.0932086861133,
+          "y": 1176.226319764564
         },
         "b2": {
-          "x": 1923.2558823713184,
-          "y": 1208.229100683497
+          "x": 1906.1864173722263,
+          "y": 1210.452639529128
         }
       },
       {
@@ -31449,12 +31563,12 @@
         "reactionId": "yeastGEM_v9.1.1@r_0982",
         "kind": "primary",
         "from": {
-          "x": 1972.761150643416,
-          "y": 1269.7939316611555
+          "x": 1935.7203739416605,
+          "y": 1266.321040706308
         },
         "to": {
-          "x": 2054.2162364608657,
-          "y": 1371.0916069521795
+          "x": 1990,
+          "y": 1369
         },
         "arrow": true,
         "nodeId": "met:yeastGEM_v9.1.1@r_1049:yeastGEM_v9.1.1@s_1408",
@@ -31462,12 +31576,12 @@
         "side": "product",
         "backboneAnchor": true,
         "b1": {
-          "x": 2032.9138835123383,
-          "y": 1344.5999666787807
+          "x": 1971.9067913138867,
+          "y": 1334.773680235436
         },
         "b2": {
-          "x": 2000.9603540895473,
-          "y": 1304.8625062686824
+          "x": 1953.8135826277737,
+          "y": 1300.547360470872
         }
       },
       {
@@ -31937,15 +32051,15 @@
       {
         "id": "pathway:ppp",
         "text": "Pentose phosphate pathway",
-        "x": 1420,
-        "y": 1262,
+        "x": 2090,
+        "y": 1235,
         "fontSize": 18
       },
       {
         "id": "purpose:ppp",
         "text": "Glucose 6-phosphate to NADPH and pentoses",
-        "x": 1420,
-        "y": 1288,
+        "x": 2090,
+        "y": 1261,
         "fontSize": 15
       },
       {

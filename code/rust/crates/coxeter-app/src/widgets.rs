@@ -289,6 +289,17 @@ impl<'a> Btn<'a> {
     }
 
     pub fn show(self, ui: &mut Ui) -> Response {
+        // egui places a button's text by the layout it sits in, so a wide
+        // button in a left-aligned box would read from its left edge. As in
+        // the CSS, its text is centred: it is laid out in a centred row of
+        // its own, where the hover lookup must be made too.
+        if self.wide {
+            return ui.with_layout(egui::Layout::top_down_justified(egui::Align::Center), |ui| self.add(ui)).inner;
+        }
+        self.add(ui)
+    }
+
+    fn add(self, ui: &mut Ui) -> Response {
         let p = Palette::current(ui.ctx());
         let hovered = self.enabled && hovered_next(ui);
         let (fill, ink, line) = match (self.look, hovered) {

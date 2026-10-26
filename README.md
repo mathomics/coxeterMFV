@@ -81,7 +81,7 @@ Each example folder holds the model and map files needed to open it. The work ea
 
 | Example | What it shows | Source |
 | --- | --- | --- |
-| [Yeast9 cytoplasm, mitochondrion and peroxisome](examples/yeast9-cytosol-mitochondria-peroxisome) | One eukaryotic cell with six nested compartments, 135 reactions and 404 metabolite nodes, from glycolysis and the pentose phosphate pathway to respiration and ATP export, heme biosynthesis and peroxisomal β-oxidation | Zhang et al. (2024) |
+| [Yeast9 cytoplasm, mitochondrion and peroxisome](examples/yeast9-cytosol-mitochondria-peroxisome) | One eukaryotic cell with six nested compartments, 135 reactions and 408 metabolite nodes, from glycolysis and the pentose phosphate pathway to respiration and ATP export, heme biosynthesis and peroxisomal β-oxidation | Zhang et al. (2024) |
 | [*D. vulgaris* and *M. maripaludis*](examples/stolyar-2007-syntrophy) | Syntrophic growth on lactate through hydrogen and formate transfer | Stolyar et al. (2007) |
 | [Four auxotrophic *E. coli* strains](examples/steadycom-ecoli-auxotrophs) | Amino acid cross-feeding solved with SteadyCom, maximum community growth 0.73599 h⁻¹ | Chan et al. (2017) |
 | [Nine-species gut community](examples/steadycom-gut-nine) | An 11009-reaction community model with a curated map of 1171 reactions in nine cells | Chan et al. (2017) |

@@ -70,6 +70,7 @@ enum Act {
     ReactionLabelReset(String),
     Arrange(&'static str),
     SelectionSpaceEvenly,
+    SelectionTidy,
     SelectionPoint(&'static str),
     SelectionRotate(f64),
     ClearMultiSelection,
@@ -218,6 +219,10 @@ fn apply(shell: &mut Shell, acts: Vec<Act>) {
             Act::SelectionSpaceEvenly => {
                 shell.close_map_menus();
                 shell.store.space_multi_selection_evenly();
+            }
+            Act::SelectionTidy => {
+                shell.close_map_menus();
+                shell.store.tidy_multi_selection();
             }
             Act::SelectionPoint(direction) => {
                 shell.close_map_menus();
@@ -1632,6 +1637,18 @@ fn selection_inspector(ui: &mut Ui, store: &Store, p: &Palette, acts: &mut Vec<A
         });
     });
     widgets::note(ui, "Turns as one piece; cofactors follow.");
+
+    widgets::section_title(ui, "Curves");
+    controls_box(ui, p, |ui| {
+        let tidy = Btn::new("Tidy curves")
+            .enabled(!selection.reactions.is_empty())
+            .title("Reset cofactor places and curve shapes of every selected reaction")
+            .wide()
+            .show(ui);
+        if tidy.clicked() {
+            acts.push(Act::SelectionTidy);
+        }
+    });
 }
 
 /// `.chip.reaction-line-end`: a metabolite the reaction's line may run

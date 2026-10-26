@@ -3877,6 +3877,23 @@ export class Store {
     return { ...result, changed };
   }
 
+  /**
+   * Tidy curves on every selected reaction, as one undoable edit: each one's
+   * cofactors and curves back in their base shape, as Tidy curves does for a
+   * single reaction.
+   */
+  tidyMultiSelection() {
+    this.assertMapOperation('tidyMultiSelection');
+    if (!this.map) return null;
+    const before = this.map.toJSON();
+    let count = 0;
+    for (const rid of this.multiSelection?.reactions ?? []) if (this.map.tidyReaction(rid)) count += 1;
+    if (!count) return null;
+    const changed = this.mapHistory.record(before, this.map.toJSON(), 'Tidy curves');
+    if (changed) this.emit('map');
+    return { count, changed };
+  }
+
   /** Turn the selection as one rigid piece by `angle` radians (clockwise on screen), as one undoable edit. */
   rotateMultiSelection(angle) {
     this.assertMapOperation('rotateMultiSelection');

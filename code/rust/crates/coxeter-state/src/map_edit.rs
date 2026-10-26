@@ -387,6 +387,25 @@ impl Store {
         })
     }
 
+    /// `tidyMultiSelection()`: Tidy curves on every selected reaction, as one
+    /// undoable edit: each one's cofactors and curves back in their base
+    /// shape, as Tidy curves does for a single reaction. None when no
+    /// selected reaction could be tidied.
+    pub fn tidy_multi_selection(&mut self) -> Option<TidyResult> {
+        let reactions: Vec<String> = self.multi_selection.reactions.iter().cloned().collect();
+        let map = self.map.as_mut()?;
+        let before = map.to_json();
+        let count = reactions.iter().filter(|rid| map.tidy_reaction(rid)).count();
+        if count == 0 {
+            return None;
+        }
+        let changed = self.record_map(&before, "Tidy curves");
+        if changed {
+            self.emit("map");
+        }
+        Some(TidyResult { count, changed })
+    }
+
     /// `rotateMultiSelection(angle)`: turn the selection as one rigid piece by
     /// `angle` radians (clockwise on screen), as one undoable edit.
     pub fn rotate_multi_selection(&mut self, angle: f64) -> Option<TurnResult> {
@@ -1961,5 +1980,47 @@ pub fn turn_warning(reason: TurnRefusal) -> &'static str {
         TurnRefusal::Transporter => "Transporters stay on their membranes; leave them out to turn the selection.",
         TurnRefusal::Compartment => "Compartments cannot be turned; leave them out.",
         TurnRefusal::Room => "No room to turn the selection here.",
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn tidy_curves_on_a_selection_tidies_each_reaction_in_one_undo_step() {
+        let mut store = Store::with_dir(coxeter_core::testkit::repo_root());
+        store.init().expect("bundled files");
+        store.use_scenario("solo-ecoli").expect("scenario");
+        let reactions = ["eco@PGI", "eco@PFK"];
+        let map = store.map.as_mut().expect("a map");
+        // Bend the curves of both reactions.
+        let bends: Vec<(String, String, Point)> = map
+            .segments()
+            .iter()
+            .filter(|s| reactions.contains(&s.reaction_id.as_str()))
+            .filter_map(|s| Some((s.reaction_id.clone(), s.node_id.clone()?, s.b1?)))
+            .collect();
+        assert!(!bends.is_empty());
+        for (rid, node, b1) in &bends {
+            map.move_branch_control(rid, node, Handle::B1, b1.x + 30.0, b1.y - 20.0);
+        }
+        let before = map.to_json();
+        let mut expected = map.clone();
+        for rid in reactions {
+            assert!(expected.tidy_reaction(rid), "{rid} tidies on its own");
+        }
+        assert_ne!(expected.to_json(), before, "tidying changes the bent drawing");
+
+        store.multi_selection = empty_selection();
+        store.multi_selection.reactions.extend(reactions.map(String::from));
+        let result = store.tidy_multi_selection().expect("reactions to tidy");
+        assert_eq!(result, TidyResult { count: 2, changed: true });
+        assert_eq!(store.map.as_ref().unwrap().to_json(), expected.to_json(), "the same drawing as tidying each one");
+        store.undo_map();
+        assert_eq!(store.map.as_ref().unwrap().to_json(), before, "one undo brings the bent curves back");
+
+        store.multi_selection = empty_selection();
+        assert_eq!(store.tidy_multi_selection(), None, "no reaction, nothing to tidy");
     }
 }

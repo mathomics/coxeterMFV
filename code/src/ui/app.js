@@ -4563,6 +4563,10 @@ async function onSidebarClick(event) {
       closeMapMenus();
       store.pointMultiSelection(button.dataset.direction);
       break;
+    case 'selection-tidy':
+      closeMapMenus();
+      store.tidyMultiSelection();
+      break;
     case 'selection-rotate':
       closeMapMenus();
       store.rotateMultiSelection((Number(button.dataset.angle) * Math.PI) / 180);

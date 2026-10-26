@@ -3,7 +3,7 @@
     {
       "id": "consorcio-anaerobio",
       "name": "Anaerobic consortium (4 species)",
-      "description": "Glucose feeds the lactic acid bacterium; its fermentation products pass to E. coli, which releases H2 and CO2 that the methanogen turns into methane. The yeast competes for the glucose and ferments it to ethanol.",
+      "description": "The lactic acid bacterium, E. coli and the yeast each ferment the glucose. The acetate of the first two and the H2 that E. coli releases feed the methanogen, which turns them into methane; lactate, formate, ethanol and glycerol leave in the medium.",
       "objective": "equal-growth",
       "map": "maps/consorcio-anaerobio.json",
       "species": [

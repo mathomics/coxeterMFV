@@ -1809,6 +1809,11 @@ function selectionInspector(store) {
       </div>
     </div>
     <p class="inspector-note">Turns as one piece; cofactors follow.</p>
+    <h3 class="inspector-section-title">Curves</h3>
+    <div class="metabolite-inspector-controls">
+      <button data-action="selection-tidy" type="button"${selection?.reactions?.size ? '' : ' disabled'}
+        title="Reset cofactor places and curve shapes of every selected reaction">Tidy curves</button>
+    </div>
   </section>`;
 }
 

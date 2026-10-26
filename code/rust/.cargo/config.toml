@@ -1,0 +1,4 @@
+# The Windows exe is handed out as a single file, so the C and C++ runtimes
+# are linked into it instead of being left to the Visual C++ Redistributable.
+[target.x86_64-pc-windows-msvc]
+rustflags = ["-C", "target-feature=+crt-static"]

@@ -26,6 +26,7 @@ const MAP_OPERATIONS = [
   'setMapLabelSource',
   'arrangeMultiSelection',
   'spaceMultiSelectionEvenly',
+  'tidyMultiSelection',
   'rotateMultiSelection',
   'pointMultiSelection',
   'removeMultiSelection',

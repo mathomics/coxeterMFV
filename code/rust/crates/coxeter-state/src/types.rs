@@ -799,6 +799,14 @@ pub struct SpaceResult {
     pub changed: bool,
 }
 
+/// What `tidy_multi_selection` did.
+#[derive(Debug, Clone, PartialEq, Default)]
+pub struct TidyResult {
+    /// How many selected reactions were tidied.
+    pub count: usize,
+    pub changed: bool,
+}
+
 /// What `rotate_multi_selection` or `point_multi_selection` did: refused, and
 /// why, or turned (and whether that changed anything).
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]

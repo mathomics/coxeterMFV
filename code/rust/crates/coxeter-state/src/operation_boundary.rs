@@ -30,7 +30,7 @@ impl OperationDomain {
 }
 
 /// The MAP (BUILD) operations, by JavaScript name.
-pub const MAP_OPERATIONS: [&str; 50] = [
+pub const MAP_OPERATIONS: [&str; 51] = [
     "beginMapEdit",
     "commitMapEdit",
     "undoMap",
@@ -40,6 +40,7 @@ pub const MAP_OPERATIONS: [&str; 50] = [
     "setMapLabelSource",
     "arrangeMultiSelection",
     "spaceMultiSelectionEvenly",
+    "tidyMultiSelection",
     "rotateMultiSelection",
     "pointMultiSelection",
     "removeMultiSelection",
@@ -129,6 +130,7 @@ mod tests {
     #[test]
     fn domains_are_explicit() {
         assert_eq!(operation_domain("setMetaboliteLabelAngle"), Some(OperationDomain::Map));
+        assert_eq!(operation_domain("tidyMultiSelection"), Some(OperationDomain::Map));
         assert_eq!(operation_domain("createModelReaction"), Some(OperationDomain::Model));
         assert_eq!(operation_domain("solve"), None);
         assert!(assert_operation_domain("moveNode", OperationDomain::Map).unwrap());

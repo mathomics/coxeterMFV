@@ -159,6 +159,43 @@ test('even spacing counts metabolites and markers, not cofactors or straight rea
   assert.equal(operationDomain('spaceMultiSelectionEvenly'), OPERATION_DOMAIN.MAP);
 });
 
+// Tidying
+
+test('Tidy curves on a selection tidies every selected reaction as Tidy curves does one, in one undo step', async () => {
+  const store = await ecoliStore();
+  const reactions = ['eco@PGI', 'eco@PFK'];
+  // Bend the curves and push a cofactor off its place.
+  for (const rid of reactions) {
+    for (const seg of store.map.segments.filter((s) => s.reactionId === rid && s.nodeId && s.b1)) {
+      store.map.moveBranchControl(rid, seg.nodeId, 'b1', seg.b1.x + 30, seg.b1.y - 20);
+    }
+  }
+  const cofactor = [...store.map.nodes.values()].find((n) => n.reactionId === 'eco@PFK');
+  store.map.moveNode(cofactor.id, cofactor.x + 40, cofactor.y + 15);
+  const before = JSON.stringify(store.map.toJSON());
+  const expected = EditableMap.fromJSON(store.map.toJSON());
+  for (const rid of reactions) assert.ok(expected.tidyReaction(rid), `${rid} tidies on its own`);
+  assert.notEqual(JSON.stringify(expected.toJSON()), before, 'tidying changes the bent drawing');
+
+  store.multiSelection = chainSelection(store.map, reactions);
+  const depth = store.mapHistory.undoStack.length;
+  const result = store.tidyMultiSelection();
+  assert.equal(result.count, 2);
+  assert.ok(result.changed);
+  assert.equal(store.mapHistory.undoStack.length, depth + 1, 'one undo step');
+  assert.equal(JSON.stringify(store.map.toJSON()), JSON.stringify(expected.toJSON()), 'the same drawing as tidying each one');
+  store.undoMap();
+  assert.equal(JSON.stringify(store.map.toJSON()), before, 'undo brings the bent curves back');
+  assert.equal(operationDomain('tidyMultiSelection'), OPERATION_DOMAIN.MAP);
+
+  // Offered with a reaction in the selection, greyed out without one.
+  assert.match(renderInspector(store), /data-action="selection-tidy" type="button"\s+title=/);
+  store.multiSelection = emptySelection();
+  for (const id of ['met:eco@g6p_c', 'met:eco@f6p_c']) store.multiSelection.nodes.add(id);
+  assert.match(renderInspector(store), /data-action="selection-tidy" type="button" disabled/);
+  assert.equal(store.tidyMultiSelection(), null, 'nothing to tidy');
+});
+
 // Turning
 
 test('turning a selection is rigid: every distance in its drawing is kept, cofactors and handles included', async () => {
