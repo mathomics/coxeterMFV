@@ -85,6 +85,7 @@ impl Store {
             &json!({
                 "pathwayManager": self.pathway_manager_state(),
                 "fluxColorStops": crate::pathways::flux_color_stops_json(self.view.flux_color_stops.as_deref()),
+                "absoluteFluxColors": self.absolute_flux_colors_json(),
                 "study": self.zuniga_state(),
             }),
             None,

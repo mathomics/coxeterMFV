@@ -24,6 +24,7 @@ use coxeter_core::js;
 use coxeter_core::label_sources::{EntityKind, LabelEntity, LabelObject, LabelSources, label_source_name, object_label, object_label_sources};
 use coxeter_core::mapdata::{Canvas, MapText, Node, Point, Rect};
 use coxeter_core::text_style::{clamp_text_size, normalize_text_font};
+use coxeter_map::circularize::{CircleRefusal, Circularized};
 use coxeter_map::compartment_reactions::reactions_in_compartment;
 use coxeter_map::core_metabolism_overview::{PathwayGroup, build_core_metabolism_overview, core_overview_support, OverviewSupport};
 use coxeter_map::editable_map::{
@@ -190,6 +191,37 @@ impl Store {
             bucket.insert(id.to_string());
         }
         self.emit("multi-selection");
+    }
+
+    /// `extendMultiSelection(kind, id)`: a Ctrl-, Cmd- or Shift-click adds an
+    /// object to the multi-selection or takes it out. The first one also takes
+    /// what was picked on its own before it, so a click and then a Ctrl-click
+    /// select both. With two or more, the inspector turns to the selection.
+    pub fn extend_multi_selection(&mut self, kind: &str, id: &str) {
+        if self.multi_selection_size() == 0 {
+            if let (Some(picked), Some(map)) = (self.selected_entity.clone(), self.map.as_ref()) {
+                let picked_kind = match picked.kind.as_str() {
+                    "reaction" => Some("reaction"),
+                    "metabolite" => Some("node"),
+                    "text" => Some("text"),
+                    _ => None,
+                };
+                if let Some(picked_kind) = picked_kind {
+                    let drawn = match picked_kind {
+                        "reaction" => map.has_reaction(&picked.id),
+                        "node" => map.can_move_node(&picked.id),
+                        _ => map.text(&picked.id).is_some(),
+                    };
+                    if drawn && !(picked_kind == kind && picked.id == id) {
+                        self.multi_selection_bucket(picked_kind).insert(picked.id.clone());
+                    }
+                }
+            }
+        }
+        self.toggle_multi_selection(kind, id);
+        if self.multi_selection_size() >= 2 && (self.selected_reaction.is_some() || self.selected_entity.is_some()) {
+            self.select(None);
+        }
     }
 
     /// `selectInRect(rect, { replace })`: what a selection rectangle catches.
@@ -404,6 +436,37 @@ impl Store {
             self.emit("map");
         }
         Some(TidyResult { count, changed })
+    }
+
+    /// `canCircularizeSelection()`: whether the selected reactions close a
+    /// cycle that Circularize can lay out.
+    pub fn can_circularize_selection(&self) -> bool {
+        self.map.as_ref().is_some_and(|map| map.selection_cycle(&self.multi_selection).is_some())
+    }
+
+    /// `circularizeMultiSelection()`: lay the cycle the selected reactions
+    /// close out as a circle, as one undoable edit. A refusal has changed
+    /// nothing, and the status line says why.
+    pub fn circularize_multi_selection(&mut self) -> Option<Circularized> {
+        let selection = self.multi_selection.clone();
+        let map = self.map.as_mut()?;
+        let before = map.to_json();
+        let result = map.circularize_selection(&selection);
+        if let Circularized::Refused(reason) = result {
+            self.set_status_message(StatusState::Warn, circle_warning(reason));
+            self.emit("status");
+            return Some(result);
+        }
+        // Copies joined into the circle are gone from the map, and from the selection.
+        let map = self.map.as_ref().expect("map");
+        let gone: Vec<String> = self.multi_selection.nodes.iter().filter(|id| !map.has_node(id)).cloned().collect();
+        for id in gone {
+            self.multi_selection.nodes.shift_remove(&id);
+        }
+        if self.record_map(&before, "Circularize") {
+            self.emit("map");
+        }
+        Some(result)
     }
 
     /// `rotateMultiSelection(angle)`: turn the selection as one rigid piece by
@@ -1941,6 +2004,10 @@ impl Store {
 
     /// `select(rid)`: select a reaction (`None` selects nothing).
     pub fn select(&mut self, rid: Option<&str>) {
+        // Picking one thing lets go of a multi-selection, as a plain click does.
+        if rid.is_some() && self.multi_selection_size() > 0 {
+            self.multi_selection = empty_selection();
+        }
         self.selected_reaction = rid.map(str::to_string);
         self.selected_entity = rid.map(|r| SelectedEntity::new("reaction", r));
         self.variability = match rid {
@@ -1955,6 +2022,9 @@ impl Store {
         if kind.is_empty() || id.is_empty() {
             self.select(None);
             return None;
+        }
+        if self.multi_selection_size() > 0 {
+            self.multi_selection = empty_selection();
         }
         self.selected_reaction = (kind == "reaction").then(|| id.to_string());
         self.selected_geometry = None;
@@ -1973,6 +2043,15 @@ pub fn item_kind_str(kind: &ItemKind) -> &'static str {
     kind.as_str()
 }
 
+/// `CIRCLE_WARNINGS`: what the status line says when the map refuses to
+/// circularize a selection (`circularize_selection`).
+pub fn circle_warning(reason: CircleRefusal) -> &'static str {
+    match reason {
+        CircleRefusal::Cycle => "The selected reactions do not close a cycle.",
+        CircleRefusal::Room => "No room for the circle in its compartment.",
+    }
+}
+
 /// `TURN_WARNINGS`: what the status line says when the map refuses to turn a
 /// selection (`rotate_selection`).
 pub fn turn_warning(reason: TurnRefusal) -> &'static str {
@@ -1986,6 +2065,43 @@ pub fn turn_warning(reason: TurnRefusal) -> &'static str {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn ctrl_click_adds_to_the_selection_what_was_picked_before_it_and_a_plain_pick_lets_go() {
+        let mut store = Store::with_dir(coxeter_core::testkit::repo_root());
+        store.init().expect("bundled files");
+        store.use_scenario("solo-ecoli").expect("scenario");
+        store.select(Some("eco@CS"));
+        store.extend_multi_selection("reaction", "eco@ACONT");
+        assert_eq!(store.multi_selection.reactions.iter().cloned().collect::<Vec<_>>(), ["eco@CS", "eco@ACONT"]);
+        assert_eq!(store.selected_reaction, None, "the inspector turns to the selection");
+        store.extend_multi_selection("reaction", "eco@ACONT");
+        assert_eq!(store.multi_selection.reactions.iter().cloned().collect::<Vec<_>>(), ["eco@CS"], "a second Ctrl-click takes it out");
+        store.select(Some("eco@MDH"));
+        assert_eq!(store.multi_selection_size(), 0);
+    }
+
+    #[test]
+    fn circularize_lays_the_tca_cycle_out_in_one_undo_step_and_refuses_a_chain() {
+        let mut store = Store::with_dir(coxeter_core::testkit::repo_root());
+        store.init().expect("bundled files");
+        store.use_scenario("solo-ecoli").expect("scenario");
+        store.multi_selection = empty_selection();
+        store.multi_selection.reactions.extend(["eco@PGI", "eco@PFK", "eco@FBA"].map(String::from));
+        assert!(!store.can_circularize_selection());
+        let before = store.map.as_ref().expect("map").to_json();
+        assert_eq!(store.circularize_multi_selection(), Some(Circularized::Refused(CircleRefusal::Cycle)));
+        assert_eq!(store.status().message, "The selected reactions do not close a cycle.");
+        assert_eq!(store.map.as_ref().expect("map").to_json(), before);
+
+        store.multi_selection = empty_selection();
+        store.multi_selection.reactions.extend(["CS", "ACONT", "ICDHyr", "AKGDH", "SUCOAS", "SUCDi", "FUM", "MDH"].map(|r| format!("eco@{r}")));
+        assert!(store.can_circularize_selection());
+        assert!(matches!(store.circularize_multi_selection(), Some(Circularized::Circled { reactions: 8, .. })));
+        assert_ne!(store.map.as_ref().expect("map").to_json(), before);
+        assert_eq!(store.undo_map().as_deref(), Some("Circularize"));
+        assert_eq!(store.map.as_ref().expect("map").to_json(), before);
+    }
 
     #[test]
     fn tidy_curves_on_a_selection_tidies_each_reaction_in_one_undo_step() {

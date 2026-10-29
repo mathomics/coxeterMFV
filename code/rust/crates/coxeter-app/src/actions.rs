@@ -123,10 +123,10 @@ impl Shell {
 
     /// `closeWorkspace()`. Leaving Scenario & objective commits the choice
     /// in its list (the JS awaits a pending load; here loads are applied as
-    /// they are chosen).
+    /// they are chosen). A community loaded there is fitted to the screen by
+    /// `queue_scenario_selection`; the view of the same one stays as it was.
     pub fn close_workspace(&mut self) {
-        let returning_from_scenario = self.ui.workspace == Some(Workspace::Scenario);
-        if returning_from_scenario {
+        if self.ui.workspace == Some(Workspace::Scenario) {
             if let Some(choice) = self.ui.scenario_choice.take() {
                 if choice != self.active_scenario_value() {
                     self.queue_scenario_selection(&choice);
@@ -134,9 +134,6 @@ impl Shell {
             }
         }
         self.ui.workspace = None;
-        if returning_from_scenario {
-            self.refit();
-        }
     }
 
     /// The value of the scenario list for what is open (`pub:<id>` or `sc:<id>`).
@@ -184,7 +181,9 @@ impl Shell {
     // Tools
 
     /// `activateTool(tool)`, with what the tool buttons of `onSidebarClick` add:
-    /// the workspace closes, and the drawing tools go back to Edit Map.
+    /// the workspace closes, and the drawing tools go back to Edit Map. The
+    /// tools panel stays open, laid over the map or not: its own button and
+    /// Escape close it.
     pub fn activate_tool(&mut self, tool: Tool) {
         self.close_workspace_quietly();
         self.close_map_menus();
@@ -194,7 +193,6 @@ impl Shell {
         if matches!(tool, Tool::Reaction | Tool::Metabolite | Tool::Compartment | Tool::Cell) {
             self.ui.left_tab = LeftTab::Build;
         }
-        self.ui.task_overlay = false;
     }
 
     /// `closeWorkspace({ restoreFocus: false })`.

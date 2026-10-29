@@ -44,7 +44,7 @@ use coxeter_core::geometry::{SIZES, closest_perimeter_point, closest_perimeter_p
 use coxeter_core::js;
 use coxeter_core::mapdata::{
     AxisEnd, Canvas, Environment, MapCell, MapCompartment, MapData, MapGraph, MapReaction, MapText, Medium, Node,
-    NodeKind, Point, Rect, Segment, axis_links,
+    NodeKind, Point, Rect, Segment, SegmentKind, axis_links,
 };
 use coxeter_core::metabolite_label::{is_secondary_node, metabolite_label_angle};
 use coxeter_core::reaction_label::{LABEL_OFFSET, normalize_reaction_label_offset, set_reaction_label_offset};
@@ -1222,15 +1222,44 @@ impl EditableMap {
 
     /// `setNodePrimary`: mark one visual metabolite instance as primary or
     /// secondary. Map-only; the role also fixes its radius (13 or 7 px).
+    ///
+    /// A cofactor copy beside one reaction (CO₂ at RuBisCO, say) made primary
+    /// becomes that reaction's own metabolite where it stands: its branch is
+    /// a main line, it no longer moves with the marker, and it can be a line
+    /// end.
     pub fn set_node_primary(&mut self, node_id: &str, primary: bool) -> Option<&Node> {
-        let node = self.g.nodes.get_mut(node_id)?;
-        if !is_primary_kind(&node.kind) {
+        let kind = self.g.nodes.get(node_id)?.kind.clone();
+        if !is_metabolite_kind(&kind) {
             return None;
         }
+        if kind == NodeKind::Currency {
+            if !primary {
+                return self.g.nodes.get(node_id);
+            }
+            self.promote_cofactor(node_id);
+        }
+        let node = self.g.nodes.get_mut(node_id)?;
         node.primary = Some(primary);
         node.visual_role = Some(if primary { "primary" } else { "secondary" }.into());
         node.r = if primary { SIZES.primary_radius } else { SIZES.currency_radius };
         Some(node)
+    }
+
+    /// `promoteCofactor(map, node)`: a reaction's cofactor copy made into its
+    /// own primary metabolite (see [`EditableMap::set_node_primary`]).
+    fn promote_cofactor(&mut self, node_id: &str) {
+        let Some(node) = self.g.nodes.get_mut(node_id) else { return };
+        node.kind = NodeKind::Metabolite;
+        if let Some(owner) = node.reaction_id.take() {
+            node.reaction_local_for = Some(owner);
+        }
+        node.reaction_local = Some(true);
+        node.escher_secondary = None;
+        for seg in self.g.segments.iter_mut() {
+            if seg.node_id.as_deref() == Some(node_id) && seg.kind == SegmentKind::Currency {
+                seg.kind = SegmentKind::Primary;
+            }
+        }
     }
 
     /// `setNodeVisualRole(id, 'primary' | 'secondary')`.
@@ -1580,14 +1609,34 @@ impl EditableMap {
     /// cell off the drawing, with everything that cannot be drawn without it:
     /// the compartments nested in it, the reactions that run in any of them or
     /// cross their membranes, the metabolites drawn there and the texts
-    /// written inside it. A cell's outermost compartment is the cell, so the
-    /// whole cell goes. The biological model is untouched, and the compartment
-    /// can be drawn again.
+    /// written inside it. A cell's outer compartment is the cell, so the whole
+    /// cell goes, with any other compartment it has without a parent. So does
+    /// its last compartment. The biological model is untouched, and the
+    /// compartment can be drawn again.
     pub fn remove_compartment(&mut self, cell_id: &str, compartment_id: &str) -> Option<RemovedCompartment> {
         let ci = self.g.cells.iter().position(|c| c.id == cell_id)?;
-        let compartment = self.g.cells[ci].compartments.iter().find(|c| c.id == compartment_id)?.clone();
-        let cell_removed = compartment.parent_id.is_none();
-        let subtree = crate::geometry_edit::descendant_ids(&self.g.cells[ci], compartment_id);
+        let cell = &self.g.cells[ci];
+        let compartment = cell.compartments.iter().find(|c| c.id == compartment_id)?.clone();
+        let mut subtree = crate::geometry_edit::descendant_ids(cell, compartment_id);
+        let cell_removed = crate::geometry_edit::cell_root_id(cell) == Some(compartment_id)
+            || cell.compartments.iter().all(|c| subtree.contains(&c.id));
+        // The subtree in the order it was found: the compartment, then what is
+        // nested in it, then the rest of a cell that goes.
+        let mut compartment_ids = crate::geometry_edit::descendant_list(cell, compartment_id);
+        if cell_removed {
+            for c in &cell.compartments {
+                if subtree.insert(c.id.clone()) {
+                    compartment_ids.push(c.id.clone());
+                }
+            }
+        }
+        // What is nested lies inside what it is nested in.
+        let areas: Vec<Rect> = cell
+            .compartments
+            .iter()
+            .filter(|c| subtree.contains(&c.id) && !c.parent_id.as_ref().is_some_and(|p| subtree.contains(p)))
+            .map(|c| c.rect)
+            .collect();
 
         let mut reactions = Vec::new();
         let mut nodes = Vec::new();
@@ -1622,13 +1671,12 @@ impl EditableMap {
         self.g.medium.nodes.retain(|id| live.contains_key(id));
         // The texts written inside it are its pathways' names: left behind,
         // they labelled an empty space.
-        let area = compartment.rect;
         let written: Vec<String> = self
             .g
             .texts
             .values()
             .filter(|t| t.x.is_finite() && t.y.is_finite())
-            .filter(|t| !(t.x < area.x || t.x > area.x + area.w || t.y < area.y || t.y > area.y + area.h))
+            .filter(|t| areas.iter().any(|a| !(t.x < a.x || t.x > a.x + a.w || t.y < a.y || t.y > a.y + a.h)))
             .map(|t| t.id.clone())
             .collect();
         let mut texts = Vec::new();
@@ -1646,9 +1694,6 @@ impl EditableMap {
         } else {
             compartment.label.clone()
         };
-        // The subtree in the order it was found: the compartment, then what
-        // is nested in it.
-        let compartment_ids = crate::geometry_edit::descendant_list(cell, compartment_id);
         if cell_removed {
             self.g.cells.remove(ci);
         } else {
@@ -2268,6 +2313,14 @@ impl EditableMap {
     pub fn point_selection(&mut self, selection: &Selection, direction: &str) -> Option<SelectionTurn> {
         crate::multi_selection::point_selection(self, selection, direction)
     }
+    /// The longest cycle the selected reactions close, or None.
+    pub fn selection_cycle(&self, selection: &Selection) -> Option<crate::circularize::SelectionCycle> {
+        crate::circularize::selection_cycle(self, selection)
+    }
+    /// Lay the cycle the selected reactions close out as a circle, or say why not.
+    pub fn circularize_selection(&mut self, selection: &Selection) -> crate::circularize::Circularized {
+        crate::circularize::circularize_selection(self, selection)
+    }
     /// Escher's Align vertical / Align horizontal for a selection with
     /// reactions in it.
     pub fn align_selection_in_line(&mut self, selection: &Selection, mode: &str) -> Option<LineAlignment> {
@@ -2277,5 +2330,58 @@ impl EditableMap {
     /// on a line.
     pub fn selection_has_line_reactions(&self, selection: &Selection) -> bool {
         crate::multi_selection::selection_has_line_reactions(self, selection)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use coxeter_core::community::{CommunitySpec, SpeciesSpec};
+    use coxeter_core::model::Model;
+    use std::sync::Arc;
+
+    const RID: &str = "syn@RBPC";
+    const CO2: &str = "cur:syn@RBPC:syn@co2_c";
+    const H2O: &str = "cur:syn@RBPC:syn@h2o_c";
+
+    fn cyano_map() -> EditableMap {
+        let path = coxeter_core::testkit::repo_root().join("models/cyano_core_mc.json");
+        let model = Model::from_json_str(&std::fs::read_to_string(path).expect("model file")).expect("model");
+        let spec = CommunitySpec { species: vec![SpeciesSpec::new("syn", Arc::new(model))], ..Default::default() };
+        EditableMap::from_community(&CommunityModel::new(spec).expect("community"), &LayoutOptions::default())
+    }
+
+    fn branch_kind(map: &EditableMap, node_id: &str) -> SegmentKind {
+        map.segments().iter().find(|s| s.reaction_id == RID && s.node_id.as_deref() == Some(node_id)).expect("a branch").kind.clone()
+    }
+
+    #[test]
+    fn co2_beside_rubisco_made_primary_becomes_the_reactions_own_metabolite() {
+        let mut map = cyano_map();
+        let before = map.node(CO2).expect("a cofactor copy").clone();
+        assert_eq!(before.kind, NodeKind::Currency);
+        assert_eq!(map.set_node_primary(CO2, false).map(|n| n.kind.clone()), Some(NodeKind::Currency), "secondary leaves it as it is");
+
+        let node = map.set_node_primary(CO2, true).expect("promoted").clone();
+        assert_eq!(node.kind, NodeKind::Metabolite);
+        assert_eq!((node.primary, node.visual_role.as_deref(), node.r), (Some(true), Some("primary"), SIZES.primary_radius));
+        assert_eq!((node.reaction_local_for.as_deref(), node.reaction_id.as_deref(), node.escher_secondary), (Some(RID), None, None));
+        assert_eq!((node.x, node.y), (before.x, before.y), "it stays where it was");
+        assert_eq!(branch_kind(&map, CO2), SegmentKind::Primary);
+        assert_eq!(map.node(H2O).map(|n| n.kind.clone()), Some(NodeKind::Currency));
+
+        let reloaded = EditableMap::from_json(&map.to_json()).expect("reload");
+        assert_eq!(reloaded.node(CO2).map(|n| (n.kind.clone(), n.primary)), Some((NodeKind::Metabolite, Some(true))));
+
+        let (x, y) = map.reaction(RID).map(|r| (r.x, r.y)).expect("RuBisCO");
+        let h2o_x = map.node(H2O).expect("water").x;
+        map.move_reaction(RID, x + 50.0, y);
+        assert_eq!(map.node(CO2).map(|n| (n.x, n.y)), Some((node.x, node.y)), "no longer carried by the marker");
+        assert_ne!(map.node(H2O).map(|n| n.x), Some(h2o_x), "cofactor copies still are");
+
+        assert!(map.set_reaction_line_end(RID, CO2));
+        assert_eq!(map.reaction_line_ends(RID).0.as_deref(), Some(CO2));
+        map.remove_reaction(RID);
+        assert!(map.node(CO2).is_none(), "it goes with its reaction");
     }
 }

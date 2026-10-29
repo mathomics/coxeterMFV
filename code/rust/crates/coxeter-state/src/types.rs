@@ -269,6 +269,10 @@ pub struct View {
     /// `auto`, `mouse` or `touchpad`.
     pub scroll_input: String,
     pub flux_color_stops: Option<Vec<FluxColorStop>>,
+    /// The Absolute flux palette: its points (`None`: white at 0 to red at
+    /// the largest |flux|) and whether colours follow log10 |flux|.
+    pub absolute_flux_color_stops: Option<Vec<FluxColorStop>>,
+    pub absolute_flux_log: bool,
     pub reaction_color_mode: ReactionColorMode,
     /// How reaction lines are drawn, each its own switch: width by flux,
     /// grey dashes for what carries none, a gap where one passes under another.
@@ -303,6 +307,8 @@ impl Default for View {
             text_style: TextStyle::default(),
             scroll_input: "auto".into(),
             flux_color_stops: None,
+            absolute_flux_color_stops: None,
+            absolute_flux_log: false,
             reaction_color_mode: ReactionColorMode::Flux,
             width_by_flux: false,
             dash_no_flux: true,
@@ -326,12 +332,15 @@ impl Default for View {
 }
 
 /// A `setView(patch)`: every field left `None` is left as it is.
-/// `flux_color_stops: Some(None)` asks for the automatic palette.
+/// `flux_color_stops: Some(None)` asks for the automatic palette, and
+/// `absolute_flux_color_stops: Some(None)` for the default absolute one.
 #[derive(Debug, Clone, Default, PartialEq)]
 pub struct ViewPatch {
     pub labels: Option<String>,
     pub scroll_input: Option<String>,
     pub flux_color_stops: Option<Option<Vec<FluxColorStop>>>,
+    pub absolute_flux_color_stops: Option<Option<Vec<FluxColorStop>>>,
+    pub absolute_flux_log: Option<bool>,
     pub reaction_color_mode: Option<String>,
     pub width_by_flux: Option<bool>,
     pub dash_no_flux: Option<bool>,

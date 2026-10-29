@@ -81,6 +81,31 @@ test('deleting a cell\'s outermost compartment deletes the cell', async () => {
   assert.equal(store.map.cells.length, 1);
 });
 
+test('another compartment without a parent is deleted on its own, and goes with the cell', async () => {
+  // A model can leave a compartment out of the cell's tree, as the C. merolae
+  // flagellum is: a second compartment without a parent beside the outer one.
+  const store = await yeastStore();
+  const [cell] = store.map.cells;
+  Object.assign(cell.compartments.find((c) => c.id === 'im'), { parentId: null, depth: 0 });
+  const others = ids(cell).filter((id) => !['im', 'm'].includes(id));
+  const json = JSON.stringify(store.map.toJSON());
+
+  const result = store.removeMapCompartment(cell.id, 'im');
+  assert.equal(result.cellRemoved, false);
+  assert.deepEqual(result.compartmentIds.sort(), ['im', 'm']);
+  assert.deepEqual(ids(store.map.cells[0]), others, 'the rest of the cell stays');
+  assert.doesNotMatch(store.status.message, /the cell/);
+  store.undoMap();
+  assert.equal(JSON.stringify(store.map.toJSON()), json);
+
+  const outer = store.map.cells[0].outerCompartment;
+  assert.equal(store.removeMapCompartment(cell.id, outer).cellRemoved, true);
+  assert.equal(store.map.cells.length, 0);
+  const left = [...store.map.reactions.values()].filter((r) => r.cellId === cell.id);
+  assert.equal(left.length, 0, 'nothing of it is left behind');
+  assert.equal([...store.map.nodes.values()].filter((n) => n.cellId === cell.id).length, 0);
+});
+
 test('the shared medium is not a compartment that can be deleted', async () => {
   const store = await yeastStore();
   assert.equal(store.map.removeCompartment(null, store.map.environment.id), null);

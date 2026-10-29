@@ -70,6 +70,7 @@ enum Act {
     ReactionLabelReset(String),
     Arrange(&'static str),
     SelectionSpaceEvenly,
+    SelectionCircularize,
     SelectionTidy,
     SelectionPoint(&'static str),
     SelectionRotate(f64),
@@ -219,6 +220,10 @@ fn apply(shell: &mut Shell, acts: Vec<Act>) {
             Act::SelectionSpaceEvenly => {
                 shell.close_map_menus();
                 shell.store.space_multi_selection_evenly();
+            }
+            Act::SelectionCircularize => {
+                shell.close_map_menus();
+                shell.store.circularize_multi_selection();
             }
             Act::SelectionTidy => {
                 shell.close_map_menus();
@@ -718,7 +723,10 @@ fn metabolite_inspector(ui: &mut Ui, store: &Store, p: &Palette, node_id: &str, 
     });
     property(ui, "Compartment", node.compartment.clone().unwrap_or_else(|| "—".into()));
     property(ui, "Cell", cell_name);
-    property(ui, "Visual role", if node.primary == Some(false) { "Secondary" } else { "Primary" });
+    // A cofactor copy beside one reaction is secondary until made primary.
+    let cofactor = node.kind == NodeKind::Currency;
+    let secondary = cofactor || node.primary == Some(false);
+    property(ui, "Visual role", if secondary { "Secondary" } else { "Primary" });
     property(ui, "Visual copies", copies.max(1).to_string());
     property(ui, "Connected paths", connected.to_string());
     property(ui, "Radius", format!("{} px", js::number_to_string(node.r)));
@@ -752,28 +760,23 @@ fn metabolite_inspector(ui: &mut Ui, store: &Store, p: &Palette, node_id: &str, 
     widgets::section_title(ui, "Visual map instance");
     label_control(ui, store, "metabolite", Some(node_id), acts);
     ui.add_space(6.0);
-    let primary = node.primary != Some(false);
-    let currency = node.kind == NodeKind::Currency;
     controls_box(ui, p, |ui| {
-        if currency {
-            // A cofactor the layout placed beside one reaction is secondary by
-            // construction; the map refuses to make it primary, so offering
-            // the button would only make it look broken.
-            widgets::note(ui, "Cofactor beside its reaction: always secondary.");
-        } else {
-            ui.horizontal(|ui| {
-                role_label(ui, p, "Visual role");
-                widgets::grow_row(ui, 2, |ui, i| {
-                    let (label, on) = if i == 0 { ("Primary", primary) } else { ("Secondary", !primary) };
-                    let r = Btn::new(label).active(on).show(ui);
-                    aria_pressed(&r, on);
-                    if r.clicked() {
-                        acts.push(Act::NodePrimary(node_id.to_string(), i == 0));
-                    }
-                });
+        ui.horizontal(|ui| {
+            role_label(ui, p, "Visual role");
+            widgets::grow_row(ui, 2, |ui, i| {
+                let (label, on) = if i == 0 { ("Primary", !secondary) } else { ("Secondary", secondary) };
+                let mut button = Btn::new(label).active(on);
+                if i == 0 && cofactor {
+                    button = button.title("Draw it as a main metabolite of its reaction");
+                }
+                let r = button.show(ui);
+                aria_pressed(&r, on);
+                if r.clicked() {
+                    acts.push(Act::NodePrimary(node_id.to_string(), i == 0));
+                }
             });
-            widgets::note(ui, "Primary = 13 px · Secondary = 7 px");
-        }
+        });
+        widgets::note(ui, "Primary = 13 px · Secondary = 7 px");
         let ids = vec![node_id.to_string()];
         if let Some(edit) = crate::panels::map_options::node_color_row(ui, store, &ids, node_id) {
             acts.push(Act::Colors { nodes: ids, reactions: Vec::new(), edit });
@@ -1016,8 +1019,8 @@ fn compartment_inspector(ui: &mut Ui, store: &Store, p: &Palette, cell_id: Optio
     if Btn::new("Edit Boundary").look(Look::Secondary).wide().show(ui).clicked() {
         acts.push(Act::EditBoundary(None));
     }
-    let nested = comp.parent_id.is_some();
-    if Btn::new(if nested { "Delete compartment" } else { "Delete cell" }).look(Look::DangerBox).wide().show(ui).clicked() {
+    let is_cell = cell.and_then(coxeter_map::geometry_edit::cell_root_id) == Some(comp.id.as_str());
+    if Btn::new(if is_cell { "Delete cell" } else { "Delete compartment" }).look(Look::DangerBox).wide().show(ui).clicked() {
         acts.push(Act::RemoveMapCompartment { cell: cell_key.clone(), compartment: Some(comp.id.clone()) });
     }
     widgets::note(ui, "Delete key also works; Ctrl+Z undoes.");
@@ -1577,6 +1580,11 @@ fn selection_inspector(ui: &mut Ui, store: &Store, p: &Palette, acts: &mut Vec<A
         let even = Btn::new("Even spacing").enabled(spaced >= 3).title("Equal steps along the selection's own line").wide().show(ui);
         if even.clicked() {
             acts.push(Act::SelectionSpaceEvenly);
+        }
+        let circle = store.can_circularize_selection();
+        let title = if circle { "Lay the selected cycle out as a circle" } else { "The selected reactions do not close a cycle" };
+        if Btn::new("Circularize").enabled(circle).title(title).wide().show(ui).clicked() {
+            acts.push(Act::SelectionCircularize);
         }
     });
 

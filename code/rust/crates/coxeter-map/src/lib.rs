@@ -6,6 +6,7 @@
 //! [`MapGraph`](coxeter_core::mapdata::MapGraph) and every editing operation
 //! a user can make on it.
 
+pub mod circularize;
 pub mod compartment_reactions;
 pub mod core_metabolism_overview;
 pub mod drag;

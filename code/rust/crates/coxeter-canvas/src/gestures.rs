@@ -107,6 +107,8 @@ pub struct PointerInput {
     /// Client coordinates (egui points).
     pub client: Point,
     pub shift: bool,
+    /// `event.ctrlKey || event.metaKey`: Ctrl, or Cmd on a Mac.
+    pub ctrl: bool,
     /// `event.target`. `None`: found by hit-testing the scene at `client`
     /// (or the stage, when the stage has captured this pointer).
     pub target: Option<Target>,
@@ -1879,7 +1881,8 @@ impl Gestures {
         }
 
         let multi_hit = targets::multi_selectable_at(&target, host);
-        let selecting = ev.shift || host.multi_select();
+        // Shift, Ctrl or Cmd adds to the selection, as the multi-select tool does.
+        let selecting = ev.shift || ev.ctrl || host.multi_select();
         let geometry_edit = host.geometry_edit();
 
         if target.closest(&targets::SELECTION_DRAG).is_some()
@@ -1974,7 +1977,7 @@ impl Gestures {
                 } else {
                     self.multi_toggle_pointer = Some(ev.pointer_id);
                     self.capture(ev);
-                    host.toggle_multi_selection(kind, &id);
+                    host.extend_multi_selection(kind, &id);
                 }
                 return;
             }

@@ -861,6 +861,11 @@ button[aria-pressed="true"] { background: var(--accent); color: var(--accent-ink
 .flux-color-mode-buttons { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 12px; }
 .flux-color-mode-buttons button { flex: 1 1 92px; min-width: 0; padding: 7px 8px; }
 .flux-color-mode-buttons button[aria-pressed="true"] { border-color: var(--accent); color: var(--accent); background: var(--accent-soft); }
+/* Linear or log colours for the Absolute flux palette. */
+.flux-color-scale { display: flex; align-items: center; gap: 6px; margin: -4px 0 10px; font-size: 11px; color: var(--ink-3); }
+.flux-color-scale > span { margin-right: 4px; }
+.flux-color-scale button { flex: 1 1 0; min-width: 0; padding: 5px 8px; }
+.flux-color-scale button[aria-pressed="true"] { border-color: var(--accent); color: var(--accent); background: var(--accent-soft); }
 .flux-color-gradient { position: relative; min-width: 0; height: 22px; margin: 6px 1px; border: 1px solid var(--line); border-radius: 4px; }
 .flux-color-mark { position: absolute; top: -3px; width: 2px; height: 26px; transform: translateX(-50%); background: var(--ink); border: 1px solid var(--panel); pointer-events: none; }
 .flux-color-range { display: flex; align-items: start; justify-content: space-between; gap: 5px; min-width: 0; margin: 5px 0 12px; font-size: 10px; color: var(--ink-2); }
@@ -1631,13 +1636,14 @@ a { color: var(--accent); }
 .map-quick-controls { display: flex; align-items: center; gap: 4px; min-width: 0; margin-left: 3px; padding-left: 7px; border-left: 1px solid var(--line); }
 .map-quick-controls .quick, .view-folded .quick { display: flex; align-items: center; gap: 4px; }
 .map-quick-controls .quick > * { flex: none; }
+.map-quick-controls .quick-b { margin-left: 3px; padding-left: 7px; border-left: 1px solid var(--line); }
 .map-quick-controls select { width: auto; height: 32px; padding: 0 4px; font-size: 11.5px; color: var(--ink); background: var(--panel); border: 1px solid var(--line); border-radius: 7px; }
-.canvas-toolbar .quick-toggle { width: auto; padding: 0 10px; font-size: 11.5px; font-weight: 600; white-space: nowrap; border: 1px solid var(--line); }
+.canvas-toolbar .quick-toggle { display: flex; gap: 4px; width: auto; padding: 0 10px; font-size: 11.5px; font-weight: 600; white-space: nowrap; border: 1px solid var(--line); }
 .canvas-toolbar .quick-toggle[aria-pressed="true"] { color: var(--accent); background: var(--accent-soft); border-color: var(--accent-line); }
 .view-folded { display: none; }
 .view-folded .quick { flex-wrap: wrap; margin-bottom: 10px; }
 /* A narrow toolbar hands its options over to View: line color and width first, then the rest. */
-@container toolbar (max-width: 1090px) {
+@container toolbar (max-width: 1260px) {
   .map-quick-controls .quick-b { display: none; }
   .view-folded { display: block; }
   .view-folded .quick-a { display: none; }

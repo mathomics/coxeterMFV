@@ -326,19 +326,6 @@ test('the Cofactors toggles hide every secondary node, its lines and its label',
   assert.match(unnamed, /data-metabolite-label="met:demo@a_e"/);
 });
 
-test('a cofactor helper node explains its role instead of offering a dead Primary button', async () => {
-  const store = await makeStore();
-  const source = store.map.nodes.get('met:demo@a_c');
-  store.map.nodes.set('cur:demo@At:demo@a_c', { ...source, id: 'cur:demo@At:demo@a_c', kind: 'currency', primary: false });
-  store.selectedEntity = { type: 'metabolite', id: 'cur:demo@At:demo@a_c' };
-  const html = renderInspector(store);
-  assert.doesNotMatch(html, /data-action="metabolite-primary"/);
-  assert.match(html, /always secondary/);
-
-  store.selectedEntity = { type: 'metabolite', id: 'met:demo@a_c' };
-  assert.match(renderInspector(store), /data-action="metabolite-primary"/, 'ordinary metabolites keep the buttons');
-});
-
 // Labels and PNG size
 
 test('All active names only metabolites drawn on a reaction that carries flux', async () => {

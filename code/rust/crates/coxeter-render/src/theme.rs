@@ -22,6 +22,22 @@ const FLUX_RAMP_LIGHT: [(f64, &str); 5] =
 const FLUX_RAMP_DARK: [(f64, &str); 5] =
     [(0.00, "#475569"), (0.12, "#38bdf8"), (0.35, "#60a5fa"), (0.65, "#a78bfa"), (1.00, "#fb7185")];
 
+/// `defaultAbsoluteFluxStops(max)`: Escher's absolute-value colouring, white
+/// at no flux and red at the largest.
+pub fn default_absolute_flux_stops(max: f64) -> Vec<FluxColorStop> {
+    vec![FluxColorStop { value: 0.0, color: "#ffffff".into() }, FluxColorStop { value: max, color: "#dc2626".into() }]
+}
+
+/// `absoluteLogFloor(stops)`: the |flux| a log scale starts at, four decades
+/// below the top point or a decade below the smallest positive point when that
+/// is lower. Everything at or under it takes the first colour. `None` with no
+/// positive point to scale.
+pub fn absolute_log_floor(stops: &[FluxColorStop]) -> Option<f64> {
+    let positive: Vec<f64> = stops.iter().map(|s| s.value).filter(|v| *v > 0.0).collect();
+    let (first, last) = (positive.first()?, positive.last()?);
+    Some(js::min(last / 1e4, first / 10.0))
+}
+
 /// The automatic ramp of a colour scheme.
 pub fn flux_ramp(dark: bool) -> &'static [(f64, &'static str)] {
     if dark { &FLUX_RAMP_DARK } else { &FLUX_RAMP_LIGHT }
@@ -76,6 +92,8 @@ pub enum ThemeError {
     BadColor(usize),
     #[error("Flux colour values must be unique; {0} appears more than once.")]
     Duplicate(String),
+    #[error("Absolute flux colours need values of zero or more.")]
+    Negative,
 }
 
 fn is_hex_color(text: &str) -> bool {
@@ -132,6 +150,26 @@ pub fn normalize_flux_color_stops_value(stops: &Value) -> Result<Option<Vec<Flux
         typed.push(FluxColorStop { value, color });
     }
     normalize_flux_color_stops(&typed).map(Some)
+}
+
+/// `normalizeAbsoluteFluxColorStops(stops)`: as [`normalize_flux_color_stops`],
+/// for |flux|, where no value is below zero.
+pub fn normalize_absolute_flux_color_stops(stops: &[FluxColorStop]) -> Result<Vec<FluxColorStop>, ThemeError> {
+    let normalized = normalize_flux_color_stops(stops)?;
+    if normalized.iter().any(|s| s.value < 0.0) {
+        return Err(ThemeError::Negative);
+    }
+    Ok(normalized)
+}
+
+/// `normalizeAbsoluteFluxColors(value)`: the absolute palette as files keep it,
+/// `{stops, log}`: its points (`None` for the default) and whether it is log.
+pub fn normalize_absolute_flux_colors_value(value: &Value) -> Result<(Option<Vec<FluxColorStop>>, bool), ThemeError> {
+    let stops = match normalize_flux_color_stops_value(value.get("stops").unwrap_or(&Value::Null))? {
+        Some(list) if list.iter().any(|s| s.value < 0.0) => return Err(ThemeError::Negative),
+        stops => stops,
+    };
+    Ok((stops, value.get("log").is_some_and(js::truthy)))
 }
 
 /// Linear position without overflowing for finite endpoints of opposite sign.
@@ -226,12 +264,18 @@ pub trait Scale {
     fn width(&self, v: f64) -> f64;
     /// Colour for a flux.
     fn color(&self, v: f64) -> String;
+    /// Colour for |flux| alone, in the absolute colour mode.
+    fn absolute_color(&self, v: f64) -> String;
 }
 
 /// Options of [`FluxScale::new`]; unset fields take the JavaScript defaults.
 #[derive(Debug, Clone, Default)]
 pub struct FluxScaleOptions {
     pub color_stops: Option<Vec<FluxColorStop>>,
+    /// The absolute palette's points (`None`: the default) and whether its
+    /// colours follow log |flux|.
+    pub absolute_stops: Option<Vec<FluxColorStop>>,
+    pub absolute_log: bool,
     pub dark: bool,
     pub min_width: Option<f64>,
     pub max_width: Option<f64>,
@@ -243,6 +287,8 @@ pub struct FluxScaleOptions {
 #[derive(Debug, Clone, PartialEq)]
 pub struct FluxScale {
     pub color_stops: Option<Vec<FluxColorStop>>,
+    pub absolute_stops: Option<Vec<FluxColorStop>>,
+    pub absolute_log: bool,
     pub count: usize,
     pub min: f64,
     pub max: f64,
@@ -270,6 +316,10 @@ impl FluxScale {
             None => None,
             Some(stops) => Some(normalize_flux_color_stops(&stops)?),
         };
+        let absolute_stops = match opts.absolute_stops {
+            None => None,
+            Some(stops) => Some(normalize_absolute_flux_color_stops(&stops)?),
+        };
         let mut magnitudes: Vec<f64> = values.into_iter().map(f64::abs).filter(|m| m.is_finite() && *m > 1e-9).collect();
         magnitudes.sort_by(|a, b| a.partial_cmp(b).expect("finite"));
         let len = magnitudes.len();
@@ -282,6 +332,8 @@ impl FluxScale {
         };
         Ok(FluxScale {
             color_stops,
+            absolute_stops,
+            absolute_log: opts.absolute_log,
             count: len,
             min: magnitudes.first().copied().unwrap_or(0.0),
             max: magnitudes.last().copied().unwrap_or(1.0),
@@ -326,6 +378,64 @@ impl FluxScale {
         sample_ramp(ramp, self.position(v))
     }
 
+    /// `absolutePalette()`: the |flux| colour points in use, the chosen ones
+    /// or white at 0 to red at the largest |flux|.
+    pub fn absolute_palette(&self) -> Vec<FluxColorStop> {
+        self.absolute_stops.clone().unwrap_or_else(|| default_absolute_flux_stops(self.max))
+    }
+
+    /// `absoluteAxis()`: the points, and the log floor when colours follow
+    /// log |flux|.
+    fn absolute_axis(&self) -> (Vec<FluxColorStop>, Option<f64>) {
+        let stops = self.absolute_palette();
+        let floor = if self.absolute_log { absolute_log_floor(&stops) } else { None };
+        (stops, floor)
+    }
+
+    /// Where |flux| is placed along the absolute palette: as it is, or as
+    /// log10 above the floor.
+    fn absolute_at(m: f64, floor: Option<f64>) -> f64 {
+        match floor {
+            None => m,
+            Some(f) => js::max(m, f).log10(),
+        }
+    }
+
+    /// `absoluteColor(v)`: colour by |flux| alone, along the absolute palette,
+    /// linearly or on a log scale. With no flux anywhere there is nothing to
+    /// scale against, and lines keep the automatic ramp's grey rather than
+    /// turning white.
+    pub fn absolute_color(&self, v: f64) -> String {
+        if self.count == 0 {
+            return flux_ramp(self.dark)[0].1.to_string();
+        }
+        let (stops, floor) = self.absolute_axis();
+        let placed: Vec<FluxColorStop> = match floor {
+            None => stops,
+            Some(_) => stops.into_iter().map(|s| FluxColorStop { value: Self::absolute_at(s.value, floor), color: s.color }).collect(),
+        };
+        sample_flux_color_stops(&placed, Self::absolute_at(v.abs(), floor))
+    }
+
+    /// `absoluteLegendStops()`: the absolute palette's points for the legend,
+    /// placed (`t`) as the scale places them. On a log scale a point below
+    /// the floor shows the floor.
+    pub fn absolute_legend_stops(&self) -> Vec<LegendStop> {
+        let (stops, floor) = self.absolute_axis();
+        let first = Self::absolute_at(stops[0].value, floor);
+        let last = Self::absolute_at(stops[stops.len() - 1].value, floor);
+        let single = stops.len() == 1;
+        stops
+            .into_iter()
+            .map(|s| LegendStop {
+                t: if single { 0.0 } else { signed_position(Self::absolute_at(s.value, floor), first, last) },
+                value: floor.map_or(s.value, |f| js::max(s.value, f)),
+                width: self.width(s.value),
+                color: s.color,
+            })
+            .collect()
+    }
+
     /// Swatches for the legend (`legendStops(n = 6)`).
     pub fn legend_stops(&self, n: usize) -> Vec<LegendStop> {
         if let Some(stops) = &self.color_stops {
@@ -361,6 +471,9 @@ impl Scale for FluxScale {
     }
     fn color(&self, v: f64) -> String {
         FluxScale::color(self, v)
+    }
+    fn absolute_color(&self, v: f64) -> String {
+        FluxScale::absolute_color(self, v)
     }
 }
 
@@ -398,6 +511,67 @@ mod tests {
     fn hex_round_trip() {
         assert_eq!(hex_to_rgb("#0a1B2c"), [10.0, 27.0, 44.0]);
         assert_eq!(rgb_to_hex([10.0, 27.4, 44.5]), "#0a1b2d");
+    }
+
+    #[test]
+    fn absolute_flux_is_linear_from_white_to_red() {
+        let scale = FluxScale::automatic([-1000.0, -3.0, 0.0, 250.0, 500.0], false);
+        assert_eq!(scale.absolute_color(0.0), "#ffffff");
+        assert_eq!(scale.absolute_color(1000.0), "#dc2626");
+        assert_eq!(scale.absolute_color(-1000.0), "#dc2626");
+        assert_eq!(scale.absolute_color(500.0), "#ee9393");
+        assert_eq!(scale.absolute_color(-500.0), scale.absolute_color(500.0));
+        assert_eq!(scale.absolute_color(1e9), "#dc2626");
+        let ends: Vec<(f64, f64, String)> = scale.absolute_legend_stops().into_iter().map(|s| (s.t, s.value, s.color)).collect();
+        assert_eq!(ends, vec![(0.0, 0.0, "#ffffff".to_string()), (1.0, 1000.0, "#dc2626".to_string())]);
+    }
+
+    #[test]
+    fn absolute_flux_ignores_custom_stops_and_keeps_grey_without_flux() {
+        let stops = vec![FluxColorStop { value: -10.0, color: "#0000ff".into() }, FluxColorStop { value: 10.0, color: "#00ff00".into() }];
+        let custom = FluxScale::new([-10.0, 10.0], FluxScaleOptions { color_stops: Some(stops), ..Default::default() }).unwrap();
+        assert_eq!(custom.absolute_color(-10.0), "#dc2626");
+        assert_eq!(FluxScale::automatic([], false).absolute_color(0.0), "#cbd5e1");
+        assert_eq!(FluxScale::automatic([0.0], true).absolute_color(0.0), "#475569");
+    }
+
+    #[test]
+    fn absolute_points_are_editable_and_never_negative() {
+        let blue = vec![FluxColorStop { value: 0.0, color: "#ffffff".into() }, FluxColorStop { value: 10.0, color: "#0000ff".into() }];
+        let scale = FluxScale::new([10.0], FluxScaleOptions { absolute_stops: Some(blue.clone()), ..Default::default() }).unwrap();
+        assert_eq!(scale.absolute_color(5.0), "#8080ff");
+        assert_eq!(scale.absolute_color(-10.0), "#0000ff");
+        assert_eq!(scale.absolute_color(20.0), "#0000ff");
+        assert_eq!(scale.absolute_palette(), blue);
+        let negative = [FluxColorStop { value: -1.0, color: "#ffffff".into() }];
+        assert_eq!(normalize_absolute_flux_color_stops(&negative), Err(ThemeError::Negative));
+        let file = serde_json::json!({"stops": [{"value": 10, "color": "#0000FF"}, {"value": 0, "color": "#ffffff"}], "log": true});
+        assert_eq!(normalize_absolute_flux_colors_value(&file), Ok((Some(blue), true)));
+        assert_eq!(normalize_absolute_flux_colors_value(&Value::Null), Ok((None, false)));
+        let bad = serde_json::json!({"stops": [{"value": -1, "color": "#ffffff"}]});
+        assert_eq!(normalize_absolute_flux_colors_value(&bad), Err(ThemeError::Negative));
+    }
+
+    #[test]
+    fn a_log_scale_spreads_four_decades_below_the_top() {
+        let linear = FluxScale::automatic([10.0, 1.0, 0.1, 0.01], false);
+        assert_eq!(linear.absolute_color(1.0), "#fce9e9");
+        let options = FluxScaleOptions { absolute_log: true, ..Default::default() };
+        let log = FluxScale::new([10.0, 1.0, 0.1, 0.01], options.clone()).unwrap();
+        let colors: Vec<String> = [10.0, 1.0, 0.01, 0.001, 0.0001, 0.0].map(|v| log.absolute_color(v)).into();
+        assert_eq!(colors, ["#dc2626", "#e55c5c", "#f6c9c9", "#ffffff", "#ffffff", "#ffffff"]);
+        let ends: Vec<(f64, f64, String)> = log.absolute_legend_stops().into_iter().map(|s| (s.t, s.value, s.color)).collect();
+        assert_eq!(ends, vec![(0.0, 0.001, "#ffffff".to_string()), (1.0, 10.0, "#dc2626".to_string())]);
+        let wide = FluxScale::new([1000.0, 1.0], options).unwrap();
+        assert_eq!([1.0, 100.0].map(|v| wide.absolute_color(v)), ["#f6c9c9".to_string(), "#e55c5c".to_string()]);
+    }
+
+    #[test]
+    fn the_log_floor_reaches_below_the_smallest_positive_point() {
+        let at = |values: &[f64]| values.iter().map(|&value| FluxColorStop { value, color: "#ffffff".into() }).collect::<Vec<_>>();
+        assert_eq!(absolute_log_floor(&at(&[0.0, 1000.0])), Some(0.1));
+        assert_eq!(absolute_log_floor(&at(&[0.0, 0.001, 1000.0])), Some(0.0001));
+        assert_eq!(absolute_log_floor(&at(&[0.0])), None);
     }
 
     #[test]

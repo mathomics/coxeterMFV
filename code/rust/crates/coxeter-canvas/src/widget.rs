@@ -277,12 +277,13 @@ impl MapView {
         // made of them: the touches are read, the mouse ignored.
         let touch_frame = events.iter().any(|e| matches!(e, egui::Event::Touch { .. })) || !self.touches.is_empty();
         let mut modifiers = ui.input(|i| i.modifiers);
-        let mouse = |pos: Pos2, button: i16, shift: bool| PointerInput {
+        let mouse = |pos: Pos2, button: i16, m: egui::Modifiers| PointerInput {
             pointer_id: 1,
             pointer_type: PointerType::Mouse,
             button,
             client: Point::new(pos.x as f64, pos.y as f64),
-            shift,
+            shift: m.shift,
+            ctrl: m.ctrl || m.command,
             ..Default::default()
         };
         for event in events {
@@ -296,7 +297,7 @@ impl MapView {
                         egui::PointerButton::Extra1 => 3,
                         egui::PointerButton::Extra2 => 4,
                     };
-                    let ev = mouse(pos, b, m.shift);
+                    let ev = mouse(pos, b, m);
                     if pressed {
                         if self.owns(&ctx, ui, rect, pos) {
                             ctx.memory_mut(|mem| mem.request_focus(self.id));
@@ -308,7 +309,7 @@ impl MapView {
                 }
                 egui::Event::PointerMoved(pos) if !touch_frame => {
                     if self.canvas.gestures.active() || self.owns(&ctx, ui, rect, pos) {
-                        let ev = PointerInput { button: -1, ..mouse(pos, -1, modifiers.shift) };
+                        let ev = PointerInput { button: -1, ..mouse(pos, -1, modifiers) };
                         self.canvas.pointer_move(host, &ev, now_ms);
                     }
                 }
@@ -390,7 +391,7 @@ impl MapView {
                     // The window lost focus: the gesture ends (`pointercancel`).
                     self.canvas.gestures.set_space_held(false);
                     if self.canvas.gestures.active() {
-                        let ev = mouse(Pos2::ZERO, 0, false);
+                        let ev = mouse(Pos2::ZERO, 0, egui::Modifiers::NONE);
                         self.canvas.pointer_cancel(host, &ev);
                     }
                 }

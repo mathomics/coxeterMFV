@@ -9,7 +9,9 @@ import { readableName } from '../core/label-sources.js';
 import {
   compartmentColors, cellCompartmentName, cellCompartmentVisualId,
 } from '../core/compartments.js';
-import { formatFlux } from '../render/theme.js';
+import { cellRootId } from '../map/geometry-edit.js';
+import { defaultAbsoluteFluxStops, formatFlux } from '../render/theme.js';
+import { isFluxColorMode } from '../render/reaction-colors.js';
 import { CROSSFEED_WIDTH_RANGE } from '../render/crossfeed-routes.js';
 import { crossFeedingColors } from '../render/crossfeed-colors.js';
 import { COMPARTMENT_SHAPES, compartmentShape } from '../layout/geometry.js';
@@ -209,9 +211,10 @@ export function renderWorkspace(store, workspace, { fluxColorDraft = null, stead
 }
 
 /**
- * The display options used most, for the map toolbar. Two groups, so that a
- * narrow toolbar can hand the second (`quick-b`) and then both over to the View
- * popover, which carries the same controls for that (see renderViewControls).
+ * The display options used most, for the map toolbar. Two groups, what is
+ * labelled and drawn (`quick-a`) and how lines are colored (`quick-b`), so that
+ * a narrow toolbar can hand the second and then both over to the View popover,
+ * which carries the same controls for that (see renderViewControls).
  */
 export function renderMapQuickControls(store) {
   const v = store.view;
@@ -233,10 +236,12 @@ export function renderMapQuickControls(store) {
     <span class="quick quick-b">
       <select data-action="reaction-color-mode" aria-label="Line color" title="What colors the reaction lines">
         ${option('flux', color, 'Color: flux')}
+        ${option('absflux', color, 'Color: absolute flux')}
         ${option('pathway', color, 'Color: pathway')}
         ${option('subsystem', color, 'Color: subsystem')}
       </select>
       ${toggle('toggle-width-by-flux', Boolean(v.widthByFlux), 'Width by flux', 'Line width follows flux')}
+      <button class="quick-toggle" data-action="open-workspace" data-workspace="map" type="button">Colors & pathways <span aria-hidden="true">↗</span></button>
     </span>`;
 }
 
@@ -272,7 +277,6 @@ export function renderViewControls(store) {
         <option value="touchpad"${v.scrollInput === 'touchpad' ? ' selected' : ''}>Touchpad: pan</option>
       </select>
     </label>
-    <button data-action="open-workspace" data-workspace="map" type="button">Colors & pathways <span aria-hidden="true">↗</span></button>
     ${store.hiddenMetaboliteCount > 0 ? `<button data-action="show-hidden-metabolites" type="button">Show hidden metabolites (${store.hiddenMetaboliteCount})</button>` : ''}
   </div>`;
 }
@@ -1778,6 +1782,8 @@ function selectionInspector(store) {
   const selection = store.multiSelection;
   const spaced = spacingItems(store.map, selection).length;
   const hasLine = Boolean(selectionMainAxis(store.map, selection));
+  const circle = store.canCircularizeSelection?.() ?? false;
+  const circleTitle = circle ? 'Lay the selected cycle out as a circle' : 'The selected reactions do not close a cycle';
   // The way the selection runs, as on a compass with north at the top of the map.
   const compass = [
     ['NW', '↖', 'up-left'], ['N', '↑', 'up'], ['NE', '↗', 'up-right'],
@@ -1796,6 +1802,8 @@ function selectionInspector(store) {
     <div class="metabolite-inspector-controls">
       <button data-action="selection-space-evenly" type="button"${spaced < 3 ? ' disabled' : ''}
         title="Equal steps along the selection's own line">Even spacing</button>
+      <button data-action="selection-circularize" type="button"${circle ? '' : ' disabled'}
+        title="${circleTitle}">Circularize</button>
     </div>
     <h3 class="inspector-section-title">Rotate</h3>
     <div class="metabolite-inspector-controls selection-turn-controls">
@@ -1864,6 +1872,9 @@ function metaboliteInspector(store, nodeId) {
   const copies = store.metaboliteCopies?.(nodeId)
     ?? [...(store.map?.nodes?.values?.() ?? [])].filter((item) => item.mergedId === node.mergedId);
   const removable = Boolean(store.canRemoveMapNode?.(nodeId));
+  // A cofactor copy beside one reaction is secondary until made primary.
+  const cofactor = node.kind === 'currency';
+  const secondary = cofactor || node.primary === false;
   // The heading gives one readable name; a model name that lists synonyms is shown whole below it.
   const modelName = metabolite?.name ?? '';
   const name = modelName ? readableName(modelName, [metabolite?.id, node.base]) : '';
@@ -1879,7 +1890,7 @@ function metaboliteInspector(store, nodeId) {
       ${propertyRow('Charge', Number.isFinite(metabolite?.charge) ? esc(metabolite.charge) : '—')}
       ${propertyRow('Compartment', esc(node.compartment ?? '—'))}
       ${propertyRow('Cell', esc(cellName))}
-      ${propertyRow('Visual role', node.primary === false ? 'Secondary' : 'Primary')}
+      ${propertyRow('Visual role', secondary ? 'Secondary' : 'Primary')}
       ${propertyRow('Visual copies', String(copies.length || 1))}
       ${propertyRow('Connected paths', String(connected))}
       ${propertyRow('Radius', `${esc(node.r ?? '—')} px`)}
@@ -1890,19 +1901,14 @@ function metaboliteInspector(store, nodeId) {
     <h3 class="inspector-section-title">Visual map instance</h3>
     ${mapLabelControl(store, 'metabolite', nodeId)}
     <div class="metabolite-inspector-controls">
-      ${node.kind === 'currency'
-        // A cofactor the layout placed beside one reaction is secondary by
-        // construction; the map refuses to make it primary, so offering the
-        // button only made it look broken.
-        ? '<p class="inspector-note cofactor-role-note">Cofactor beside its reaction: always secondary.</p>'
-        : `<div class="metabolite-role-row">
+      <div class="metabolite-role-row">
         <span class="metabolite-role-label">Visual role</span>
         <div class="metabolite-role-buttons">
-          <button class="${node.primary !== false ? 'is-active' : ''}" data-action="metabolite-primary" data-node="${esc(nodeId)}" type="button">Primary</button>
-          <button class="${node.primary === false ? 'is-active' : ''}" data-action="metabolite-secondary" data-node="${esc(nodeId)}" type="button">Secondary</button>
+          <button class="${secondary ? '' : 'is-active'}" data-action="metabolite-primary" data-node="${esc(nodeId)}" type="button"${cofactor ? ' title="Draw it as a main metabolite of its reaction"' : ''}>Primary</button>
+          <button class="${secondary ? 'is-active' : ''}" data-action="metabolite-secondary" data-node="${esc(nodeId)}" type="button">Secondary</button>
         </div>
       </div>
-      <p class="metabolite-size-note">Primary = 13 px · Secondary = 7 px</p>`}
+      <p class="metabolite-size-note">Primary = 13 px · Secondary = 7 px</p>
       ${nodeColorRow(store, [nodeId], node)}
       <button class="grow" data-action="duplicate-metabolite" data-node="${esc(nodeId)}" type="button">Duplicate metabolite</button>
       <button class="grow danger" data-action="hide-metabolite" data-node="${esc(nodeId)}" type="button">Hide metabolite</button>
@@ -1941,7 +1947,7 @@ function reactionColorRow(store, reactionIds) {
   const reactions = reactionIds.map((id) => store.map?.reactions?.get?.(id)).filter(Boolean);
   if (!reactions.length) return '';
   const own = reactions.find((rxn) => rxn.color)?.color;
-  const byFlux = (store.view?.reactionColorMode ?? 'flux') === 'flux';
+  const byFlux = isFluxColorMode(store.view?.reactionColorMode ?? 'flux');
   const ids = esc(JSON.stringify(reactions.map((rxn) => rxn.id)));
   return `<div class="map-color-row">
       <span class="map-color-row-title">Line color</span>
@@ -2126,7 +2132,7 @@ function compartmentInspector(store, cellId, compartmentId) {
     <p class="inspector-note compartment-move-hint">Drag the <b>centre</b> to move it, a <b>corner</b> or <b>side</b> to resize it.</p>
     ${compartmentShapeFields(cellId, comp)}
     <div class="inspector-section-label">MAP</div>${compartmentColorFields(store, cellId, comp)}<button class="secondary wide" data-action="edit-selected-compartment-boundary" type="button">Edit Boundary</button>
-    <button class="danger wide" data-action="remove-map-compartment" data-cell-id="${esc(cellId)}" data-compartment-id="${esc(comp.id)}" type="button">${comp.parentId ? 'Delete compartment' : 'Delete cell'}</button>
+    <button class="danger wide" data-action="remove-map-compartment" data-cell-id="${esc(cellId)}" data-compartment-id="${esc(comp.id)}" type="button">${comp.id === cellRootId(cell) ? 'Delete cell' : 'Delete compartment'}</button>
     <p class="inspector-note">Delete key also works; Ctrl+Z undoes.</p>
   </section>`;
 }
@@ -2553,7 +2559,7 @@ function legendCard(store) {
   const coloring = ribbonMode !== 'off'
     ? (store.pathwayRibbonColoring?.({ drawnOnly: true }) ?? { legend: [] })
     : (store.reactionColoring?.({ drawnOnly: true }) ?? { legend: [] });
-  const categorical = mode !== 'flux';
+  const categorical = !isFluxColorMode(mode);
   const groupTitle = mode === 'pathway' ? 'Pathways' : 'Subsystems';
   const shownGroups = coloring.legend.slice(0, 18);
   const extraGroups = Math.max(0, coloring.legend.length - shownGroups.length);
@@ -2564,6 +2570,8 @@ function legendCard(store) {
     </div>`).join('');
 
   const customFluxColors = reactionMode === 'flux' && Array.isArray(store.view.fluxColorStops) && store.view.fluxColorStops.length > 0;
+  // White-to-red needs the bordered gradient: a white bar would vanish on the card.
+  const gradientLegend = customFluxColors || reactionMode === 'absflux';
   // Categorical arrow colors do not use the saved signed palette. Their
   // neutral magnitude guide must continue to start at zero.
   const stops = !store.scale ? [] : (categorical ? Array.from({ length: 7 }, (_, index) => {
@@ -2591,7 +2599,7 @@ function legendCard(store) {
       ${categoryItems || '<p class="empty">No drawn reactions.</p>'}
       ${extraGroups ? `<p class="hint">+${extraGroups} more</p>` : ''}
     </div>` : ''}
-    ${customFluxColors ? `<div class="flux-color-legend" data-flux-color-preview>${renderFluxColorPreview(store)}</div>` : `<div class="flux-scale" style="margin-top:12px">${bars}</div>${ticks}`}
+    ${gradientLegend ? `<div class="flux-color-legend" data-flux-color-preview>${renderFluxColorPreview(store)}</div>` : `<div class="flux-scale" style="margin-top:12px">${bars}</div>${ticks}`}
     ${store.crossFeedingHighlighted() ? crossFeedingLegend(store) : ''}
     ${units}
   </section>`;
@@ -2601,10 +2609,11 @@ function legendCard(store) {
 
 /** Preview the palette used by the map, never the editor's uncommitted fields. */
 export function renderFluxColorPreview(store) {
-  const custom = Array.isArray(store.view.fluxColorStops) && store.view.fluxColorStops.length > 0;
+  const absolute = store.view.reactionColorMode === 'absflux';
+  const custom = !absolute && Array.isArray(store.view.fluxColorStops) && store.view.fluxColorStops.length > 0;
   const stops = custom
     ? [...store.view.fluxColorStops].sort((a, b) => a.value - b.value)
-    : (store.scale?.legendStops(7) ?? []);
+    : ((absolute ? store.scale?.absoluteLegendStops() : store.scale?.legendStops(7)) ?? []);
   if (!stops.length) return '<p class="hint">The scale appears after an analysis.</p>';
   const first = stops[0].value;
   const last = stops[stops.length - 1].value;
@@ -2623,28 +2632,44 @@ export function renderFluxColorPreview(store) {
     ? `${stops[0].color}, ${stops[0].color}`
     : stops.map((stop) => `${stop.color} ${position(stop)}%`).join(', ');
   const marks = stops.map((stop) => `<span class="flux-color-mark" style="left:${position(stop)}%" title="${esc(formatFlux(stop.value, 6))}" aria-hidden="true"></span>`).join('');
-  const label = custom ? 'Flux' : '|flux|';
-  return `<div class="flux-color-gradient" role="img" aria-label="${esc(`${custom ? 'Signed flux' : 'Automatic flux magnitude'} color gradient, ${formatFlux(first, 6)} to ${formatFlux(last, 6)}`)}" style="background:linear-gradient(to right in srgb, ${esc(gradient)})">${marks}</div>
+  const label = custom ? 'Flux' : absolute && store.view.absoluteFluxLog ? '|flux|, log' : '|flux|';
+  return `<div class="flux-color-gradient" role="img" aria-label="${esc(`${custom ? 'Signed flux' : absolute ? 'Absolute flux' : 'Automatic flux magnitude'} color gradient, ${formatFlux(first, 6)} to ${formatFlux(last, 6)}`)}" style="background:linear-gradient(to right in srgb, ${esc(gradient)})">${marks}</div>
     <div class="flux-color-range"><span>${esc(formatFlux(first, 6))}</span><span>${label} mmol·gDW⁻¹·h⁻¹</span>${stops.length > 1 ? `<span>${esc(formatFlux(last, 6))}</span>` : ''}</div>`;
 }
 
 function fluxColorEditor(store, draft) {
-  const custom = Array.isArray(store.view.fluxColorStops) && store.view.fluxColorStops.length > 0;
+  const absolute = store.view.reactionColorMode === 'absflux';
+  const custom = !absolute && Array.isArray(store.view.fluxColorStops) && store.view.fluxColorStops.length > 0;
+  // The absolute palette is always editable: until it is edited, its points
+  // are white at 0 and red at the largest |flux|, and they follow the solution.
+  const absoluteEdited = absolute && Array.isArray(store.view.absoluteFluxColorStops);
+  const log = Boolean(store.view.absoluteFluxLog);
   const omicsActive = Boolean(
     (store.omicsDataset && store.omicsSettings?.enabled && store.omicsSettings?.conditionA && store.community)
     || (store.omics?.enabled && store.omics?.dataset)
   );
-  const rows = draft?.rows ?? (store.view.fluxColorStops ?? []).map((stop) => ({ value: String(stop.value), color: stop.color }));
+  const palette = absolute
+    ? (store.view.absoluteFluxColorStops ?? store.scale?.absolutePalette() ?? defaultAbsoluteFluxStops(1))
+    : (store.view.fluxColorStops ?? []);
+  const rows = draft?.rows ?? palette.map((stop) => ({ value: String(stop.value), color: stop.color }));
   const invalid = new Set(draft?.invalid ?? []);
+  const editing = custom || absolute;
+  const scaleButton = (value, label, title) => `<button data-action="absolute-flux-scale" data-scale="${value}" type="button" aria-pressed="${log === (value === 'log')}" title="${esc(title)}">${label}</button>`;
   return `<div class="flux-color-editor">
-    <div class="flux-color-editor-head"><strong>Flux palette</strong><span>${custom ? `${rows.length} point${rows.length === 1 ? '' : 's'}` : 'Automatic'}</span></div>
+    <div class="flux-color-editor-head"><strong>Flux palette</strong><span>${custom || absoluteEdited ? `${rows.length} point${rows.length === 1 ? '' : 's'}` : absolute ? 'Absolute' : 'Automatic'}</span></div>
     <div class="flux-color-mode-buttons" role="group" aria-label="Flux color palette">
-      <button data-action="flux-colors-reset" type="button" aria-pressed="${!custom}">Automatic</button>
+      <button data-action="flux-colors-reset" type="button" aria-pressed="${!custom && !absolute}">Automatic</button>
+      <button data-action="flux-colors-absolute" type="button" aria-pressed="${absolute}" title="White at 0 to red at the largest |flux|">Absolute</button>
       <button data-action="flux-colors-customize" type="button" aria-pressed="${custom}">Custom colors</button>
     </div>
     ${omicsActive ? '<p class="hint flux-color-omics-hint">An omics overlay is active and hides flux colors.</p>' : ''}
+    ${absolute ? `<div class="flux-color-scale" role="group" aria-label="Color scale">
+      <span>Scale</span>
+      ${scaleButton('linear', 'Linear', 'Colors follow |flux|')}
+      ${scaleButton('log', 'Log', 'Colors follow log |flux|, over four decades below the top point')}
+    </div>` : ''}
     <div data-flux-color-preview>${renderFluxColorPreview(store)}</div>
-    ${custom ? `<div class="flux-color-columns" aria-hidden="true"><span>Color</span><span>Flux value</span><span></span></div>
+    ${editing ? `<div class="flux-color-columns" aria-hidden="true"><span>Color</span><span>${absolute ? '|flux|' : 'Flux value'}</span><span></span></div>
       <div class="flux-color-stops">${rows.map((stop, index) => `<div class="flux-color-stop" data-flux-color-stop="${index}">
         <input type="color" value="${esc(stop.color)}" data-action="flux-color-color" data-flux-color-index="${index}" aria-label="Color at flux point ${index + 1}">
         <input type="number" step="any" value="${esc(stop.value)}" data-action="flux-color-value" data-flux-color-index="${index}" aria-label="Flux value at point ${index + 1}"${invalid.has(index) ? ' aria-invalid="true"' : ''}>
@@ -2652,7 +2677,8 @@ function fluxColorEditor(store, draft) {
       </div>`).join('')}</div>
       <p class="flux-color-error" data-flux-color-error role="alert"${draft?.error ? '' : ' hidden'}>${esc(draft?.error ?? '')}</p>
       <button class="flux-color-add" data-action="flux-color-add" type="button">+ Add color point</button>
-      <p class="hint">Each point needs a unique value.</p>`
+      ${absolute ? `<button class="flux-color-add" data-action="absolute-flux-reset" type="button" title="White at 0 to red at the largest |flux|"${absoluteEdited ? '' : ' disabled'}>Reset points</button>` : ''}
+      <p class="hint">Each point needs a unique value${absolute ? ', zero or more' : ''}.</p>`
       : ''}
   </div>`;
 }
@@ -2684,7 +2710,7 @@ export function defaultNodeColors(dark) {
 
 function mapAppearanceCard(store, fluxColorDraft = null) {
   const view = store.view;
-  const byFlux = (view.reactionColorMode ?? 'flux') === 'flux';
+  const byFlux = isFluxColorMode(view.reactionColorMode ?? 'flux');
   return `<section class="card map-appearance-card">
     <h2>Lines, circles & ribbons</h2>
     ${lineToggle('color-by-flux', byFlux, 'Color lines by flux')}
@@ -2755,6 +2781,7 @@ function displayCard(store, { workspace = false } = {}) {
       <label style="width:110px">Reaction color</label>
       <select class="grow" data-action="reaction-color-mode">
         <option value="flux"${v.reactionColorMode === 'flux' ? ' selected' : ''}>Flux</option>
+        <option value="absflux"${v.reactionColorMode === 'absflux' ? ' selected' : ''}>Absolute flux</option>
         <option value="subsystem"${v.reactionColorMode === 'subsystem' ? ' selected' : ''}>Subsystem</option>
         <option value="pathway"${v.reactionColorMode === 'pathway' ? ' selected' : ''}>Pathway</option>
       </select>

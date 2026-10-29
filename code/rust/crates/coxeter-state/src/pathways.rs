@@ -194,7 +194,9 @@ impl Store {
         let pathway = ManualPathway { id: id.clone(), name: label, color, visible: true, reaction_ids: valid };
         self.manual_pathways.insert(id, pathway.clone());
         self.view.pathway_ribbon_mode = PathwayRibbonMode::Pathway;
-        self.view.reaction_color_mode = ReactionColorMode::Flux;
+        if !self.view.reaction_color_mode.is_flux() {
+            self.view.reaction_color_mode = ReactionColorMode::Flux;
+        }
         self.emit("pathways");
         Ok(pathway)
     }

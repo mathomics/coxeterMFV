@@ -116,6 +116,9 @@ test('the map toolbar carries the display options used most, and View the same f
   assert.match(quick, /<span class="quick quick-a">[\s\S]*data-action="labels"[\s\S]*data-action="toggle-currency"[\s\S]*<\/span>\s*<span class="quick quick-b">/);
   assert.match(quick, /<option value="pathway" selected>Color: pathway<\/option>/);
   assert.match(quick, /data-action="toggle-width-by-flux" aria-pressed="true"/);
+  assert.match(quick, /<span class="quick quick-b">[\s\S]*data-action="toggle-width-by-flux"[\s\S]*data-action="open-workspace" data-workspace="map"[\s\S]*<\/span>$/);
   // View holds a copy, shown by the stylesheet only when the toolbar is too narrow.
-  assert.ok(renderViewControls(store).includes(`<div class="view-folded">${quick}</div>`));
+  const view = renderViewControls(store);
+  assert.ok(view.includes(`<div class="view-folded">${quick}</div>`));
+  assert.equal(view.split('data-action="open-workspace"').length, 2, 'Colors & pathways appears once, in the folded copy');
 });

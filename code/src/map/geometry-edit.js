@@ -399,6 +399,17 @@ export function rectFromHandle(startRect, handle, startPoint, point) {
   return { x: x1, y: y1, w: x2 - x1, h: y2 - y1 };
 }
 
+/**
+ * The id of the compartment that is the cell itself: its outer compartment, or
+ * the first without a parent. A model can leave another compartment without a
+ * parent too (a flagellum), and that one is not the cell.
+ */
+export function cellRootId(cell) {
+  const root = cell?.compartments.find((item) => item.id === cell.outerCompartment)
+    ?? cell?.compartments.find((item) => !item.parentId);
+  return root?.id ?? null;
+}
+
 /** `rootId` and the ids of every compartment of `cell` nested under it, as a Set. */
 export function descendantIds(cell, rootId) {
   const out = new Set([rootId]);

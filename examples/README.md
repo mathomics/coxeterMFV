@@ -12,7 +12,7 @@ Maps and models that show what Coxeter-MFV draws and computes, from a single euk
 
 ## Opening an example
 
-In either application, import the model first with **File › Import › Model**, then the map with **File › Import › Map JSON**. The literature communities need no import, since they are already in the scenario list of the **Simulate** tab.
+In either application, import the model first with **File › Import › Model**, then the map with **File › Import › Map JSON**. The literature communities need no import, since they are already in the scenario list under **Edit Model › Scenario & objective**.
 
 Please cite the original work alongside Coxeter-MFV when you use an example. The literature communities list their reference and the terms of their data in their own folder.
 

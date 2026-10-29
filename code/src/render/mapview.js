@@ -798,8 +798,8 @@ function activeCrossFeedingReactionIds(explorer, enabled) {
 
 /**
  * A reaction's colour. An omics overlay wins, then flux colouring when lines
- * are coloured by flux, otherwise the colour set on the reaction itself, then
- * its pathway's or subsystem's.
+ * are coloured by flux (or by |flux|), otherwise the colour set on the
+ * reaction itself, then its pathway's or subsystem's.
  */
 function reactionDisplayColor(
   reactionId, flux, scale, mode, reactionColors,
@@ -810,6 +810,7 @@ function reactionDisplayColor(
       ?? omicsFallbackColor
       ?? scale.color(flux);
   }
+  if (mode === 'absflux') return scale.absoluteColor(flux);
   return mode === 'flux'
     ? scale.color(flux)
     : (ownColor || (reactionColors?.get?.(reactionId) ?? scale.color(flux)));

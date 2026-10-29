@@ -21,7 +21,7 @@ use coxeter_map::map_document::{
 };
 use coxeter_map::reconcile_map::{describe_reconciliation, prune_map_to_model, reconcile_compartments};
 use coxeter_render::reaction_colors::{normalize_pathway_ribbon_mode, normalize_reaction_color_mode};
-use coxeter_render::theme::{FluxColorStop, normalize_flux_color_stops_value};
+use coxeter_render::theme::{FluxColorStop, normalize_absolute_flux_colors_value, normalize_flux_color_stops_value};
 use coxeter_solver::steadycom::Fiber;
 use indexmap::IndexMap;
 use serde_json::{Map, Value, json};
@@ -174,6 +174,7 @@ impl Store {
             scenario: self.scenario_id(),
             pathway_manager: Some(self.pathway_manager_state()),
             flux_color_stops: Some(flux_color_stops_json(self.view.flux_color_stops.as_deref())),
+            absolute_flux_colors: Some(self.absolute_flux_colors_json()),
             study: Some(self.zuniga_state()),
         }
     }
@@ -490,6 +491,7 @@ impl Store {
                 .as_deref(),
         );
         let flux_color_stops = normalize_flux_color_stops_value(&stops)?;
+        let absolute_flux_colors = normalize_absolute_flux_colors_value(&parsed.absolute_flux_colors)?;
         let (Some(community), Some(_)) = (self.community.clone(), self.map.as_ref()) else {
             return Err(StoreError::msg("There is no active model to receive the map."));
         };
@@ -530,6 +532,7 @@ impl Store {
         self.map_history.record(&before, &next.to_json(), "Load map JSON");
         self.map = Some(next);
         self.view.flux_color_stops = flux_color_stops;
+        (self.view.absolute_flux_color_stops, self.view.absolute_flux_log) = absolute_flux_colors;
         self.refresh_flux_scale();
         self.restore_pathway_manager_state(parsed.pathway_manager.as_ref());
         // What was just opened is what is in the file, pathways and colours
@@ -578,6 +581,7 @@ impl Store {
             "lineHops": self.view.line_hops,
             "crossFeedingWidth": num_json(self.view.cross_feeding_width),
             "fluxColorStops": flux_color_stops_json(self.view.flux_color_stops.as_deref()),
+            "absoluteFluxColors": self.absolute_flux_colors_json(),
             "pathwayRibbonMode": self.view.pathway_ribbon_mode.as_str(),
             "pathwayRibbonWidth": num_json(self.view.pathway_ribbon_width),
             "pathwayRibbonOpacity": num_json(self.view.pathway_ribbon_opacity),
@@ -599,6 +603,8 @@ impl Store {
         let doc: Value = serde_json::from_str(text)?;
         self.solution_cleared = false;
         let flux_color_stops = normalize_flux_color_stops_value(doc.get("fluxColorStops").unwrap_or(&Value::Null))?;
+        let absolute_flux_colors = doc.get("absoluteFluxColors").cloned().unwrap_or(Value::Null);
+        normalize_absolute_flux_colors_value(&absolute_flux_colors)?;
         let study_id = doc.get("study").and_then(|s| s.get("id")).and_then(Value::as_str);
         if study_id == Some(ZUNIGA_ID) || doc.get("scenario").and_then(Value::as_str) == Some(&format!("published:{ZUNIGA_ID}")) {
             let study = doc.get("study").filter(|s| js::truthy(s));
@@ -614,6 +620,7 @@ impl Store {
             }
             self.use_zuniga_scenario(&scenario, false)?;
             self.view.flux_color_stops = flux_color_stops;
+            self.restore_absolute_flux_colors(&absolute_flux_colors)?;
             let layout = match doc.get("layoutSettings").filter(|v| !v.is_null()) {
                 Some(v) => raw_layout_settings(v),
                 None => (&self.layout_settings).into(),
@@ -698,7 +705,6 @@ impl Store {
             let value = if w.is_null() || w.as_str() == Some("") { f64::NAN } else { js::to_number(w) };
             self.view.cross_feeding_width = crate::view::cross_feeding_width_value(value, self.view.cross_feeding_width);
         }
-        self.view.flux_color_stops = flux_color_stops;
         if let Some(mode) = get("pathwayRibbonMode") {
             self.view.pathway_ribbon_mode = normalize_pathway_ribbon_mode(&js::to_string(mode));
         }
@@ -721,6 +727,11 @@ impl Store {
             contents: if gut_nine { coxeter_map::Contents::None } else { coxeter_map::Contents::All },
             solve: steady_mu.is_none(),
         })?;
+        // After the rebuild: a scenario's curated map, drawn again, brings its
+        // own palettes, and the ones in the file are what was saved.
+        self.view.flux_color_stops = flux_color_stops;
+        self.restore_absolute_flux_colors(&absolute_flux_colors)?;
+        self.refresh_flux_scale();
         self.restore_pathway_manager_state(get("pathwayManager"));
         self.restore_omics_state(get("omics"));
         self.overrides = get("overrides")

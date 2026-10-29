@@ -199,6 +199,9 @@ impl MapHost for StoreHost<'_> {
     fn toggle_multi_selection(&mut self, k: SelectKind, id: &str) {
         self.store.toggle_multi_selection(kind(k), id);
     }
+    fn extend_multi_selection(&mut self, k: SelectKind, id: &str) {
+        self.store.extend_multi_selection(kind(k), id);
+    }
     fn select_in_rect(&mut self, x1: f64, y1: f64, x2: f64, y2: f64, replace: bool) {
         self.store.select_in_rect(SelectionRect::from_corners(x1, y1, x2, y2), replace);
     }

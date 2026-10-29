@@ -17,8 +17,8 @@
 use coxeter_canvas::Tool;
 use coxeter_core::js;
 use coxeter_map::editable_map::ColorChange;
-use coxeter_render::reaction_colors::{PathwayRibbonMode, ReactionColorMode};
-use coxeter_render::theme::{FluxColorStop, format_flux};
+use coxeter_render::reaction_colors::{PathwayRibbonMode, ReactionColorMode, normalize_reaction_color_mode};
+use coxeter_render::theme::{FluxColorStop, default_absolute_flux_stops, format_flux};
 use coxeter_state::pathways::PathwayPatch;
 use coxeter_state::{Store, ViewPatch};
 use egui::{Color32, CornerRadius, Frame, Margin, RichText, Sense, Stroke, Ui, Vec2};
@@ -252,24 +252,25 @@ fn view_label_control(ui: &mut Ui, label: &str, add: impl FnOnce(&mut Ui)) {
 /// `select[data-action="reaction-color-mode"]`.
 fn reaction_color_select(ui: &mut Ui, shell: &mut Shell, id: &str, aria: &str) {
     let current = shell.store.view.reaction_color_mode.as_str().to_string();
-    let options = [("flux", "Flux"), ("subsystem", "Subsystem"), ("pathway", "Pathway")].map(|(v, l)| (v.to_string(), l.to_string()));
+    let options = [("flux", "Flux"), ("absflux", "Absolute flux"), ("subsystem", "Subsystem"), ("pathway", "Pathway")].map(|(v, l)| (v.to_string(), l.to_string()));
     view_label_control(ui, "Reaction color", |ui| {
         if let Some(value) = widgets::select(ui, id, &current, &options, 160.0, true, aria) {
             // A group chosen here is what "Color lines by flux" goes back to.
-            let group = (value != "flux").then(|| value.clone());
+            let group = (!normalize_reaction_color_mode(&value).is_flux()).then(|| value.clone());
             let _ = shell.store.set_view(ViewPatch { reaction_color_mode: Some(value), line_color_group: group, ..Default::default() });
         }
     });
 }
 
 /// `select[data-action="pathway-ribbon-mode"]`: a ribbon brings the arrows
-/// back to flux colours.
+/// back to flux colours, unless they already follow flux or |flux|.
 fn pathway_ribbon_select(ui: &mut Ui, shell: &mut Shell, id: &str, aria: &str) {
     let current = shell.store.view.pathway_ribbon_mode.as_str().to_string();
+    let by_flux = shell.store.view.reaction_color_mode.is_flux();
     let options = [("off", "Off"), ("subsystem", "Subsystem"), ("pathway", "Pathway")].map(|(v, l)| (v.to_string(), l.to_string()));
     view_label_control(ui, "Pathway ribbons", |ui| {
         if let Some(value) = widgets::select(ui, id, &current, &options, 160.0, true, aria) {
-            let flux = (value != "off").then(|| "flux".to_string());
+            let flux = (value != "off" && !by_flux).then(|| "flux".to_string());
             let _ = shell.store.set_view(ViewPatch { pathway_ribbon_mode: Some(value), reaction_color_mode: flux, ..Default::default() });
         }
     });
@@ -327,7 +328,7 @@ fn slider_row(ui: &mut Ui, p: &Palette, label: &str, readout: String, add: impl 
 /// `mapAppearanceCard(store, fluxColorDraft)`.
 pub fn map_appearance_card(ui: &mut Ui, shell: &mut Shell) {
     widgets::card(ui, "Lines, circles & ribbons", None, |ui| {
-        let by_flux = shell.store.view.reaction_color_mode == ReactionColorMode::Flux;
+        let by_flux = shell.store.view.reaction_color_mode.is_flux();
         // `color-by-flux`: off colours lines by the group last chosen.
         if let Some(on) = line_toggle(ui, by_flux, "Color lines by flux") {
             let mode = if on { "flux".to_string() } else { shell.store.view.line_color_group.clone() };
@@ -460,7 +461,7 @@ pub fn reaction_color_row(ui: &mut Ui, store: &Store, reaction_ids: &[String], s
         return None;
     }
     let own = reactions.iter().find_map(|r| r.own_color()).map(str::to_string);
-    let by_flux = store.view.reaction_color_mode == ReactionColorMode::Flux;
+    let by_flux = store.view.reaction_color_mode.is_flux();
     let p = Palette::current(ui.ctx());
     let mut edit = None;
     ui.label(RichText::new("Line color").size(12.0).family(bold()).color(p.ink_2));
@@ -560,19 +561,30 @@ impl RowInput {
     }
 }
 
-/// The rows on screen: the draft as the user left it, or the palette.
-fn shown_rows(shell: &Shell) -> Vec<FluxColorRow> {
-    match &shell.ui.flux_color_draft {
-        Some(draft) => draft.rows.clone(),
-        None => shell
-            .store
-            .view
-            .flux_color_stops
-            .iter()
-            .flatten()
-            .map(|stop| FluxColorRow { value: js::number_to_string(stop.value), color: stop.color.clone() })
-            .collect(),
+/// `fluxPaletteKey()` with what it holds: whether the editor shows the
+/// absolute palette (else the signed one), and that palette.
+pub fn active_flux_palette(store: &Store) -> (bool, Option<Vec<FluxColorStop>>) {
+    if store.view.reaction_color_mode == ReactionColorMode::AbsoluteFlux {
+        (true, store.view.absolute_flux_color_stops.clone())
+    } else {
+        (false, store.view.flux_color_stops.clone())
     }
+}
+
+/// The rows on screen: the draft as the user left it, or the palette. The
+/// absolute palette always has rows: until it is edited, white at 0 and red
+/// at the largest |flux|.
+fn shown_rows(shell: &Shell) -> Vec<FluxColorRow> {
+    if let Some(draft) = &shell.ui.flux_color_draft {
+        return draft.rows.clone();
+    }
+    let store = &shell.store;
+    let stops = match active_flux_palette(store) {
+        (true, Some(stops)) => stops,
+        (true, None) => store.scale.as_ref().map_or_else(|| default_absolute_flux_stops(1.0), |s| s.absolute_palette()),
+        (false, stops) => stops.unwrap_or_default(),
+    };
+    stops.into_iter().map(|stop| FluxColorRow { value: js::number_to_string(stop.value), color: stop.color }).collect()
 }
 
 /// `readFluxColorRows()`.
@@ -587,8 +599,9 @@ struct RowsError {
     indices: Vec<usize>,
 }
 
-/// `fluxColorValues(rows)`: the palette the rows make, or why they make none.
-fn flux_color_values(rows: &[RowInput]) -> Result<Vec<FluxColorStop>, RowsError> {
+/// `fluxColorValues(rows, { absolute })`: the palette the rows make, or why
+/// they make none. An absolute palette takes no value below zero.
+fn flux_color_values(rows: &[RowInput], absolute: bool) -> Result<Vec<FluxColorStop>, RowsError> {
     if rows.is_empty() {
         return Err(RowsError { message: "Keep at least one color point in a custom palette.".into(), indices: Vec::new() });
     }
@@ -600,7 +613,7 @@ fn flux_color_values(rows: &[RowInput]) -> Result<Vec<FluxColorStop>, RowsError>
         .enumerate()
         .map(|(index, row)| {
             let value = row.number;
-            if row.value.trim().is_empty() || !value.is_finite() {
+            if row.value.trim().is_empty() || !value.is_finite() || (absolute && value < 0.0) {
                 invalid.push(index);
             } else {
                 let key = if value == 0.0 { 0.0_f64.to_bits() } else { value.to_bits() };
@@ -610,10 +623,12 @@ fn flux_color_values(rows: &[RowInput]) -> Result<Vec<FluxColorStop>, RowsError>
         })
         .collect();
     if !invalid.is_empty() {
-        return Err(RowsError {
-            message: "Enter a finite flux value for every point. The map keeps the last valid palette.".into(),
-            indices: invalid,
-        });
+        let message = if absolute {
+            "Enter a |flux| of zero or more for every point. The map keeps the last valid palette."
+        } else {
+            "Enter a finite flux value for every point. The map keeps the last valid palette."
+        };
+        return Err(RowsError { message: message.into(), indices: invalid });
     }
     let duplicates: Vec<usize> = by_value.into_values().filter(|m| m.len() > 1).flatten().collect();
     if !duplicates.is_empty() {
@@ -633,14 +648,18 @@ fn commit_flux_color_rows(shell: &mut Shell, rows: &[RowInput]) -> bool {
         error: String::new(),
         invalid: Vec::new(),
     };
-    let committed = match flux_color_values(rows) {
+    let absolute = active_flux_palette(&shell.store).0;
+    let committed = match flux_color_values(rows, absolute) {
         Ok(points) => {
             shell.ui.flux_colors_committing = true;
-            let result = shell.store.set_flux_color_stops(Some(points));
-            // `ui.fluxColorDraft.source = store.view.fluxColorStops`: the
-            // palette the draft belongs to, so the change it caused does not
-            // drop it.
-            shell.ui.flux_color_source = Some(shell.store.view.flux_color_stops.clone());
+            let result = if absolute {
+                shell.store.set_view(ViewPatch { absolute_flux_color_stops: Some(Some(points)), ..Default::default() })
+            } else {
+                shell.store.set_flux_color_stops(Some(points)).map(|_| ())
+            };
+            // `ui.fluxColorDraft.source = store.view[palette]`: the palette
+            // the draft belongs to, so the change it caused does not drop it.
+            shell.ui.flux_color_source = Some(active_flux_palette(&shell.store));
             shell.ui.flux_colors_committing = false;
             match result {
                 Ok(_) => true,
@@ -660,9 +679,9 @@ fn commit_flux_color_rows(shell: &mut Shell, rows: &[RowInput]) -> bool {
     committed
 }
 
-/// `newFluxColorValue(points)`: a value no point has yet, past the top end
-/// first.
-fn new_flux_color_value(points: &[FluxColorStop]) -> Result<f64, String> {
+/// `newFluxColorValue(points, { absolute })`: a value no point has yet, past
+/// the top end first; none below zero for an absolute palette.
+fn new_flux_color_value(points: &[FluxColorStop], absolute: bool) -> Result<f64, String> {
     let mut sorted: Vec<f64> = points.iter().map(|p| p.value).collect();
     sorted.sort_by(|a, b| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal));
     let first = sorted[0];
@@ -674,7 +693,7 @@ fn new_flux_color_value(points: &[FluxColorStop]) -> Result<f64, String> {
     }
     candidates
         .into_iter()
-        .find(|c| c.is_finite() && !sorted.contains(c))
+        .find(|c| c.is_finite() && !sorted.contains(c) && !(absolute && *c < 0.0))
         .ok_or_else(|| "Choose a different value before adding another color point.".to_string())
 }
 
@@ -685,6 +704,7 @@ fn focus_flux_color_point(shell: &mut Shell, index: usize) {
 
 /// `flux-colors-customize`: start a signed palette around the current scale.
 fn flux_colors_customize(shell: &mut Shell) {
+    let _ = shell.store.set_view(ViewPatch { reaction_color_mode: Some("flux".into()), ..Default::default() });
     if shell.store.view.flux_color_stops.is_none() {
         let reference = shell.store.scale.as_ref().map_or(1.0, |s| s.reference);
         let limit = if reference.is_finite() && reference > 0.0 { reference } else { 1.0 };
@@ -697,14 +717,26 @@ fn flux_colors_customize(shell: &mut Shell) {
 /// `flux-colors-reset`.
 fn flux_colors_reset(shell: &mut Shell) {
     shell.ui.flux_color_draft = None;
-    let _ = shell.store.set_flux_color_stops(None);
+    let _ = shell.store.set_view(ViewPatch { reaction_color_mode: Some("flux".into()), flux_color_stops: Some(None), ..Default::default() });
+}
+
+/// `flux-colors-absolute`: colour by |flux| alone, white to red.
+fn flux_colors_absolute(shell: &mut Shell) {
+    let _ = shell.store.set_view(ViewPatch { reaction_color_mode: Some("absflux".into()), ..Default::default() });
+}
+
+/// `absolute-flux-reset`: back to white at 0 and red at the largest |flux|.
+fn absolute_flux_reset(shell: &mut Shell) {
+    shell.ui.flux_color_draft = None;
+    let _ = shell.store.set_view(ViewPatch { absolute_flux_color_stops: Some(None), ..Default::default() });
 }
 
 /// `flux-color-add`.
 fn flux_color_add(shell: &mut Shell) {
     let mut rows = read_flux_color_rows(shell);
-    let next = flux_color_values(&rows).map_err(|_| ()).and_then(|points| {
-        let value = new_flux_color_value(&points).map_err(|_| ())?;
+    let absolute = active_flux_palette(&shell.store).0;
+    let next = flux_color_values(&rows, absolute).map_err(|_| ()).and_then(|points| {
+        let value = new_flux_color_value(&points, absolute).map_err(|_| ())?;
         let mut sorted = points.clone();
         sorted.sort_by(|a, b| a.value.partial_cmp(&b.value).unwrap_or(std::cmp::Ordering::Equal));
         Ok((value, sorted.last().map(|p| p.color.clone()).unwrap_or_default()))
@@ -747,7 +779,12 @@ enum RowEdit {
 fn flux_color_editor(ui: &mut Ui, shell: &mut Shell) {
     let p = shell.palette();
     let store = &shell.store;
-    let custom = store.view.flux_color_stops.as_ref().is_some_and(|s| !s.is_empty());
+    let absolute = store.view.reaction_color_mode == ReactionColorMode::AbsoluteFlux;
+    let custom = !absolute && store.view.flux_color_stops.as_ref().is_some_and(|s| !s.is_empty());
+    // The absolute palette is always editable: until it is edited, its points
+    // are white at 0 and red at the largest |flux|, and they follow the solution.
+    let absolute_edited = absolute && store.view.absolute_flux_color_stops.is_some();
+    let log = store.view.absolute_flux_log;
     let omics_active = (store.omics_dataset.is_some()
         && store.omics_settings.enabled
         && store.omics_settings.condition_a.as_deref().is_some_and(|c| !c.is_empty())
@@ -762,16 +799,30 @@ fn flux_color_editor(ui: &mut Ui, shell: &mut Shell) {
         ui.horizontal(|ui| {
             ui.label(RichText::new("Flux palette").size(12.0).family(bold()).color(p.ink));
             ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
-                let count = if custom { format!("{} point{}", rows.len(), if rows.len() == 1 { "" } else { "s" }) } else { "Automatic".into() };
+                let count = if custom || absolute_edited {
+                    format!("{} point{}", rows.len(), if rows.len() == 1 { "" } else { "s" })
+                } else if absolute {
+                    "Absolute".into()
+                } else {
+                    "Automatic".into()
+                };
                 ui.label(RichText::new(count).size(11.0).color(p.ink_3));
             });
         });
         ui.add_space(4.0);
         // `role="group" aria-label="Flux color palette"`.
         let mut mode = None;
-        widgets::grow_row(ui, 2, |ui, i| {
-            let (label, on) = if i == 0 { ("Automatic", !custom) } else { ("Custom colors", custom) };
-            let r = Btn::new(label).active(on).wide().height(30.0).show(ui);
+        widgets::grow_row(ui, 3, |ui, i| {
+            let (label, on) = match i {
+                0 => ("Automatic", !custom && !absolute),
+                1 => ("Absolute", absolute),
+                _ => ("Custom colors", custom),
+            };
+            let mut button = Btn::new(label).active(on).wide().height(30.0);
+            if i == 1 {
+                button = button.title("White at 0 to red at the largest |flux|");
+            }
+            let r = button.show(ui);
             aria_pressed(&r, on);
             if r.clicked() {
                 mode = Some(i);
@@ -779,6 +830,7 @@ fn flux_color_editor(ui: &mut Ui, shell: &mut Shell) {
         });
         match mode {
             Some(0) => flux_colors_reset(shell),
+            Some(1) => flux_colors_absolute(shell),
             Some(_) => flux_colors_customize(shell),
             None => {}
         }
@@ -786,12 +838,38 @@ fn flux_color_editor(ui: &mut Ui, shell: &mut Shell) {
         if omics_active {
             widgets::hint(ui, "An omics overlay is active and hides flux colors.");
         }
+        // The mode may have changed with the buttons.
+        let absolute = shell.store.view.reaction_color_mode == ReactionColorMode::AbsoluteFlux;
+        if absolute {
+            // `.flux-color-scale`: linear or log colours.
+            let mut scale = None;
+            ui.horizontal(|ui| {
+                ui.label(RichText::new("Scale").size(11.0).color(p.ink_3));
+                widgets::grow_row(ui, 2, |ui, i| {
+                    let (label, on, title) = if i == 0 {
+                        ("Linear", !log, "Colors follow |flux|")
+                    } else {
+                        ("Log", log, "Colors follow log |flux|, over four decades below the top point")
+                    };
+                    let r = Btn::new(label).active(on).wide().height(26.0).title(title).show(ui);
+                    aria_pressed(&r, on);
+                    if r.clicked() {
+                        scale = Some(i == 1);
+                    }
+                });
+            });
+            if let Some(log) = scale {
+                let _ = shell.store.set_view(ViewPatch { absolute_flux_log: Some(log), ..Default::default() });
+            }
+            ui.add_space(6.0);
+        }
         render_flux_color_preview(ui, &shell.store);
         // The rows may have changed with the mode.
-        let custom = shell.store.view.flux_color_stops.as_ref().is_some_and(|s| !s.is_empty());
-        if !custom {
+        let custom = !absolute && shell.store.view.flux_color_stops.as_ref().is_some_and(|s| !s.is_empty());
+        if !custom && !absolute {
             return;
         }
+        let absolute_edited = absolute && shell.store.view.absolute_flux_color_stops.is_some();
         let rows = if mode.is_some() { shown_rows(shell) } else { rows };
         let (error, invalid) =
             if mode.is_some() { shell.ui.flux_color_draft.as_ref().map_or((String::new(), Vec::new()), |d| (d.error.clone(), d.invalid.clone())) } else { (error, invalid) };
@@ -803,7 +881,7 @@ fn flux_color_editor(ui: &mut Ui, shell: &mut Shell) {
                 ui.set_width(108.0);
                 ui.label(small("Color"));
             });
-            ui.label(small("Flux value"));
+            ui.label(small(if absolute { "|flux|" } else { "Flux value" }));
         });
         let mut edit = None;
         for (index, row) in rows.iter().enumerate() {
@@ -840,7 +918,14 @@ fn flux_color_editor(ui: &mut Ui, shell: &mut Shell) {
         if Btn::new("+ Add color point").wide().height(34.0).show(ui).clicked() {
             flux_color_add(shell);
         }
-        widgets::hint(ui, "Each point needs a unique value.");
+        if absolute {
+            ui.add_space(4.0);
+            let reset = Btn::new("Reset points").wide().height(34.0).title("White at 0 to red at the largest |flux|").enabled(absolute_edited).show(ui);
+            if reset.clicked() {
+                absolute_flux_reset(shell);
+            }
+        }
+        widgets::hint(ui, if absolute { "Each point needs a unique value, zero or more." } else { "Each point needs a unique value." });
         match edit {
             Some(RowEdit::Value(index, text)) => {
                 let mut rows = read_flux_color_rows(shell);
@@ -867,13 +952,21 @@ fn flux_color_editor(ui: &mut Ui, shell: &mut Shell) {
 /// editor's uncommitted fields.
 pub fn render_flux_color_preview(ui: &mut Ui, store: &Store) {
     let p = Palette::current(ui.ctx());
-    let custom = store.view.flux_color_stops.as_ref().is_some_and(|s| !s.is_empty());
+    let absolute = store.view.reaction_color_mode == ReactionColorMode::AbsoluteFlux;
+    let custom = !absolute && store.view.flux_color_stops.as_ref().is_some_and(|s| !s.is_empty());
     let stops: Vec<(f64, f64, String)> = if custom {
         let mut sorted = store.view.flux_color_stops.clone().unwrap_or_default();
         sorted.sort_by(|a, b| a.value.partial_cmp(&b.value).unwrap_or(std::cmp::Ordering::Equal));
         sorted.into_iter().map(|s| (f64::NAN, s.value, s.color)).collect()
     } else {
-        store.scale.as_ref().map(|s| s.legend_stops(7)).unwrap_or_default().into_iter().map(|s| (s.t, s.value, s.color)).collect()
+        store
+            .scale
+            .as_ref()
+            .map(|s| if absolute { s.absolute_legend_stops() } else { s.legend_stops(7) })
+            .unwrap_or_default()
+            .into_iter()
+            .map(|s| (s.t, s.value, s.color))
+            .collect()
     };
     if stops.is_empty() {
         widgets::hint(ui, "The scale appears after an analysis.");
@@ -903,7 +996,13 @@ pub fn render_flux_color_preview(ui: &mut Ui, store: &Store) {
 
     let label = format!(
         "{} color gradient, {} to {}",
-        if custom { "Signed flux" } else { "Automatic flux magnitude" },
+        if custom {
+            "Signed flux"
+        } else if absolute {
+            "Absolute flux"
+        } else {
+            "Automatic flux magnitude"
+        },
         format_flux(Some(first), 6),
         format_flux(Some(last), 6)
     );
@@ -931,7 +1030,14 @@ pub fn render_flux_color_preview(ui: &mut Ui, store: &Store) {
                 ui.label(small(format_flux(Some(last), 6)));
             }
             ui.with_layout(egui::Layout::centered_and_justified(egui::Direction::LeftToRight), |ui| {
-                ui.label(small(format!("{} mmol·gDW⁻¹·h⁻¹", if custom { "Flux" } else { "|flux|" })));
+                let name = if custom {
+                    "Flux"
+                } else if absolute && store.view.absolute_flux_log {
+                    "|flux|, log"
+                } else {
+                    "|flux|"
+                };
+                ui.label(small(format!("{name} mmol·gDW⁻¹·h⁻¹")));
             });
         });
     });
@@ -1019,11 +1125,13 @@ pub fn legend_card(ui: &mut Ui, shell: &mut Shell) {
     let ribbon_mode = store.view.pathway_ribbon_mode;
     let mode = if ribbon_mode != PathwayRibbonMode::Off { ribbon_mode.as_str() } else { reaction_mode.as_str() };
     let coloring = if ribbon_mode != PathwayRibbonMode::Off { store.pathway_ribbon_coloring(true) } else { store.reaction_coloring(true) };
-    let categorical = mode != "flux";
+    let categorical = !normalize_reaction_color_mode(mode).is_flux();
     let group_title = if mode == "pathway" { "Pathways" } else { "Subsystems" };
     let shown_groups = &coloring.legend[..coloring.legend.len().min(18)];
     let extra_groups = coloring.legend.len() - shown_groups.len();
     let custom_flux_colors = reaction_mode == ReactionColorMode::Flux && store.view.flux_color_stops.as_ref().is_some_and(|s| !s.is_empty());
+    // White-to-red needs the bordered gradient: a white bar would vanish on the card.
+    let gradient_legend = custom_flux_colors || reaction_mode == ReactionColorMode::AbsoluteFlux;
     // Categorical arrow colours do not use the saved signed palette. Their
     // neutral magnitude guide must continue to start at zero.
     let stops: Vec<(f64, f64, String)> = match &store.scale {
@@ -1087,7 +1195,7 @@ pub fn legend_card(ui: &mut Ui, shell: &mut Shell) {
             }
         }
 
-        if custom_flux_colors {
+        if gradient_legend {
             ui.add_space(12.0);
             render_flux_color_preview(ui, &shell.store);
         } else {
@@ -1616,25 +1724,31 @@ mod tests {
 
     #[test]
     fn flux_color_values_validate_like_the_js() {
-        let empty = flux_color_values(&[]).unwrap_err();
+        let empty = flux_color_values(&[], false).unwrap_err();
         assert_eq!(empty.message, "Keep at least one color point in a custom palette.");
         assert!(empty.indices.is_empty());
-        let invalid = flux_color_values(&[row("1"), row(""), row("abc"), row(" ")]).unwrap_err();
+        let invalid = flux_color_values(&[row("1"), row(""), row("abc"), row(" ")], false).unwrap_err();
         assert_eq!(invalid.message, "Enter a finite flux value for every point. The map keeps the last valid palette.");
         assert_eq!(invalid.indices, vec![1, 2, 3]);
-        let duplicate = flux_color_values(&[row("1"), row("0"), row("2"), row("-0"), row("1")]).unwrap_err();
+        let duplicate = flux_color_values(&[row("1"), row("0"), row("2"), row("-0"), row("1")], false).unwrap_err();
         assert_eq!(duplicate.message, "Each color point needs a unique flux value. The map keeps the last valid palette.");
         assert_eq!(duplicate.indices, vec![0, 4, 1, 3], "grouped by the value first seen, as the JS Map");
-        let ok = flux_color_values(&[row("-1"), row("1e1")]).unwrap();
+        let ok = flux_color_values(&[row("-1"), row("1e1")], false).unwrap();
         assert_eq!(ok.iter().map(|s| s.value).collect::<Vec<_>>(), vec![-1.0, 10.0]);
+        let negative = flux_color_values(&[row("0"), row("-1"), row("5")], true).unwrap_err();
+        assert_eq!(negative.message, "Enter a |flux| of zero or more for every point. The map keeps the last valid palette.");
+        assert_eq!(negative.indices, vec![1]);
     }
 
     #[test]
     fn new_flux_color_value_goes_past_the_top_first() {
         let stop = |v: f64| FluxColorStop { value: v, color: "#000000".into() };
-        assert_eq!(new_flux_color_value(&[stop(-5.0), stop(0.0), stop(5.0)]), Ok(10.0));
-        assert_eq!(new_flux_color_value(&[stop(0.0)]), Ok(1.0));
-        assert_eq!(new_flux_color_value(&[stop(100.0), stop(1.0)]), Ok(199.0));
-        assert_eq!(new_flux_color_value(&[stop(f64::MAX)]), Ok(f64::MAX - 1.0_f64.max(f64::MAX * 0.1)));
+        assert_eq!(new_flux_color_value(&[stop(-5.0), stop(0.0), stop(5.0)], false), Ok(10.0));
+        assert_eq!(new_flux_color_value(&[stop(0.0)], false), Ok(1.0));
+        assert_eq!(new_flux_color_value(&[stop(100.0), stop(1.0)], false), Ok(199.0));
+        assert_eq!(new_flux_color_value(&[stop(f64::MAX)], false), Ok(f64::MAX - 1.0_f64.max(f64::MAX * 0.1)));
+        // Past the top overflows; below the bottom is negative, which |flux| is not.
+        assert_eq!(new_flux_color_value(&[stop(0.0), stop(f64::MAX)], false), Ok(-1.0));
+        assert_eq!(new_flux_color_value(&[stop(0.0), stop(f64::MAX)], true), Ok(f64::MAX / 2.0));
     }
 }

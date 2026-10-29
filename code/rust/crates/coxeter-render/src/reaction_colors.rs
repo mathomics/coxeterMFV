@@ -25,11 +25,13 @@ const DARK: [&str; 16] = [
     "#2dd4bf", "#d8b4fe", "#38bdf8", "#fb7185", "#4ade80", "#facc15",
 ];
 
-/// What colours the reactions: their flux, or the group they belong to.
+/// What colours the reactions: their flux, their |flux| alone, or the group
+/// they belong to.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default)]
 pub enum ReactionColorMode {
     #[default]
     Flux,
+    AbsoluteFlux,
     Subsystem,
     Pathway,
 }
@@ -38,15 +40,22 @@ impl ReactionColorMode {
     pub fn as_str(self) -> &'static str {
         match self {
             ReactionColorMode::Flux => "flux",
+            ReactionColorMode::AbsoluteFlux => "absflux",
             ReactionColorMode::Subsystem => "subsystem",
             ReactionColorMode::Pathway => "pathway",
         }
+    }
+
+    /// `isFluxColorMode(mode)`: whether lines are coloured by their flux.
+    pub fn is_flux(self) -> bool {
+        matches!(self, ReactionColorMode::Flux | ReactionColorMode::AbsoluteFlux)
     }
 }
 
 /// `normalizeReactionColorMode(mode)`: anything unknown is `flux`.
 pub fn normalize_reaction_color_mode(mode: &str) -> ReactionColorMode {
     match mode {
+        "absflux" => ReactionColorMode::AbsoluteFlux,
         "subsystem" => ReactionColorMode::Subsystem,
         "pathway" => ReactionColorMode::Pathway,
         _ => ReactionColorMode::Flux,
@@ -82,10 +91,10 @@ pub fn normalize_pathway_ribbon_mode(mode: &str) -> PathwayRibbonMode {
 }
 
 /// `reactionCategory(reaction, mode)`: the group a reaction is coloured by,
-/// `None` in flux mode.
+/// `None` in a flux mode.
 pub fn reaction_category(reaction: &Reaction, mode: ReactionColorMode) -> Option<String> {
     match mode {
-        ReactionColorMode::Flux => None,
+        ReactionColorMode::Flux | ReactionColorMode::AbsoluteFlux => None,
         ReactionColorMode::Subsystem => Some(clean_or(&reaction.subsystem, "Sin subsystem")),
         ReactionColorMode::Pathway => Some(clean_or(&reaction.pathway, "Sin pathway")),
     }
@@ -151,7 +160,7 @@ pub fn build_reaction_coloring(
 ) -> ReactionColoring {
     let mut out = ReactionColoring { mode, ..Default::default() };
     let Some(model) = model else { return out };
-    if mode == ReactionColorMode::Flux {
+    if mode.is_flux() {
         return out;
     }
     let mut counts: IndexMap<String, usize> = IndexMap::new();
@@ -189,6 +198,10 @@ mod tests {
         assert_eq!(normalize_pathway_ribbon_mode("subsystem"), PathwayRibbonMode::Subsystem);
         assert_eq!(normalize_pathway_ribbon_mode("anything-else"), PathwayRibbonMode::Off);
         assert_eq!(normalize_reaction_color_mode("x"), ReactionColorMode::Flux);
+        assert_eq!(normalize_reaction_color_mode("absflux"), ReactionColorMode::AbsoluteFlux);
+        assert_eq!(ReactionColorMode::AbsoluteFlux.as_str(), "absflux");
+        assert!(ReactionColorMode::AbsoluteFlux.is_flux() && ReactionColorMode::Flux.is_flux());
+        assert!(!ReactionColorMode::Pathway.is_flux() && !ReactionColorMode::Subsystem.is_flux());
     }
 
     #[test]

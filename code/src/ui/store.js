@@ -65,12 +65,15 @@ import {
   pruneMapToModel, reconcileCompartments, describeReconciliation,
 } from '../map/reconcile-map.js';
 import { emptySelection, parseCompartmentKey, selectionSize, TURN_REFUSAL } from '../map/multi-selection.js';
+import { CIRCLE_REFUSAL } from '../map/circularize.js';
 import { normalizeHexColor } from '../core/colors.js';
 import { exportFileName } from './file-names.js';
 import { TEXT_SIZE, DEFAULT_TEXT_FONT, clampTextSize, normalizeTextFont } from '../core/text-style.js';
-import { FluxScale, formatFlux, normalizeFluxColorStops } from '../render/theme.js';
 import {
-  buildReactionColoring, categoryColor, normalizeReactionColorMode, normalizePathwayRibbonMode,
+  FluxScale, formatFlux, normalizeAbsoluteFluxColorStops, normalizeAbsoluteFluxColors, normalizeFluxColorStops,
+} from '../render/theme.js';
+import {
+  buildReactionColoring, categoryColor, isFluxColorMode, normalizeReactionColorMode, normalizePathwayRibbonMode,
 } from '../render/reaction-colors.js';
 import { buildCrossFeedingIndex, exchangedMetabolites, filterCrossFeedingIndex } from '../analysis/cross-feeding-explorer.js';
 import { CROSSFEED_WIDTH_RANGE, isDrawnCrossFeedingBase } from '../render/crossfeed-routes.js';
@@ -112,6 +115,12 @@ const TURN_WARNINGS = Object.freeze({
   [TURN_REFUSAL.transporter]: 'Transporters stay on their membranes; leave them out to turn the selection.',
   [TURN_REFUSAL.compartment]: 'Compartments cannot be turned; leave them out.',
   [TURN_REFUSAL.room]: 'No room to turn the selection here.',
+});
+
+// What the status line says when the map refuses to circularize a selection (circularizeSelection).
+const CIRCLE_WARNINGS = Object.freeze({
+  [CIRCLE_REFUSAL.cycle]: 'The selected reactions do not close a cycle.',
+  [CIRCLE_REFUSAL.room]: 'No room for the circle in its compartment.',
 });
 
 export class Store {
@@ -233,6 +242,10 @@ export class Store {
       textStyle: { fontSize: TEXT_SIZE.default, fontFamily: DEFAULT_TEXT_FONT },
       scrollInput: 'auto',
       fluxColorStops: null,
+      // The Absolute flux palette: its points (null: white at 0 to red at the
+      // largest |flux|) and whether colours follow log10 |flux|.
+      absoluteFluxColorStops: null,
+      absoluteFluxLog: false,
       reactionColorMode: 'flux',
       // How reaction lines are drawn, each its own switch: width by flux,
       // grey dashes for what carries none, a gap where one passes under another.
@@ -3449,6 +3462,7 @@ export class Store {
     return JSON.stringify({
       pathwayManager: this.pathwayManagerState(),
       fluxColorStops: this.view.fluxColorStops,
+      absoluteFluxColors: this.absoluteFluxColors(),
       study: this.zunigaState(),
     });
   }
@@ -3585,6 +3599,35 @@ export class Store {
     if (bucket.has(id)) bucket.delete(id);
     else bucket.add(id);
     this.emit('multi-selection');
+    return this.multiSelection;
+  }
+
+  /**
+   * Ctrl-, Cmd- or Shift-click: add an object to the multi-selection or take
+   * it out. The first one also takes what was picked on its own before it, so
+   * a click and then a Ctrl-click select both. With two or more, the inspector
+   * turns to the selection.
+   */
+  extendMultiSelection(kind, id) {
+    const picked = this.selectedEntity;
+    if (!this.multiSelectionSize && picked && this.map) {
+      const pickedKind = { reaction: 'reaction', metabolite: 'node', text: 'text' }[picked.type];
+      let drawn = false;
+      if (pickedKind === 'reaction') {
+        drawn = this.map.reactions.has(picked.id);
+      } else if (pickedKind === 'node') {
+        drawn = this.canMoveNode(picked.id);
+      } else if (pickedKind === 'text') {
+        drawn = Boolean(this.map.texts?.has(picked.id));
+      }
+      if (drawn && !(pickedKind === kind && picked.id === id)) {
+        this.multiSelectionBucket(pickedKind).add(picked.id);
+      }
+    }
+    this.toggleMultiSelection(kind, id);
+    if (this.multiSelectionSize >= 2 && (this.selectedReaction || this.selectedEntity)) {
+      this.select(null);
+    }
     return this.multiSelection;
   }
 
@@ -3892,6 +3935,37 @@ export class Store {
     const changed = this.mapHistory.record(before, this.map.toJSON(), 'Tidy curves');
     if (changed) this.emit('map');
     return { count, changed };
+  }
+
+  /** Whether the selected reactions close a cycle that Circularize can lay out. */
+  canCircularizeSelection() {
+    return Boolean(this.map?.selectionCycle(this.multiSelection));
+  }
+
+  /**
+   * Lay the cycle the selected reactions close out as a circle, as one
+   * undoable edit. A refusal has changed nothing, and the status line says why.
+   */
+  circularizeMultiSelection() {
+    this.assertMapOperation('circularizeMultiSelection');
+    if (!this.map) return null;
+    const before = this.map.toJSON();
+    const result = this.map.circularizeSelection(this.multiSelection);
+    if (!result) return null;
+    if (!result.circled) {
+      this.status = { ...this.status, state: 'warn', message: CIRCLE_WARNINGS[result.reason] ?? CIRCLE_WARNINGS.room };
+      this.emit('status');
+      return result;
+    }
+    // Copies joined into the circle are gone from the map, and from the selection.
+    for (const id of [...this.multiSelection.nodes]) {
+      if (!this.map.nodes.has(id)) {
+        this.multiSelection.nodes.delete(id);
+      }
+    }
+    const changed = this.mapHistory.record(before, this.map.toJSON(), 'Circularize');
+    if (changed) this.emit('map');
+    return { ...result, changed };
   }
 
   /** Turn the selection as one rigid piece by `angle` radians (clockwise on screen), as one undoable edit. */
@@ -5113,6 +5187,10 @@ export class Store {
 
   /** Select a reaction by merged id (null clears), with its FVA range when FVA is on. */
   select(rid) {
+    // Picking one thing lets go of a multi-selection, as a plain click does.
+    if (rid && this.multiSelectionSize) {
+      this.multiSelection = emptySelection();
+    }
     this.selectedReaction = rid;
     this.selectedEntity = rid ? { type: 'reaction', id: rid } : null;
     this.variability = this.fvaEnabled && rid
@@ -5312,7 +5390,7 @@ export class Store {
     };
     this.manualPathways.set(id, pathway);
     this.view.pathwayRibbonMode = 'pathway';
-    this.view.reactionColorMode = 'flux';
+    if (!isFluxColorMode(this.view.reactionColorMode)) this.view.reactionColorMode = 'flux';
     this.emit('pathways');
     return pathway;
   }
@@ -5515,6 +5593,9 @@ export class Store {
       this.select(null);
       return null;
     }
+    if (this.multiSelectionSize) {
+      this.multiSelection = emptySelection();
+    }
     this.selectedReaction = type === 'reaction' ? id : null;
     this.selectedGeometry = null;
     this.variability = this.fvaEnabled && type === 'reaction'
@@ -5534,6 +5615,8 @@ export class Store {
     this.scale = new FluxScale(fluxes, {
       dark: this.view.dark,
       colorStops: differenceStops ?? this.view.fluxColorStops,
+      absoluteStops: this.view.absoluteFluxColorStops,
+      absoluteLog: this.view.absoluteFluxLog,
     });
     if (this.isZunigaStudy) this.scale.reference = reference;
     return this.scale;
@@ -5544,6 +5627,18 @@ export class Store {
     return this.view.fluxColorStops;
   }
 
+  /** The Absolute flux palette as files keep it. */
+  absoluteFluxColors() {
+    return { stops: this.view.absoluteFluxColorStops, log: this.view.absoluteFluxLog };
+  }
+
+  /** Restore the Absolute flux palette from a file; one without it gets the default. */
+  restoreAbsoluteFluxColors(value) {
+    const { stops, log } = normalizeAbsoluteFluxColors(value);
+    this.view.absoluteFluxColorStops = stops;
+    this.view.absoluteFluxLog = log;
+  }
+
   /** Change display settings, normalising the values that need it, and emit 'view'. */
   setView(patch) {
     if ('scrollInput' in patch) {
@@ -5552,13 +5647,16 @@ export class Store {
     if ('fluxColorStops' in patch) {
       patch = { ...patch, fluxColorStops: normalizeFluxColorStops(patch.fluxColorStops) };
     }
+    if ('absoluteFluxColorStops' in patch) {
+      patch = { ...patch, absoluteFluxColorStops: normalizeAbsoluteFluxColorStops(patch.absoluteFluxColorStops) };
+    }
     if ('reactionColorMode' in patch) {
       patch = { ...patch, reactionColorMode: normalizeReactionColorMode(patch.reactionColorMode) };
     }
     if ('pathwayRibbonMode' in patch) {
       patch = { ...patch, pathwayRibbonMode: normalizePathwayRibbonMode(patch.pathwayRibbonMode) };
     }
-    for (const key of ['widthByFlux', 'dashNoFlux', 'lineHops']) {
+    for (const key of ['widthByFlux', 'dashNoFlux', 'lineHops', 'absoluteFluxLog']) {
       if (key in patch) patch = { ...patch, [key]: Boolean(patch[key]) };
     }
     if ('pathwayRibbonWidth' in patch) {
@@ -5577,7 +5675,7 @@ export class Store {
       this.selectedEntity = null;
       this.variability = null;
     }
-    if ('dark' in patch || 'fluxColorStops' in patch) {
+    if (['dark', 'fluxColorStops', 'absoluteFluxColorStops', 'absoluteFluxLog'].some((key) => key in patch)) {
       this.refreshFluxScale();
     }
     this.emit('view');
@@ -5691,6 +5789,7 @@ export class Store {
       species: this.species,
       pathwayManager: this.pathwayManagerState(),
       fluxColorStops: this.view.fluxColorStops,
+      absoluteFluxColors: this.absoluteFluxColors(),
       study: this.zunigaState(),
     });
   }
@@ -5868,6 +5967,7 @@ export class Store {
   /** Check a parsed map against the active model, fit it to the model and make it the drawing, as one undoable edit. */
   applyMapDocument(parsed) {
     const fluxColorStops = normalizeFluxColorStops(parsed.fluxColorStops ?? null);
+    const absoluteFluxColors = normalizeAbsoluteFluxColors(parsed.absoluteFluxColors);
     if (!this.community || !this.map) throw new Error('There is no active model to receive the map.');
 
     if (parsed.study?.id === ZUNIGA_ID) {
@@ -5898,6 +5998,7 @@ export class Store {
     this.mapHistory.record(before, next.toJSON(), 'Load map JSON');
     this.map = next;
     this.view.fluxColorStops = fluxColorStops;
+    this.restoreAbsoluteFluxColors(absoluteFluxColors);
     this.refreshFluxScale();
     this.restorePathwayManagerState(parsed.pathwayManager);
     // What was just opened is what is in the file, pathways and colours
@@ -5955,6 +6056,7 @@ export class Store {
       lineHops: this.view.lineHops,
       crossFeedingWidth: this.view.crossFeedingWidth,
       fluxColorStops: this.view.fluxColorStops,
+      absoluteFluxColors: this.absoluteFluxColors(),
       pathwayRibbonMode: this.view.pathwayRibbonMode,
       pathwayRibbonWidth: this.view.pathwayRibbonWidth,
       pathwayRibbonOpacity: this.view.pathwayRibbonOpacity,
@@ -5972,11 +6074,13 @@ export class Store {
     const doc = JSON.parse(text);
     this.solutionCleared = false;
     const fluxColorStops = normalizeFluxColorStops(doc.fluxColorStops ?? null);
+    const absoluteFluxColors = normalizeAbsoluteFluxColors(doc.absoluteFluxColors);
     if (doc.study?.id === ZUNIGA_ID || doc.scenario === `published:${ZUNIGA_ID}`) {
       if (!this.isZunigaStudy) await this.useZunigaStudy({ scenarioId: doc.study?.scenarioId ?? 'mutant-coculture' });
       if (doc.study) this.validateZunigaState(doc.study);
       this.useZunigaScenario(doc.study?.scenarioId ?? 'mutant-coculture', { emit: false });
       this.view.fluxColorStops = fluxColorStops;
+      this.restoreAbsoluteFluxColors(absoluteFluxColors);
       this.layoutSettings = normalizeLayoutSettings(doc.layoutSettings ?? this.layoutSettings);
       this.view.reactionColorMode = normalizeReactionColorMode(doc.reactionColorMode ?? 'flux');
       this.setZunigaComparison(doc.study?.comparison ?? 'absolute');
@@ -6022,13 +6126,17 @@ export class Store {
       if (typeof doc[key] === 'boolean') this.view[key] = doc[key];
     }
     if (doc.crossFeedingWidth !== undefined) this.view.crossFeedingWidth = crossFeedingWidthValue(doc.crossFeedingWidth, this.view.crossFeedingWidth);
-    this.view.fluxColorStops = fluxColorStops;
     this.view.pathwayRibbonMode = normalizePathwayRibbonMode(doc.pathwayRibbonMode ?? this.view.pathwayRibbonMode);
     this.view.pathwayRibbonWidth = clampNumber(doc.pathwayRibbonWidth ?? this.view.pathwayRibbonWidth, 20, 120, 56);
     this.view.pathwayRibbonOpacity = clampNumber(doc.pathwayRibbonOpacity ?? this.view.pathwayRibbonOpacity, 0.04, 0.45, 0.18);
     this.medium = doc.medium ?? {};
     this.species = doc.species ?? this.species;
     await this.rebuild({ relayout: true, contents: this.scenario?.published === 'steadycom-gut-nine' ? 'none' : 'all', solve: !doc.steadyCom });
+    // After the rebuild: a scenario's curated map, drawn again, brings its own
+    // palettes, and the ones in the file are what was saved.
+    this.view.fluxColorStops = fluxColorStops;
+    this.restoreAbsoluteFluxColors(absoluteFluxColors);
+    this.refreshFluxScale();
     this.restorePathwayManagerState(doc.pathwayManager);
     this.restoreOmicsState(doc.omics);
     this.overrides = new Map((doc.overrides ?? []).map((o) => [o.id, { lower: o.lower, upper: o.upper }]));

@@ -67,6 +67,17 @@ pub fn normalize_flux_color_stops(stops: &Value) -> Result<Option<Vec<FluxColorS
     Ok(Some(out))
 }
 
+/// `normalizeAbsoluteFluxColors(value)`: the Absolute flux palette as a file
+/// keeps it, `{stops, log}`, with `stops` validated as above and none below
+/// zero. A file without one gets the default (`{stops: null, log: false}`).
+pub fn normalize_absolute_flux_colors(value: &Value) -> Result<Value, MapDocumentError> {
+    let stops = normalize_flux_color_stops(value.get("stops").unwrap_or(&Value::Null))?;
+    if stops.as_ref().is_some_and(|list| list.iter().any(|s| s.value < 0.0)) {
+        return err("Absolute flux colours need values of zero or more.");
+    }
+    Ok(json!({ "stops": stops_value(&stops), "log": value.get("log").is_some_and(js::truthy) }))
+}
+
 fn stops_value(stops: &Option<Vec<FluxColorStop>>) -> Value {
     match stops {
         None => Value::Null,
@@ -91,6 +102,7 @@ pub struct MapContext {
     pub scenario: Option<String>,
     pub pathway_manager: Option<Value>,
     pub flux_color_stops: Option<Value>,
+    pub absolute_flux_colors: Option<Value>,
     pub study: Option<Value>,
 }
 
@@ -149,6 +161,7 @@ pub fn create_map_document_at(map: &EditableMap, context: &MapContext, created_a
     .map(|(id, model)| json!({ "id": id, "model": model }))
     .collect();
     let stops = normalize_flux_color_stops(context.flux_color_stops.as_ref().unwrap_or(&Value::Null))?;
+    let absolute = normalize_absolute_flux_colors(context.absolute_flux_colors.as_ref().unwrap_or(&Value::Null))?;
     let mut out = Map::new();
     out.insert("format".into(), json!(MAP_DOCUMENT_FORMAT));
     out.insert("version".into(), json!(MAP_DOCUMENT_VERSION));
@@ -166,6 +179,7 @@ pub fn create_map_document_at(map: &EditableMap, context: &MapContext, created_a
     );
     out.insert("pathwayManager".into(), context.pathway_manager.clone().unwrap_or(Value::Null));
     out.insert("fluxColorStops".into(), stops_value(&stops));
+    out.insert("absoluteFluxColors".into(), absolute);
     if let Some(study) = context.study.as_ref().filter(|s| js::truthy(s)) {
         out.insert("study".into(), study.clone());
     }
@@ -181,6 +195,8 @@ pub struct ParsedMapDocument {
     pub metadata: Option<Value>,
     pub pathway_manager: Option<Value>,
     pub flux_color_stops: Option<Vec<FluxColorStop>>,
+    /// `{stops, log}`, normalised; the default for a file without one.
+    pub absolute_flux_colors: Value,
     /// Absent for a legacy document (the JavaScript object has no such key).
     pub study: Option<Value>,
     pub map: Value,
@@ -196,6 +212,7 @@ impl ParsedMapDocument {
         out.insert("metadata".into(), self.metadata.clone().unwrap_or(Value::Null));
         out.insert("pathwayManager".into(), self.pathway_manager.clone().unwrap_or(Value::Null));
         out.insert("fluxColorStops".into(), stops_value(&self.flux_color_stops));
+        out.insert("absoluteFluxColors".into(), self.absolute_flux_colors.clone());
         if !self.legacy {
             out.insert("study".into(), self.study.clone().unwrap_or(Value::Null));
         }
@@ -236,6 +253,7 @@ pub fn parse_map_document(doc: &Value) -> Result<ParsedMapDocument, MapDocumentE
             metadata: None,
             pathway_manager: None,
             flux_color_stops: normalize_flux_color_stops(doc.get("fluxColorStops").unwrap_or(&Value::Null))?,
+            absolute_flux_colors: normalize_absolute_flux_colors(&Value::Null)?,
             study: None,
             map: doc.clone(),
             legacy: true,
@@ -269,6 +287,7 @@ pub fn parse_map_document(doc: &Value) -> Result<ParsedMapDocument, MapDocumentE
         metadata: non_null(doc.get("metadata")),
         pathway_manager: non_null(doc.get("pathwayManager")),
         flux_color_stops: normalize_flux_color_stops(doc.get("fluxColorStops").unwrap_or(&Value::Null))?,
+        absolute_flux_colors: normalize_absolute_flux_colors(doc.get("absoluteFluxColors").unwrap_or(&Value::Null))?,
         study: non_null(doc.get("study")),
         map: map.clone(),
         legacy: false,

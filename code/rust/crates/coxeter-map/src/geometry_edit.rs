@@ -489,6 +489,17 @@ pub fn rect_from_handle(start: &Rect, handle: &str, start_point: Point, point: P
     Some(Rect::new(x1, y1, x2 - x1, y2 - y1))
 }
 
+/// `cellRootId(cell)`: the id of the compartment that is the cell itself, its
+/// outer compartment or the first without a parent. A model can leave another
+/// compartment without a parent too (a flagellum), and that one is not the cell.
+pub fn cell_root_id(cell: &MapCell) -> Option<&str> {
+    cell.compartments
+        .iter()
+        .find(|c| Some(&c.id) == cell.outer_compartment.as_ref())
+        .or_else(|| cell.compartments.iter().find(|c| c.parent_id.is_none()))
+        .map(|c| c.id.as_str())
+}
+
 /// The compartment and everything nested in it, by id.
 pub fn descendant_ids(cell: &MapCell, root: &str) -> HashSet<String> {
     let mut out: HashSet<String> = HashSet::from([root.to_string()]);

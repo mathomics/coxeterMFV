@@ -29,11 +29,11 @@ Coxeter-MFV was built for researchers who work with genome-scale metabolic model
 
 - **Compartment-aware maps.** Cells, organelles and membranes are first-class objects that can be drawn, nested, resized, reshaped and moved with everything they contain.
 - **Microbial communities.** Several species in one map, each with its own abundance, exchanging metabolites through a shared medium.
-- **Flux analysis.** FBA, parsimonious FBA, loopless FBA, CycleFreeFlux, flux variability analysis and SteadyCom community FBA, with live recalculation when bounds, medium or abundances change.
+- **Flux analysis.** FBA, parsimonious FBA, loopless FBA, CycleFreeFlux, flux variability analysis and SteadyCom community FBA, with live recalculation when bounds, medium or abundances change. The solution is drawn on the map as line colour and width, by signed or absolute flux.
 - **Reactions and bounds.** Every reaction of the model in one table, grouped by type, compartment, species or pathway, with a slider and an exact value for each bound, any objective to maximise or minimise, gene knockouts evaluated through the gene rules, bulk edits, undo for every change and bounds exported to and imported from CSV.
 - **Omics integration.** Gene expression and metatranscriptomics overlays, condition comparisons and GIMME context-specific models.
 - **Cross-feeding explorer.** Every metabolite exchanged between species, filterable by producer, consumer and flux, drawn as routes on the map.
-- **Map editor.** Add and remove reactions, metabolites, compartments and cells, adjust curves with control points, align and distribute, annotate with text, colour pathways, and undo any step.
+- **Map editor.** Add and remove reactions, metabolites, compartments and cells, adjust curves with control points, select several objects with a rectangle or Ctrl-click to align, distribute and rotate them or to lay a cycle such as the TCA cycle out as a circle, annotate with text, colour pathways, and undo any step.
 - **Model editor.** Create metabolites and reactions in the biological model, separately from the drawing.
 - **Open formats.** Models in SBML, COBRA JSON and the COBRA Toolbox MATLAB and Excel formats. Maps, scenarios and reproducibility bundles in JSON. Figures in SVG and PNG, fluxes in CSV, and a methods and provenance report for each analysis.
 - **Two front ends, one behaviour.** A single HTML file that runs offline in any modern browser, and a native desktop application written in Rust with GPU rendering and the HiGHS solver, or Gurobi or CPLEX when they are installed.
@@ -46,8 +46,8 @@ Coxeter-MFV was built for researchers who work with genome-scale metabolic model
 <td width="50%"><img src="docs/images/app-yeast9-dark.png" alt="The Yeast9 compartment map open in the desktop application"></td>
 </tr>
 <tr>
-<td><sub>An anaerobic consortium of four species sharing one medium, solved with community FBA. Each cell shows its growth rate.</sub></td>
-<td><sub>The Yeast9 cytoplasm, mitochondrion and peroxisome map open in the desktop application, dark theme.</sub></td>
+<td><sub>An anaerobic consortium of four species sharing one medium, solved with community FBA in the web application. Each cell shows its growth rate, and line width follows flux.</sub></td>
+<td><sub>The 135-reaction Yeast9 map of the cytoplasm, mitochondrion and peroxisome over the genome-scale model, open in the Windows desktop application, dark theme.</sub></td>
 </tr>
 <tr>
 <td colspan="2"><img src="docs/images/zuniga-2020-reproduction.png" alt="Reproduction of the phenylalanine rescue predicted by Zuñiga et al. 2020"></td>

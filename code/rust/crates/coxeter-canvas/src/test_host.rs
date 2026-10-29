@@ -358,6 +358,9 @@ impl MapHost for EditableMapHost {
         }
         self.emit("multi-selection");
     }
+    fn extend_multi_selection(&mut self, kind: SelectKind, id: &str) {
+        self.toggle_multi_selection(kind, id);
+    }
     fn select_in_rect(&mut self, x1: f64, y1: f64, x2: f64, y2: f64, replace: bool) {
         let Some(map) = &self.map else { return };
         let found = map.selectable_in_rect(SelectionRect::from_corners(x1, y1, x2, y2), self.view.show_currency);

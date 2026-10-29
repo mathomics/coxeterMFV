@@ -26,6 +26,39 @@ const FLUX_RAMP_DARK = [
   [1.00, '#fb7185'],
 ];
 
+/** Escher's absolute-value colouring: white at no flux, red at the largest. */
+export function defaultAbsoluteFluxStops(max) {
+  return [{ value: 0, color: '#ffffff' }, { value: max, color: '#dc2626' }];
+}
+
+/** normalizeFluxColorStops for |flux|, where no value is below zero. */
+export function normalizeAbsoluteFluxColorStops(stops) {
+  const normalized = normalizeFluxColorStops(stops);
+  if (normalized?.some((stop) => stop.value < 0)) {
+    throw new Error('Absolute flux colours need values of zero or more.');
+  }
+  return normalized;
+}
+
+/** The absolute palette as files keep it: its points (null for the default) and whether it is log. */
+export function normalizeAbsoluteFluxColors(value) {
+  return {
+    stops: normalizeAbsoluteFluxColorStops(value?.stops ?? null),
+    log: Boolean(value?.log),
+  };
+}
+
+/**
+ * The |flux| a log scale starts at: four decades below the top point, or a
+ * decade below the smallest positive point when that is lower. Everything at
+ * or under it takes the first colour. Null with no positive point to scale.
+ */
+export function absoluteLogFloor(stops) {
+  const positive = stops.filter((stop) => stop.value > 0);
+  if (!positive.length) return null;
+  return Math.min(positive[positive.length - 1].value / 1e4, positive[0].value / 10);
+}
+
 const hexToRgb = (hex) => [
   parseInt(hex.slice(1, 3), 16),
   parseInt(hex.slice(3, 5), 16),
@@ -117,11 +150,15 @@ function sampleRamp(ramp, t) {
 export class FluxScale {
   /**
    * @param {Iterable<number>} values
-   * @param {object} [opts] `colorStops` (see normalizeFluxColorStops), `dark`,
-   *   and the stroke widths `minWidth` (1.6), `maxWidth` (15), `zeroWidth` (1.1)
+   * @param {object} [opts] `colorStops` (see normalizeFluxColorStops), the
+   *   absolute palette's `absoluteStops` (null for the default) and
+   *   `absoluteLog`, `dark`, and the stroke widths `minWidth` (1.6),
+   *   `maxWidth` (15), `zeroWidth` (1.1)
    */
   constructor(values, opts = {}) {
     this.colorStops = normalizeFluxColorStops(opts.colorStops ?? null);
+    this.absoluteStops = normalizeAbsoluteFluxColorStops(opts.absoluteStops ?? null);
+    this.absoluteLog = Boolean(opts.absoluteLog);
     const magnitudes = [];
     for (const v of values) {
       const m = Math.abs(v);
@@ -160,6 +197,46 @@ export class FluxScale {
     const ramp = this.dark ? FLUX_RAMP_DARK : FLUX_RAMP_LIGHT;
     if (!(Math.abs(v) > 1e-9)) return ramp[0][1];
     return sampleRamp(ramp, this.position(v));
+  }
+
+  /** The |flux| colour points in use: the chosen ones, or white at 0 to red at the largest |flux|. */
+  absolutePalette() {
+    return this.absoluteStops ?? defaultAbsoluteFluxStops(this.max);
+  }
+
+  /** How |flux| is placed along the absolute palette: as it is, or as log10 above the floor. */
+  absoluteAxis() {
+    const stops = this.absolutePalette();
+    const floor = this.absoluteLog ? absoluteLogFloor(stops) : null;
+    return { stops, floor, at: (m) => (floor === null ? m : Math.log10(Math.max(m, floor))) };
+  }
+
+  /**
+   * Colour by |flux| alone, along the absolute palette, linearly or on a log
+   * scale. With no flux anywhere there is nothing to scale against, and lines
+   * keep the automatic ramp's grey rather than turning white.
+   */
+  absoluteColor(v) {
+    if (!this.count) return (this.dark ? FLUX_RAMP_DARK : FLUX_RAMP_LIGHT)[0][1];
+    const { stops, floor, at } = this.absoluteAxis();
+    const placed = floor === null ? stops : stops.map(({ value, color }) => ({ value: at(value), color }));
+    return sampleFluxColorStops(placed, at(Math.abs(v)));
+  }
+
+  /**
+   * The absolute palette's points for the legend, placed (`t`) as the scale
+   * places them. On a log scale a point below the floor shows the floor.
+   */
+  absoluteLegendStops() {
+    const { stops, floor, at } = this.absoluteAxis();
+    const first = at(stops[0].value);
+    const last = at(stops[stops.length - 1].value);
+    return stops.map(({ value, color }) => ({
+      t: stops.length === 1 ? 0 : signedPosition(at(value), first, last),
+      value: floor === null ? value : Math.max(value, floor),
+      color,
+      width: this.width(value),
+    }));
   }
 
   /** Swatches for the legend. */

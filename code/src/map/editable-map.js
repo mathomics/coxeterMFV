@@ -41,12 +41,14 @@ import {
   reactionLineEnds, setReactionLineEnd, alignReaction, tidyReaction, keepStraightThrough,
 } from '../layout/reaction-edit.js';
 import {
-  descendantIds, editCompartmentShape, editGeometryRect, geometryTarget, reactionInSubtree, translateWholeMap,
+  cellRootId, descendantIds, editCompartmentShape, editGeometryRect, geometryTarget, reactionInSubtree,
+  translateWholeMap,
 } from './geometry-edit.js';
 import {
   alignSelection, distributeSelection, dragSelection, selectableInRect, translateSelection, textCentre,
   spaceSelectionEvenly, rotateSelection, pointSelection,
 } from './multi-selection.js';
+import { circularizeSelection, selectionCycle } from './circularize.js';
 import { isSecondaryNode, metaboliteLabelAngle } from './metabolite-label.js';
 import { normalizeReactionLabelOffset } from './reaction-label.js';
 import { closestPerimeterPoint, compartmentCorners } from '../layout/geometry.js';
@@ -675,10 +677,18 @@ export class EditableMap {
    *
    * This is map-only metadata. The biological metabolite is unchanged.
    * The role also fixes its radius: primary = 13 px, secondary = 7 px.
+   *
+   * A cofactor copy beside one reaction (CO₂ at RuBisCO, say) made primary
+   * becomes that reaction's own metabolite where it stands: its branch is a
+   * main line, it no longer moves with the marker, and it can be a line end.
    */
   setNodePrimary(nodeId, primary = true, opts = {}) {
     const node = this.nodes.get(nodeId);
-    if (!node || !['metabolite', 'medium'].includes(node.kind)) return null;
+    if (!node || !METABOLITE_KINDS.has(node.kind)) return null;
+    if (node.kind === 'currency') {
+      if (!primary) return node;
+      promoteCofactor(this, node);
+    }
 
     node.primary = Boolean(primary);
     node.visualRole = node.primary ? 'primary' : 'secondary';
@@ -967,6 +977,16 @@ export class EditableMap {
     return pointSelection(this, selection, direction);
   }
 
+  /** The longest cycle the selected reactions close, or null. */
+  selectionCycle(selection) {
+    return selectionCycle(this, selection);
+  }
+
+  /** Lay the cycle the selected reactions close out as a circle, or say why not. */
+  circularizeSelection(selection) {
+    return circularizeSelection(this, selection);
+  }
+
   /**
    * Escher's Align vertical / Align horizontal for a selection with reactions
    * in it: the reactions come with their metabolites, and everything ends on
@@ -1148,8 +1168,9 @@ export class EditableMap {
    * be drawn without it: the compartments nested in it, the reactions that run
    * in any of them or cross their membranes, the metabolites drawn there and
    * the texts written inside it.
-   * A cell's outermost compartment is the cell, so the whole cell goes. The
-   * biological model is untouched, and the compartment can be drawn again.
+   * A cell's outer compartment is the cell, so the whole cell goes, with any
+   * other compartment it has without a parent. So does its last compartment.
+   * The biological model is untouched, and the compartment can be drawn again.
    *
    * @returns {{cellId:string, compartmentIds:string[], cellRemoved:boolean,
    *   label:string, reactions:string[], nodes:string[], texts:string[]}|null}
@@ -1158,8 +1179,13 @@ export class EditableMap {
     const cell = this.cells.find((item) => item.id === cellId);
     const compartment = cell?.compartments.find((item) => item.id === compartmentId);
     if (!compartment) return null;
-    const cellRemoved = !compartment.parentId;
     const subtree = descendantIds(cell, compartmentId);
+    const cellRemoved = compartmentId === cellRootId(cell) || cell.compartments.every((item) => subtree.has(item.id));
+    if (cellRemoved) {
+      for (const item of cell.compartments) {
+        subtree.add(item.id);
+      }
+    }
 
     const reactions = [];
     const nodes = [];
@@ -1179,12 +1205,16 @@ export class EditableMap {
     this.segments = this.segments.filter((seg) => !seg.nodeId || this.nodes.has(seg.nodeId));
     if (this.medium) this.medium.nodes = (this.medium.nodes ?? []).filter((id) => this.nodes.has(id));
     // The texts written inside it are its pathways' names: left behind, they
-    // would label an empty space.
-    const area = compartment.rect;
+    // would label an empty space. What is nested lies inside what it is nested in.
+    const areas = cell.compartments
+      .filter((item) => subtree.has(item.id) && !subtree.has(item.parentId))
+      .map((item) => item.rect);
     const texts = [];
     for (const [id, text] of [...(this.texts ?? new Map())]) {
       if (!Number.isFinite(text.x) || !Number.isFinite(text.y)) continue;
-      if (text.x < area.x || text.x > area.x + area.w || text.y < area.y || text.y > area.y + area.h) continue;
+      const inside = areas.some((area) => text.x >= area.x && text.x <= area.x + area.w
+        && text.y >= area.y && text.y <= area.y + area.h);
+      if (!inside) continue;
       if (this.removeText(id)) texts.push(id);
     }
 
@@ -1456,6 +1486,18 @@ function stripSpeciesFromLabels(nodes) {
     const owners = [node.cellId, merged.includes('@') ? merged.slice(0, merged.indexOf('@')) : null];
     const owner = owners.find((id) => id && node.base.startsWith(`${id}@`));
     if (owner) node.base = node.base.slice(owner.length + 1);
+  }
+}
+
+/** A reaction's cofactor copy made into its own primary metabolite (see setNodePrimary). */
+function promoteCofactor(map, node) {
+  node.kind = 'metabolite';
+  if (node.reactionId) node.reactionLocalFor = node.reactionId;
+  node.reactionLocal = true;
+  delete node.reactionId;
+  delete node.escherSecondary;
+  for (const seg of map.segments) {
+    if (seg.nodeId === node.id && seg.kind === 'currency') seg.kind = 'primary';
   }
 }
 

@@ -6,7 +6,7 @@
  * as written by V0.6/V0.7, is still read for backward compatibility.
  */
 
-import { normalizeFluxColorStops } from '../render/theme.js';
+import { normalizeAbsoluteFluxColors, normalizeFluxColorStops } from '../render/theme.js';
 
 export const MAP_DOCUMENT_FORMAT = 'EscherMCMCMap';
 export const MAP_DOCUMENT_VERSION = 3;
@@ -16,7 +16,8 @@ export const MAP_DOCUMENT_VERSION = 3;
  *
  * @param {import('./editable-map.js').EditableMap} map
  * @param {object} [context] `species` (enabled ones are recorded with their
- *   model reference), `scenario`, `pathwayManager`, `fluxColorStops`, `study`
+ *   model reference), `scenario`, `pathwayManager`, `fluxColorStops`,
+ *   `absoluteFluxColors`, `study`
  * @returns {object} the document
  */
 export function createMapDocument(map, context = {}) {
@@ -44,6 +45,7 @@ export function createMapDocument(map, context = {}) {
     },
     pathwayManager: context.pathwayManager ?? null,
     fluxColorStops: normalizeFluxColorStops(context.fluxColorStops ?? null),
+    absoluteFluxColors: normalizeAbsoluteFluxColors(context.absoluteFluxColors),
     ...(context.study ? { study: JSON.parse(JSON.stringify(context.study)) } : {}),
     map: map.toJSON(),
   };
@@ -54,8 +56,8 @@ export function createMapDocument(map, context = {}) {
  * Accepts the envelope (up to MAP_DOCUMENT_VERSION) and raw legacy exports,
  * which come back with `legacy: true`. Throws a readable Error otherwise.
  *
- * @returns {{format, version, metadata, pathwayManager, fluxColorStops, map,
- *   legacy: boolean, study?: object|null}}
+ * @returns {{format, version, metadata, pathwayManager, fluxColorStops,
+ *   absoluteFluxColors, map, legacy: boolean, study?: object|null}}
  */
 export function parseMapDocument(input) {
   const doc = typeof input === 'string' ? JSON.parse(input) : input;
@@ -71,6 +73,7 @@ export function parseMapDocument(input) {
       metadata: null,
       pathwayManager: null,
       fluxColorStops: normalizeFluxColorStops(doc.fluxColorStops ?? null),
+      absoluteFluxColors: normalizeAbsoluteFluxColors(null),
       map: doc,
       legacy: true,
     };
@@ -102,6 +105,7 @@ export function parseMapDocument(input) {
     metadata: doc.metadata ?? null,
     pathwayManager: doc.pathwayManager ?? null,
     fluxColorStops: normalizeFluxColorStops(doc.fluxColorStops ?? null),
+    absoluteFluxColors: normalizeAbsoluteFluxColors(doc.absoluteFluxColors),
     study: doc.study ?? null,
     map: doc.map,
     legacy: false,

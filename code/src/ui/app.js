@@ -29,11 +29,12 @@ import { CompartmentMenuController } from './compartment-menu.js';
 import { MetaboliteAddMenuController } from './metabolite-add-menu.js';
 import { renderMap, rotationArm, frameLabelScale, geometryHandleSide } from '../render/mapview.js';
 import { formatFlux } from '../render/theme.js';
+import { isFluxColorMode } from '../render/reaction-colors.js';
 import { rasterScales } from '../render/raster-size.js';
 import { TEXT_FONTS, TEXT_SIZE, clampTextSize, textFontStack } from '../core/text-style.js';
 import { stageToMap } from '../layout/drag.js';
 import {
-  nearestRectEdge, rectFromHandle as geometryRectFromHandle,
+  cellRootId, nearestRectEdge, rectFromHandle as geometryRectFromHandle,
   SHAPE_HANDLES, shapeAmountAt, shapeHandlePoint,
 } from '../map/geometry-edit.js';
 import { COMPARTMENT_SHAPES, compartmentShape } from '../layout/geometry.js';
@@ -91,6 +92,7 @@ const ui = {
   drafts: new Map(),
   fluxColorDraft: null,
   fluxColorSource: undefined,
+  fluxColorSourceKey: undefined,
   fluxColorsCommitting: false,
   steadyComDraft: null,
   steadyComPending: false,
@@ -357,10 +359,13 @@ function compartmentDrawOverlay() {
 let deferredPaint = false;
 
 function paintSidebar({ force = false } = {}) {
-  // Importing another map/scenario replaces the palette. Local commits keep
-  // their editing order so a blur cannot move a Remove button before its click.
-  if (ui.fluxColorSource !== store.view.fluxColorStops) {
-    ui.fluxColorSource = store.view.fluxColorStops;
+  // Importing another map/scenario replaces the palette, and switching between
+  // signed and absolute colours shows the other one. Local commits keep their
+  // editing order so a blur cannot move a Remove button before its click.
+  const palette = fluxPaletteKey();
+  if (ui.fluxColorSource !== store.view[palette] || ui.fluxColorSourceKey !== palette) {
+    ui.fluxColorSource = store.view[palette];
+    ui.fluxColorSourceKey = palette;
     if (!ui.fluxColorsCommitting) {
       ui.fluxColorDraft = null;
       force = true;
@@ -426,8 +431,12 @@ const WORKSPACES = new Set(['library','structure','map','scenario','community','
 
 let scenarioLoadQueue = Promise.resolve();
 let pendingScenarioLoad = null;
+// Whether a community was chosen since a workspace opened. Return to map fits
+// a new one to the screen and leaves the view of the same one as it was.
+let scenarioChosen = false;
 
 function queueScenarioSelection(value) {
+  scenarioChosen = true;
   const requested = String(value ?? '');
   const task = scenarioLoadQueue.then(async () => {
     camera.fitted = false;
@@ -457,6 +466,7 @@ function queueScenarioSelection(value) {
 function openWorkspace(name, trigger = document.activeElement) {
   if (!WORKSPACES.has(name)) return;
   captureWorkspaceDraft();
+  scenarioChosen = false;
   ui.workspace = name;
   ui.lastWorkspace = name;
   ui.returnFocus = trigger?.closest?.('[data-action]')?.dataset ? { ...trigger.closest('[data-action]').dataset } : null;
@@ -985,13 +995,18 @@ function readFluxColorRows() {
   });
 }
 
-function fluxColorValues(rows) {
+/** The view key of the palette the editor shows: the absolute one, or the signed one. */
+function fluxPaletteKey() {
+  return store.view.reactionColorMode === 'absflux' ? 'absoluteFluxColorStops' : 'fluxColorStops';
+}
+
+function fluxColorValues(rows, { absolute = false } = {}) {
   if (!rows.length) throw new Error('Keep at least one color point in a custom palette.');
   const invalid = [];
   const byValue = new Map();
   const points = rows.map((row, index) => {
     const value = row.number ?? Number(row.value);
-    if (String(row.value).trim() === '' || !Number.isFinite(value)) invalid.push(index);
+    if (String(row.value).trim() === '' || !Number.isFinite(value) || (absolute && value < 0)) invalid.push(index);
     else {
       const matches = byValue.get(value) ?? [];
       matches.push(index);
@@ -1000,7 +1015,9 @@ function fluxColorValues(rows) {
     return { value, color: row.color };
   });
   if (invalid.length) {
-    const error = new Error('Enter a finite flux value for every point. The map keeps the last valid palette.');
+    const error = new Error(absolute
+      ? 'Enter a |flux| of zero or more for every point. The map keeps the last valid palette.'
+      : 'Enter a finite flux value for every point. The map keeps the last valid palette.');
     error.indices = invalid;
     throw error;
   }
@@ -1014,17 +1031,18 @@ function fluxColorValues(rows) {
 }
 
 function commitFluxColorRows(rows) {
+  const palette = fluxPaletteKey();
   ui.fluxColorDraft = {
     rows: rows.map(({ value, color }) => ({ value: String(value), color })),
-    source: store.view.fluxColorStops,
+    source: store.view[palette],
     error: '',
     invalid: [],
   };
   try {
-    const points = fluxColorValues(rows);
+    const points = fluxColorValues(rows, { absolute: palette === 'absoluteFluxColorStops' });
     ui.fluxColorsCommitting = true;
-    store.setFluxColorStops(points);
-    ui.fluxColorDraft.source = store.view.fluxColorStops;
+    store.setView({ [palette]: points });
+    ui.fluxColorDraft.source = store.view[palette];
     patchFluxColorEditor();
     return true;
   } catch (error) {
@@ -1053,7 +1071,7 @@ function patchFluxColorEditor() {
   });
 }
 
-function newFluxColorValue(points) {
+function newFluxColorValue(points, { absolute = false } = {}) {
   const sorted = [...points].sort((a, b) => a.value - b.value);
   const first = sorted[0].value;
   const last = sorted[sorted.length - 1].value;
@@ -1064,7 +1082,7 @@ function newFluxColorValue(points) {
   for (let index = 1; index < sorted.length; index++) {
     candidates.push(sorted[index - 1].value / 2 + sorted[index].value / 2);
   }
-  const value = candidates.find((candidate) => Number.isFinite(candidate) && !used.has(candidate));
+  const value = candidates.find((candidate) => Number.isFinite(candidate) && !used.has(candidate) && !(absolute && candidate < 0));
   if (value === undefined) throw new Error('Choose a different value before adding another color point.');
   return value;
 }
@@ -2514,10 +2532,8 @@ function finishCompartmentLabelDrag(event) {
 
 /* A cell's outermost compartment: deleting it deletes the cell. */
 function cellRootOf(cellId) {
-  const cell = store.map?.cells.find((item) => item.id === cellId);
-  const root = cell?.compartments.find((item) => item.id === cell.outerCompartment)
-    ?? cell?.compartments.find((item) => !item.parentId);
-  return root ? { cellId, compartmentId: root.id } : null;
+  const root = cellRootId(store.map?.cells.find((item) => item.id === cellId));
+  return root ? { cellId, compartmentId: root } : null;
 }
 
 function geometryHandleAt(target) {
@@ -2980,7 +2996,8 @@ els.stage.addEventListener('pointerdown', (event) => {
   }
 
   const multiHit = multiSelectableAt(event.target);
-  const selecting = event.shiftKey || store.view.multiSelect;
+  // Shift, Ctrl or Cmd adds to the selection, as the multi-select tool does.
+  const selecting = event.shiftKey || event.ctrlKey || event.metaKey || store.view.multiSelect;
 
   const selectionBorder = event.target.closest('[data-selection-drag]');
   if (selectionBorder && !store.view.geometryEdit
@@ -3045,7 +3062,7 @@ els.stage.addEventListener('pointerdown', (event) => {
       } else {
         multiTogglePointerId = event.pointerId;
         capturePointer(event);
-        store.toggleMultiSelection(multiHit.kind, multiHit.id);
+        store.extendMultiSelection(multiHit.kind, multiHit.id);
       }
       return;
     }
@@ -3768,7 +3785,7 @@ function onSidebarInput(event) {
       store.setView({ scrollInput: el.value });
       break;
     case 'reaction-color-mode':
-      store.setView({ reactionColorMode: el.value, ...(el.value !== 'flux' ? { lineColorGroup: el.value } : {}) });
+      store.setView({ reactionColorMode: el.value, ...(!isFluxColorMode(el.value) ? { lineColorGroup: el.value } : {}) });
       break;
     case 'color-by-flux':
       store.setView({ reactionColorMode: el.checked ? 'flux' : (store.view.lineColorGroup ?? 'pathway') });
@@ -3806,7 +3823,7 @@ function onSidebarInput(event) {
     case 'pathway-ribbon-mode':
       store.setView({
         pathwayRibbonMode: el.value,
-        ...(el.value !== 'off' ? { reactionColorMode: 'flux' } : {}),
+        ...(el.value !== 'off' && !isFluxColorMode(store.view.reactionColorMode) ? { reactionColorMode: 'flux' } : {}),
       });
       break;
     case 'pathway-ribbon-width':
@@ -4017,6 +4034,7 @@ async function onSidebarClick(event) {
       await downloadCommunityCSV(button.dataset.community, button.dataset.file);
       break;
     case 'flux-colors-customize': {
+      store.setView({ reactionColorMode: 'flux' });
       if (!store.view.fluxColorStops) {
         const reference = Number(store.scale?.reference ?? 1);
         const limit = Number.isFinite(reference) && reference > 0 ? reference : 1;
@@ -4032,15 +4050,32 @@ async function onSidebarClick(event) {
     }
     case 'flux-colors-reset':
       ui.fluxColorDraft = null;
-      store.setFluxColorStops(null);
+      store.setView({ reactionColorMode: 'flux', fluxColorStops: null });
       paintSidebar({ force: true });
       els.sidebar.querySelector('[data-action="flux-colors-reset"]')?.focus({ preventScroll: true });
+      break;
+    case 'flux-colors-absolute':
+      store.setView({ reactionColorMode: 'absflux' });
+      paintSidebar({ force: true });
+      els.sidebar.querySelector('[data-action="flux-colors-absolute"]')?.focus({ preventScroll: true });
+      break;
+    case 'absolute-flux-scale':
+      store.setView({ absoluteFluxLog: button.dataset.scale === 'log' });
+      paintSidebar({ force: true });
+      els.sidebar.querySelector(`[data-action="absolute-flux-scale"][data-scale="${button.dataset.scale}"]`)?.focus({ preventScroll: true });
+      break;
+    case 'absolute-flux-reset':
+      ui.fluxColorDraft = null;
+      store.setView({ absoluteFluxColorStops: null });
+      paintSidebar({ force: true });
+      els.sidebar.querySelector('[data-action="flux-color-add"]')?.focus({ preventScroll: true });
       break;
     case 'flux-color-add': {
       const rows = readFluxColorRows();
       try {
-        const points = fluxColorValues(rows);
-        const value = newFluxColorValue(points);
+        const absolute = fluxPaletteKey() === 'absoluteFluxColorStops';
+        const points = fluxColorValues(rows, { absolute });
+        const value = newFluxColorValue(points, { absolute });
         const last = [...points].sort((a, b) => a.value - b.value).at(-1);
         rows.push({ value: String(value), number: value, color: last.color });
         if (commitFluxColorRows(rows)) {
@@ -4109,7 +4144,7 @@ async function onSidebarClick(event) {
         }
       }
       closeWorkspace();
-      if (returningFromScenario) {
+      if (returningFromScenario && scenarioChosen) {
         camera.fitted = false;
         paintMap();
       }
@@ -4196,38 +4231,34 @@ async function onSidebarClick(event) {
       paintShell();
       if (ui.resultsTab === 'table') paintResults();
       break;
+    // Choosing a tool leaves the tools panel open, laid over the map or not:
+    // its own button and Escape close it.
     case 'tool-select':
       closeWorkspace({ restoreFocus: false });
       activateTool('select');
-      els.app.classList.remove('is-task-overlay');
       break;
     case 'tool-pan':
       closeWorkspace({ restoreFocus: false });
       activateTool('pan');
-      els.app.classList.remove('is-task-overlay');
       break;
     case 'tool-edit':
       closeWorkspace({ restoreFocus: false });
       activateTool('edit');
-      els.app.classList.remove('is-task-overlay');
       break;
     case 'tool-reaction':
       closeWorkspace({ restoreFocus: false });
       activateTool('reaction');
       ui.leftTab = 'build';
-      els.app.classList.remove('is-task-overlay');
       break;
     case 'tool-metabolite':
       closeWorkspace({ restoreFocus: false });
       activateTool('metabolite');
       ui.leftTab = 'build';
-      els.app.classList.remove('is-task-overlay');
       paintShell();
       break;
     case 'tool-text':
       closeWorkspace({ restoreFocus: false });
       activateTool('text');
-      els.app.classList.remove('is-task-overlay');
       break;
     case 'remove-map-compartment': {
       const target = button.dataset.compartmentId
@@ -4259,7 +4290,6 @@ async function onSidebarClick(event) {
       closeWorkspace({ restoreFocus: false });
       activateTool(action === 'tool-cell' ? 'cell' : 'compartment');
       ui.leftTab = 'build';
-      els.app.classList.remove('is-task-overlay');
       paintShell();
       break;
     case 'open-crossfeeding-explorer': openWorkspace('crossfeeding', button); store.setCrossFeedingExplorer({enabled:true}); break;
@@ -4566,6 +4596,10 @@ async function onSidebarClick(event) {
     case 'selection-tidy':
       closeMapMenus();
       store.tidyMultiSelection();
+      break;
+    case 'selection-circularize':
+      closeMapMenus();
+      store.circularizeMultiSelection();
       break;
     case 'selection-rotate':
       closeMapMenus();

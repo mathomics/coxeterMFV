@@ -294,9 +294,10 @@ pub struct UiState {
 
     // Drafts
     pub flux_color_draft: Option<FluxColorDraft>,
-    /// `ui.fluxColorSource`: the palette the draft was made from; another
-    /// palette arriving (a map or scenario import) drops the draft.
-    pub flux_color_source: Option<Option<Vec<coxeter_render::FluxColorStop>>>,
+    /// `ui.fluxColorSource` and `ui.fluxColorSourceKey`: the palette the
+    /// draft was made from, absolute or signed; another palette arriving (a
+    /// map or scenario import, or a switch between the two) drops the draft.
+    pub flux_color_source: Option<(bool, Option<Vec<coxeter_render::FluxColorStop>>)>,
     pub flux_colors_committing: bool,
     pub steady_com_draft: Option<SteadyComDraft>,
     pub steady_com_pending: bool,

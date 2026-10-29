@@ -27,6 +27,7 @@ const MAP_OPERATIONS = [
   'arrangeMultiSelection',
   'spaceMultiSelectionEvenly',
   'tidyMultiSelection',
+  'circularizeMultiSelection',
   'rotateMultiSelection',
   'pointMultiSelection',
   'removeMultiSelection',

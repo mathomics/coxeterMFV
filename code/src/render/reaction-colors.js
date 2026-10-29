@@ -18,12 +18,17 @@ const DARK = [
   '#38bdf8', '#fb7185', '#4ade80', '#facc15',
 ];
 
-export const REACTION_COLOR_MODES = new Set(['flux', 'subsystem', 'pathway']);
+export const REACTION_COLOR_MODES = new Set(['flux', 'absflux', 'subsystem', 'pathway']);
 export const PATHWAY_RIBBON_MODES = new Set(['off', 'subsystem', 'pathway']);
 
 /** A known colour mode, or 'flux' for anything else. */
 export function normalizeReactionColorMode(mode) {
   return REACTION_COLOR_MODES.has(mode) ? mode : 'flux';
+}
+
+/** Whether the mode colours lines by their flux ('flux', or 'absflux' by |flux| alone). */
+export function isFluxColorMode(mode) {
+  return mode === 'flux' || mode === 'absflux';
 }
 
 /** A known pathway ribbon mode, or 'off' for anything else. */
@@ -33,11 +38,11 @@ export function normalizePathwayRibbonMode(mode) {
 
 /**
  * The reaction's subsystem or pathway label for this mode, a "Sin ..." label
- * when it has none, or null in flux mode.
+ * when it has none, or null in a flux mode.
  */
 export function reactionCategory(reaction, mode) {
   const normalized = normalizeReactionColorMode(mode);
-  if (normalized === 'flux') return null;
+  if (isFluxColorMode(normalized)) return null;
   if (normalized === 'subsystem') {
     return cleanText(reaction?.subsystem) || 'Sin subsystem';
   }
@@ -66,7 +71,7 @@ export function buildReactionColoring(model, mode = 'flux', opts = {}) {
   const groups = new Map();
   const counts = new Map();
 
-  if (!model?.reactions || normalized === 'flux') {
+  if (!model?.reactions || isFluxColorMode(normalized)) {
     return { mode: normalized, colors, groups, legend: [] };
   }
 

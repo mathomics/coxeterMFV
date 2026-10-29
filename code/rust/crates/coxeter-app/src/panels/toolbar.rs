@@ -3,6 +3,7 @@
 //! most (`renderMapQuickControls` of `src/ui/panels.js`), the Image menu, the
 //! View popover (`renderViewControls`) and the inspector toggle.
 
+use coxeter_render::reaction_colors::normalize_reaction_color_mode;
 use egui::{Frame, Margin, RichText, Stroke, Ui, Vec2};
 
 use crate::app::Shell;
@@ -26,7 +27,7 @@ impl QuickFold {
     pub fn for_width(width: f32) -> Self {
         if width <= 860.0 {
             QuickFold::All
-        } else if width <= 1090.0 {
+        } else if width <= 1260.0 {
             QuickFold::Second
         } else {
             QuickFold::None
@@ -106,11 +107,12 @@ fn separator(ui: &mut Ui, p: &Palette) {
 }
 
 /// `renderMapQuickControls(store)`: the display options used most, in two
-/// groups (`quick-a`, `quick-b`) so that a narrow toolbar can hand the second
-/// and then both over to View. `salt` keeps the selects of the toolbar and of
-/// View apart.
+/// groups, what is labelled and drawn (`quick-a`) and how lines are colored
+/// (`quick-b`), so that a narrow toolbar can hand the second and then both
+/// over to View. `salt` keeps the selects of the toolbar and of View apart.
 pub fn render_quick_controls(ui: &mut Ui, shell: &mut Shell, first: bool, second: bool, salt: &str) {
     let v = shell.store.view.clone();
+    let p = shell.palette();
     let patch = |shell: &mut Shell, patch: coxeter_state::ViewPatch| {
         let _ = shell.store.set_view(patch);
     };
@@ -129,16 +131,23 @@ pub fn render_quick_controls(ui: &mut Ui, shell: &mut Shell, first: bool, second
         }
     }
     if second {
+        if first {
+            separator(ui, &p);
+        }
         let current = v.reaction_color_mode.as_str().to_string();
-        let options = [("flux", "Color: flux"), ("pathway", "Color: pathway"), ("subsystem", "Color: subsystem")]
+        let options = [("flux", "Color: flux"), ("absflux", "Color: absolute flux"), ("pathway", "Color: pathway"), ("subsystem", "Color: subsystem")]
             .map(|(value, label)| (value.to_string(), label.to_string()));
         if let Some(value) = widgets::select(ui, (salt, "line-color"), &current, &options, 120.0, true, "Line color") {
             // A group chosen here is what "Color lines by flux" goes back to.
-            let group = (value != "flux").then(|| value.clone());
+            let group = (!normalize_reaction_color_mode(&value).is_flux()).then(|| value.clone());
             patch(shell, coxeter_state::ViewPatch { reaction_color_mode: Some(value), line_color_group: group, ..Default::default() });
         }
         if widgets::toggle_button(ui, "Width by flux", v.width_by_flux, "Line width follows flux").clicked() {
             patch(shell, coxeter_state::ViewPatch { width_by_flux: Some(!v.width_by_flux), ..Default::default() });
+        }
+        if Btn::new("Colors & pathways ↗").show(ui).clicked() {
+            shell.open_workspace_named("map");
+            shell.ui.view_open = false;
         }
     }
 }
@@ -205,8 +214,12 @@ fn view_menu(ui: &mut Ui, shell: &mut Shell, p: &Palette, fold: QuickFold) {
 /// flux. It starts with the quick options the toolbar had no room for.
 pub fn render_view_controls(ui: &mut Ui, shell: &mut Shell, fold: QuickFold) {
     let v = shell.store.view.clone();
+    if fold == QuickFold::All {
+        ui.horizontal_wrapped(|ui| render_quick_controls(ui, shell, true, false, "view"));
+        ui.add_space(6.0);
+    }
     if fold != QuickFold::None {
-        ui.horizontal_wrapped(|ui| render_quick_controls(ui, shell, fold == QuickFold::All, true, "view"));
+        ui.horizontal_wrapped(|ui| render_quick_controls(ui, shell, false, true, "view"));
         ui.add_space(6.0);
     }
     widgets::section_label(ui, "Map view");
@@ -250,10 +263,6 @@ pub fn render_view_controls(ui: &mut Ui, shell: &mut Shell, fold: QuickFold) {
             let _ = shell.store.set_view(coxeter_state::ViewPatch { scroll_input: Some(value), ..Default::default() });
         }
     });
-    if Btn::new("Colors & pathways ↗").show(ui).clicked() {
-        shell.open_workspace_named("map");
-        shell.ui.view_open = false;
-    }
     let hidden = shell.store.hidden_metabolite_count();
     if hidden > 0 && Btn::new(format!("Show hidden metabolites ({hidden})")).show(ui).clicked() {
         shell.close_map_menus();

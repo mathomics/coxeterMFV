@@ -352,9 +352,11 @@ impl Shell {
         if reasons.iter().any(|r| r != "status") {
             self.sync_inspector_visibility();
         }
-        // Importing another map or scenario replaces the palette.
-        if self.ui.flux_color_source.as_ref() != Some(&self.store.view.flux_color_stops) {
-            self.ui.flux_color_source = Some(self.store.view.flux_color_stops.clone());
+        // Importing another map or scenario replaces the palette, and
+        // switching between signed and absolute colours shows the other one.
+        let palette = crate::panels::map_options::active_flux_palette(&self.store);
+        if self.ui.flux_color_source.as_ref() != Some(&palette) {
+            self.ui.flux_color_source = Some(palette);
             if !self.ui.flux_colors_committing {
                 self.ui.flux_color_draft = None;
             }

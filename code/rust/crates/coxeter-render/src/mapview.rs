@@ -98,14 +98,16 @@ impl<'a> Ctx<'a> {
     }
 
     /// `reactionDisplayColor`: a reaction's colour. An omics overlay wins;
-    /// then flux colouring, when lines are coloured by flux; otherwise the
-    /// colour set on the reaction itself, then its pathway's or subsystem's.
+    /// then flux colouring, when lines are coloured by flux (or by |flux|);
+    /// otherwise the colour set on the reaction itself, then its pathway's or
+    /// subsystem's.
     fn reaction_display_color(&self, rid: &str, flux: f64, own: Option<&str>) -> String {
         if self.s.omics_enabled {
             return self.s.omics_colors.get(rid).cloned().unwrap_or_else(|| self.omics_fallback.clone());
         }
         match self.s.reaction_color_mode {
             ReactionColorMode::Flux => self.scale.color(flux),
+            ReactionColorMode::AbsoluteFlux => self.scale.absolute_color(flux),
             _ => match own {
                 Some(c) => c.to_string(),
                 None => self.s.reaction_colors.get(rid).cloned().unwrap_or_else(|| self.scale.color(flux)),

@@ -241,6 +241,8 @@ pub trait MapHost {
 
     /// `toggleMultiSelection(kind, id)`.
     fn toggle_multi_selection(&mut self, kind: SelectKind, id: &str);
+    /// `extendMultiSelection(kind, id)`: a Ctrl- or Shift-click.
+    fn extend_multi_selection(&mut self, kind: SelectKind, id: &str);
     /// `selectInRect({x1, y1, x2, y2}, { replace })`.
     fn select_in_rect(&mut self, x1: f64, y1: f64, x2: f64, y2: f64, replace: bool);
     /// `moveMultiSelection(dx, dy)`: what moved.
