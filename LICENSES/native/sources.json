@@ -1,0 +1,214 @@
+[
+  {
+    "repository": "https://github.com/AccessKit/accesskit",
+    "revision": "a55d3e1a18bb9ef0e4bccc9083fb13c3e0ad8969",
+    "packages": [
+      "accesskit 0.24.1"
+    ],
+    "files": [
+      {
+        "path": "AccessKit-accesskit-a55d3e1a-LICENSE-APACHE",
+        "source": "https://raw.githubusercontent.com/AccessKit/accesskit/a55d3e1a18bb9ef0e4bccc9083fb13c3e0ad8969/LICENSE-APACHE",
+        "sha256": "62c7a1e35f56406896d7aa7ca52d0cc0d272ac022b5d2796e7d6905db8a3636a"
+      },
+      {
+        "path": "AccessKit-accesskit-a55d3e1a-LICENSE-MIT",
+        "source": "https://raw.githubusercontent.com/AccessKit/accesskit/a55d3e1a18bb9ef0e4bccc9083fb13c3e0ad8969/LICENSE-MIT",
+        "sha256": "23f18e03dc49df91622fe2a76176497404e46ced8a715d9d2b67a7446571cca3"
+      },
+      {
+        "path": "AccessKit-accesskit-a55d3e1a-LICENSE.chromium",
+        "source": "https://raw.githubusercontent.com/AccessKit/accesskit/a55d3e1a18bb9ef0e4bccc9083fb13c3e0ad8969/LICENSE.chromium",
+        "sha256": "845022e0c1db1abb41a6ba4cd3c4b674ec290f3359d9d3c78ae558d4c0ed9308"
+      }
+    ]
+  },
+  {
+    "repository": "https://github.com/AccessKit/accesskit",
+    "revision": "1bbcf100942bac96c2c3a4a91cb67b0b20201a24",
+    "packages": [
+      "accesskit_consumer 0.35.0",
+      "accesskit_windows 0.32.1",
+      "accesskit_winit 0.32.2"
+    ],
+    "files": [
+      {
+        "path": "AccessKit-accesskit-1bbcf100-LICENSE-APACHE",
+        "source": "https://raw.githubusercontent.com/AccessKit/accesskit/1bbcf100942bac96c2c3a4a91cb67b0b20201a24/LICENSE-APACHE",
+        "sha256": "62c7a1e35f56406896d7aa7ca52d0cc0d272ac022b5d2796e7d6905db8a3636a"
+      },
+      {
+        "path": "AccessKit-accesskit-1bbcf100-LICENSE-MIT",
+        "source": "https://raw.githubusercontent.com/AccessKit/accesskit/1bbcf100942bac96c2c3a4a91cb67b0b20201a24/LICENSE-MIT",
+        "sha256": "23f18e03dc49df91622fe2a76176497404e46ced8a715d9d2b67a7446571cca3"
+      },
+      {
+        "path": "AccessKit-accesskit-1bbcf100-LICENSE.chromium",
+        "source": "https://raw.githubusercontent.com/AccessKit/accesskit/1bbcf100942bac96c2c3a4a91cb67b0b20201a24/LICENSE.chromium",
+        "sha256": "845022e0c1db1abb41a6ba4cd3c4b674ec290f3359d9d3c78ae558d4c0ed9308"
+      }
+    ]
+  },
+  {
+    "repository": "https://github.com/DoumanAsh/clipboard-win",
+    "revision": "3b27cf2bfd1adcfa6e0264eb51c1025ddaf0f342",
+    "packages": [
+      "clipboard-win 5.4.1"
+    ],
+    "files": [
+      {
+        "path": "DoumanAsh-clipboard-win-3b27cf2b-LICENSE",
+        "source": "https://raw.githubusercontent.com/DoumanAsh/clipboard-win/3b27cf2bfd1adcfa6e0264eb51c1025ddaf0f342/LICENSE",
+        "sha256": "c9bff75738922193e67fa726fa225535870d2aa1059f91452c411736284ad566"
+      }
+    ]
+  },
+  {
+    "repository": "https://github.com/emilk/egui",
+    "revision": "49682f8baa058bf49e011035cfbd6e825f88a5ef",
+    "packages": [
+      "ecolor 0.36.2",
+      "eframe 0.36.2",
+      "egui 0.36.2",
+      "egui-wgpu 0.36.2",
+      "egui-winit 0.36.2",
+      "egui_glow 0.36.2",
+      "egui_kittest 0.36.2",
+      "emath 0.36.2",
+      "epaint 0.36.2",
+      "epaint_default_fonts 0.36.2"
+    ],
+    "files": [
+      {
+        "path": "emilk-egui-49682f8b-LICENSE-APACHE",
+        "source": "https://raw.githubusercontent.com/emilk/egui/49682f8baa058bf49e011035cfbd6e825f88a5ef/LICENSE-APACHE",
+        "sha256": "8173d5c29b4f956d532781d2b86e4e30f83e6b7878dce18c919451d6ba707c90"
+      },
+      {
+        "path": "emilk-egui-49682f8b-LICENSE-MIT",
+        "source": "https://raw.githubusercontent.com/emilk/egui/49682f8baa058bf49e011035cfbd6e825f88a5ef/LICENSE-MIT",
+        "sha256": "95ca92f5f8ea5231f1580b3a2a799e8260af3114b900e1def5355a7f44bcf60c"
+      },
+      {
+        "path": "emilk-egui-49682f8b-Hack-Regular.txt",
+        "source": "https://raw.githubusercontent.com/emilk/egui/49682f8baa058bf49e011035cfbd6e825f88a5ef/crates/epaint_default_fonts/fonts/Hack-Regular.txt",
+        "sha256": "47c0cccbeec7e8614548cc485588b28149e7874188df5f41b36efebcee285c87"
+      },
+      {
+        "path": "emilk-egui-49682f8b-OFL.txt",
+        "source": "https://raw.githubusercontent.com/emilk/egui/49682f8baa058bf49e011035cfbd6e825f88a5ef/crates/epaint_default_fonts/fonts/OFL.txt",
+        "sha256": "6a73f9541c2de74158c0e7cf6b0a58ef774f5a780bf191f2d7ec9cc53efe2bf2"
+      },
+      {
+        "path": "emilk-egui-49682f8b-UFL.txt",
+        "source": "https://raw.githubusercontent.com/emilk/egui/49682f8baa058bf49e011035cfbd6e825f88a5ef/crates/epaint_default_fonts/fonts/UFL.txt",
+        "sha256": "2f0015108d68627bd788d313f529c21ff4da2c2c42a5e1f3883acc83480f9002"
+      },
+      {
+        "path": "emilk-egui-49682f8b-emoji-icon-font-mit-license.txt",
+        "source": "https://raw.githubusercontent.com/emilk/egui/49682f8baa058bf49e011035cfbd6e825f88a5ef/crates/epaint_default_fonts/fonts/emoji-icon-font-mit-license.txt",
+        "sha256": "b9d2c1d909aa149996fd4c91dcb92b2362a04431640c1d200959da94caf8cde1"
+      }
+    ]
+  },
+  {
+    "repository": "https://github.com/brendanzab/gl-rs",
+    "revision": "ea503e8d5fb6d73c6030e6191ce738cd3bf3433e",
+    "packages": [
+      "gl_generator 0.14.0"
+    ],
+    "files": [
+      {
+        "path": "brendanzab-gl-rs-ea503e8d-LICENSE",
+        "source": "https://raw.githubusercontent.com/brendanzab/gl-rs/ea503e8d5fb6d73c6030e6191ce738cd3bf3433e/LICENSE",
+        "sha256": "cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30"
+      }
+    ]
+  },
+  {
+    "repository": "https://github.com/brendanzab/gl-rs",
+    "revision": "f150967b1c44ae888e6676f93f639ebc82771bdc",
+    "packages": [
+      "khronos_api 3.1.0"
+    ],
+    "files": [
+      {
+        "path": "brendanzab-gl-rs-f150967b-LICENSE",
+        "source": "https://raw.githubusercontent.com/brendanzab/gl-rs/f150967b1c44ae888e6676f93f639ebc82771bdc/LICENSE",
+        "sha256": "cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30"
+      }
+    ]
+  },
+  {
+    "repository": "https://github.com/nical/lyon",
+    "revision": "56219c95c658d4f39de7b190d98e57d5773ba241",
+    "packages": [
+      "lyon_geom 1.0.19",
+      "lyon_path 1.0.19"
+    ],
+    "files": [
+      {
+        "path": "nical-lyon-56219c95-LICENSE-APACHE",
+        "source": "https://raw.githubusercontent.com/nical/lyon/56219c95c658d4f39de7b190d98e57d5773ba241/LICENSE-APACHE",
+        "sha256": "216486f29671a4262efe32af6d84a75bef398127f8c5f369b5c8305983887a06"
+      },
+      {
+        "path": "nical-lyon-56219c95-LICENSE-MIT",
+        "source": "https://raw.githubusercontent.com/nical/lyon/56219c95c658d4f39de7b190d98e57d5773ba241/LICENSE-MIT",
+        "sha256": "80f275e90d799911ed3830a7f242a2ef5a4ade2092fe0aa07bfb2d2cf2f2b95e"
+      }
+    ]
+  },
+  {
+    "repository": "https://github.com/nical/lyon",
+    "revision": "b456b143215a1942a617c4672776b68b9a30feee",
+    "packages": [
+      "lyon_tessellation 1.0.22"
+    ],
+    "files": [
+      {
+        "path": "nical-lyon-b456b143-LICENSE-APACHE",
+        "source": "https://raw.githubusercontent.com/nical/lyon/b456b143215a1942a617c4672776b68b9a30feee/LICENSE-APACHE",
+        "sha256": "216486f29671a4262efe32af6d84a75bef398127f8c5f369b5c8305983887a06"
+      },
+      {
+        "path": "nical-lyon-b456b143-LICENSE-MIT",
+        "source": "https://raw.githubusercontent.com/nical/lyon/b456b143215a1942a617c4672776b68b9a30feee/LICENSE-MIT",
+        "sha256": "80f275e90d799911ed3830a7f242a2ef5a4ade2092fe0aa07bfb2d2cf2f2b95e"
+      }
+    ]
+  },
+  {
+    "repository": "https://github.com/aclysma/profiling",
+    "revision": "8271551172eb6fa4cba47369aedd93790c623df9",
+    "packages": [
+      "profiling 1.0.18"
+    ],
+    "files": [
+      {
+        "path": "aclysma-profiling-82715511-LICENSE-APACHE",
+        "source": "https://raw.githubusercontent.com/aclysma/profiling/8271551172eb6fa4cba47369aedd93790c623df9/LICENSE-APACHE",
+        "sha256": "10d30a673cd5e9349bdc02aeb48f14b3386d27d0da32df8f0a555d4aa16aa551"
+      },
+      {
+        "path": "aclysma-profiling-82715511-LICENSE-MIT",
+        "source": "https://raw.githubusercontent.com/aclysma/profiling/8271551172eb6fa4cba47369aedd93790c623df9/LICENSE-MIT",
+        "sha256": "c8167fdeeed46d3f244d3f85c5bf998ce889343691c32be2c61a8bc4b5c08333"
+      }
+    ]
+  },
+  {
+    "repository": "https://github.com/gfx-rs/rspirv",
+    "revision": "8afc3d0ac8e158128cd1410bb2e4b4c26ab11bb4",
+    "packages": [
+      "spirv 0.4.0+sdk-1.4.341.0"
+    ],
+    "files": [
+      {
+        "path": "gfx-rs-rspirv-8afc3d0a-LICENSE",
+        "source": "https://raw.githubusercontent.com/gfx-rs/rspirv/8afc3d0ac8e158128cd1410bb2e4b4c26ab11bb4/LICENSE",
+        "sha256": "cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30"
+      }
+    ]
+  }
+]

@@ -574,6 +574,7 @@ impl Store {
             "loopless": self.loopless,
             "cycleFree": self.cycle_free,
             "fvaEnabled": self.fva_enabled,
+            "pfvaEnabled": self.pfva_enabled,
             "layoutSettings": layout_settings_json(&self.layout_settings),
             "reactionColorMode": self.view.reaction_color_mode.as_str(),
             "widthByFlux": self.view.width_by_flux,
@@ -681,6 +682,7 @@ impl Store {
             self.parsimonious = false;
         }
         self.fva_enabled = !self.loopless && !self.cycle_free && get("fvaEnabled").or_else(|| get("fva")).is_some_and(js::truthy);
+        self.pfva_enabled = self.fva_enabled && get("pfvaEnabled").is_some_and(js::truthy);
         self.fva_ranges = IndexMap::new();
         self.fva_progress = FvaProgress::default();
         let layout = match get("layoutSettings") {
@@ -856,6 +858,7 @@ impl Store {
             loopless: self.loopless,
             cycle_free: self.cycle_free,
             fva_enabled: self.fva_enabled,
+            pfva_enabled: self.pfva_enabled,
             fva_ranges: self.fva_ranges.iter().map(|(k, r)| (k.clone(), json!({"min": num_json(r.min), "max": num_json(r.max)}))).collect(),
             growth: self.growth.iter().map(|(k, v)| (k.clone(), num_json(*v))).collect(),
             map: self.map.as_ref().map(EditableMap::to_json),
@@ -949,6 +952,7 @@ impl Store {
         // FVA is replayed only after the primary numerical solution has been
         // compared; its ranges are restored from the archive below.
         self.fva_enabled = false;
+        self.pfva_enabled = false;
         self.rebuild(RebuildOptions::default())?;
         self.gene_knockouts = self.gene_knockouts_from(constraints.and_then(|c| c.get("geneKnockouts")));
         self.custom_objective = self.custom_objective_from(community.and_then(|c| c.get("customObjective")));
@@ -1019,6 +1023,7 @@ impl Store {
         let fva = get(bundle.get("solution"), "fva");
         if get(analysis, "fvaEnabled").is_some_and(|v| js::truthy(&v)) && fva.as_ref().is_some_and(js::truthy) {
             self.fva_enabled = true;
+            self.pfva_enabled = get(analysis, "pfvaEnabled").is_some_and(|v| js::truthy(&v));
             self.fva_ranges = fva
                 .as_ref()
                 .and_then(Value::as_object)
@@ -1035,6 +1040,7 @@ impl Store {
             self.fva_progress = FvaProgress { running: false, done: n, total: n, ms: 0.0 };
         } else {
             self.fva_enabled = false;
+            self.pfva_enabled = false;
             self.fva_ranges = IndexMap::new();
             self.fva_progress = FvaProgress::default();
         }

@@ -11,7 +11,7 @@ use coxeter_analysis::community_view::CommunityView;
 use coxeter_core::community::{CrossFeeding, community_exchange, split_id};
 use coxeter_core::js;
 use coxeter_solver::backends::{Solver, SolverKind};
-use coxeter_solver::fba::{CycleFreeOptions, FluxProblem, FluxResult, FvaOptions, FvaProgress as SolverFvaProgress, LooplessOptions, PfbaOptions};
+use coxeter_solver::fba::{CycleFreeOptions, FluxProblem, FluxResult, FvaOptions, FvaProgress as SolverFvaProgress, LooplessOptions, PfbaOptions, DEFAULT_PFVA_FACTOR};
 use indexmap::IndexMap;
 
 use crate::error::{Result, StoreError};
@@ -32,6 +32,31 @@ pub struct SolvePlan {
     pub cycle_free: bool,
     pub pfba_percent: f64,
     pub minimise: bool,
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use coxeter_core::model::Model;
+
+    #[test]
+    fn pfva_is_a_separate_analysis_that_persists_its_flux_budget_and_finishes_after_its_ranges() {
+        let model = Model::from_json_str(include_str!("../../../../models/ecoli_core_mc.json")).unwrap();
+        let mut store = Store::with_dir(env!("CARGO_MANIFEST_DIR"));
+        store.problem = Some(Arc::new(FluxProblem::new(&model)));
+        store.run_analysis_blocking("pfva", Duration::from_secs(20)).unwrap();
+        assert!(store.pfva_enabled);
+        assert!(store.fva_enabled);
+        assert_eq!(store.last_run.as_ref().unwrap().phase, RunPhase::Done);
+        assert!(store.fva_ranges["FRD7"].max < 0.01);
+        assert_eq!(store.state_value()["pfvaEnabled"], true);
+        store.set_fva(false).unwrap();
+        assert!(!store.pfva_enabled);
+        store.set_fva(true).unwrap();
+        store.wait_for_jobs(Duration::from_secs(20));
+        assert!(store.fva_ranges["FRD7"].max > 100.0);
+        store.set_fva(false).unwrap();
+    }
 }
 
 impl SolvePlan {
@@ -124,6 +149,7 @@ impl Store {
                 self.schedule_fva(40.0);
             } else if !allow_fva && self.fva_enabled {
                 self.fva_enabled = false;
+                self.pfva_enabled = false;
                 self.cancel_fva(true, false);
             }
         } else {
@@ -259,8 +285,11 @@ impl Store {
         if self.is_zuniga_study() && m != AnalysisMethod::Fba {
             return Ok(());
         }
-        if m == AnalysisMethod::Fva && self.solution.as_ref().is_some_and(|s| s.steady_com.is_some()) {
+        if matches!(m, AnalysisMethod::Fva | AnalysisMethod::Pfva) && self.solution.as_ref().is_some_and(|s| s.steady_com.is_some()) {
             return Ok(());
+        }
+        if matches!(m, AnalysisMethod::Fva | AnalysisMethod::Pfva) {
+            self.set_fva(false)?;
         }
         self.solution_cleared = false;
         self.next_run_serial += 1;
@@ -334,9 +363,10 @@ impl Store {
                     self.start_solve_job(false);
                 }
             }
-            AnalysisMethod::Fva => {
+            AnalysisMethod::Fva | AnalysisMethod::Pfva => {
                 self.loopless = false;
-                self.parsimonious = false;
+                self.parsimonious = m == AnalysisMethod::Pfva;
+                self.pfva_enabled = m == AnalysisMethod::Pfva;
                 self.cycle_free = false;
                 self.start_solve_job(true);
             }
@@ -461,7 +491,7 @@ impl Store {
             run.objective = objective;
         }
         if ok {
-            let detail = if method == AnalysisMethod::Fva {
+            let detail = if matches!(method, AnalysisMethod::Fva | AnalysisMethod::Pfva) {
                 format!("{} flux ranges", self.fva_ranges.len())
             } else {
                 let o = objective.filter(|o| o.is_finite());
@@ -617,10 +647,13 @@ impl Store {
         }
         self.fva_enabled = enabled;
         if !enabled {
+            self.pfva_enabled = false;
+        }
+        if !enabled {
             self.cancel_fva(true, false);
             self.variability = None;
             self.emit("fva");
-            if self.last_run.as_ref().is_some_and(|r| r.method == AnalysisMethod::Fva) {
+            if self.last_run.as_ref().is_some_and(|r| matches!(r.method, AnalysisMethod::Fva | AnalysisMethod::Pfva)) {
                 self.finish_run("cancelled");
             }
             return Ok(());
@@ -661,6 +694,8 @@ impl Store {
             }
         }
         let total = problem.rxn_ids.len();
+        let fraction = if self.pfva_enabled { self.pfba_biomass_percent / 100.0 } else { 1.0 };
+        let pfba_factor = if self.pfva_enabled { Some(DEFAULT_PFVA_FACTOR) } else { None };
         self.fva_ranges = IndexMap::new();
         self.variability = None;
         self.fva_progress = FvaProgress { running: true, done: 0, total, ms: 0.0 };
@@ -688,7 +723,7 @@ impl Store {
             let ids = problem.rxn_ids.clone();
             let ranges = problem.variability(
                 &ids,
-                &FvaOptions { fraction: 1.0, threads: None, on_progress: Some(&on_progress), cancel: Some(cancel) },
+                &FvaOptions { fraction, pfba_factor, threads: None, on_progress: Some(&on_progress), cancel: Some(cancel) },
             );
             let _ = tx.send(JobMessage::Done { id, payload: JobPayload::Fva { ranges, elapsed: t.elapsed() } });
         });
@@ -735,8 +770,10 @@ impl Store {
             ms: js::round(elapsed.as_secs_f64() * 1000.0),
         };
         self.emit("fva");
-        if self.last_run.as_ref().is_some_and(|r| r.method == AnalysisMethod::Fva) {
-            self.finish_run("optimal");
+        if self.last_run.as_ref().is_some_and(|r| matches!(r.method, AnalysisMethod::Fva | AnalysisMethod::Pfva)) {
+            let complete = self.fva_ranges.len() == total
+                && self.fva_ranges.values().all(|range| range.min.is_finite() && range.max.is_finite());
+            self.finish_run(if complete { "optimal" } else { "incomplete flux ranges" });
         }
         Ok(())
     }

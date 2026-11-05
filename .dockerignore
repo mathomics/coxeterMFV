@@ -1,0 +1,9 @@
+*
+!Dockerfile
+!app/
+!app/web/
+!app/web/coxeter_mfv.html
+!LICENSE
+!LICENSES/
+!LICENSES/**
+!THIRD_PARTY_NOTICES.md

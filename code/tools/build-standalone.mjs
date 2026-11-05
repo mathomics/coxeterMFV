@@ -181,6 +181,7 @@ ${glpkBootstrap}
 ${registrySource(bundleFor(workerOrdered), WORKER_ENTRY)}`;
 const thirdPartyNotices = {
   name: 'glpk.js and GNU GLPK', version: '5.0.0', license: 'GPL-3.0',
+  licenseText: await readFile(join(root, 'assets/vendor/LICENSE'), 'utf8'),
   sourceURLs: ['https://github.com/jvail/glpk.js', 'https://www.gnu.org/software/glpk/',
     'https://www.npmjs.com/package/glpk.js/v/5.0.0'],
   licenseURL: 'https://www.gnu.org/licenses/gpl-3.0.html',
@@ -302,7 +303,8 @@ ${bundle}
 </html>
 `;
 
-await writeFile(out, html, 'utf8');
-const kb = Math.round(Buffer.byteLength(html) / 1024);
+const outputHTML = html.replaceAll('\r\n', '\n');
+await writeFile(out, outputHTML, 'utf8');
+const kb = Math.round(Buffer.byteLength(outputHTML) / 1024);
 console.log(`wrote ${relative(root, out) || out}  (${kb} KB, ${ordered.length} app modules, ${workerOrdered.length} Worker modules, ${Object.keys(data).length} JSON files, ${Object.keys(text).length} text files)`);
 console.log('Open it directly in a browser — no server needed.');

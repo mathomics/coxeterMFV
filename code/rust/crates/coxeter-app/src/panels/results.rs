@@ -117,6 +117,7 @@ fn run_mode(method: coxeter_state::AnalysisMethod) -> &'static str {
         coxeter_state::AnalysisMethod::Fba => "FBA",
         coxeter_state::AnalysisMethod::Pfba => "pFBA",
         coxeter_state::AnalysisMethod::Fva => "FVA",
+        coxeter_state::AnalysisMethod::Pfva => "pFVA",
         coxeter_state::AnalysisMethod::Loopless => "Loopless",
         coxeter_state::AnalysisMethod::CycleFree => "CycleFreeFlux",
     }
@@ -142,6 +143,8 @@ pub fn run_summary_text(shell: &Shell) -> (String, &'static str) {
         "Loopless"
     } else if store.cycle_free {
         "CycleFreeFlux"
+    } else if store.pfva_enabled && store.fva_enabled {
+        "pFVA"
     } else if store.parsimonious {
         "pFBA"
     } else if store.fva_enabled {
@@ -156,7 +159,7 @@ pub fn run_summary_text(shell: &Shell) -> (String, &'static str) {
     let mut state = "";
     if let Some(run) = &store.last_run {
         if run.phase == RunPhase::Running {
-            let fva = if run.method == coxeter_state::AnalysisMethod::Fva && store.fva_progress.running {
+            let fva = if matches!(run.method, coxeter_state::AnalysisMethod::Fva | coxeter_state::AnalysisMethod::Pfva) && store.fva_progress.running {
                 format!(" {} / {} reactions", store.fva_progress.done, store.fva_progress.total)
             } else {
                 String::new()
@@ -167,7 +170,7 @@ pub fn run_summary_text(shell: &Shell) -> (String, &'static str) {
             let at = local_time(run.finished_at.unwrap_or(0.0));
             match run.phase {
                 RunPhase::Done => {
-                    let detail = if run.method == coxeter_state::AnalysisMethod::Fva {
+                    let detail = if matches!(run.method, coxeter_state::AnalysisMethod::Fva | coxeter_state::AnalysisMethod::Pfva) {
                         format!("{} flux ranges", store.fva_ranges.len())
                     } else {
                         format!("{} · {}", run.outcome.clone().unwrap_or_default(), format_flux(run.objective, 5))
@@ -232,6 +235,8 @@ fn results_mode(shell: &Shell) -> &'static str {
         "Loopless FBA"
     } else if store.cycle_free {
         "CycleFreeFlux"
+    } else if store.pfva_enabled && store.fva_enabled {
+        "pFVA"
     } else if store.parsimonious {
         "pFBA"
     } else if store.fva_enabled {
@@ -390,6 +395,14 @@ fn analysis_tab_content(ui: &mut Ui, shell: &mut Shell, tab: AnalysisTab, state:
             }
             let mut rows: Vec<(String, coxeter_state::FvaRange)> = shell.store.fva_ranges.iter().map(|(k, r)| (k.clone(), *r)).collect();
             rows.sort_by(|a, b| (b.1.max - b.1.min).partial_cmp(&(a.1.max - a.1.min)).unwrap_or(std::cmp::Ordering::Equal));
+            let title = if shell.store.pfva_enabled { "pFVA" } else { "FVA" };
+            if shell.store.pfva_enabled {
+                widgets::hint(ui, "Total absolute flux ≤ 1.00001 × minimum, including exchanges.");
+            }
+            widgets::hint(ui, format!("Showing {} of {} ranges, widest first.", rows.len().min(limit), rows.len()));
+            if !rows.is_empty() {
+                flux_range_plot(ui, shell, &rows[..rows.len().min(limit)], title);
+            }
             let rows: Vec<(String, String, Option<String>)> = rows
                 .into_iter()
                 .map(|(id, r)| (id, format!("[{}, {}]", format_flux(Some(r.min), 5), format_flux(Some(r.max), 5)), Some(format_flux(Some(r.max - r.min), 5))))
@@ -438,6 +451,77 @@ fn analysis_tab_content(ui: &mut Ui, shell: &mut Shell, tab: AnalysisTab, state:
         }
         AnalysisTab::Repro => {}
     }
+}
+
+/// `renderFluxRanges` of `src/render/flux-ranges.js`, drawn with the native painter.
+fn flux_range_plot(ui: &mut Ui, shell: &Shell, rows: &[(String, coxeter_state::FvaRange)], title: &str) {
+    let mut min = 0.0_f64;
+    let mut max = 0.0_f64;
+    for (_, range) in rows {
+        if range.min.is_finite() && range.max.is_finite() {
+            min = min.min(range.min).min(range.max);
+            max = max.max(range.min).max(range.max);
+        }
+    }
+    if min == max {
+        min = -1.0;
+        max = 1.0;
+    }
+    let width = ui.available_width().max(320.0);
+    let height = 150.0 + rows.len() as f32 * 30.0;
+    let (rect, _) = ui.allocate_exact_size(Vec2::new(width, height), egui::Sense::hover());
+    let painter = ui.painter_at(rect);
+    painter.rect_filled(rect, 0.0, Color32::WHITE);
+    let ink = Color32::from_rgb(31, 41, 55);
+    let blue = Color32::from_rgb(37, 99, 235);
+    let orange = Color32::from_rgb(194, 65, 12);
+    let font = egui::FontId::proportional(12.0);
+    let text = |x: f32, y: f32, label: &str, align| {
+        painter.text(rect.min + Vec2::new(x, y), align, label, font.clone(), ink);
+    };
+    let left = width * 250.0 / 960.0;
+    let right = width - 40.0;
+    let multiple_species = shell.store.species.iter().filter(|species| species.enabled).count() > 1;
+    let x = |value: f64| left + (right - left) * ((value - min) / (max - min)) as f32;
+    text(12.0, 24.0, &format!("{title} flux intervals"), egui::Align2::LEFT_BOTTOM);
+    text(12.0, 48.0, "Endpoints: minimum and maximum · orange diamond: current solution", egui::Align2::LEFT_BOTTOM);
+    for i in 0..=4 {
+        let value = min + (max - min) * f64::from(i) / 4.0;
+        let position = x(value);
+        painter.line_segment(
+            [rect.min + Vec2::new(position, 62.0), rect.min + Vec2::new(position, height - 64.0)],
+            Stroke::new(1.0, Color32::from_rgb(229, 231, 235)),
+        );
+        text(position, height - 44.0, &format_flux(Some(value), 3), egui::Align2::CENTER_BOTTOM);
+    }
+    painter.line_segment(
+        [rect.min + Vec2::new(x(0.0), 62.0), rect.min + Vec2::new(x(0.0), height - 64.0)],
+        Stroke::new(1.0, Color32::from_rgb(100, 116, 139)),
+    );
+    for (i, (rid, range)) in rows.iter().enumerate() {
+        let y = 74.0 + i as f32 * 30.0;
+        let mut label = shell.store.community.as_ref().and_then(|c| c.reaction_owner.get(rid)).map(|o| o.original_id.as_str()).unwrap_or(rid);
+        if multiple_species {
+            label = rid;
+        }
+        text(12.0, y + 4.0, label, egui::Align2::LEFT_BOTTOM);
+        if !range.min.is_finite() || !range.max.is_finite() {
+            text(left, y + 4.0, "Unsolved", egui::Align2::LEFT_BOTTOM);
+            continue;
+        }
+        let lo = rect.min + Vec2::new(x(range.min), y);
+        let hi = rect.min + Vec2::new(x(range.max), y);
+        painter.line_segment([lo, hi], Stroke::new(4.0, blue));
+        painter.circle_filled(lo, 4.0, blue);
+        painter.circle_filled(hi, 4.0, blue);
+        let flux = shell.store.solution.as_ref().and_then(|s| s.fluxes.get(rid)).copied();
+        if let Some(value) = flux.filter(|value| value.is_finite() && *value >= min && *value <= max) {
+            let centre = rect.min + Vec2::new(x(value), y);
+            let points = vec![centre + Vec2::new(0.0, -5.0), centre + Vec2::new(5.0, 0.0), centre + Vec2::new(0.0, 5.0), centre + Vec2::new(-5.0, 0.0)];
+            painter.add(egui::Shape::convex_polygon(points, orange, Stroke::NONE));
+        }
+    }
+    text((left + right) / 2.0, height - 12.0, "Flux (model units) · linear scale", egui::Align2::CENTER_BOTTOM);
 }
 
 /// `dualContext(store)`.

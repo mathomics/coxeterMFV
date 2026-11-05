@@ -1,12 +1,15 @@
 # gut9-map
 
 Scripts that build and check the curated map of the nine-species gut community
-(`models/published/steadycom-gut-nine/map.json`). The history, decisions and
-lessons are in [docs/gut9-map/GUT9_MAPA_BITACORA.md](../../docs/gut9-map/GUT9_MAPA_BITACORA.md);
-the construction rules in [docs/gut9-map/COXETER_REGLAS_CONSTRUCCION_MAPAS.md](../../docs/gut9-map/COXETER_REGLAS_CONSTRUCCION_MAPAS.md).
+(`models/published/steadycom-gut-nine/map.json`). The reference maps required
+by the tests are preserved in `code/docs/gut9-map/`. Development logs and
+map-construction notes remain in the working repository. See the official
+[reproducibility guide](../../../docs/REPRODUCIBILITY.md) for validation scope.
 
 They need Python 3.7+ and numpy (`build_phase2b.py`). Run them from the
-repository root.
+`code/` directory. The historical build recipes below also require the
+intermediate inputs and development logs of the working repository; they are
+not a required part of installing or building the application.
 
 | Script | What it does |
 |---|---|

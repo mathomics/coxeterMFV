@@ -1,0 +1,31 @@
+name: Bug report
+description: Report a reproducible problem in a distributed release.
+title: "[Bug] "
+body:
+  - type: input
+    id: version
+    attributes:
+      label: Version or source revision
+    validations:
+      required: true
+  - type: textarea
+    id: environment
+    attributes:
+      label: Environment
+      description: Operating system, browser or desktop application, solver and solver version.
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      description: Include a minimal model, map or reproducibility bundle that you may share publicly.
+    validations:
+      required: true
+  - type: textarea
+    id: result
+    attributes:
+      label: Expected and observed behaviour
+      description: Include error text, solver status or screenshots where useful. Do not post confidential data.
+    validations:
+      required: true

@@ -7,7 +7,7 @@ Both applications open the same maps, models and scenario files, so work can mov
 [`web/coxeter_mfv.html`](web/coxeter_mfv.html) is the complete application in one file, with the bundled models and examples built in.
 
 - Open it in a recent version of Chrome, Edge, Firefox or Safari, on a computer or a phone.
-- It runs entirely in the browser. Nothing is installed and no data is sent anywhere.
+- Editing and solving run in the browser. External model downloads, including the Zuñiga sources and optional Yeast9 download, require internet access.
 - Saved maps, models and scenarios are written as files to your computer.
 
 This file bundles the GLPK solver and is therefore distributed under GPL-3.0.
@@ -26,6 +26,8 @@ coxeter-mfv.exe --dark
 coxeter-mfv.exe --help
 ```
 
-Windows may warn the first time that the program comes from an unknown publisher, because the file is not code-signed. Choose *More info* and then *Run anyway* to start it.
+The executable is unsigned. Windows may display an unknown-publisher warning. Verify the download against `../release-manifest.json` before deciding whether to run it. Dependency licence notices are distributed in [`windows/THIRD_PARTY_LICENSES.txt`](windows/THIRD_PARTY_LICENSES.txt).
 
 To build the desktop application for Linux or macOS, follow [`../code/README.md`](../code/README.md).
+
+For a complete example workflow, see the [user guide](../docs/USER_GUIDE.md). To verify the distributed files, run `node tools/release-manifest.mjs` from the repository root. Exact build commands and source provenance are recorded in the [release procedure](../docs/RELEASING.md) and `../release-manifest.json`.

@@ -20,3 +20,5 @@ The joint model is read from the four CellNetAnalyzer files of the paper's suppl
 Stolyar S, Van Dien S, Hillesland KL, Pinel N, Lie TJ, Leigh JA, Stahl DA (2007). Metabolic modeling of a mutualistic microbial community. *Molecular Systems Biology* 3, 92. https://doi.org/10.1038/msb4100131
 
 The models are derived from the supplementary material of the article. Please cite the article when you use them.
+
+The exact redistribution terms for the source supplement and converted model files remain to be documented before the publication release. The project's MIT licence does not apply to these third-party inputs. See [`data/README.md`](../../data/README.md).

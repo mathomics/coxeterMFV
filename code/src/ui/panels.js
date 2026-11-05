@@ -11,6 +11,7 @@ import {
 } from '../core/compartments.js';
 import { cellRootId } from '../map/geometry-edit.js';
 import { defaultAbsoluteFluxStops, formatFlux } from '../render/theme.js';
+import { renderFluxRanges } from '../render/flux-ranges.js';
 import { isFluxColorMode } from '../render/reaction-colors.js';
 import { CROSSFEED_WIDTH_RANGE } from '../render/crossfeed-routes.js';
 import { crossFeedingColors } from '../render/crossfeed-colors.js';
@@ -119,6 +120,7 @@ export function renderTaskPanel(store, ui = {}) {
         <button data-action="run-fba" type="button"><strong>FBA</strong></button>
         <button data-action="run-pfba" type="button"><strong>pFBA</strong></button>
         <button data-action="run-fva" type="button"${fixedMu ? ' disabled title="Run an ordinary analysis before FVA"' : ''}><strong>FVA</strong></button>
+        <button data-action="run-pfva" type="button"${fixedMu ? ' disabled title="Run an ordinary analysis before FVA"' : ''}><strong>pFVA</strong></button>
         <button data-action="run-loopless" type="button"><strong>Loopless</strong></button>
         <button data-action="run-cyclefree" type="button"><strong>CycleFreeFlux</strong></button>
       </div>
@@ -165,6 +167,7 @@ function cellToolHelp(store) {
 
 function currentAnalysisMethod(store) {
   if (store.solution?.steadyCom) return 'SteadyCom fixed µ';
+  if (store.pfvaEnabled && store.fvaEnabled) return 'pFVA';
   const method = store.solution?.gimme || store.omics?.gimmeEnabled ? 'GIMME'
     : store.loopless ? 'Loopless FBA'
       : store.cycleFree ? 'CycleFreeFlux'
@@ -337,7 +340,10 @@ export function renderInspector(store) {
 export function renderResults(store, analysisTab = 'flux', { table = null } = {}) {
   const solution = store.solution;
   const optimal = solution?.status === 'optimal';
-  const mode = solution?.steadyCom ? 'SteadyCom fixed µ' : (solution?.gimme ? 'GIMME' : (store.loopless ? 'Loopless FBA' : (store.cycleFree ? 'CycleFreeFlux' : (store.parsimonious ? 'pFBA' : (store.fvaEnabled ? 'FVA' : 'FBA')))));
+  let mode = solution?.steadyCom ? 'SteadyCom fixed µ' : (solution?.gimme ? 'GIMME' : (store.loopless ? 'Loopless FBA' : (store.cycleFree ? 'CycleFreeFlux' : (store.parsimonious ? 'pFBA' : (store.fvaEnabled ? 'FVA' : 'FBA')))));
+  if (store.pfvaEnabled && store.fvaEnabled) {
+    mode = 'pFVA';
+  }
   const statusLabel = optimal ? 'Optimal' : (solution?.status ?? 'Not run');
   const progress = store.fvaProgress ?? {};
   const replayAvailable = Boolean(store.reproducibilityReplay?.replay);
@@ -437,10 +443,26 @@ function analysisTabContent(store, tab, state) {
   }
   if (tab === 'fva') {
     if (!fvaAvailable) return wrap('<div class="analysis-empty">FVA is not enabled for this solution.</div>');
-    const rows=[...(store.fvaRanges??new Map())].sort((a,b)=>(b[1].max-b[1].min)-(a[1].max-a[1].min));
-    const body=rows.slice(0,full?rows.length:20).map(([rid,r])=>reactionRow(store,rid,`[${formatFlux(r.min,5)}, ${formatFlux(r.max,5)}]`,formatFlux(r.max-r.min,5))).join('');
-    const note=progress.running?`<p class="analysis-progress">Computing FVA: ${progress.done??0}/${progress.total??0}</p>`:'';
-    return wrap(note+`<div class="table-scroll"><table class="results-table"><thead><tr><th>Reaction</th><th>Name</th><th>FVA range</th><th>Width</th></tr></thead><tbody>${body||'<tr><td colspan="4">No FVA ranges available yet.</td></tr>'}</tbody></table></div>`);
+    const rows = [...(store.fvaRanges ?? new Map())];
+    rows.sort((a, b) => (b[1].max - b[1].min) - (a[1].max - a[1].min));
+    const shown = rows.slice(0, full ? rows.length : 20);
+    const plotRows = [];
+    const body = [];
+    const multipleSpecies = (store.species ?? []).filter((species) => species.enabled !== false).length > 1;
+    for (const [rid, range] of shown) {
+      let label = store.community?.reactionOwner.get(rid)?.originalId ?? rid;
+      if (multipleSpecies) {
+        label = rid;
+      }
+      plotRows.push({ id: rid, label, ...range, flux: store.solution.fluxes.get(rid) });
+      body.push(reactionRow(store, rid, `[${formatFlux(range.min, 5)}, ${formatFlux(range.max, 5)}]`, formatFlux(range.max - range.min, 5)));
+    }
+    const title = store.pfvaEnabled ? 'pFVA' : 'FVA';
+    const budget = store.pfvaEnabled ? '<p class="hint">Total absolute flux ≤ 1.00001 × minimum, including exchanges.</p>' : '';
+    const note = progress.running ? `<p class="analysis-progress">Computing ${title}: ${progress.done ?? 0}/${progress.total ?? 0}</p>` : '';
+    const count = `<p class="hint">Showing ${shown.length} of ${rows.length} ranges, widest first.</p>`;
+    const plot = rows.length ? renderFluxRanges(plotRows, { title }) : '';
+    return wrap(note + budget + count + plot + `<div class="table-scroll"><table class="results-table"><thead><tr><th>Reaction</th><th>Name</th><th>${title} range</th><th>Width</th></tr></thead><tbody>${body.join('') || '<tr><td colspan="4">No FVA ranges available yet.</td></tr>'}</tbody></table></div>`);
   }
   if (tab === 'shadow') {
     if (!dualAvailable) return wrap(dualUnavailable(store));

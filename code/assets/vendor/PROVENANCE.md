@@ -38,3 +38,8 @@ This project's own code is MIT. GLPK is GPL-3.0. It is loaded as an optional
 backend: `src/solver/simplex.js` remains a complete, dependency-free fallback,
 and the app runs without these files. Anyone redistributing a build that bundles
 them should treat that build as GPL.
+
+The full GPL text is retained in `LICENSE`. Matching upstream source archives,
+submodule revisions, checksums and rebuild instructions are in
+[`source/README.md`](source/README.md). The WebAssembly file matches the npm
+5.0.0 distribution byte for byte.

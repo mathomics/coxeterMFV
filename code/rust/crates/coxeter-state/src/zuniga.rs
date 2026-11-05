@@ -439,6 +439,7 @@ impl Store {
         self.loopless = false;
         self.cycle_free = false;
         self.fva_enabled = false;
+        self.pfva_enabled = false;
         self.cancel_fva(true, false);
         self.medium = IndexMap::new();
         self.overrides.clear();

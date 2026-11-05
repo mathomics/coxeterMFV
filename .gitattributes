@@ -1,0 +1,10 @@
+* text=auto eol=lf
+*.exe binary
+*.wasm binary
+*.png binary
+*.jpg binary
+*.mat binary
+*.xlsx binary
+*.gz binary
+*.zip binary
+app/web/coxeter_mfv.html -text

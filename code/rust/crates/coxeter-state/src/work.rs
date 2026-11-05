@@ -66,6 +66,7 @@ impl Store {
                 "loopless": self.loopless,
                 "cycleFree": self.cycle_free,
                 "fvaEnabled": self.fva_enabled,
+                "pfvaEnabled": self.pfva_enabled,
                 "steadyComConfig": self.steady_com_config.to_json(),
                 "layoutSettings": layout_settings_json(&self.layout_settings),
                 "reactionColorMode": self.view.reaction_color_mode.as_str(),

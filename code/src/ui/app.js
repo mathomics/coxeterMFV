@@ -867,7 +867,7 @@ function paintShell() {
   const optimal = store.solution?.status === 'optimal';
   if (els.resultsSummary) paintRunSummary(optimal);
   els.app.querySelectorAll('[data-action="clear-solution"]').forEach((button) => { button.disabled = !store.solution; });
-  els.app.querySelectorAll('[data-action="run-fva"]').forEach((button) => {
+  els.app.querySelectorAll('[data-action="run-fva"], [data-action="run-pfva"]').forEach((button) => {
     button.disabled = Boolean(store.solution?.steadyCom || store.isZunigaStudy);
     if (store.isZunigaStudy) button.title = 'The Zuñiga case preserves the original source-model FBA method';
     else if (button.disabled) button.title = 'Run FBA, pFBA or Loopless before FVA';
@@ -1173,25 +1173,30 @@ function paintStatus() {
  * panels open lands, so a "completed" said only there would go unseen. A run
  * that has just ended flashes once.
  */
-const RUN_MODE = { fba: 'FBA', pfba: 'pFBA', fva: 'FVA', loopless: 'Loopless', cyclefree: 'CycleFreeFlux' };
+const RUN_MODE = { fba: 'FBA', pfba: 'pFBA', fva: 'FVA', pfva: 'pFVA', loopless: 'Loopless', cyclefree: 'CycleFreeFlux' };
 const runFlash = { finishedAt: 0, timer: null };
 
 function paintRunSummary(optimal) {
   const el = els.resultsSummary;
-  const mode = store.solution?.steadyCom ? 'SteadyCom fixed µ' : store.loopless ? 'Loopless' : store.cycleFree ? 'CycleFreeFlux' : store.parsimonious ? 'pFBA' : store.fvaEnabled ? 'FVA' : 'FBA';
+  let mode = store.solution?.steadyCom ? 'SteadyCom fixed µ' : store.loopless ? 'Loopless' : store.cycleFree ? 'CycleFreeFlux' : store.parsimonious ? 'pFBA' : store.fvaEnabled ? 'FVA' : 'FBA';
+  if (store.pfvaEnabled && store.fvaEnabled) {
+    mode = 'pFVA';
+  }
   const run = store.lastRun;
   const notRun = store.solutionCleared ? 'Solution cleared' : 'Not run';
   let text = `${mode} · ${store.solution?.status || notRun}${optimal ? ` · ${formatFlux(store.solution.objectiveValue, 5)}` : ''}`;
   let state = '';
   if (run?.phase === 'running') {
-    const fva = run.method === 'fva' && store.fvaProgress?.running
+    const fva = (run.method === 'fva' || run.method === 'pfva') && store.fvaProgress?.running
       ? ` ${store.fvaProgress.done} / ${store.fvaProgress.total} reactions` : '';
     text = `Running ${run.label}…${fva}`;
     state = 'is-busy';
   } else if (run && RUN_MODE[run.method] === mode) {
     const at = new Date(run.finishedAt).toLocaleTimeString();
     if (run.phase === 'done') {
-      const detail = run.method === 'fva' ? `${store.fvaRanges.size} flux ranges` : `${run.outcome} · ${formatFlux(run.objective, 5)}`;
+      const detail = run.method === 'fva' || run.method === 'pfva'
+        ? `${store.fvaRanges.size} flux ranges`
+        : `${run.outcome} · ${formatFlux(run.objective, 5)}`;
       text = `✓ ${run.label} completed ${at} · ${detail} · ${run.took}`;
       state = 'is-success';
     } else if (run.phase === 'failed') {
@@ -4300,6 +4305,7 @@ async function onSidebarClick(event) {
     case 'run-fba':
     case 'run-pfba':
     case 'run-fva':
+    case 'run-pfva':
     case 'run-loopless':
     case 'run-cyclefree':
       store.runAnalysis(action.slice('run-'.length)).catch((error) => {

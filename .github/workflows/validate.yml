@@ -1,0 +1,78 @@
+name: Validate distribution
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  web:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        node: [20, 24]
+    defaults:
+      run:
+        working-directory: code
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v6
+        with:
+          node-version: ${{ matrix.node }}
+          cache: npm
+          cache-dependency-path: code/package-lock.json
+      - run: npm ci
+      - run: npm test
+      - run: npm run validate
+      - run: node ../tools/release-manifest.mjs
+      - run: npm run build:standalone
+      - name: Check rebuilt browser application
+        if: matrix.node == 24
+        env:
+          CHROME_PATH: /usr/bin/google-chrome
+        run: npm run check:standalone
+      - name: Check distributed browser application
+        if: matrix.node == 24
+        env:
+          CHROME_PATH: /usr/bin/google-chrome
+        run: npm run check:standalone -- --file=../app/web/coxeter_mfv.html
+
+  native:
+    runs-on: windows-latest
+    defaults:
+      run:
+        working-directory: code/rust
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+      - name: Install native build prerequisites
+        run: |
+          rustup update stable --no-self-update
+          rustup default stable
+          python -m pip install cmake libclang
+          $clangPath = python -c "import pathlib, clang; print(pathlib.Path(clang.__file__).parent / 'native')"
+          "LIBCLANG_PATH=$clangPath" >> $env:GITHUB_ENV
+      - name: Test native libraries
+        run: cargo test --locked --workspace --lib
+
+  container:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+      - run: docker build -t coxeter-mfv .
+      - name: Check container serves the packaged application
+        run: |
+          docker run --detach --name coxeter-check -p 127.0.0.1:8080:8080 coxeter-mfv
+          curl --retry 10 --retry-connrefused --retry-delay 1 --fail http://127.0.0.1:8080/ -o /tmp/coxeter-served.html
+          cmp app/web/coxeter_mfv.html /tmp/coxeter-served.html
+      - name: Stop container
+        if: always()
+        run: docker rm --force coxeter-check

@@ -19,3 +19,5 @@ The community model is imported from the authors' workbook and checked against t
 Chan SHJ, Simons MN, Maranas CD (2017). SteadyCom: Predicting microbial abundances while ensuring community stability. *PLoS Computational Biology* 13(5), e1005539. https://doi.org/10.1371/journal.pcbi.1005539
 
 The models are converted from the community model distributed with the article. Please cite the article when you use them. The map was drawn with Coxeter-MFV.
+
+The article is published under a Creative Commons Attribution licence. The terms of the specific source workbook and its underlying reconstructions still need to be recorded before the publication release. The project's MIT licence does not relicense those inputs. See [`data/README.md`](../../data/README.md).

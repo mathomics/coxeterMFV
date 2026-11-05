@@ -1,6 +1,6 @@
 # Examples
 
-Maps and models that show what Coxeter-MFV draws and computes, from a single eukaryotic cell to communities of nine species. The four literature communities reproduce published results and are also bundled with both applications, where they open from the scenario list.
+Maps and models that show what Coxeter-MFV draws and computes, from a single eukaryotic cell to communities of nine species. Four literature community entries open from the scenario list. The Zuñiga entry includes saved reference results and downloads its original models on demand; the other entries include their model inputs. See [the reproducibility guide](../docs/REPRODUCIBILITY.md) for the scope of the numerical checks.
 
 | Folder | Organisms | Compartments | Reference |
 | --- | --- | --- | --- |

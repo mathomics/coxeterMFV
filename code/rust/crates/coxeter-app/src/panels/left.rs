@@ -184,6 +184,9 @@ pub fn current_analysis_method(shell: &Shell) -> String {
     if store.solution.as_ref().is_some_and(|s| s.steady_com.is_some()) {
         return "SteadyCom fixed µ".into();
     }
+    if store.pfva_enabled && store.fva_enabled {
+        return "pFVA".into();
+    }
     let gimme = store.solution.as_ref().and_then(|s| s.extra.as_ref()).and_then(|e| e.get("gimme")).is_some_and(coxeter_core::js::truthy)
         || store.omics.gimme_enabled;
     let method = if gimme {
@@ -358,12 +361,12 @@ fn analysis_hub(ui: &mut Ui, shell: &mut Shell, p: &Palette) {
         ui.add(egui::Label::new(RichText::new(&parameters).size(11.0).color(p.ink_3)).wrap());
         ui.add(egui::Label::new(RichText::new(&solver).size(11.0).color(p.ink_3)).wrap());
     });
-    let methods = [("fba", "FBA"), ("pfba", "pFBA"), ("fva", "FVA"), ("loopless", "Loopless"), ("cyclefree", "CycleFreeFlux")];
+    let methods = [("fba", "FBA"), ("pfba", "pFBA"), ("fva", "FVA"), ("pfva", "pFVA"), ("loopless", "Loopless"), ("cyclefree", "CycleFreeFlux")];
     for pair in methods.chunks(2) {
         widgets::grow_row(ui, pair.len(), |ui, i| {
             let (method, name) = pair[i];
             let (mut enabled, mut title) = crate::panels::topbar::run_button_state(shell, method);
-            if method == "fva" && fixed_mu.is_some() {
+            if (method == "fva" || method == "pfva") && fixed_mu.is_some() {
                 enabled = false;
                 title = "Run an ordinary analysis before FVA";
             }

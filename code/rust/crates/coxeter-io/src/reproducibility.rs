@@ -214,6 +214,7 @@ pub struct ReproStore<'a> {
     pub loopless: bool,
     pub cycle_free: bool,
     pub fva_enabled: bool,
+    pub pfva_enabled: bool,
     /// `store.fvaRanges`: reaction id → `{min, max}`.
     pub fva_ranges: Vec<(String, Value)>,
     /// `store.growth`: species id → growth rate.
@@ -293,6 +294,8 @@ pub fn analysis_provenance(store: &ReproStore) -> Value {
         "loopless FBA"
     } else if store.cycle_free {
         "CycleFreeFlux"
+    } else if store.pfva_enabled && store.fva_enabled {
+        "pFVA"
     } else if store.parsimonious {
         "pFBA"
     } else {
@@ -322,6 +325,8 @@ pub fn analysis_provenance(store: &ReproStore) -> Value {
         "loopless": store.loopless,
         "cycleFree": store.cycle_free,
         "fvaEnabled": store.fva_enabled,
+        "pfvaEnabled": store.pfva_enabled,
+        "pfbaFactor": if store.pfva_enabled { Some(1.00001) } else { None },
         "gimme": gimme,
     })
 }
@@ -806,6 +811,14 @@ pub fn methods_provenance_report(bundle: &Value) -> String {
         String::new()
     });
     lines.push(if truthy(get(a, "fvaEnabled")) { "Flux variability analysis (FVA) was enabled.".into() } else { String::new() });
+    lines.push(if truthy(get(a, "pfvaEnabled")) {
+        format!(
+            "pFVA limited total absolute flux, including exchanges, to {} times its minimum at {}% of the primary optimum.",
+            show_or(get(a, "pfbaFactor"), "1.00001"), show_or(get(a, "pfbaBiomassPercent"), "100"),
+        )
+    } else {
+        String::new()
+    });
     lines.push(if truthy(get(a, "loopless")) { "Loopless constraints were enabled.".into() } else { String::new() });
     lines.push(if truthy(get(a, "cycleFree")) {
         "CycleFreeFlux (Desouki et al. 2015) removed the internal cycles from the FBA optimum with one LP that holds the exchanges and the objective and minimises internal flux.".into()

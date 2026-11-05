@@ -271,11 +271,11 @@ fn flux_analyses(solver: &Solver) -> Result<(), String> {
     let ex = fva.get("EX_a").ok_or("FVA left out EX_a")?;
     expect("FVA min of EX_a", ex.min, -10.0)?;
     expect("FVA max of EX_a", ex.max, -10.0)?;
-    // At 90 % the objective is held between 80 % and 100 % (the JS formulation).
+    // At 90 % the objective stays between the requested target and the optimum.
     let fva90 = p.variability(&["EX_a"], &FvaOptions { fraction: 0.9, threads: Some(2), ..Default::default() });
     let ex = fva90.get("EX_a").ok_or("FVA at 90 % left out EX_a")?;
     expect("FVA 90 % min of EX_a", ex.min, -10.0)?;
-    expect("FVA 90 % max of EX_a", ex.max, -8.0)?;
+    expect("FVA 90 % max of EX_a", ex.max, -9.0)?;
     let loopless = p.loopless(&LooplessOptions { time_limit_ms: 10_000.0, ..Default::default() });
     let info = loopless.loopless.as_ref().ok_or("no loopless details")?;
     if loopless.status != LpStatus::Optimal || !info.proven_optimal {

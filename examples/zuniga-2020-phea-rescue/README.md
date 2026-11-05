@@ -29,3 +29,5 @@ The authors' models are not redistributed here. The applications download the tw
 Zuñiga C, Li T, Guarnieri MT, Jenkins JP, Li CT, Bingol K, Kim YM, Betenbaugh MJ, Zengler K (2020). Synthetic microbial communities of heterotrophs and phototrophs facilitate sustainable growth. *Nature Communications* 11, 3803. https://doi.org/10.1038/s41467-020-17612-8
 
 The article and its supplementary data are published under CC BY 4.0. The figure was drawn with Coxeter-MFV from the reproduced solutions.
+
+No licence is inferred for the MATLAB models hosted separately in the authors' repository. Those files are downloaded by the user and are not included in this distribution. Their pinned identifiers and checksums are retained in `manifest.json`.

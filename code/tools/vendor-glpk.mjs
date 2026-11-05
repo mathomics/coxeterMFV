@@ -43,6 +43,7 @@ if (!glue.includes(PATCH_FROM)) {
 const patched = glue.replace(PATCH_FROM, PATCH_TO);
 await writeFile(join(dest, 'glpk.js'), patched, 'utf8');
 await copyFile(join(src, 'dist', 'glpk.wasm'), join(dest, 'glpk.wasm'));
+await copyFile(join(src, 'LICENSE'), join(dest, 'LICENSE'));
 
 const sha = (buf) => createHash('sha256').update(buf).digest('hex').slice(0, 16);
 const wasm = await readFile(join(dest, 'glpk.wasm'));
@@ -87,6 +88,11 @@ This project's own code is MIT. GLPK is GPL-3.0. It is loaded as an optional
 backend: \`src/solver/simplex.js\` remains a complete, dependency-free fallback,
 and the app runs without these files. Anyone redistributing a build that bundles
 them should treat that build as GPL.
+
+The full GPL text is retained in \`LICENSE\`. Matching upstream source archives,
+submodule revisions, checksums and rebuild instructions are in
+[\`source/README.md\`](source/README.md). The WebAssembly file matches the npm
+5.0.0 distribution byte for byte.
 `, 'utf8');
 
 console.log(`vendored glpk.js ${pkg.version} (${pkg.license}) to assets/vendor/`);

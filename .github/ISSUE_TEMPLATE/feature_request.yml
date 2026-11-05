@@ -1,0 +1,17 @@
+name: Feature request
+description: Describe a scientific or usability need.
+body:
+  - type: textarea
+    id: need
+    attributes:
+      label: Problem or research workflow
+      description: Describe what you need to accomplish and the current limitation.
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed behaviour and alternatives
+      description: Include a small example or relevant references where possible.
+    validations:
+      required: true

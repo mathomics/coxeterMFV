@@ -1,5 +1,5 @@
 cff-version: 1.2.0
-message: "If you use Coxeter-MFV, please cite the article describing it. The reference and DOI will be added on publication."
+message: "Please cite this software and the exact version used. Article and permanent archive metadata will be added when assigned."
 title: "Coxeter-MFV: Coxeter Multicell Flux Visualizer"
 abstract: "Metabolic maps with explicit cells and subcellular compartments, and flux balance analysis of single organisms and microbial communities, as a single-file web application and a native desktop application."
 type: software

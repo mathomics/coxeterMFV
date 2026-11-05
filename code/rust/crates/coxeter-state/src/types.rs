@@ -471,6 +471,7 @@ pub enum AnalysisMethod {
     Fba,
     Pfba,
     Fva,
+    Pfva,
     Loopless,
     CycleFree,
 }
@@ -481,6 +482,7 @@ impl AnalysisMethod {
             "fba" => Some(AnalysisMethod::Fba),
             "pfba" => Some(AnalysisMethod::Pfba),
             "fva" => Some(AnalysisMethod::Fva),
+            "pfva" => Some(AnalysisMethod::Pfva),
             "loopless" => Some(AnalysisMethod::Loopless),
             "cyclefree" => Some(AnalysisMethod::CycleFree),
             _ => None,
@@ -492,6 +494,7 @@ impl AnalysisMethod {
             AnalysisMethod::Fba => "fba",
             AnalysisMethod::Pfba => "pfba",
             AnalysisMethod::Fva => "fva",
+            AnalysisMethod::Pfva => "pfva",
             AnalysisMethod::Loopless => "loopless",
             AnalysisMethod::CycleFree => "cyclefree",
         }
@@ -503,6 +506,7 @@ impl AnalysisMethod {
             AnalysisMethod::Fba => "FBA",
             AnalysisMethod::Pfba => "pFBA",
             AnalysisMethod::Fva => "FVA",
+            AnalysisMethod::Pfva => "pFVA",
             AnalysisMethod::Loopless => "Loopless FBA",
             AnalysisMethod::CycleFree => "CycleFreeFlux",
         }

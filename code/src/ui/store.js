@@ -40,7 +40,7 @@ import { cellCompartmentName } from '../core/compartments.js';
 import { COMPARTMENT_SHAPES } from '../layout/geometry.js';
 import { localMetaboliteBase } from '../layout/place-reaction.js';
 import { CommunityModel, OBJECTIVES, communityExchange, namespaced, splitId } from '../core/community.js';
-import { FluxProblem, defaultObjective } from '../solver/fba.js';
+import { FluxProblem, defaultObjective, DEFAULT_PFVA_FACTOR } from '../solver/fba.js';
 import { geneKnockoutReactions, geneRuleGenes } from '../core/gene-rules.js';
 import {
   ConstraintHistory, REACTION_FILTERS, REACTION_GROUPINGS, REACTION_SORT_KEYS, buildReactionCatalog,
@@ -173,6 +173,7 @@ export class Store {
     this.loopless = false;         // exact loopless FBA (MILP)
     this.cycleFree = false;        // CycleFreeFlux: the FBA optimum without its cycles (one LP)
     this.fvaEnabled = false;
+    this.pfvaEnabled = false;
     this.fvaRanges = new Map();
     this.fvaProgress = { running: false, done: 0, total: 0, ms: 0 };
     this._fvaGeneration = 0;
@@ -449,6 +450,7 @@ export class Store {
     this.loopless = false;
     this.cycleFree = false;
     this.fvaEnabled = false;
+    this.pfvaEnabled = false;
     this.fvaRanges = new Map();
     this.fvaProgress = { running: false, done: 0, total: 0, ms: 0 };
     this.medium = { ...prepared.medium };
@@ -604,6 +606,7 @@ export class Store {
     this.loopless = false;
     this.cycleFree = false;
     this.fvaEnabled = false;
+    this.pfvaEnabled = false;
     this.fvaRanges = new Map();
     this.fvaProgress = { running: false, done: 0, total: 0, ms: 0 };
     this.medium = { ...prepared.medium };
@@ -977,6 +980,7 @@ export class Store {
     this.parsimonious=Boolean(bundle.analysis?.parsimonious);this.pfbaBiomassPercent=bundle.analysis?.pfbaBiomassPercent??100;
     this.loopless=Boolean(bundle.analysis?.loopless);
     this.cycleFree=!this.loopless&&Boolean(bundle.analysis?.cycleFree);
+    this.pfvaEnabled = Boolean(bundle.analysis?.pfvaEnabled);
     // FVA is replayed only after the primary numerical solution has been
     // compared; its asynchronous ranges are restored from the archive below.
     this.fvaEnabled=false;
@@ -1034,6 +1038,7 @@ export class Store {
       this.fvaRanges=new Map(Object.entries(bundle.solution.fva));
       this.fvaProgress={running:false,done:this.fvaRanges.size,total:this.fvaRanges.size,ms:0};
     }else{
+      this.pfvaEnabled = false;
       this.fvaEnabled=false;this.fvaRanges=new Map();this.fvaProgress={running:false,done:0,total:0,ms:0};
     }
 
@@ -1069,6 +1074,7 @@ export class Store {
     this.fvaEnabled = this.loopless || this.cycleFree
       ? false
       : Boolean(scenario.fvaEnabled ?? scenario.fva ?? false);
+    this.pfvaEnabled = this.fvaEnabled && Boolean(scenario.pfvaEnabled);
     this.fvaRanges = new Map();
     this.fvaProgress = { running: false, done: 0, total: 0, ms: 0 };
     this.medium = { ...scenario.medium };
@@ -1169,6 +1175,7 @@ export class Store {
       this.loopless = false;
       this.cycleFree = false;
       this.fvaEnabled = false;
+      this.pfvaEnabled = false;
       this.cancelFVA({ clear: true, emit: false });
       this.medium = {};
       this.overrides.clear();
@@ -1372,6 +1379,7 @@ export class Store {
     this.loopless = false;
     this.cycleFree = false;
     this.fvaEnabled = false;
+    this.pfvaEnabled = false;
     this.fvaRanges = new Map();
     this.fvaProgress = { running: false, done: 0, total: 0, ms: 0 };
     this.medium = { ...(manifest.medium ?? {}) };
@@ -1682,6 +1690,7 @@ export class Store {
       if (allowFVA && this.fvaEnabled) this.scheduleFVA();
       else if (!allowFVA && this.fvaEnabled) {
         this.fvaEnabled = false;
+        this.pfvaEnabled = false;
         this.cancelFVA({ clear:true, emit:false });
       }
     } else {
@@ -1784,13 +1793,16 @@ export class Store {
    * `lastRun` for the results bar, and goes to the status line and the log.
    * FVA has finished when its ranges are in, not when it is started.
    *
-   * @param {'fba'|'pfba'|'fva'|'loopless'|'cyclefree'} method
+   * @param {'fba'|'pfba'|'fva'|'pfva'|'loopless'|'cyclefree'} method
    */
   async runAnalysis(method) {
     const label = ANALYSIS_LABELS[method];
     if (!label) throw new Error(`Unknown analysis "${method}".`);
     if (this.isZunigaStudy && method !== 'fba') return this.solution;
-    if (method === 'fva' && this.solution?.steadyCom) return this.solution;
+    if ((method === 'fva' || method === 'pfva') && this.solution?.steadyCom) return this.solution;
+    if (method === 'fva' || method === 'pfva') {
+      this.setFVA(false);
+    }
     this.solutionCleared = false;
     this.lastRun = { method, label, phase: 'running', startedAt: Date.now(), t0: performance.now() };
     this.status = { ...this.status, state: 'busy', message: `Running ${label}…` };
@@ -1817,13 +1829,14 @@ export class Store {
       this.setCycleFree(true);
     } else {
       this.loopless = false;
-      this.parsimonious = false;
+      this.parsimonious = method === 'pfva';
+      this.pfvaEnabled = method === 'pfva';
       this.cycleFree = false;
       this.solve();
       this.setFVA(true);
       // Its ranges come in later; runFVA() finishes the run then.
       if (this.solution?.status === 'optimal' && this.fvaProgress?.running) {
-        this.status = { ...this.status, state: 'busy', message: 'Running FVA…' };
+        this.status = { ...this.status, state: 'busy', message: `Running ${label}…` };
         this.emit('status');
         return this.solution;
       }
@@ -1845,7 +1858,7 @@ export class Store {
     });
     const took = formatDuration(ms);
     if (ok) {
-      const detail = run.method === 'fva'
+      const detail = run.method === 'fva' || run.method === 'pfva'
         ? `${this.fvaRanges.size} flux ranges`
         : `objective ${Number.isFinite(objective) ? objective.toFixed(5) : '—'}`;
       this.status = { ...this.status, state: 'ok', message: `${run.label} completed · ${detail} · ${took}` };
@@ -1930,12 +1943,15 @@ export class Store {
     }
     if (this.fvaEnabled === next) return this.fvaRanges;
     this.fvaEnabled = next;
+    if (!next) {
+      this.pfvaEnabled = false;
+    }
 
     if (!next) {
       this.cancelFVA({ clear: true, emit: false });
       this.variability = null;
       this.emit('fva');
-      if (this.lastRun?.method === 'fva') this.finishRun('cancelled');
+      if (this.lastRun?.method === 'fva' || this.lastRun?.method === 'pfva') this.finishRun('cancelled');
       return this.fvaRanges;
     }
 
@@ -1984,7 +2000,8 @@ export class Store {
     const t = performance.now();
 
     const ranges = await problem.variabilityAsync(ids, {
-      fraction: 1.0,
+      fraction: this.pfvaEnabled ? this.pfbaBiomassPercent / 100 : 1.0,
+      pfbaFactor: this.pfvaEnabled ? DEFAULT_PFVA_FACTOR : null,
       chunkSize: 20,
       shouldContinue: () =>
         this.fvaEnabled
@@ -2019,7 +2036,15 @@ export class Store {
       ms: Math.round(performance.now() - t),
     };
     this.emit('fva');
-    if (this.lastRun?.method === 'fva') this.finishRun('optimal');
+    if (this.lastRun?.method === 'fva' || this.lastRun?.method === 'pfva') {
+      let complete = this.fvaRanges.size === ids.length;
+      for (const range of this.fvaRanges.values()) {
+        if (!Number.isFinite(range.min) || !Number.isFinite(range.max)) {
+          complete = false;
+        }
+      }
+      this.finishRun(complete ? 'optimal' : 'incomplete flux ranges');
+    }
     return this.fvaRanges;
   }
 
@@ -3445,6 +3470,7 @@ export class Store {
       loopless: this.loopless,
       cycleFree: this.cycleFree,
       fvaEnabled: this.fvaEnabled,
+      pfvaEnabled: this.pfvaEnabled,
       steadyComConfig: this.steadyComConfig ?? null,
       layoutSettings: this.layoutSettings,
       reactionColorMode: this.view.reactionColorMode,
@@ -6049,6 +6075,7 @@ export class Store {
       loopless: this.loopless,
       cycleFree: this.cycleFree,
       fvaEnabled: this.fvaEnabled,
+      pfvaEnabled: this.pfvaEnabled,
       layoutSettings: { ...this.layoutSettings },
       reactionColorMode: this.view.reactionColorMode,
       widthByFlux: this.view.widthByFlux,
@@ -6117,6 +6144,7 @@ export class Store {
     this.fvaEnabled = this.loopless || this.cycleFree
       ? false
       : Boolean(doc.fvaEnabled ?? doc.fva ?? false);
+    this.pfvaEnabled = this.fvaEnabled && Boolean(doc.pfvaEnabled);
     this.fvaRanges = new Map();
     this.fvaProgress = { running: false, done: 0, total: 0, ms: 0 };
     this.layoutSettings = normalizeLayoutSettings(doc.layoutSettings ?? this.layoutSettings);
@@ -6401,7 +6429,7 @@ const paintFrame = () => new Promise((resolve) => {
 });
 
 /** The analyses runAnalysis() knows, by the name the Simulate panel shows. */
-const ANALYSIS_LABELS = { fba: 'FBA', pfba: 'pFBA', fva: 'FVA', loopless: 'Loopless FBA', cyclefree: 'CycleFreeFlux' };
+const ANALYSIS_LABELS = { fba: 'FBA', pfba: 'pFBA', fva: 'FVA', pfva: 'pFVA', loopless: 'Loopless FBA', cyclefree: 'CycleFreeFlux' };
 
 /** `850 ms`, `4.2 s`, `2 min 05 s`. */
 function formatDuration(ms) {

@@ -22,6 +22,9 @@ import { solveBinaryMILP } from './milp.js';
 
 const BIG = 1e6;
 
+/** A 0.001% flux-budget allowance avoids fixing a numerically rounded pFBA minimum exactly. */
+export const DEFAULT_PFVA_FACTOR = 1.00001;
+
 /** Replace ±Infinity with a large finite number the simplex is comfortable with. */
 function finite(v, fallback) {
   if (v === null || v === undefined || Number.isNaN(Number(v))) return fallback;
@@ -505,48 +508,28 @@ export class FluxProblem {
   }
 
   /**
-   * Flux variability for a subset of reactions while holding the objective at
-   * `fraction` of its optimum.
+   * Flux variability for a subset of reactions while keeping at least `fraction`
+   * of the optimal objective. pfbaFactor limits total absolute flux to that
+   * multiple of its minimum under the same objective constraint.
    * @param {string[]} reactionIds
    */
-  variability(reactionIds, { fraction = 1.0 } = {}) {
-    const base = this.optimize();
+  variability(reactionIds, { fraction = 1.0, pfbaFactor = null } = {}) {
+    const spec = this._variabilityProblem({ fraction, pfbaFactor });
     const out = new Map();
-    if (base.status !== LP_OPTIMAL) return out;
-
-    const m = this.metIds.length;
-    const n = this.rxnIds.length;
-    const A = new SparseColumns(m + 1, n);
-    const b = new Float64Array(m + 1);
-    for (let j = 0; j < n; j++) {
-      const col = this.A.column(j);
-      for (let k = 0; k < col.length; k += 2) A.add(col[k], j, col[k + 1]);
-      if (this.c[j]) A.add(m, j, this.c[j]);
+    if (!spec) {
+      return out;
     }
-    b[m] = base.objectiveValue * fraction;
-
-    // Relax the objective row into a range [fraction·opt, opt] using a slack.
-    const slackLow = Math.min(0, base.objectiveValue * fraction - base.objectiveValue);
-    const slackHigh = Math.max(0, base.objectiveValue - base.objectiveValue * fraction);
-    const slackCol = A.pushColumn([m, 1]);
-    const lb = new Float64Array(n + 1);
-    const ub = new Float64Array(n + 1);
-    lb.set(this.lb.subarray(0, n));
-    ub.set(this.ub.subarray(0, n));
-    lb[slackCol] = slackLow;
-    ub[slackCol] = slackHigh;
-
-    const c = new Float64Array(n + 1);
+    const n = this.rxnIds.length;
     for (const rid of reactionIds) {
       const j = this.rxnIndex.get(rid);
-      if (j === undefined) continue;
-      c.fill(0);
-      c[j] = 1;
-      const spec = {
-        A, b, c, lb, ub,
-        rowNames: [...this.metIds, 'fva_objective'],
-        colNames: [...this.rxnIds, 'fva_slack'],
-      };
+      if (j === undefined) {
+        continue;
+      }
+      spec.c.fill(0);
+      spec.c[j] = 1;
+      if (pfbaFactor !== null) {
+        spec.c[n + j] = -1;
+      }
       const hi = this._solve({ ...spec, maximize: true });
       const lo = this._solve({ ...spec, maximize: false });
       out.set(rid, {
@@ -557,6 +540,96 @@ export class FluxProblem {
     return out;
   }
 
+  /** Build FVA, optionally limiting total absolute flux as in COBRApy's pfba_factor. */
+  _variabilityProblem({ fraction, pfbaFactor }) {
+    if (!Number.isFinite(fraction) || fraction < 0 || fraction > 1) {
+      return null;
+    }
+    if (pfbaFactor !== null && (!Number.isFinite(pfbaFactor) || pfbaFactor < 1)) {
+      return null;
+    }
+    const base = this.optimize();
+    if (base.status !== LP_OPTIMAL) {
+      return null;
+    }
+
+    const m = this.metIds.length;
+    const n = this.rxnIds.length;
+    const target = base.objectiveValue - (1 - fraction) * Math.abs(base.objectiveValue);
+    if (pfbaFactor !== null) {
+      const A = new SparseColumns(m + 2, 2 * n + 2);
+      const b = new Float64Array(m + 2);
+      const lb = new Float64Array(2 * n + 2);
+      const ub = new Float64Array(2 * n + 2);
+      const c = new Float64Array(2 * n + 2);
+      for (let j = 0; j < n; j++) {
+        const col = this.A.column(j);
+        for (let k = 0; k < col.length; k += 2) {
+          A.add(col[k], j, col[k + 1]);
+          A.add(col[k], n + j, -col[k + 1]);
+        }
+        A.add(m, j, this.c[j]);
+        A.add(m, n + j, -this.c[j]);
+        A.add(m + 1, j, 1);
+        A.add(m + 1, n + j, 1);
+        lb[j] = Math.max(0, this.lb[j]);
+        ub[j] = Math.max(0, this.ub[j]);
+        lb[n + j] = Math.max(0, -this.ub[j]);
+        ub[n + j] = Math.max(0, -this.lb[j]);
+        c[j] = 1;
+        c[n + j] = 1;
+      }
+      A.add(m, 2 * n, 1);
+      lb[2 * n] = target - base.objectiveValue;
+      ub[2 * n] = 0;
+      b[m] = target;
+      A.add(m + 1, 2 * n + 1, -1);
+      ub[2 * n + 1] = Infinity;
+      const rowNames = [...this.metIds, 'fva_objective', 'pfva_total_flux'];
+      const colNames = [
+        ...this.rxnIds.map((rid) => `${rid}#fwd`),
+        ...this.rxnIds.map((rid) => `${rid}#rev`),
+        'fva_slack',
+        'pfva_slack',
+      ];
+      const minimum = this._solve({ A, b, c, lb, ub, maximize: false, rowNames, colNames });
+      if (minimum.status !== LP_OPTIMAL) {
+        return null;
+      }
+      // The budget includes every model reaction, including exchanges, as COBRApy does.
+      A.set(m + 1, 2 * n + 1, 1);
+      ub[2 * n + 1] = minimum.objective * pfbaFactor;
+      b[m + 1] = minimum.objective * pfbaFactor;
+      c.fill(0);
+      return { A, b, c, lb, ub, rowNames, colNames };
+    }
+
+    const A = new SparseColumns(m + 1, n);
+    const b = new Float64Array(m + 1);
+    for (let j = 0; j < n; j++) {
+      const col = this.A.column(j);
+      for (let k = 0; k < col.length; k += 2) A.add(col[k], j, col[k + 1]);
+      if (this.c[j]) A.add(m, j, this.c[j]);
+    }
+    b[m] = target;
+
+    // A negative slack keeps the objective between the requested target and its optimum.
+    const slackCol = A.pushColumn([m, 1]);
+    const lb = new Float64Array(n + 1);
+    const ub = new Float64Array(n + 1);
+    lb.set(this.lb.subarray(0, n));
+    ub.set(this.ub.subarray(0, n));
+    lb[slackCol] = target - base.objectiveValue;
+    ub[slackCol] = 0;
+
+    const c = new Float64Array(n + 1);
+    return {
+      A, b, c, lb, ub,
+      rowNames: [...this.metIds, 'fva_objective'],
+      colNames: [...this.rxnIds, 'fva_slack'],
+    };
+  }
+
   /**
    * Progressive FVA for large models. Uses the same mathematical formulation as
    * variability(), but yields to the browser every `chunkSize` reactions so the
@@ -565,43 +638,25 @@ export class FluxProblem {
    * @param {string[]} reactionIds
    * @param {object} opts
    * @param {number} [opts.fraction=1]
+   * @param {number|null} [opts.pfbaFactor=null]
    * @param {number} [opts.chunkSize=8]
    * @param {(partial:Map<string,{min:number,max:number}>,done:number,total:number)=>void} [opts.onProgress]
    * @param {()=>boolean} [opts.shouldContinue]
    */
   async variabilityAsync(reactionIds, {
     fraction = 1.0,
+    pfbaFactor = null,
     chunkSize = 8,
     onProgress = null,
     shouldContinue = null,
   } = {}) {
-    const base = this.optimize();
+    const spec = this._variabilityProblem({ fraction, pfbaFactor });
     const out = new Map();
-    if (base.status !== LP_OPTIMAL) return out;
-
-    const m = this.metIds.length;
-    const n = this.rxnIds.length;
-    const A = new SparseColumns(m + 1, n);
-    const b = new Float64Array(m + 1);
-    for (let j = 0; j < n; j++) {
-      const col = this.A.column(j);
-      for (let k = 0; k < col.length; k += 2) A.add(col[k], j, col[k + 1]);
-      if (this.c[j]) A.add(m, j, this.c[j]);
+    if (!spec) {
+      return out;
     }
-    b[m] = base.objectiveValue * fraction;
-
-    const slackLow = Math.min(0, base.objectiveValue * fraction - base.objectiveValue);
-    const slackHigh = Math.max(0, base.objectiveValue - base.objectiveValue * fraction);
-    const slackCol = A.pushColumn([m, 1]);
-    const lb = new Float64Array(n + 1);
-    const ub = new Float64Array(n + 1);
-    lb.set(this.lb.subarray(0, n));
-    ub.set(this.ub.subarray(0, n));
-    lb[slackCol] = slackLow;
-    ub[slackCol] = slackHigh;
-
+    const n = this.rxnIds.length;
     const ids = reactionIds.filter((rid) => this.rxnIndex.has(rid));
-    const c = new Float64Array(n + 1);
     const size = Math.max(1, Number(chunkSize) || 8);
 
     for (let i = 0; i < ids.length; i++) {
@@ -609,11 +664,14 @@ export class FluxProblem {
 
       const rid = ids[i];
       const j = this.rxnIndex.get(rid);
-      c.fill(0);
-      c[j] = 1;
+      spec.c.fill(0);
+      spec.c[j] = 1;
+      if (pfbaFactor !== null) {
+        spec.c[n + j] = -1;
+      }
 
-      const hi = solveLP({ A, b, c, lb, ub, maximize: true }, {});
-      const lo = solveLP({ A, b, c, lb, ub, maximize: false }, {});
+      const hi = this._solve({ ...spec, maximize: true });
+      const lo = this._solve({ ...spec, maximize: false });
       out.set(rid, {
         min: lo.status === LP_OPTIMAL ? lo.objective : NaN,
         max: hi.status === LP_OPTIMAL ? hi.objective : NaN,

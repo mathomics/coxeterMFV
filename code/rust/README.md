@@ -10,17 +10,17 @@ The JavaScript app in `../src` is the specification.
 
 ## Prebuilt
 
-`target/x86_64-pc-windows-gnu/release/coxeter.exe` is a release build for
-Windows x64 with the bundled models compiled in: it runs on its own, no Rust
-needed. It is the only build output kept in git. The coxeterMFV repository
-publishes the same file as `app/windows/coxeter-mfv.exe` (its copy of this
-source leaves the exe out).
+The official Windows x64 release build is distributed at
+[`../../app/windows/coxeter-mfv.exe`](../../app/windows/coxeter-mfv.exe).
+The model catalogue is compiled in; Rust is not required to run it. Build
+output under `target/` is excluded from this repository. The corresponding
+source revision and executable checksum are in `../../release-manifest.json`.
 
 To rebuild it in place on Linux, with MinGW-w64 (`sudo apt install mingw-w64`
 once):
 
 ```bash
-rust/tools/build-windows-exe.sh
+./tools/build-windows-exe.sh
 ```
 
 On Windows, `cargo build --release -p coxeter-app` writes
@@ -28,11 +28,11 @@ On Windows, `cargo build --release -p coxeter-app` writes
 
 ## Build and run
 
-Needs Rust (`rustup`, stable) and, for the HiGHS solver, `cmake` and a C++
-compiler.
+Needs Rust 1.95 or later (`rustup`, stable), and, for the HiGHS solver,
+CMake, a C++ compiler and libclang. Validation used Rust 1.99.0.
 
 ```bash
-cd rust
+cd code/rust
 cargo run --release -p coxeter-app      # the application
 ```
 

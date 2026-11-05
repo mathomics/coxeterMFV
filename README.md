@@ -7,7 +7,7 @@
 Metabolic maps with explicit cells and subcellular compartments, and flux balance analysis of single organisms and microbial communities.
 
 [![License: MIT](https://img.shields.io/badge/code-MIT-blue.svg)](LICENSE)
-[![DOI](https://img.shields.io/badge/DOI-TBD-lightgrey.svg)](#how-to-cite)
+[![Documentation](https://img.shields.io/badge/docs-user%20guide-brightgreen.svg)](docs/USER_GUIDE.md)
 [![Web app](https://img.shields.io/badge/web-single%20HTML%20file-orange.svg)](app/web)
 [![Windows](https://img.shields.io/badge/desktop-Windows%20x64-0078D6.svg)](app/windows)
 
@@ -19,11 +19,17 @@ Metabolic maps with explicit cells and subcellular compartments, and flux balanc
 
 ## About
 
+This is the official source and distribution repository for Coxeter-MFV. Application development takes place in EscherMultiCellMultiCompartment, and reviewed source snapshots and matching builds are promoted here. The current software version is **0.1.0**, in preparation for publication; an article reference and permanent release DOI have not yet been assigned in this repository.
+
+Start with the [user guide](docs/USER_GUIDE.md), [reproducibility instructions](docs/REPRODUCIBILITY.md), or [support guide](SUPPORT.md). Maintainers should follow the [release procedure](docs/RELEASING.md) and [publication checklist](docs/PUBLICATION.md).
+
+The [validation record](docs/VALIDATION.md) lists the checks performed and known limitations, including unresolved failures in the broader source-browser integration harness.
+
 Coxeter-MFV draws metabolic networks the way cells are built. Every cell is a closed container with its own membrane, every compartment sits inside the one that holds it, and every transport reaction is placed on the membrane it crosses. Several organisms can share one map, each inside its own boundary and connected through a shared medium that is itself a drawn compartment.
 
 The same application solves the network. Flux balance analysis and its variants run on the model behind the map, and the result is painted back onto it, so fluxes, cross-feeding between species and omics data can be read in their cellular context.
 
-Coxeter-MFV was built for researchers who work with genome-scale metabolic models of eukaryotes and microbial communities. Existing pathway viewers draw one flat canvas per organism, which leaves the question of where a reaction happens, and which membrane a metabolite crosses, to the reader. Coxeter-MFV makes that location part of the map.
+Coxeter-MFV was built for researchers who work with genome-scale metabolic models of eukaryotes and microbial communities. Explicit cell and compartment boundaries show where reactions happen and which membranes transported metabolites cross. That location is part of the map.
 
 ## Features
 
@@ -61,7 +67,7 @@ Coxeter-MFV was built for researchers who work with genome-scale metabolic model
 
 ### Web application
 
-Download [`app/web/coxeter_mfv.html`](app/web/coxeter_mfv.html) and open it in a browser. It is one self-contained file with the example models built in. Nothing is installed and no data leaves the computer.
+Download [`app/web/coxeter_mfv.html`](app/web/coxeter_mfv.html) using GitHub's **Download raw file** action, then open the downloaded file in a current browser. The application, solver and bundled teaching models run locally. No account or installation is required. External model downloads, including the Zuñiga source models and optional Yeast9 download, require internet access; imported models are processed on your computer.
 
 ### Windows desktop application
 
@@ -75,6 +81,19 @@ coxeter-mfv.exe yeastgem_v9.1.1-edited.json yeast9_cytosol_mitochondria_peroxiso
 
 The complete source of both applications, with their tests, is in [`code`](code). Building instructions for the web and native versions are in [`code/README.md`](code/README.md).
 
+### Container
+
+The packaged browser application can also be served with Docker or Podman. From the repository root:
+
+```bash
+docker build -t coxeter-mfv .
+docker run --rm -p 127.0.0.1:8080:8080 coxeter-mfv
+```
+
+Open `http://127.0.0.1:8080`. The container runtime and the initial image download are prerequisites. Calculations run in the browser.
+
+Application checksums and source promotion provenance are recorded in [`release-manifest.json`](release-manifest.json). Run `node tools/release-manifest.mjs` from the repository root to verify them.
+
 ## Examples
 
 Each example folder holds the model and map files needed to open it. The work each example comes from is cited in [`examples/README.md`](examples/README.md).
@@ -87,7 +106,7 @@ Each example folder holds the model and map files needed to open it. The work ea
 | [Nine-species gut community](examples/steadycom-gut-nine) | An 11009-reaction community model with a curated map of 1171 reactions in nine cells | Chan et al. (2017) |
 | [*S. elongatus* and *E. coli* ΔpheA](examples/zuniga-2020-phea-rescue) | Phototroph to heterotroph phenylalanine cross-feeding from the authors' original models | Zuñiga et al. (2020) |
 
-The literature communities also come bundled with both applications and open from the scenario list.
+The literature communities open from the scenario list in both applications. The Zuñiga case downloads its pinned source models on demand; its saved reference results and map are bundled.
 
 ## Repository structure
 
@@ -109,19 +128,9 @@ coxeterMFV/
 
 ## How to cite
 
-**DOI:** TBD
+Please cite the software and the exact version or commit used. [`CITATION.cff`](CITATION.cff) supplies software metadata for GitHub's *Cite this repository* action. The author list currently retains the collective attribution used by this repository, pending confirmation by the authors.
 
-If you use Coxeter-MFV in your research, please cite the article describing it. The full reference and DOI will be added here on publication. A [`CITATION.cff`](CITATION.cff) file is included, so GitHub offers the citation through the *Cite this repository* button.
-
-```bibtex
-@article{coxetermfv,
-  title   = {TBD},
-  author  = {TBD},
-  journal = {TBD},
-  year    = {TBD},
-  doi     = {TBD}
-}
-```
+The publication reference and permanent software archive DOI will be added when assigned. Until then, record the software name, version, repository URL and access date. Do not use a placeholder article citation. The final release should be archived with a permanent DOI, separately from the article DOI.
 
 When you use one of the examples, please also cite the work it comes from. The references are listed in each example folder.
 
@@ -132,6 +141,12 @@ The source code of Coxeter-MFV is released under the [MIT License](LICENSE).
 The single-file web application bundles the GLPK solver (glpk.js), which is licensed under the GNU General Public License version 3, so that file is distributed under GPL-3.0. The Windows application uses the HiGHS solver, which is MIT licensed. Gurobi and CPLEX are not bundled. The application opens them from the user's own licensed installation.
 
 Models and datasets keep the licences of their original authors. Their sources and terms are listed in [`data/README.md`](data/README.md) and in each example folder.
+
+Full third-party notices, GPL corresponding source and native dependency licences are indexed in [`THIRD_PARTY_NOTICES.md`](THIRD_PARTY_NOTICES.md). Some literature-derived data still need their redistribution terms confirmed before the publication release.
+
+## Support and contributions
+
+Use the [issue tracker](https://github.com/mathomics/coxeterMFV/issues) for reproducible bugs, usage questions and feature requests. See [SUPPORT.md](SUPPORT.md) for troubleshooting, [CONTRIBUTING.md](CONTRIBUTING.md) for the source promotion workflow and [SECURITY.md](SECURITY.md) for vulnerability reporting. Changes between releases are recorded in [CHANGELOG.md](CHANGELOG.md).
 
 ## Acknowledgements
 

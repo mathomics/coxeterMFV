@@ -266,8 +266,8 @@ pub fn run_button_state(shell: &Shell, method: &str) -> (bool, &'static str) {
     let steady = shell.store.solution.as_ref().is_some_and(|s| s.steady_com.is_some());
     const ZUNIGA: &str = "The Zuñiga case preserves the original source-model FBA method";
     match method {
-        "fva" if zuniga => (false, ZUNIGA),
-        "fva" if steady => (false, "Run FBA, pFBA or Loopless before FVA"),
+        "fva" | "pfva" if zuniga => (false, ZUNIGA),
+        "fva" | "pfva" if steady => (false, "Run FBA, pFBA or Loopless before FVA"),
         "pfba" | "loopless" | "cyclefree" if zuniga => (false, ZUNIGA),
         _ => (true, ""),
     }
@@ -298,7 +298,7 @@ fn simulate_menu(ui: &mut Ui, shell: &mut Shell, p: &Palette) {
     let (response, _) = egui::containers::menu::MenuButton::from_button(button).ui(ui, |ui| {
         ui.set_min_width(200.0);
         menu_heading(ui, "FLUX ANALYSIS");
-        for (method, name) in [("fba", "FBA"), ("pfba", "pFBA"), ("fva", "FVA"), ("loopless", "Loopless FBA"), ("cyclefree", "CycleFreeFlux")] {
+        for (method, name) in [("fba", "FBA"), ("pfba", "pFBA"), ("fva", "FVA"), ("pfva", "pFVA"), ("loopless", "Loopless FBA"), ("cyclefree", "CycleFreeFlux")] {
             let (enabled, title) = run_button_state(shell, method);
             let pal = Palette::current(ui.ctx());
             let job = RichText::new(name).size(12.5).family(bold()).color(pal.ink);

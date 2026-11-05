@@ -131,6 +131,7 @@ impl Store {
             self.parsimonious = false;
         }
         self.fva_enabled = !self.loopless && !self.cycle_free && flag(&scenario, &["fvaEnabled", "fva"]);
+        self.pfva_enabled = self.fva_enabled && flag(&scenario, &["pfvaEnabled"]);
         self.fva_ranges = IndexMap::new();
         self.fva_progress = FvaProgress::default();
         self.medium = medium_of(scenario.get("medium"));
@@ -230,6 +231,7 @@ impl Store {
         self.loopless = false;
         self.cycle_free = false;
         self.fva_enabled = false;
+        self.pfva_enabled = false;
         self.fva_ranges = IndexMap::new();
         self.fva_progress = FvaProgress::default();
         self.medium = prepared.medium.clone();
@@ -401,6 +403,7 @@ impl Store {
         self.loopless = false;
         self.cycle_free = false;
         self.fva_enabled = false;
+        self.pfva_enabled = false;
         self.fva_ranges = IndexMap::new();
         self.fva_progress = FvaProgress::default();
         self.medium = prepared.medium.clone();
@@ -612,6 +615,7 @@ impl Store {
         self.loopless = false;
         self.cycle_free = false;
         self.fva_enabled = false;
+        self.pfva_enabled = false;
         self.fva_ranges = IndexMap::new();
         self.fva_progress = FvaProgress::default();
         self.medium = medium_of(manifest.get("medium"));

@@ -19,3 +19,5 @@ Coxeter-MFV reproduces the maximum community growth rate of 0.73599 h⁻¹ to fi
 Chan SHJ, Simons MN, Maranas CD (2017). SteadyCom: Predicting microbial abundances while ensuring community stability. *PLoS Computational Biology* 13(5), e1005539. https://doi.org/10.1371/journal.pcbi.1005539
 
 The strains are built from the iAF1260 model of *E. coli* (Feist et al. 2007, https://doi.org/10.1038/msb4100155) with the knockouts of the SteadyCom tutorial. Please cite both works when you use them.
+
+The terms of the specific iAF1260 source and tutorial inputs must be confirmed and recorded before the publication release. The project's MIT licence does not relicense these models. See [`data/README.md`](../../data/README.md).

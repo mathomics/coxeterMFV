@@ -34,6 +34,9 @@ use crate::milp::{MilpOptions, solve_binary_milp};
 /// comfortable with.
 pub const BIG: f64 = 1e6;
 
+/// A 0.001% flux-budget allowance avoids fixing a numerically rounded pFBA minimum exactly.
+pub const DEFAULT_PFVA_FACTOR: f64 = 1.00001;
+
 /// `finite(v, fallback)`: NaN takes the fallback, ±Infinity becomes ±[`BIG`].
 fn finite(v: f64, fallback: f64) -> f64 {
     if v.is_nan() {
@@ -130,6 +133,8 @@ pub struct FvaProgress<'a> {
 pub struct FvaOptions<'a> {
     /// Hold the objective at this fraction of its optimum (1.0).
     pub fraction: f64,
+    /// Limit total absolute flux to this multiple of its minimum, as COBRApy's pfba_factor.
+    pub pfba_factor: Option<f64>,
     /// Worker threads; `None` uses every core, `Some(1)` runs serially on the
     /// calling thread.
     pub threads: Option<usize>,
@@ -143,7 +148,7 @@ pub struct FvaOptions<'a> {
 
 impl Default for FvaOptions<'_> {
     fn default() -> Self {
-        FvaOptions { fraction: 1.0, threads: None, on_progress: None, cancel: None }
+        FvaOptions { fraction: 1.0, pfba_factor: None, threads: None, on_progress: None, cancel: None }
     }
 }
 
@@ -803,14 +808,7 @@ impl FluxProblem {
         }
     }
 
-    /// The FVA problem: the FBA rows plus the objective row
-    /// `cᵀv + s = fraction·opt`, `s ∈ [min(0, fraction·opt − opt), max(0, opt − fraction·opt)]`,
-    /// written as the range `cᵀv ∈ [b − s_hi, b − s_lo]`.
-    ///
-    /// Note what that range is: for `opt ≥ 0` it is `[(2·fraction − 1)·opt, opt]`,
-    /// wider than the `[fraction·opt, opt]` the JS comment describes. The port
-    /// keeps the JS formulation, so FVA at 90 % holds the objective between
-    /// 80 % and 100 % of its optimum, exactly as the app does.
+    /// The FVA problem with the objective between the requested target and its optimum.
     pub fn variability_problem(&self, optimum: f64, fraction: f64) -> LpProblem {
         let m = self.met_ids.len();
         let n = self.rxn_ids.len();
@@ -823,13 +821,10 @@ impl FluxProblem {
                 a.add(m, j, self.c[j]);
             }
         }
-        let b = optimum * fraction;
-        let slack_low = js::min(0.0, optimum * fraction - optimum);
-        let slack_high = js::max(0.0, optimum - optimum * fraction);
         let mut row_lower = vec![0.0; m + 1];
         let mut row_upper = vec![0.0; m + 1];
-        row_lower[m] = b - slack_high;
-        row_upper[m] = b - slack_low;
+        row_lower[m] = optimum - (1.0 - fraction) * optimum.abs();
+        row_upper[m] = optimum;
         LpProblem {
             a,
             row_lower,
@@ -842,6 +837,52 @@ impl FluxProblem {
         }
     }
 
+    /// The split-flux pFVA problem, including every model reaction in the flux budget.
+    fn parsimonious_variability_problem(&self, optimum: f64, opts: &FvaOptions<'_>) -> Option<LpProblem> {
+        let m = self.met_ids.len();
+        let n = self.rxn_ids.len();
+        let factor = opts.pfba_factor?;
+        let mut a = SparseColumns::new(m + 2, 2 * n);
+        let mut cost = vec![1.0; 2 * n];
+        let mut col_lower = vec![0.0; 2 * n];
+        let mut col_upper = vec![0.0; 2 * n];
+        for j in 0..n {
+            for &(i, value) in self.a.column(j) {
+                a.add(i, j, value);
+                a.add(i, n + j, -value);
+            }
+            a.add(m, j, self.c[j]);
+            a.add(m, n + j, -self.c[j]);
+            a.add(m + 1, j, 1.0);
+            a.add(m + 1, n + j, 1.0);
+            col_lower[j] = js::max(0.0, self.lb[j]);
+            col_upper[j] = js::max(0.0, self.ub[j]);
+            col_lower[n + j] = js::max(0.0, -self.ub[j]);
+            col_upper[n + j] = js::max(0.0, -self.lb[j]);
+        }
+        let mut row_lower = vec![0.0; m + 2];
+        let mut row_upper = vec![0.0; m + 2];
+        row_lower[m] = optimum - (1.0 - opts.fraction) * optimum.abs();
+        row_upper[m] = optimum;
+        row_upper[m + 1] = f64::INFINITY;
+        let mut problem = LpProblem {
+            a, row_lower, row_upper, cost: cost.clone(), col_lower, col_upper,
+            maximize: false, integer: Vec::new(),
+        };
+        let mut instance = self.solver.instance().ok()?;
+        instance.pass_problem(&problem).ok()?;
+        instance.set_interrupt(opts.cancel.clone());
+        let minimum = instance.run();
+        if minimum.status != LpStatus::Optimal {
+            return None;
+        }
+        problem.row_upper[m + 1] = minimum.objective * factor;
+        cost.fill(0.0);
+        problem.cost = cost;
+        problem.maximize = true;
+        Some(problem)
+    }
+
     /// Flux variability for a subset of reactions while holding the objective
     /// at `fraction` of its optimum. Unknown ids are skipped, and the result keeps
     /// the order of `reaction_ids`. Empty when the primary problem has no
@@ -849,6 +890,12 @@ impl FluxProblem {
     ///
     /// Parallel unless `opts.threads == Some(1)`. The result is the same either way.
     pub fn variability<S: AsRef<str>>(&self, reaction_ids: &[S], opts: &FvaOptions<'_>) -> IndexMap<String, FvaRange> {
+        if !opts.fraction.is_finite() || opts.fraction < 0.0 || opts.fraction > 1.0 {
+            return IndexMap::new();
+        }
+        if opts.pfba_factor.is_some_and(|factor| !factor.is_finite() || factor < 1.0) {
+            return IndexMap::new();
+        }
         let base = self.optimize();
         if base.status != LpStatus::Optimal {
             return IndexMap::new();
@@ -857,7 +904,15 @@ impl FluxProblem {
             .iter()
             .filter_map(|r| self.rxn_index.get(r.as_ref()).map(|&j| (r.as_ref().to_string(), j)))
             .collect();
-        let problem = self.variability_problem(base.objective_value, opts.fraction);
+        let problem = if opts.pfba_factor.is_some() {
+            let Some(problem) = self.parsimonious_variability_problem(base.objective_value, opts) else {
+                return IndexMap::new();
+            };
+            problem
+        } else {
+            self.variability_problem(base.objective_value, opts.fraction)
+        };
+        let reverse_offset = opts.pfba_factor.map(|_| self.rxn_ids.len());
 
         // The basis every solve starts from: the optimum of the primary
         // objective on the FVA problem itself, so it is feasible for every
@@ -867,7 +922,14 @@ impl FluxProblem {
             if h.pass_problem(&problem).is_err() {
                 return IndexMap::new();
             }
-            h.set_costs(&self.c);
+            let mut cost = vec![0.0; problem.cost.len()];
+            for j in 0..self.rxn_ids.len() {
+                cost[j] = self.c[j];
+                if let Some(offset) = reverse_offset {
+                    cost[offset + j] = -self.c[j];
+                }
+            }
+            h.set_costs(&cost);
             let r = h.run();
             if r.status == LpStatus::Optimal { h.basis() } else { None }
         };
@@ -880,7 +942,7 @@ impl FluxProblem {
         let cancelled = || opts.cancel.as_ref().is_some_and(|f| f.load(Ordering::Relaxed));
 
         let work = || {
-            let mut worker = match FvaWorker::new(&self.solver, &problem, start.as_ref(), opts.cancel.clone()) {
+            let mut worker = match FvaWorker::new(&self.solver, &problem, start.as_ref(), opts.cancel.clone(), reverse_offset) {
                 Some(w) => w,
                 None => return,
             };
@@ -960,22 +1022,29 @@ struct FvaWorker {
     instance: Box<dyn LpInstance>,
     start: Option<Basis>,
     current: Option<usize>,
+    reverse_offset: Option<usize>,
 }
 
 impl FvaWorker {
-    fn new(solver: &Solver, problem: &LpProblem, start: Option<&Basis>, cancel: Option<Arc<AtomicBool>>) -> Option<FvaWorker> {
+    fn new(solver: &Solver, problem: &LpProblem, start: Option<&Basis>, cancel: Option<Arc<AtomicBool>>, reverse_offset: Option<usize>) -> Option<FvaWorker> {
         let mut instance = solver.instance().ok()?;
         instance.pass_problem(problem).ok()?;
         instance.set_interrupt(cancel);
-        Some(FvaWorker { instance, start: start.cloned(), current: None })
+        Some(FvaWorker { instance, start: start.cloned(), current: None, reverse_offset })
     }
 
     /// Both ends of reaction `j`, or `None` if a solve was interrupted.
     fn range(&mut self, j: usize) -> Option<FvaRange> {
         if let Some(prev) = self.current.take() {
             self.instance.set_cost(prev, 0.0);
+            if let Some(offset) = self.reverse_offset {
+                self.instance.set_cost(offset + prev, 0.0);
+            }
         }
         self.instance.set_cost(j, 1.0);
+        if let Some(offset) = self.reverse_offset {
+            self.instance.set_cost(offset + j, -1.0);
+        }
         self.current = Some(j);
         let max = self.solve(true)?;
         let min = self.solve(false)?;
@@ -1026,6 +1095,38 @@ mod tests {
 
     fn model(doc: serde_json::Value) -> Model {
         Model::from_value(&doc).unwrap()
+    }
+
+    #[test]
+    fn pfva_removes_surplus_cycle_flux_and_retains_the_pfba_solution() {
+        let model = Model::from_json_str(include_str!("../../../../models/ecoli_core_mc.json")).unwrap();
+        let problem = FluxProblem::new(&model);
+        let ids = ["FRD7", "SUCDi", "PGI", "EX_glc__D_e"];
+        let ordinary = problem.variability(&ids, &FvaOptions::default());
+        let strict = problem.variability(&ids, &FvaOptions { pfba_factor: Some(1.0), ..Default::default() });
+        let relaxed = problem.variability(&ids, &FvaOptions { pfba_factor: Some(1.1), ..Default::default() });
+        let solution = problem.parsimonious(PfbaOptions::default());
+        assert!(ordinary["FRD7"].max > 100.0);
+        assert!(strict["FRD7"].max.abs() < 1e-5);
+        assert!(relaxed["FRD7"].max > strict["FRD7"].max + 1.0);
+        for id in ids {
+            let range = strict[id];
+            let flux = solution.fluxes[id];
+            assert!(range.min >= ordinary[id].min - 1e-5, "{id}");
+            assert!(range.max <= ordinary[id].max + 1e-5, "{id}");
+            assert!(flux >= range.min - 1e-5 && flux <= range.max + 1e-5, "{id}");
+        }
+    }
+
+    #[test]
+    fn fva_at_ninety_percent_allows_growth_between_ninety_and_one_hundred_percent() {
+        let model = Model::from_json_str(include_str!("../../../../models/ecoli_core_mc.json")).unwrap();
+        let problem = FluxProblem::new(&model);
+        let optimum = problem.optimize().objective_value;
+        let id = model.biomass_reaction_id().unwrap();
+        let ranges = problem.variability(&[id.as_str()], &FvaOptions { fraction: 0.9, ..Default::default() });
+        assert!((ranges[&id].min - 0.9 * optimum).abs() < 1e-6);
+        assert!((ranges[&id].max - optimum).abs() < 1e-6);
     }
 
     // test/dual-analysis.test.mjs

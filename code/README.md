@@ -16,18 +16,20 @@ This folder holds the complete source of Coxeter-MFV. The JavaScript web applica
 
 ## Web application
 
-Requires [Node.js](https://nodejs.org) 20 or later. There are no package dependencies to install.
+Requires [Node.js](https://nodejs.org) 20 or later. Use Node.js 22 or later for the browser automation commands. Install the locked npm dependencies before running solver tests; the browser's GLPK files are already vendored.
 
 ```bash
 cd code
-npm test                      # run the test suite
-npm run serve                 # serve index.html locally
-npm run build:standalone      # write the single-file coxeter_mfv.html
+npm ci
+npm test
+npm run validate
+npm run serve
+npm run build:standalone
 ```
 
 ## Desktop application
 
-Requires [Rust](https://rustup.rs) 1.85 or later. The HiGHS solver is compiled from source, which needs CMake, a C++ compiler and libclang.
+Requires [Rust](https://rustup.rs) 1.95 or later for the locked GUI dependencies; this snapshot was validated with Rust 1.99.0. The HiGHS solver is compiled from source, which needs CMake, a C++ compiler and libclang.
 
 ```bash
 cd code/rust
@@ -36,4 +38,6 @@ cargo run --release -p coxeter-app      # build and start the application
 
 On Windows, the Microsoft C++ Build Tools provide the compiler, and CMake and libclang can be installed with `pip install cmake libclang`. Point the `LIBCLANG_PATH` environment variable at the `clang/native` folder of that package.
 
-The release build compiles the bundled models into the program. The crates and what each one ports from the web application are described in [`rust/README.md`](rust/README.md).
+The release build compiles the bundled models into the program. External model downloads remain separate. Use `cargo build --locked --release -p coxeter-app` for the desktop build, and `cargo test --locked --workspace --lib` for the library tests. Missing optional parity fixtures limit what those tests verify.
+
+The crates and their relation to the web application are described in [`rust/README.md`](rust/README.md). Official promotion and packaging instructions are in [`../docs/RELEASING.md`](../docs/RELEASING.md); usage and numerical validation are covered in the [user guide](../docs/USER_GUIDE.md) and [reproducibility guide](../docs/REPRODUCIBILITY.md).

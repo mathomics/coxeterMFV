@@ -150,6 +150,7 @@ pub struct Store {
     /// CycleFreeFlux: the FBA optimum without its cycles (one LP).
     pub cycle_free: bool,
     pub fva_enabled: bool,
+    pub pfva_enabled: bool,
     pub fva_ranges: IndexMap<String, FvaRange>,
     pub fva_progress: FvaProgress,
     pub(crate) fva_generation: u64,
@@ -286,6 +287,7 @@ impl Store {
             loopless: false,
             cycle_free: false,
             fva_enabled: false,
+            pfva_enabled: false,
             fva_ranges: IndexMap::new(),
             fva_progress: FvaProgress::default(),
             fva_generation: 0,
