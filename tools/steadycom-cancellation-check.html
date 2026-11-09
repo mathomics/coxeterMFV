@@ -1,0 +1,227 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>SteadyCom cancellation checks</title>
+<style>
+  body { font: 13px/1.6 ui-monospace, monospace; margin: 24px; background: #0b1220; color: #e2e8f0; }
+  .pass { color: #4ade80; }
+  .fail { color: #fb7185; }
+  iframe { width: 1200px; height: 800px; border: 1px solid #334155; margin-top: 16px; }
+</style>
+</head>
+<body>
+<h1>SteadyCom cancellation and retry checks</h1>
+<p>Calculations and file imports stay inside this hidden test frame.</p>
+<div id="out"></div>
+<script type="module">
+/** Exercise actual SteadyCom controls with queued imports and delayed calculations. */
+const out = document.getElementById('out');
+let failures = 0;
+
+function check(name, passed) {
+  if (!passed) {
+    failures += 1;
+  }
+  const line = document.createElement('div');
+  line.className = passed ? 'pass' : 'fail';
+  line.textContent = `${passed ? 'OK' : 'FAIL'} ${name}`;
+  out.appendChild(line);
+}
+
+async function tick() {
+  await new Promise(resolve => requestAnimationFrame(resolve));
+  await new Promise(resolve => setTimeout(resolve, 30));
+}
+
+async function waitFor(read, label) {
+  const deadline = Date.now() + 30000;
+  while (!read()) {
+    if (Date.now() > deadline) {
+      throw new Error(`Timed out: ${label}`);
+    }
+    await tick();
+  }
+}
+
+try {
+  const frame = document.createElement('iframe');
+  frame.src = new URLSearchParams(location.search).has('standalone') ? '../coxeter_mfv.html' : '../index.html';
+  document.body.appendChild(frame);
+  await waitFor(() => frame.contentWindow?.escherMCMC?.store?.solution?.status === 'optimal', 'startup');
+  const app = frame.contentWindow;
+  const doc = app.document;
+  const store = app.escherMCMC.store;
+  await store.useScenario('solo-ecoli');
+  doc.querySelector('[data-action="left-tab"][data-tab="model"]').click();
+  await tick();
+  doc.querySelector('#task-panel [data-workspace="scenario"]').click();
+  await tick();
+
+  function control(action) {
+    const button = doc.querySelector(`.sc-steadycom [data-action="${action}"]`);
+    if (!button) {
+      throw new Error(`Missing control: ${action}`);
+    }
+    return button;
+  }
+
+  function change(action, value) {
+    const input = control(action);
+    input.value = value;
+    input.dispatchEvent(new app.Event('change', { bubbles: true }));
+  }
+
+  async function calculateRange() {
+    control('steadycom-recompute').click();
+    await waitFor(() => Number.isFinite(store.steadyComState?.max) && !store._steadyComController
+      && !control('steadycom-recompute').disabled, 'completed range');
+    await tick();
+  }
+
+  const load = store.loadState;
+  const run = store.runSteadyComTask;
+  async function queuedRange(retry) {
+    let releaseImport;
+    const heldImport = new Promise(resolve => {
+      releaseImport = resolve;
+    });
+    let entered = false;
+    let calls = 0;
+    store.loadState = async function(...args) {
+      entered = true;
+      await heldImport;
+      return load.apply(this, args);
+    };
+    store.runSteadyComTask = (...args) => {
+      calls += 1;
+      return run(...args);
+    };
+    const input = doc.getElementById('file-input');
+    const transfer = new app.DataTransfer();
+    transfer.items.add(new app.File([store.stateJSON()], 'queued-scenario.json'));
+    input.files = transfer.files;
+    input.dispatchEvent(new app.Event('change', { bubbles: true }));
+    try {
+      await waitFor(() => entered, 'held Scenario import');
+      control('steadycom-recompute').click();
+      await tick();
+      check('a queued range request exposes its Cancel button', !control('steadycom-cancel').hidden);
+      control('steadycom-cancel').click();
+      await tick();
+      check('Cancel immediately releases controls even before the queued request starts',
+        !control('steadycom-recompute').disabled && control('steadycom-cancel').hidden);
+      if (retry) {
+        control('steadycom-recompute').click();
+        await tick();
+        check('an immediate replacement request owns the queued Busy controls',
+          control('steadycom-recompute').disabled && !control('steadycom-cancel').hidden);
+      }
+    } finally {
+      releaseImport();
+    }
+    await waitFor(() => input.value === '' && !store._steadyComController
+      && !control('steadycom-recompute').disabled, 'cancelled queued request');
+    await tick();
+    if (retry) {
+      check('only the immediate replacement request runs after the queue is released',
+        calls === 1 && store.steadyComState.max > 0.8 && store.status.state === 'ok');
+    } else {
+      check('a cancelled queued request never dispatches a numerical task', calls === 0);
+    }
+    store.loadState = load;
+    store.runSteadyComTask = run;
+  }
+  await queuedRange(false);
+  await queuedRange(true);
+
+  for (const method of ['range', 'fixed']) {
+    await store.useScenario('solo-ecoli');
+    await tick();
+    if (method === 'fixed') {
+      await calculateRange();
+      change('steadycom-mu-number', '0.1');
+    }
+    const prepare = store.steadyComProblem;
+    let release;
+    const held = new Promise(resolve => {
+      release = resolve;
+    });
+    let started = false;
+    let finished = false;
+    store.steadyComProblem = async function(...args) {
+      await prepare.apply(this, args);
+      started = true;
+      await held;
+      finished = true;
+      throw new Error('The earlier model preparation failed late.');
+    };
+    try {
+      control(method === 'range' ? 'steadycom-recompute' : 'steadycom-solve').click();
+      await waitFor(() => started, `${method} held preparation`);
+      control('steadycom-cancel').click();
+      await tick();
+      check(`${method} Cancel immediately releases the request controls`,
+        !control('steadycom-recompute').disabled && control('steadycom-cancel').hidden);
+    } finally {
+      release();
+    }
+    await waitFor(() => finished && !control('steadycom-recompute').disabled, `${method} retired preparation`);
+    await tick();
+    check(`${method} late preparation failure does not replace cancellation with an error`,
+      store.status.state === 'ok' && !doc.querySelector('[data-steadycom-error]')?.textContent.trim());
+    store.steadyComProblem = prepare;
+    await calculateRange();
+    check(`${method} range calculation succeeds after cancellation and a late failure`,
+      store.status.state === 'ok' && store.steadyComState.max > 0.8);
+  }
+
+  change('steadycom-mu-number', '0.1');
+  control('steadycom-solve').click();
+  await waitFor(() => store.solution?.steadyCom?.mu === 0.1 && !store._steadyComController
+    && !control('steadycom-recompute').disabled, 'first fixed growth');
+  for (const parsimonious of [false, true]) {
+    const solution = store.solution;
+    const checkbox = control('steadycom-parsimonious');
+    checkbox.checked = parsimonious;
+    checkbox.dispatchEvent(new app.Event('change', { bubbles: true }));
+    await tick();
+    change('steadycom-mu-number', '0.2');
+    let release;
+    const held = new Promise(resolve => {
+      release = resolve;
+    });
+    let ready = false;
+    let finished = false;
+    store.runSteadyComTask = async (...args) => {
+      const result = await run(...args);
+      ready = true;
+      await held;
+      finished = true;
+      return result;
+    };
+    try {
+      control('steadycom-solve').click();
+      await waitFor(() => ready, 'held fixed result');
+      control('steadycom-cancel').click();
+      await tick();
+      check(`${parsimonious ? 'parsimonious' : 'plain'} fixed-growth Cancel immediately permits another request`,
+        !control('steadycom-solve').disabled);
+    } finally {
+      release();
+    }
+    await waitFor(() => finished && !control('steadycom-recompute').disabled, 'retired fixed result');
+    await tick();
+    check(`${parsimonious ? 'parsimonious' : 'plain'} late fixed result preserves the previous solution and Scenario growth`,
+      store.solution === solution && JSON.parse(store.stateJSON()).steadyCom.mu === 0.1
+      && store.status.state === 'ok');
+    store.runSteadyComTask = run;
+  }
+} catch (error) {
+  check(error.message, false);
+}
+
+document.title = failures ? `FAIL (${failures})` : 'PASS';
+</script>
+</body>
+</html>

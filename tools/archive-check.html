@@ -1,0 +1,239 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Archive outcome checks</title>
+<style>
+  body { font: 13px/1.6 ui-monospace, monospace; margin: 24px; background: #0b1220; color: #e2e8f0; }
+  .pass { color: #4ade80; }
+  .fail { color: #fb7185; }
+  iframe { width: 1200px; height: 900px; border: 1px solid #334155; margin-top: 16px; }
+</style>
+</head>
+<body>
+<h1>Input-only, failed and optimal archive checks</h1>
+<p>Exports are captured in memory. No system save dialog or disk download opens.</p>
+<div id="out"></div>
+<script type="module">
+/**
+ * Exercise archived analysis outcomes through export buttons, file controls and
+ * the visible reproducibility report, without opening operating-system dialogs.
+ */
+const out = document.getElementById('out');
+const lines = [];
+let failures = 0;
+let total = 0;
+
+function check(name, passed) {
+  total += 1;
+  if (!passed) {
+    failures += 1;
+  }
+  const line = document.createElement('div');
+  line.className = passed ? 'pass' : 'fail';
+  line.textContent = `${passed ? 'OK' : 'FAIL'} ${name}`;
+  out.appendChild(line);
+  lines.push(line.textContent);
+}
+
+async function tick() {
+  await new Promise(resolve => requestAnimationFrame(resolve));
+  await new Promise(resolve => setTimeout(resolve, 30));
+}
+
+async function waitFor(read, label) {
+  const deadline = Date.now() + 30000;
+  while (!read()) {
+    if (Date.now() > deadline) {
+      throw new Error(`Timed out: ${label}`);
+    }
+    await tick();
+  }
+}
+
+try {
+  const frame = document.createElement('iframe');
+  frame.src = new URLSearchParams(location.search).has('standalone') ? '../coxeter_mfv.html' : '../index.html';
+  document.body.appendChild(frame);
+  await waitFor(() => frame.contentWindow?.escherMCMC?.store?.solution?.status === 'optimal', 'startup');
+  const app = frame.contentWindow;
+  const doc = app.document;
+  const store = app.escherMCMC.store;
+  const saved = [];
+  app.showSaveFilePicker = async options => {
+    let blob = null;
+    return {
+      name: options.suggestedName,
+      async createWritable() {
+        return {
+          async write(content) {
+            blob = content;
+          },
+          async close() {
+            saved.push(blob);
+          },
+        };
+      },
+    };
+  };
+
+  async function upload(id, text, name) {
+    const input = doc.getElementById(id);
+    const transfer = new app.DataTransfer();
+    transfer.items.add(new app.File([text], name));
+    input.files = transfer.files;
+    input.dispatchEvent(new app.Event('change', { bubbles: true }));
+    await waitFor(() => input.value === '' && store.status.state !== 'busy', name);
+    await tick();
+  }
+
+  async function exportText(action) {
+    const before = saved.length;
+    const menu = doc.querySelector('.file-menu');
+    menu.open = true;
+    menu.querySelector(`[data-action="${action}"]`).click();
+    await waitFor(() => saved.length > before, action);
+    await tick();
+    return saved.at(-1).text();
+  }
+
+  async function workspace(name) {
+    doc.querySelector('[data-action="left-tab"][data-tab="model"]').click();
+    await tick();
+    doc.querySelector(`#task-panel [data-workspace="${name}"]`).click();
+    await tick();
+  }
+
+  function change(selector, value) {
+    const input = doc.querySelector(selector);
+    input.value = value;
+    input.dispatchEvent(new app.Event('change', { bubbles: true }));
+  }
+
+  async function ordinary(method) {
+    const close = doc.querySelector('[data-action="close-workspace"]');
+    if (close && close.getClientRects().length) {
+      close.click();
+    }
+    doc.querySelector('[data-action="left-tab"][data-tab="analysis"]').click();
+    await tick();
+    doc.querySelector(`#task-panel [data-action="run-${method}"]`).click();
+    await waitFor(() => store.lastRun?.method === method && store.lastRun.phase !== 'running', method);
+    await tick();
+  }
+
+  async function reportText() {
+    doc.querySelector('[data-action="results-tab"][data-tab="analysis"]').click();
+    await tick();
+    const button = doc.querySelector('[data-analysis-tab="repro"]');
+    check('the restored archive exposes its Reproducibility tab', !button.disabled);
+    button.click();
+    await tick();
+    return doc.querySelector('[data-analysis-content="repro"]').textContent;
+  }
+
+  const raw = await (await fetch('../models/ecoli_core_mc.json')).json();
+  raw.reactions.find(reaction => reaction.id === 'GAPD').gene_reaction_rule = 'test_gap';
+  await upload('model-file-input', JSON.stringify(raw), 'archive-fixture.json');
+  const species = store.species[0].id;
+  const drawing = JSON.stringify(store.map.toJSON());
+  check('the archive fixture imports and solves', store.solution.status === 'optimal');
+  doc.querySelector('[data-action="clear-solution"]').click();
+  await tick();
+  const inputs = JSON.parse(await exportText('export-reproducibility'));
+  check('the bundle export records that Clear solution left no archived result', inputs.solution === null);
+  const prepared = await exportText('export-methods-provenance');
+  check('the Methods button describes prepared inputs without completed simulations',
+    prepared.includes('Analysis settings were prepared') && prepared.includes('Configured method:')
+    && !prepared.includes('Metabolic simulations were performed'));
+  await upload('reproducibility-file-input', JSON.stringify(inputs), 'inputs-only.json');
+  check('the bundle input recalculates without a false numerical mismatch',
+    store.solution.status === 'optimal' && store.reproducibilityReplay.replay === null
+    && store.status.state === 'ok' && store.status.message.includes('no archived numerical result to compare'));
+  const restored = await reportText();
+  check('the report separates restored inputs from an unavailable numerical comparison',
+    restored.includes('Inputs restored') && restored.includes('No numerical solution was archived')
+    && !restored.includes('Reproducibility verified') && !restored.includes('Reproducibility warning'));
+
+  await workspace('omics');
+  await upload('metatranscriptomics-file-input',
+    `MAG,gene,condition,TPM\n${species},test_gap,Control,1\n`, 'archive-expression.csv');
+  change('[data-action="gimme-threshold"]', '5');
+  change('[data-action="gimme-objective-fraction"]', '80');
+  doc.querySelector('[data-action="run-gimme"]').click();
+  await tick();
+  check('the fixture has a completed GIMME result before clearing',
+    store.solution.status === 'optimal' && store.solution.gimme && store.solution.inconsistencyScore > 0);
+  doc.querySelector('[data-action="clear-solution"]').click();
+  await tick();
+  change('[data-action="gimme-threshold"]', '0');
+  await tick();
+  change('[data-action="gimme-objective-fraction"]', '60');
+  await tick();
+  const gimme = JSON.parse(await exportText('export-reproducibility'));
+  check('cleared GIMME exports current settings without retired scores or solver stages',
+    gimme.solution === null && gimme.analysis.gimme.threshold === 0
+    && gimme.analysis.gimme.objectiveFraction === 0.6 && gimme.analysis.gimme.inconsistencyScore === null
+    && gimme.analysis.gimme.primarySolver === null && gimme.analysis.gimme.contextualSolver === null);
+  const configured = await exportText('export-methods-provenance');
+  check('the cleared GIMME Methods report describes configuration rather than a completed run',
+    configured.includes('GIMME was configured with condition') && !configured.includes('GIMME used condition'));
+  await upload('reproducibility-file-input', JSON.stringify(gimme), 'gimme-inputs-only.json');
+  check('input-only GIMME calculates the new threshold and fraction without claiming replay',
+    store.solution.status === 'optimal' && store.solution.threshold === 0 && store.solution.objectiveFraction === 0.6
+    && store.reproducibilityReplay.replay === null && store.status.state === 'ok');
+
+  await ordinary('pfva');
+  doc.querySelector('[data-action="clear-solution"]').click();
+  await tick();
+  const pfva = JSON.parse(await exportText('export-reproducibility'));
+  await upload('reproducibility-file-input', JSON.stringify(pfva), 'pfva-inputs-only.json');
+  await waitFor(() => !store.fvaProgress.running, 'new pFVA ranges');
+  check('input-only pFVA retains its mode and computes new flux ranges',
+    store.pfvaEnabled && store.fvaEnabled && store.fvaRanges.size === store.problem.rxnIds.length
+    && store.exportMetadata().analysis.method === 'pFVA' && store.reproducibilityReplay.replay === null);
+
+  await ordinary('fba');
+  await workspace('medium');
+  change('[data-action="medium-number"][data-base="glc__D"]', '0');
+  await tick();
+  change('[data-action="medium-number"][data-base="o2"]', '0');
+  await waitFor(() => store.solution.status === 'infeasible', 'infeasible medium');
+  const failed = JSON.parse(await exportText('export-reproducibility'));
+  const attempted = await exportText('export-methods-provenance');
+  check('the failed Methods report names an attempted analysis and the missing optimum',
+    attempted.includes('An analysis was attempted') && attempted.includes('No optimal solution was obtained')
+    && !attempted.includes('Metabolic simulations were performed'));
+  await upload('reproducibility-file-input', JSON.stringify(failed), 'infeasible-result.json');
+  check('an infeasible archive reproduces its status without a false objective mismatch',
+    store.reproducibilityReplay.replay.pass && store.status.message.includes('analysis status reproduced: infeasible')
+    && !store.status.message.includes('numerical differences'));
+  const infeasible = await reportText();
+  const labels = [...doc.querySelectorAll('[data-analysis-content="repro"] .repro-check strong')].map(label => label.textContent);
+  check('the failed replay report verifies status without claiming nonexistent flux values',
+    infeasible.includes('Analysis status reproduced') && infeasible.includes('Solver status')
+    && infeasible.includes('No optimal solution was obtained') && !labels.includes('Fluxes'));
+
+  await workspace('medium');
+  change('[data-action="medium-number"][data-base="glc__D"]', '10');
+  await tick();
+  change('[data-action="medium-number"][data-base="o2"]', '1000');
+  await waitFor(() => store.medium.glc__D === 10 && store.medium.o2 === 1000 && store.solution.status === 'optimal', 'recovered medium');
+  await ordinary('fba');
+  const solved = JSON.parse(await exportText('export-reproducibility'));
+  await upload('reproducibility-file-input', JSON.stringify(solved), 'optimal-result.json');
+  const optimal = await reportText();
+  check('recovery still verifies a real optimal numerical replay',
+    store.solution.status === 'optimal' && store.reproducibilityReplay.replay.pass
+    && optimal.includes('Reproducibility verified') && optimal.includes('Fluxes') && optimal.includes('Solver status'));
+  check('archive outcome combinations preserve drawing geometry', JSON.stringify(store.map.toJSON()) === drawing);
+  check('all report exports avoided system save dialogs', saved.length >= 8 && doc.querySelector('.save-dialog') === null);
+} catch (error) {
+  check(error.message, false);
+}
+
+document.title = failures ? `FAIL (${failures})` : 'PASS';
+window.__checkComplete = Promise.resolve({ failures, total, lines });
+</script>
+</body>
+</html>

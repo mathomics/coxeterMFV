@@ -1,0 +1,246 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Running manual insertion checks</title>
+<style>
+  body { margin: 16px; font: 14px system-ui; background: #0b1220; color: #e2e8f0; }
+  .pass { color: #4ade80; }
+  .fail { color: #fb7185; }
+  iframe { width: 1300px; height: 900px; border: 1px solid #334155; margin-top: 16px; }
+</style>
+</head>
+<body>
+<h1>Manual metabolites, menu dragging and failed insertion feedback</h1>
+<div id="out"></div>
+<script type="module">
+/** Exercise real manual insertion controls and preserve the model, calculation and map history. */
+import { nodeFitsAt } from '../src/layout/drag.js';
+const out = document.getElementById('out');
+let failures = 0;
+
+function check(name, passed) {
+  if (!passed) {
+    failures += 1;
+  }
+  const line = document.createElement('div');
+  line.className = passed ? 'pass' : 'fail';
+  line.textContent = `${passed ? 'OK' : 'FAIL'} ${name}`;
+  out.appendChild(line);
+}
+
+async function tick() {
+  await new Promise(resolve => requestAnimationFrame(resolve));
+  await new Promise(resolve => setTimeout(resolve, 60));
+}
+
+async function waitFor(read, label) {
+  const deadline = Date.now() + 30000;
+  while (!read()) {
+    if (Date.now() > deadline) {
+      throw new Error(`Timed out: ${label}`);
+    }
+    await tick();
+  }
+}
+
+try {
+  const frame = document.createElement('iframe');
+  frame.src = new URLSearchParams(location.search).has('standalone') ? '../coxeter_mfv.html' : '../index.html';
+  document.body.appendChild(frame);
+  await waitFor(() => frame.contentWindow?.escherMCMC?.store?.solution?.status === 'optimal', 'startup');
+  const app = frame.contentWindow;
+  const doc = app.document;
+  const store = app.escherMCMC.store;
+  await store.useScenario('solo-ecoli');
+  const EditableMap = store.map.constructor;
+  store.map = EditableMap.emptyFromCommunity(store.community);
+  store.mapHistory.clear();
+  store.emit('map');
+  const biology = JSON.stringify(store.modelEditorModel().toJSON());
+  const bounds = JSON.stringify(store.problem.snapshotBounds());
+  const solution = store.solution;
+  doc.querySelector('[data-action="left-tab"][data-tab="build"]').click();
+  doc.querySelector('[data-action="zoom-fit"]').click();
+  await tick();
+
+  function screen(point) {
+    const rect = doc.getElementById('stage').getBoundingClientRect();
+    return {
+      clientX: rect.left + app.escherMCMC.camera.x + point.x * app.escherMCMC.camera.scale,
+      clientY: rect.top + app.escherMCMC.camera.y + point.y * app.escherMCMC.camera.scale,
+    };
+  }
+
+  async function open(compartment, point) {
+    doc.querySelector('[data-tool="metabolite"]').click();
+    await tick();
+    const target = doc.querySelector(`[data-cell-space="eco"][data-compartment-space="${compartment}"]`);
+    const at = screen(point);
+    target.dispatchEvent(new app.PointerEvent('pointerdown', { bubbles: true, pointerId: 811, ...at }));
+    target.dispatchEvent(new app.PointerEvent('pointerup', { bubbles: true, pointerId: 811, ...at }));
+    await tick();
+  }
+
+  function filter(value) {
+    const input = doc.querySelector('[data-filter-metabolites]');
+    input.value = value;
+    input.dispatchEvent(new app.Event('input', { bubbles: true }));
+  }
+
+  async function addFromLibrary(id) {
+    doc.querySelector('[data-action="open-workspace"][data-workspace="library"]').click();
+    await tick();
+    const input = doc.querySelector('#reaction-search-input');
+    input.value = id;
+    input.dispatchEvent(new app.Event('input', { bubbles: true }));
+    await tick();
+    doc.querySelector(`[data-action="search-add-reaction"][data-rxn="eco@${id}"]`).click();
+    await tick();
+  }
+
+  const rect = store.map.cells[0].compartments.find(compartment => compartment.id === 'c').rect;
+  const origin = { x: rect.x + 1, y: rect.y + rect.h / 2 };
+  await open('c', origin);
+  filter('g6p_c');
+  check('the metabolite filter finds the model identifier',
+    doc.querySelectorAll('.add-metabolite-choice:not([hidden])').length === 1);
+  const menu = doc.querySelector('.add-metabolite-menu');
+  const before = menu.getBoundingClientRect();
+  const head = menu.querySelector('.add-reaction-head');
+  const start = { clientX: before.left + 20, clientY: before.top + 20 };
+  const end = { clientX: start.clientX + 40, clientY: start.clientY + 30 };
+  head.dispatchEvent(new app.PointerEvent('pointerdown', {
+    bubbles: true, pointerId: 812, pointerType: 'mouse', button: 0, buttons: 1, ...start,
+  }));
+  head.dispatchEvent(new app.PointerEvent('pointermove', { bubbles: true, pointerId: 812, ...end }));
+  head.dispatchEvent(new app.PointerEvent('pointerup', { bubbles: true, pointerId: 812, ...end }));
+  await tick();
+  const moved = doc.querySelector('.add-metabolite-menu').getBoundingClientRect();
+  check('dragging the metabolite header moves the panel',
+    Math.abs(moved.left - before.left - 40) < 1 && Math.abs(moved.top - before.top - 30) < 1);
+  check('dragging leaves the active filter and drawing history intact',
+    doc.querySelector('[data-filter-metabolites]').value === 'g6p_c' && store.mapHistory.undoStack.length === 0);
+  store.emit('map');
+  await tick();
+  const repainted = doc.querySelector('.add-metabolite-menu').getBoundingClientRect();
+  check('a repaint preserves the dragged position and filtered rows',
+    Math.abs(repainted.left - moved.left) < 1 && Math.abs(repainted.top - moved.top) < 1
+    && doc.querySelector('[data-filter-metabolites]').value === 'g6p_c'
+    && doc.querySelectorAll('.add-metabolite-choice:not([hidden])').length === 1);
+  doc.querySelector('[data-add-metabolite="eco@g6p_c"]').click();
+  await tick();
+  const first = store.map.nodesForMetabolite('eco@g6p_c')[0];
+  check('the dragged menu inserts at its original map point, constrained inside the compartment',
+    first && Math.abs(first.y - origin.y) < 1e-8 && first.x >= rect.x + 19
+    && nodeFitsAt(store.map, first, first.x, first.y));
+  check('manual insertion closes the menu and initializes its primary role',
+    !doc.querySelector('.add-metabolite-menu') && first.visualRole === 'primary');
+
+  const center = { x: rect.x + rect.w / 2, y: rect.y + rect.h / 2 };
+  await open('c', center);
+  filter('g6p_c');
+  check('a repeated metabolite choice reports the existing visual copy',
+    /on map \(1\)/.test(doc.querySelector('[data-add-metabolite="eco@g6p_c"]').textContent));
+  doc.querySelector('[data-add-metabolite="eco@g6p_c"]').click();
+  await tick();
+  const nodes = store.map.nodesForMetabolite('eco@g6p_c');
+  check('repeated insertion creates a distinct visual identity with the same biology',
+    nodes.length === 2 && nodes[0].id !== nodes[1].id && nodes[0].mergedId === nodes[1].mergedId);
+  const duplicated = JSON.stringify(store.map.toJSON());
+  doc.querySelector('[data-action="map-undo"]').click();
+  await tick();
+  check('Undo removes only the last inserted copy', store.map.nodesForMetabolite('eco@g6p_c').length === 1);
+  doc.querySelector('[data-action="map-redo"]').click();
+  await tick();
+  check('Redo restores the exact manual drawing and role metadata', JSON.stringify(store.map.toJSON()) === duplicated);
+  store.loadMapJSON(store.mapJSON());
+  check('map export and reimport retain both visual identities', store.map.nodesForMetabolite('eco@g6p_c').length === 2);
+
+  await open('p', { x: rect.x - 1, y: center.y });
+  filter('glc__D_p');
+  doc.querySelector('[data-add-metabolite="eco@glc__D_p"]').click();
+  await tick();
+  const periplasm = store.map.nodesForMetabolite('eco@glc__D_p')[0];
+  check('the periplasmic choice avoids the nested cytosol',
+    periplasm && nodeFitsAt(store.map, periplasm, periplasm.x, periplasm.y));
+  const manualDrawing = store.map.toJSON();
+  await open('c', center);
+  filter('missing-metabolite');
+  check('an unmatched query hides every metabolite choice',
+    doc.querySelectorAll('.add-metabolite-choice:not([hidden])').length === 0);
+  filter('');
+  check('clearing the filter restores the list', doc.querySelectorAll('.add-metabolite-choice:not([hidden])').length > 1);
+  const closeVersion = store.mapHistory.version;
+  doc.querySelector('[data-close-add-metabolite]').click();
+  await tick();
+  check('Close dismisses the panel without adding history',
+    !doc.querySelector('.add-metabolite-menu') && store.mapHistory.version === closeVersion);
+
+  frame.style.height = '440px';
+  await tick();
+  doc.querySelector('[data-action="zoom-fit"]').click();
+  await open('c', center);
+  const stage = doc.getElementById('stage').getBoundingClientRect();
+  const short = doc.querySelector('.add-metabolite-menu').getBoundingClientRect();
+  check('the manual menu fits inside a short stage',
+    short.top >= stage.top && short.bottom <= stage.bottom + 1 && short.right <= stage.right + 1);
+  check('the short stage leaves a scrolling list and an accessible Close control',
+    doc.querySelector('.add-metabolite-menu .add-reaction-list').clientHeight > 0
+    && doc.querySelector('[data-close-add-metabolite]').getBoundingClientRect().bottom <= stage.bottom);
+  doc.querySelector('[data-close-add-metabolite]').click();
+  frame.style.height = '900px';
+  await tick();
+
+  await open('c', center);
+  filter('g6p_c');
+  store.map = EditableMap.blank();
+  const blank = JSON.stringify(store.map.toJSON());
+  const blankVersion = store.mapHistory.version;
+  doc.querySelector('[data-add-metabolite="eco@g6p_c"]').click();
+  await tick();
+  check('a queued metabolite click after geometry replacement reports the missing compartment',
+    store.status.state === 'warn' && /g6p_c.*not drawn.*compartment/i.test(doc.body.textContent));
+  check('failed manual insertion closes its panel without an orphan or history edit',
+    !doc.querySelector('.add-metabolite-menu') && JSON.stringify(store.map.toJSON()) === blank
+    && store.mapHistory.version === blankVersion);
+  await addFromLibrary('PFK');
+  check('Add to map on an empty drawing explains how to recover',
+    store.status.state === 'warn' && /PFK.*not drawn.*compartments.*space/i.test(doc.body.textContent));
+  check('failed reaction insertion leaves the blank drawing intact', JSON.stringify(store.map.toJSON()) === blank);
+
+  store.map = EditableMap.emptyFromCommunity(store.community);
+  store.map.cells[0].compartments.find(compartment => compartment.id === 'c').rect = {
+    x: 300, y: 300, w: 40, h: 40,
+  };
+  store.mapHistory.clear();
+  store.addMapReaction('eco@PGI');
+  store.addMapReaction('eco@GLCtex');
+  store.undoMap();
+  const crowded = JSON.stringify(store.map.toJSON());
+  const crowdedVersion = store.mapHistory.version;
+  await addFromLibrary('PFK');
+  check('Add to map with no distinct marker position explains the lack of space',
+    store.status.state === 'warn' && /PFK.*not drawn.*space/i.test(doc.body.textContent));
+  check('failed no-space insertion preserves the drawing, history version and Redo',
+    JSON.stringify(store.map.toJSON()) === crowded && store.mapHistory.version === crowdedVersion
+    && store.mapHistory.canRedo);
+  check('every manual control preserves the model, LP bounds and installed numerical result',
+    JSON.stringify(store.modelEditorModel().toJSON()) === biology
+    && JSON.stringify(store.problem.snapshotBounds()) === bounds && store.solution === solution);
+
+  store.map = EditableMap.fromJSON(manualDrawing);
+  store.mapHistory.clear();
+  store.emit('map');
+  doc.querySelector('[data-action="zoom-fit"]').click();
+  await open('c', center);
+  filter('g6p_c');
+  await tick();
+} catch (error) {
+  check(error.message, false);
+}
+
+document.title = failures ? `FAIL (${failures})` : 'PASS';
+</script>
+</body>
+</html>

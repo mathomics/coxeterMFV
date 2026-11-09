@@ -1,0 +1,309 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Import checks</title>
+<style>
+  body { font: 13px/1.6 ui-monospace, monospace; margin: 24px; background: #0b1220; color: #e2e8f0; }
+  .pass { color: #4ade80; }
+  .fail { color: #fb7185; }
+  iframe { width: 1200px; height: 800px; border: 1px solid #334155; margin-top: 16px; }
+</style>
+</head>
+<body>
+<h1>Model and context import checks</h1>
+<div id="out"></div>
+<script type="module">
+/**
+ * Exercise real file inputs and interleaved context changes. Deferred File reads
+ * make slow disk reads reproducible without changing the application methods.
+ */
+import { sha256 } from '../src/core/reproducibility.js';
+
+const out = document.getElementById('out');
+const lines = [];
+let failures = 0;
+let total = 0;
+
+function check(name, passed) {
+  total += 1;
+  if (!passed) {
+    failures += 1;
+  }
+  const line = document.createElement('div');
+  line.className = passed ? 'pass' : 'fail';
+  line.textContent = `${passed ? 'OK' : 'FAIL'} ${name}`;
+  out.appendChild(line);
+  lines.push(line.textContent);
+}
+
+async function tick() {
+  await new Promise(resolve => requestAnimationFrame(resolve));
+  await new Promise(resolve => setTimeout(resolve, 30));
+}
+
+async function waitFor(read, label) {
+  const deadline = Date.now() + 10000;
+  while (!read()) {
+    if (Date.now() > deadline) {
+      throw new Error(`Timed out: ${label}`);
+    }
+    await tick();
+  }
+}
+
+try {
+  const frame = document.createElement('iframe');
+  const standalone = new URLSearchParams(location.search).has('standalone');
+  frame.src = standalone ? '../coxeter_mfv.html' : '../index.html';
+  document.body.appendChild(frame);
+  await waitFor(() => frame.contentWindow?.escherMCMC?.store?.solution?.status === 'optimal', 'app startup');
+  const app = frame.contentWindow;
+  const doc = app.document;
+  const store = app.escherMCMC.store;
+  const originalText = app.File.prototype.text;
+  const modelText = await (await fetch('../models/ecoli_core_mc.json')).text();
+  const matBytes = await (await fetch('../test/fixtures/cobra-toolbox/mini.mat')).arrayBuffer();
+  const xlsxBytes = await (await fetch('../test/fixtures/cobra-toolbox/mini.xlsx')).arrayBuffer();
+
+  function upload(inputId, files) {
+    const input = doc.getElementById(inputId);
+    const transfer = new app.DataTransfer();
+    for (const file of files) {
+      transfer.items.add(file);
+    }
+    input.files = transfer.files;
+    input.dispatchEvent(new app.Event('change', { bubbles: true }));
+    return input;
+  }
+
+  async function finish(input) {
+    await waitFor(() => input.value === '' && store.status.state !== 'busy', 'file import completion');
+    await tick();
+    await tick();
+  }
+
+  async function chooseScenario(id) {
+    doc.querySelector('[data-action="left-tab"][data-tab="model"]').click();
+    await tick();
+    doc.querySelector('#task-panel [data-workspace="scenario"]').click();
+    await tick();
+    const select = doc.querySelector('[data-action="scenario"]');
+    select.value = `sc:${id}`;
+    select.dispatchEvent(new app.Event('change', { bubbles: true }));
+  }
+
+  function deferText(filename) {
+    let release;
+    let reject;
+    let started = false;
+    const text = new Promise((resolve, fail) => {
+      release = resolve;
+      reject = fail;
+    });
+    app.File.prototype.text = function () {
+      if (this.name === filename) {
+        started = true;
+        return text;
+      }
+      return originalText.call(this);
+    };
+    return { release, reject, started: () => started };
+  }
+
+  const hdf5 = new Uint8Array(1024);
+  hdf5.set(new TextEncoder().encode('MATLAB 7.3 MAT-file, Platform: GLNXA64, HDF5 schema 1.00'));
+  hdf5.set([0x89, 0x48, 0x44, 0x46, 0x0d, 0x0a, 0x1a, 0x0a], 512);
+  const invalid = [
+    new app.File(['{broken'], 'broken.json'),
+    new app.File(['<sbml>'], 'broken.xml'),
+    new app.File([new Uint8Array(4)], 'broken.mat'),
+    new app.File([new Uint8Array([0x50, 0x4b, 3, 4])], 'broken.xlsx'),
+    new app.File([hdf5], 'unsupported.mat'),
+    new app.File(['legacy'], 'legacy.xls'),
+  ];
+  store.addMapText('Keep this drawing', 300, 300);
+  for (const file of invalid) {
+    const before = {
+      map: store.map, community: store.community, solution: store.solution,
+      history: store.mapHistory.undoStack.length,
+    };
+    const input = upload('model-file-input', [file]);
+    await finish(input);
+    check(`${file.name} is rejected visibly without replacing the open work`,
+      store.status.state === 'error' && doc.getElementById('results-summary').classList.contains('is-error')
+      && store.map === before.map && store.community === before.community && store.solution === before.solution
+      && store.mapHistory.undoStack.length === before.history);
+  }
+  const beforeMixed = store.map;
+  const mixed = upload('model-file-input', [new app.File([matBytes], 'mini.mat'), invalid[3]]);
+  await finish(mixed);
+  check('one invalid file rejects a mixed-format batch without replacing the drawing',
+    store.status.state === 'error' && store.map === beforeMixed);
+
+  let input = upload('model-file-input', [new app.File([xlsxBytes], 'mini.xlsx')]);
+  await finish(input);
+  check('a valid file still imports after repeated rejections', store.solution?.status === 'optimal'
+    && store.community.merged.reactions.size === 7 && store.solution.objectiveValue === 10);
+
+  let deferred = deferText('slow-model.json');
+  input = upload('model-file-input', [new app.File([modelText], 'slow-model.json')]);
+  await waitFor(deferred.started, 'slow model read');
+  await chooseScenario('solo-ecoli');
+  await tick();
+  deferred.release(modelText);
+  await finish(input);
+  check('a later scenario choice wins over an earlier slow model import',
+    store.scenario?.id === 'solo-ecoli' && store.community.merged.reactions.has('eco@TALA'));
+  app.File.prototype.text = originalText;
+
+  await chooseScenario('solo-ecoli');
+  await waitFor(() => store.scenario?.id === 'solo-ecoli' && store.status.state !== 'busy', 'E. coli scenario');
+  await tick();
+  const state = store.stateJSON();
+  const map = store.mapJSON();
+  const bundle = JSON.stringify(await store.reproducibilityBundle());
+
+  for (const [inputId, filename, text] of [
+    ['file-input', 'slow-scenario.json', state],
+    ['map-file-input', 'slow-map.json', map],
+    ['reproducibility-file-input', 'slow-bundle.json', bundle],
+    ['omics-file-input', 'slow-omics.csv', 'species,gene,Control\nmini,g1,1\n'],
+    ['bounds-file-input', 'slow-bounds.csv', 'id,lower,upper\nmini@BIOMASS,0,0\n'],
+    ['metatranscriptomics-file-input', 'slow-community-omics.csv', 'MAG,gene,condition,TPM\nmini,g1,Control,1\n'],
+  ]) {
+    deferred = deferText(filename);
+    const older = upload(inputId, [new app.File([text], filename)]);
+    await waitFor(deferred.started, filename);
+    input = upload('model-file-input', [new app.File([xlsxBytes], 'mini.xlsx')]);
+    await tick();
+    await tick();
+    deferred.release(text);
+    await finish(older);
+    await finish(input);
+    check(`a later model import wins over an earlier ${filename}`,
+      store.scenario?.id === 'uploaded-models' && store.community.merged.reactions.size === 7
+      && store.solution?.status === 'optimal' && store.solution.objectiveValue === 10
+      && store.overrides.size === 0 && store.omicsDataset === null
+      && store.status.state === 'ok' && /^Imported/.test(store.status.message));
+    app.File.prototype.text = originalText;
+  }
+
+  deferred = deferText('unreadable.json');
+  const older = upload('model-file-input', [new app.File([''], 'unreadable.json')]);
+  await waitFor(deferred.started, 'unreadable file');
+  input = upload('model-file-input', [new app.File([xlsxBytes], 'mini.xlsx')]);
+  await tick();
+  deferred.reject(new Error('The file could not be read.'));
+  await finish(older);
+  await finish(input);
+  check('a failed older read does not overwrite a later successful import status',
+    store.status.state === 'ok' && store.solution?.status === 'optimal' && store.solution.objectiveValue === 10);
+  app.File.prototype.text = originalText;
+
+  await chooseScenario('solo-ecoli');
+  await waitFor(() => store.scenario?.id === 'solo-ecoli' && store.status.state !== 'busy', 'bundle source');
+  await tick();
+  store.setLayoutPreset('compact');
+  store.createManualPathway({ name: 'Archived route', color: '#123456', reactionIds: ['eco@TALA'] });
+  store.restoreAbsoluteFluxColors({
+    stops: [{ value: 0, color: '#ffffff' }, { value: 10, color: '#0000ff' }], log: true,
+  });
+  store.setView({ reactionColorMode: 'absflux', pathwayRibbonMode: 'pathway', widthByFlux: true,
+    pathwayRibbonWidth: 72, pathwayRibbonOpacity: 0.3, lineHops: false });
+  input = upload('omics-file-input', [new app.File(['species,gene,Control\neco,b0008,4\n'], 'archived-omics.csv')]);
+  await finish(input);
+  store.addMapText('Archived drawing', 300, 300);
+  const expectedDrawing = JSON.stringify(store.map.toJSON());
+  const expectedPresentation = JSON.stringify(store.reproducibilityPresentationState());
+  const drawingBundle = await store.reproducibilityBundle();
+  check('bundle export includes drawing presentation and a valid integrity hash',
+    drawingBundle.version === 3 && drawingBundle.presentation?.mapOmics?.dataset
+    && (await store.verifyReproducibilityBundle(drawingBundle)).valid);
+
+  store.createManualPathway({ name: 'Unrelated route', reactionIds: ['eco@PGI'] });
+  store.restoreAbsoluteFluxColors(null);
+  input = upload('reproducibility-file-input', [new app.File([JSON.stringify(drawingBundle)], 'drawing-bundle.json')]);
+  await finish(input);
+  check('the bundle file control restores drawing, palette, pathways and map omics',
+    JSON.stringify(store.map.toJSON()) === expectedDrawing
+    && JSON.stringify(store.reproducibilityPresentationState()) === expectedPresentation
+    && store.reproducibilityReplay?.replay.pass && !store.canUndoMap);
+
+  async function seal(archive) {
+    archive.modelHashes = {};
+    for (const [id, model] of Object.entries(archive.models)) {
+      archive.modelHashes[id] = await sha256(model);
+    }
+    delete archive.integrity;
+    archive.integrity = { algorithm: 'SHA-256', payloadHash: await sha256(archive) };
+    return JSON.stringify(archive);
+  }
+
+  for (const version of [1, 2]) {
+    const legacy = structuredClone(drawingBundle);
+    legacy.version = version;
+    delete legacy.presentation;
+    store.createManualPathway({ name: 'Unrelated route', reactionIds: ['eco@PGI'] });
+    store.importOmicsCSV('gene,Control\nb0008,2\n');
+    input = upload('reproducibility-file-input', [new app.File([await seal(legacy)], `legacy-${version}.json`)]);
+    await finish(input);
+    check(`version ${version} bundles load without unrelated pathway or map-omics annotations`,
+      store.reproducibilityReplay?.replay.pass && store.manualPathways.size === 0 && store.omicsDataset === null);
+  }
+
+  const missingModel = structuredClone(drawingBundle);
+  delete missingModel.models.eco;
+  const brokenMap = structuredClone(drawingBundle);
+  brokenMap.map.nodes = {};
+  const brokenPalette = structuredClone(drawingBundle);
+  brokenPalette.presentation.fluxColorStops = [{ value: -1, color: 'broken' }];
+  const brokenPathway = structuredClone(drawingBundle);
+  brokenPathway.presentation.pathwayManager.manual[0].reactionIds = 'eco@TALA';
+  for (const [filename, archive] of [
+    ['missing-model.json', missingModel], ['broken-map.json', brokenMap], ['broken-palette.json', brokenPalette],
+    ['broken-pathway.json', brokenPathway],
+  ]) {
+    store.addMapText('Keep this drawing', 350, 350);
+    store.clearSolution();
+    const before = {
+      map: store.map, problem: store.problem, solution: store.solution, state: store.stateJSON(),
+      keys: JSON.stringify([...store.models.keys()]), history: store.mapHistory.undoStack.length,
+      unsaved: JSON.stringify(store.unsavedWork()),
+    };
+    input = upload('reproducibility-file-input', [new app.File([await seal(archive)], filename)]);
+    await finish(input);
+    check(`${filename} is rejected visibly without replacing any open bundle work`,
+      store.status.state === 'error' && doc.getElementById('results-summary').classList.contains('is-error')
+      && store.map === before.map && store.problem === before.problem && store.solution === before.solution
+      && store.stateJSON() === before.state && JSON.stringify([...store.models.keys()]) === before.keys
+      && store.mapHistory.undoStack.length === before.history && store.solutionCleared
+      && JSON.stringify(store.unsavedWork()) === before.unsaved);
+  }
+
+  input = upload('reproducibility-file-input', [new app.File([JSON.stringify(drawingBundle)], 'recovery-bundle.json')]);
+  await finish(input);
+  check('a valid bundle restores successfully after repeated invalid bundle imports',
+    store.status.state === 'ok' && store.reproducibilityReplay?.replay.pass
+    && JSON.stringify(store.map.toJSON()) === expectedDrawing);
+
+  await store.runAnalysis('pfva');
+  await waitFor(() => store.fvaEnabled && !store.fvaProgress.running && store.fvaRanges.size > 0, 'pFVA ranges');
+  const parsimoniousTotal = store.solution.totalFlux;
+  const expectedRanges = JSON.stringify([...store.fvaRanges]);
+  const pfvaBundle = await store.reproducibilityBundle();
+  input = upload('reproducibility-file-input', [new app.File([JSON.stringify(pfvaBundle)], 'pfva-bundle.json')]);
+  await finish(input);
+  check('a pFVA bundle replays the parsimonious solution and restores its archived ranges',
+    store.parsimonious && store.pfvaEnabled && store.fvaEnabled
+    && typeof store.solution.totalFlux === 'number' && Math.abs(store.solution.totalFlux - parsimoniousTotal) < 1e-6
+    && JSON.stringify([...store.fvaRanges]) === expectedRanges && store.reproducibilityReplay?.replay.pass);
+} catch (error) {
+  check(error.message, false);
+}
+
+document.title = failures ? `FAIL (${failures})` : 'PASS';
+window.__checkComplete = Promise.resolve({ failures, total, lines });
+</script>
+</body>
+</html>

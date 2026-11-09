@@ -1,0 +1,5014 @@
+{
+  "version": 1,
+  "canvas": {
+    "width": 2020,
+    "height": 1327
+  },
+  "environment": {
+    "id": "s",
+    "label": "Shared medium (original smp)",
+    "rect": {
+      "x": 20,
+      "y": 110,
+      "w": 1980,
+      "h": 1182
+    }
+  },
+  "cells": [
+    {
+      "id": "Se",
+      "name": "S. elongatus cscB+",
+      "color": "#047857",
+      "outerCompartment": "p",
+      "rect": {
+        "x": 60,
+        "y": 170,
+        "w": 875,
+        "h": 1087
+      },
+      "compartments": [
+        {
+          "id": "p",
+          "label": "Periplasm (p)",
+          "parentId": null,
+          "depth": 0,
+          "membrane": "bilayer",
+          "rect": {
+            "x": 60,
+            "y": 170,
+            "w": 875,
+            "h": 1087
+          },
+          "visualId": "p"
+        },
+        {
+          "id": "c",
+          "label": "Cytosol (c)",
+          "parentId": "p",
+          "depth": 1,
+          "membrane": "bilayer",
+          "rect": {
+            "x": 123,
+            "y": 233,
+            "w": 755,
+            "h": 959
+          },
+          "labelPosition": {
+            "x": 0.71,
+            "y": 1
+          },
+          "visualId": "c"
+        },
+        {
+          "id": "k",
+          "label": "Thylakoid membrane (k)",
+          "parentId": "c",
+          "depth": 2,
+          "membrane": "bilayer",
+          "rect": {
+            "x": 266,
+            "y": 369,
+            "w": 500,
+            "h": 127
+          },
+          "visualId": "k"
+        },
+        {
+          "id": "u",
+          "label": "Thylakoid lumen (u)",
+          "parentId": "k",
+          "depth": 3,
+          "membrane": "bilayer",
+          "rect": {
+            "x": 311,
+            "y": 416,
+            "w": 405,
+            "h": 60
+          },
+          "labelPosition": {
+            "x": 0.25,
+            "y": 1
+          },
+          "visualId": "u"
+        }
+      ]
+    },
+    {
+      "id": "Ec",
+      "name": "E. coli K-12",
+      "color": "#b45309",
+      "outerCompartment": "p",
+      "rect": {
+        "x": 1085,
+        "y": 170,
+        "w": 875,
+        "h": 900
+      },
+      "compartments": [
+        {
+          "id": "p",
+          "label": "Periplasm (p)",
+          "parentId": null,
+          "depth": 0,
+          "membrane": "bilayer",
+          "rect": {
+            "x": 1085,
+            "y": 170,
+            "w": 875,
+            "h": 900
+          },
+          "visualId": "p"
+        },
+        {
+          "id": "c",
+          "label": "Cytosol (c)",
+          "parentId": "p",
+          "depth": 1,
+          "membrane": "bilayer",
+          "rect": {
+            "x": 1195,
+            "y": 205,
+            "w": 745,
+            "h": 830
+          },
+          "visualId": "c"
+        }
+      ]
+    }
+  ],
+  "medium": {
+    "nodes": [
+      "met:M@phe__L",
+      "met:M@photon690"
+    ],
+    "exchanges": []
+  },
+  "nodes": [
+    {
+      "id": "met:Se@pep_c",
+      "mergedId": "Se@pep_c",
+      "localId": "pep_c",
+      "base": "pep_c_A",
+      "name": "Phosphoenolpyruvate",
+      "compartment": "c",
+      "cellId": "Se",
+      "kind": "metabolite",
+      "x": 165,
+      "y": 700,
+      "r": 13,
+      "primary": true,
+      "visualRole": "primary"
+    },
+    {
+      "id": "met:Se@e4p_c",
+      "mergedId": "Se@e4p_c",
+      "localId": "e4p_c",
+      "base": "e4p_c_A",
+      "name": "D-Erythrose 4-phosphate",
+      "compartment": "c",
+      "cellId": "Se",
+      "kind": "metabolite",
+      "x": 215,
+      "y": 645,
+      "r": 13,
+      "primary": true,
+      "visualRole": "primary"
+    },
+    {
+      "id": "met:Se@2dda7p_c",
+      "mergedId": "Se@2dda7p_c",
+      "localId": "2dda7p_c",
+      "base": "2dda7p_c_A",
+      "name": "2-Dehydro-3-deoxy-D-arabino-heptonate 7-phosphate",
+      "compartment": "c",
+      "cellId": "Se",
+      "kind": "metabolite",
+      "x": 385,
+      "y": 700,
+      "r": 13,
+      "primary": true,
+      "visualRole": "primary"
+    },
+    {
+      "id": "met:Se@3dhq_c",
+      "mergedId": "Se@3dhq_c",
+      "localId": "3dhq_c",
+      "base": "3dhq_c_A",
+      "name": "3-Dehydroquinate",
+      "compartment": "c",
+      "cellId": "Se",
+      "kind": "metabolite",
+      "x": 605,
+      "y": 700,
+      "r": 13,
+      "primary": true,
+      "visualRole": "primary"
+    },
+    {
+      "id": "met:Se@3dhsk_c",
+      "mergedId": "Se@3dhsk_c",
+      "localId": "3dhsk_c",
+      "base": "3dhsk_c_A",
+      "name": "3-Dehydroshikimate",
+      "compartment": "c",
+      "cellId": "Se",
+      "kind": "metabolite",
+      "x": 805,
+      "y": 700,
+      "r": 13,
+      "primary": true,
+      "visualRole": "primary"
+    },
+    {
+      "id": "met:Se@skm_c",
+      "mergedId": "Se@skm_c",
+      "localId": "skm_c",
+      "base": "skm_c_A",
+      "name": "Shikimate",
+      "compartment": "c",
+      "cellId": "Se",
+      "kind": "metabolite",
+      "x": 805,
+      "y": 910,
+      "r": 13,
+      "primary": true,
+      "visualRole": "primary",
+      "labelAngle": 1.5707963267948966
+    },
+    {
+      "id": "met:Se@skm5p_c",
+      "mergedId": "Se@skm5p_c",
+      "localId": "skm5p_c",
+      "base": "skm5p_c_A",
+      "name": "Shikimate 3-phosphate",
+      "compartment": "c",
+      "cellId": "Se",
+      "kind": "metabolite",
+      "x": 605,
+      "y": 910,
+      "r": 13,
+      "primary": true,
+      "visualRole": "primary"
+    },
+    {
+      "id": "met:Se@3psme_c",
+      "mergedId": "Se@3psme_c",
+      "localId": "3psme_c",
+      "base": "3psme_c_A",
+      "name": "5-O-(1-Carboxyvinyl)-3-phosphoshikimate",
+      "compartment": "c",
+      "cellId": "Se",
+      "kind": "metabolite",
+      "x": 385,
+      "y": 910,
+      "r": 13,
+      "primary": true,
+      "visualRole": "primary"
+    },
+    {
+      "id": "met:Se@chor_c",
+      "mergedId": "Se@chor_c",
+      "localId": "chor_c",
+      "base": "chor_c_A",
+      "name": "Chorismate",
+      "compartment": "c",
+      "cellId": "Se",
+      "kind": "metabolite",
+      "x": 165,
+      "y": 910,
+      "r": 13,
+      "primary": true,
+      "visualRole": "primary"
+    },
+    {
+      "id": "met:Se@pphn_c",
+      "mergedId": "Se@pphn_c",
+      "localId": "pphn_c",
+      "base": "pphn_c_A",
+      "name": "Prephenate",
+      "compartment": "c",
+      "cellId": "Se",
+      "kind": "metabolite",
+      "x": 165,
+      "y": 1120,
+      "r": 13,
+      "primary": true,
+      "visualRole": "primary",
+      "labelAngle": 1.5707963267948966
+    },
+    {
+      "id": "met:Se@phpyr_c",
+      "mergedId": "Se@phpyr_c",
+      "localId": "phpyr_c",
+      "base": "phpyr_c_A",
+      "name": "Phenylpyruvate",
+      "compartment": "c",
+      "cellId": "Se",
+      "kind": "metabolite",
+      "x": 385,
+      "y": 1120,
+      "r": 13,
+      "primary": true,
+      "visualRole": "primary"
+    },
+    {
+      "id": "met:Se@phe__L_c",
+      "mergedId": "Se@phe__L_c",
+      "localId": "phe__L_c",
+      "base": "phe__L_c_A",
+      "name": "L-Phenylalanine",
+      "compartment": "c",
+      "cellId": "Se",
+      "kind": "metabolite",
+      "x": 605,
+      "y": 1120,
+      "r": 13,
+      "primary": true,
+      "visualRole": "primary"
+    },
+    {
+      "id": "met:Ec@pep_c",
+      "mergedId": "Ec@pep_c",
+      "localId": "pep_c",
+      "base": "pep_c_D",
+      "name": "Phosphoenolpyruvate",
+      "compartment": "c",
+      "cellId": "Ec",
+      "kind": "metabolite",
+      "x": 1902,
+      "y": 420,
+      "r": 13,
+      "primary": true,
+      "visualRole": "primary"
+    },
+    {
+      "id": "met:Ec@e4p_c",
+      "mergedId": "Ec@e4p_c",
+      "localId": "e4p_c",
+      "base": "e4p_c_D",
+      "name": "D-Erythrose 4-phosphate",
+      "compartment": "c",
+      "cellId": "Ec",
+      "kind": "metabolite",
+      "x": 1852,
+      "y": 365,
+      "r": 13,
+      "primary": true,
+      "visualRole": "primary"
+    },
+    {
+      "id": "met:Ec@2dda7p_c",
+      "mergedId": "Ec@2dda7p_c",
+      "localId": "2dda7p_c",
+      "base": "2dda7p_c_D",
+      "name": "2-Dehydro-3-deoxy-D-arabino-heptonate 7-phosphate",
+      "compartment": "c",
+      "cellId": "Ec",
+      "kind": "metabolite",
+      "x": 1682,
+      "y": 420,
+      "r": 13,
+      "primary": true,
+      "visualRole": "primary"
+    },
+    {
+      "id": "met:Ec@3dhq_c",
+      "mergedId": "Ec@3dhq_c",
+      "localId": "3dhq_c",
+      "base": "3dhq_c_D",
+      "name": "3-Dehydroquinate",
+      "compartment": "c",
+      "cellId": "Ec",
+      "kind": "metabolite",
+      "x": 1462,
+      "y": 420,
+      "r": 13,
+      "primary": true,
+      "visualRole": "primary"
+    },
+    {
+      "id": "met:Ec@3dhsk_c",
+      "mergedId": "Ec@3dhsk_c",
+      "localId": "3dhsk_c",
+      "base": "3dhsk_c_D",
+      "name": "3-Dehydroshikimate",
+      "compartment": "c",
+      "cellId": "Ec",
+      "kind": "metabolite",
+      "x": 1262,
+      "y": 420,
+      "r": 13,
+      "primary": true,
+      "visualRole": "primary"
+    },
+    {
+      "id": "met:Ec@skm_c",
+      "mergedId": "Ec@skm_c",
+      "localId": "skm_c",
+      "base": "skm_c_D",
+      "name": "Shikimate",
+      "compartment": "c",
+      "cellId": "Ec",
+      "kind": "metabolite",
+      "x": 1262,
+      "y": 630,
+      "r": 13,
+      "primary": true,
+      "visualRole": "primary",
+      "labelAngle": 1.5707963267948966
+    },
+    {
+      "id": "met:Ec@skm5p_c",
+      "mergedId": "Ec@skm5p_c",
+      "localId": "skm5p_c",
+      "base": "skm5p_c_D",
+      "name": "Shikimate 5-phosphate",
+      "compartment": "c",
+      "cellId": "Ec",
+      "kind": "metabolite",
+      "x": 1462,
+      "y": 630,
+      "r": 13,
+      "primary": true,
+      "visualRole": "primary"
+    },
+    {
+      "id": "met:Ec@3psme_c",
+      "mergedId": "Ec@3psme_c",
+      "localId": "3psme_c",
+      "base": "3psme_c_D",
+      "name": "5-O-(1-Carboxyvinyl)-3-phosphoshikimate",
+      "compartment": "c",
+      "cellId": "Ec",
+      "kind": "metabolite",
+      "x": 1682,
+      "y": 630,
+      "r": 13,
+      "primary": true,
+      "visualRole": "primary"
+    },
+    {
+      "id": "met:Ec@chor_c",
+      "mergedId": "Ec@chor_c",
+      "localId": "chor_c",
+      "base": "chor_c_D",
+      "name": "Chorismate",
+      "compartment": "c",
+      "cellId": "Ec",
+      "kind": "metabolite",
+      "x": 1902,
+      "y": 630,
+      "r": 13,
+      "primary": true,
+      "visualRole": "primary"
+    },
+    {
+      "id": "met:Ec@pphn_c",
+      "mergedId": "Ec@pphn_c",
+      "localId": "pphn_c",
+      "base": "pphn_c_D",
+      "name": "Prephenate",
+      "compartment": "c",
+      "cellId": "Ec",
+      "kind": "metabolite",
+      "x": 1902,
+      "y": 840,
+      "r": 13,
+      "primary": true,
+      "visualRole": "primary",
+      "labelAngle": 1.5707963267948966
+    },
+    {
+      "id": "met:Ec@phpyr_c",
+      "mergedId": "Ec@phpyr_c",
+      "localId": "phpyr_c",
+      "base": "phpyr_c_D",
+      "name": "Phenylpyruvate",
+      "compartment": "c",
+      "cellId": "Ec",
+      "kind": "metabolite",
+      "x": 1682,
+      "y": 840,
+      "r": 13,
+      "primary": true,
+      "visualRole": "primary"
+    },
+    {
+      "id": "met:Ec@phe__L_c",
+      "mergedId": "Ec@phe__L_c",
+      "localId": "phe__L_c",
+      "base": "phe__L_c_D",
+      "name": "L-Phenylalanine",
+      "compartment": "c",
+      "cellId": "Ec",
+      "kind": "metabolite",
+      "x": 1462,
+      "y": 840,
+      "r": 13,
+      "primary": true,
+      "visualRole": "primary"
+    },
+    {
+      "id": "met:M@phe__L",
+      "mergedId": "M@phe__L",
+      "localId": "phe__L",
+      "base": "phe__L_[smp]",
+      "name": "L-Phenylalanine",
+      "compartment": "s",
+      "cellId": null,
+      "kind": "medium",
+      "x": 1010,
+      "y": 960,
+      "r": 13,
+      "primary": true,
+      "visualRole": "primary",
+      "labelAngle": -1.5707963267948966
+    },
+    {
+      "id": "met:Ec@phe__L_p",
+      "mergedId": "Ec@phe__L_p",
+      "localId": "phe__L_p",
+      "base": "phe__L_p_D",
+      "name": "L-Phenylalanine",
+      "compartment": "p",
+      "cellId": "Ec",
+      "kind": "metabolite",
+      "x": 1140,
+      "y": 960,
+      "r": 13,
+      "primary": true,
+      "visualRole": "primary",
+      "labelAngle": 1.5707963267948966
+    },
+    {
+      "id": "cur:Se@DDPA:Se@pi_c",
+      "mergedId": "Se@pi_c",
+      "localId": "pi_c",
+      "base": "pi_c_A",
+      "name": "Orthophosphate",
+      "compartment": "c",
+      "cellId": "Se",
+      "kind": "currency",
+      "x": 329.4,
+      "y": 741.6,
+      "r": 7,
+      "primary": false,
+      "visualRole": "secondary",
+      "reactionId": "Se@DDPA"
+    },
+    {
+      "id": "cur:Se@DDPA:Se@h2o_c",
+      "mergedId": "Se@h2o_c",
+      "localId": "h2o_c",
+      "base": "h2o_c_A",
+      "name": "H2O",
+      "compartment": "c",
+      "cellId": "Se",
+      "kind": "currency",
+      "x": 220.6,
+      "y": 741.6,
+      "r": 7,
+      "primary": false,
+      "visualRole": "secondary",
+      "reactionId": "Se@DDPA"
+    },
+    {
+      "id": "cur:Se@DHQS:Se@pi_c",
+      "mergedId": "Se@pi_c",
+      "localId": "pi_c",
+      "base": "pi_c_A",
+      "name": "Orthophosphate",
+      "compartment": "c",
+      "cellId": "Se",
+      "kind": "currency",
+      "x": 549.4,
+      "y": 741.6,
+      "r": 7,
+      "primary": false,
+      "visualRole": "secondary",
+      "reactionId": "Se@DHQS"
+    },
+    {
+      "id": "cur:Se@DHQTi:Se@h2o_c",
+      "mergedId": "Se@h2o_c",
+      "localId": "h2o_c",
+      "base": "h2o_c_A",
+      "name": "H2O",
+      "compartment": "c",
+      "cellId": "Se",
+      "kind": "currency",
+      "x": 759.4,
+      "y": 741.6,
+      "r": 7,
+      "primary": false,
+      "visualRole": "secondary",
+      "reactionId": "Se@DHQTi"
+    },
+    {
+      "id": "cur:Se@SHK3Dr:Se@h_c",
+      "mergedId": "Se@h_c",
+      "localId": "h_c",
+      "base": "h_c_A",
+      "name": "H+",
+      "compartment": "c",
+      "cellId": "Se",
+      "kind": "currency",
+      "x": 763,
+      "y": 767,
+      "r": 7,
+      "primary": false,
+      "visualRole": "secondary",
+      "reactionId": "Se@SHK3Dr"
+    },
+    {
+      "id": "cur:Se@SHK3Dr:Se@nadph_c",
+      "mergedId": "Se@nadph_c",
+      "localId": "nadph_c",
+      "base": "nadph_c_A",
+      "name": "NADPH",
+      "compartment": "c",
+      "cellId": "Se",
+      "kind": "currency",
+      "x": 846.6,
+      "y": 741,
+      "r": 7,
+      "primary": false,
+      "visualRole": "secondary",
+      "reactionId": "Se@SHK3Dr"
+    },
+    {
+      "id": "cur:Se@SHK3Dr:Se@nadp_c",
+      "mergedId": "Se@nadp_c",
+      "localId": "nadp_c",
+      "base": "nadp_c_A",
+      "name": "NADP+",
+      "compartment": "c",
+      "cellId": "Se",
+      "kind": "currency",
+      "x": 763,
+      "y": 840,
+      "r": 7,
+      "primary": false,
+      "visualRole": "secondary",
+      "reactionId": "Se@SHK3Dr"
+    },
+    {
+      "id": "cur:Se@SHKK:Se@adp_c",
+      "mergedId": "Se@adp_c",
+      "localId": "adp_c",
+      "base": "adp_c_A",
+      "name": "ADP",
+      "compartment": "c",
+      "cellId": "Se",
+      "kind": "currency",
+      "x": 650.6,
+      "y": 868.4,
+      "r": 7,
+      "primary": false,
+      "visualRole": "secondary",
+      "reactionId": "Se@SHKK"
+    },
+    {
+      "id": "cur:Se@SHKK:Se@h_c",
+      "mergedId": "Se@h_c",
+      "localId": "h_c",
+      "base": "h_c_A",
+      "name": "H+",
+      "compartment": "c",
+      "cellId": "Se",
+      "kind": "currency",
+      "x": 650.6,
+      "y": 951.6,
+      "r": 7,
+      "primary": false,
+      "visualRole": "secondary",
+      "reactionId": "Se@SHKK"
+    },
+    {
+      "id": "cur:Se@SHKK:Se@atp_c",
+      "mergedId": "Se@atp_c",
+      "localId": "atp_c",
+      "base": "atp_c_A",
+      "name": "ATP",
+      "compartment": "c",
+      "cellId": "Se",
+      "kind": "currency",
+      "x": 759.4,
+      "y": 868.4,
+      "r": 7,
+      "primary": false,
+      "visualRole": "secondary",
+      "reactionId": "Se@SHKK"
+    },
+    {
+      "id": "cur:Se@PSCVT:Se@pi_c",
+      "mergedId": "Se@pi_c",
+      "localId": "pi_c",
+      "base": "pi_c_A",
+      "name": "Orthophosphate",
+      "compartment": "c",
+      "cellId": "Se",
+      "kind": "currency",
+      "x": 440.6,
+      "y": 868.4,
+      "r": 7,
+      "primary": false,
+      "visualRole": "secondary",
+      "reactionId": "Se@PSCVT"
+    },
+    {
+      "id": "cur:Se@CHORS:Se@pi_c",
+      "mergedId": "Se@pi_c",
+      "localId": "pi_c",
+      "base": "pi_c_A",
+      "name": "Orthophosphate",
+      "compartment": "c",
+      "cellId": "Se",
+      "kind": "currency",
+      "x": 220.6,
+      "y": 868.4,
+      "r": 7,
+      "primary": false,
+      "visualRole": "secondary",
+      "reactionId": "Se@CHORS"
+    },
+    {
+      "id": "cur:Se@PPNDH:Se@co2_c",
+      "mergedId": "Se@co2_c",
+      "localId": "co2_c",
+      "base": "co2_c_A",
+      "name": "CO2",
+      "compartment": "c",
+      "cellId": "Se",
+      "kind": "currency",
+      "x": 329.4,
+      "y": 1161.6,
+      "r": 7,
+      "primary": false,
+      "visualRole": "secondary",
+      "reactionId": "Se@PPNDH"
+    },
+    {
+      "id": "cur:Se@PPNDH:Se@h2o_c",
+      "mergedId": "Se@h2o_c",
+      "localId": "h2o_c",
+      "base": "h2o_c_A",
+      "name": "H2O",
+      "compartment": "c",
+      "cellId": "Se",
+      "kind": "currency",
+      "x": 329.4,
+      "y": 1078.4,
+      "r": 7,
+      "primary": false,
+      "visualRole": "secondary",
+      "reactionId": "Se@PPNDH"
+    },
+    {
+      "id": "cur:Se@PPNDH:Se@h_c",
+      "mergedId": "Se@h_c",
+      "localId": "h_c",
+      "base": "h_c_A",
+      "name": "H+",
+      "compartment": "c",
+      "cellId": "Se",
+      "kind": "currency",
+      "x": 220.6,
+      "y": 1161.6,
+      "r": 7,
+      "primary": false,
+      "visualRole": "secondary",
+      "reactionId": "Se@PPNDH"
+    },
+    {
+      "id": "cur:Se@PHETA1:Se@glu__L_c",
+      "mergedId": "Se@glu__L_c",
+      "localId": "glu__L_c",
+      "base": "glu__L_c_A",
+      "name": "L-Glutamate",
+      "compartment": "c",
+      "cellId": "Se",
+      "kind": "currency",
+      "x": 440.6,
+      "y": 1078.4,
+      "r": 7,
+      "primary": false,
+      "visualRole": "secondary",
+      "reactionId": "Se@PHETA1"
+    },
+    {
+      "id": "cur:Se@PHETA1:Se@akg_c",
+      "mergedId": "Se@akg_c",
+      "localId": "akg_c",
+      "base": "akg_c_A",
+      "name": "2-Oxoglutarate",
+      "compartment": "c",
+      "cellId": "Se",
+      "kind": "currency",
+      "x": 549.4,
+      "y": 1078.4,
+      "r": 7,
+      "primary": false,
+      "visualRole": "secondary",
+      "reactionId": "Se@PHETA1"
+    },
+    {
+      "id": "cur:Ec@DDPA:Ec@h2o_c",
+      "mergedId": "Ec@h2o_c",
+      "localId": "h2o_c",
+      "base": "h2o_c_D",
+      "name": "H2O",
+      "compartment": "c",
+      "cellId": "Ec",
+      "kind": "currency",
+      "x": 1846.4,
+      "y": 461.6,
+      "r": 7,
+      "primary": false,
+      "visualRole": "secondary",
+      "reactionId": "Ec@DDPA"
+    },
+    {
+      "id": "cur:Ec@DDPA:Ec@pi_c",
+      "mergedId": "Ec@pi_c",
+      "localId": "pi_c",
+      "base": "pi_c_D",
+      "name": "Phosphate",
+      "compartment": "c",
+      "cellId": "Ec",
+      "kind": "currency",
+      "x": 1737.6,
+      "y": 461.6,
+      "r": 7,
+      "primary": false,
+      "visualRole": "secondary",
+      "reactionId": "Ec@DDPA"
+    },
+    {
+      "id": "cur:Ec@DHQS:Ec@pi_c",
+      "mergedId": "Ec@pi_c",
+      "localId": "pi_c",
+      "base": "pi_c_D",
+      "name": "Phosphate",
+      "compartment": "c",
+      "cellId": "Ec",
+      "kind": "currency",
+      "x": 1517.6,
+      "y": 461.6,
+      "r": 7,
+      "primary": false,
+      "visualRole": "secondary",
+      "reactionId": "Ec@DHQS"
+    },
+    {
+      "id": "cur:Ec@DHQTi:Ec@h2o_c",
+      "mergedId": "Ec@h2o_c",
+      "localId": "h2o_c",
+      "base": "h2o_c_D",
+      "name": "H2O",
+      "compartment": "c",
+      "cellId": "Ec",
+      "kind": "currency",
+      "x": 1307.6,
+      "y": 461.6,
+      "r": 7,
+      "primary": false,
+      "visualRole": "secondary",
+      "reactionId": "Ec@DHQTi"
+    },
+    {
+      "id": "cur:Ec@SHK3Dr:Ec@h_c",
+      "mergedId": "Ec@h_c",
+      "localId": "h_c",
+      "base": "h_c_D",
+      "name": "H+",
+      "compartment": "c",
+      "cellId": "Ec",
+      "kind": "currency",
+      "x": 1304,
+      "y": 487,
+      "r": 7,
+      "primary": false,
+      "visualRole": "secondary",
+      "reactionId": "Ec@SHK3Dr"
+    },
+    {
+      "id": "cur:Ec@SHK3Dr:Ec@nadp_c",
+      "mergedId": "Ec@nadp_c",
+      "localId": "nadp_c",
+      "base": "nadp_c_D",
+      "name": "Nicotinamide adenine dinucleotide phosphate",
+      "compartment": "c",
+      "cellId": "Ec",
+      "kind": "currency",
+      "x": 1304,
+      "y": 560,
+      "r": 7,
+      "primary": false,
+      "visualRole": "secondary",
+      "reactionId": "Ec@SHK3Dr"
+    },
+    {
+      "id": "cur:Ec@SHK3Dr:Ec@nadph_c",
+      "mergedId": "Ec@nadph_c",
+      "localId": "nadph_c",
+      "base": "nadph_c_D",
+      "name": "Nicotinamide adenine dinucleotide phosphate - reduced",
+      "compartment": "c",
+      "cellId": "Ec",
+      "kind": "currency",
+      "x": 1220.4,
+      "y": 461,
+      "r": 7,
+      "primary": false,
+      "visualRole": "secondary",
+      "reactionId": "Ec@SHK3Dr"
+    },
+    {
+      "id": "cur:Ec@SHKK:Ec@adp_c",
+      "mergedId": "Ec@adp_c",
+      "localId": "adp_c",
+      "base": "adp_c_D",
+      "name": "ADP",
+      "compartment": "c",
+      "cellId": "Ec",
+      "kind": "currency",
+      "x": 1416.4,
+      "y": 588.4,
+      "r": 7,
+      "primary": false,
+      "visualRole": "secondary",
+      "reactionId": "Ec@SHKK"
+    },
+    {
+      "id": "cur:Ec@SHKK:Ec@atp_c",
+      "mergedId": "Ec@atp_c",
+      "localId": "atp_c",
+      "base": "atp_c_D",
+      "name": "ATP",
+      "compartment": "c",
+      "cellId": "Ec",
+      "kind": "currency",
+      "x": 1307.6,
+      "y": 588.4,
+      "r": 7,
+      "primary": false,
+      "visualRole": "secondary",
+      "reactionId": "Ec@SHKK"
+    },
+    {
+      "id": "cur:Ec@SHKK:Ec@h_c",
+      "mergedId": "Ec@h_c",
+      "localId": "h_c",
+      "base": "h_c_D",
+      "name": "H+",
+      "compartment": "c",
+      "cellId": "Ec",
+      "kind": "currency",
+      "x": 1416.4,
+      "y": 671.6,
+      "r": 7,
+      "primary": false,
+      "visualRole": "secondary",
+      "reactionId": "Ec@SHKK"
+    },
+    {
+      "id": "cur:Ec@PSCVT:Ec@pi_c",
+      "mergedId": "Ec@pi_c",
+      "localId": "pi_c",
+      "base": "pi_c_D",
+      "name": "Phosphate",
+      "compartment": "c",
+      "cellId": "Ec",
+      "kind": "currency",
+      "x": 1626.4,
+      "y": 588.4,
+      "r": 7,
+      "primary": false,
+      "visualRole": "secondary",
+      "reactionId": "Ec@PSCVT"
+    },
+    {
+      "id": "cur:Ec@CHORS:Ec@pi_c",
+      "mergedId": "Ec@pi_c",
+      "localId": "pi_c",
+      "base": "pi_c_D",
+      "name": "Phosphate",
+      "compartment": "c",
+      "cellId": "Ec",
+      "kind": "currency",
+      "x": 1846.4,
+      "y": 588.4,
+      "r": 7,
+      "primary": false,
+      "visualRole": "secondary",
+      "reactionId": "Ec@CHORS"
+    },
+    {
+      "id": "cur:Ec@PPNDH:Ec@co2_c",
+      "mergedId": "Ec@co2_c",
+      "localId": "co2_c",
+      "base": "co2_c_D",
+      "name": "CO2",
+      "compartment": "c",
+      "cellId": "Ec",
+      "kind": "currency",
+      "x": 1737.6,
+      "y": 881.6,
+      "r": 7,
+      "primary": false,
+      "visualRole": "secondary",
+      "reactionId": "Ec@PPNDH"
+    },
+    {
+      "id": "cur:Ec@PPNDH:Ec@h_c",
+      "mergedId": "Ec@h_c",
+      "localId": "h_c",
+      "base": "h_c_D",
+      "name": "H+",
+      "compartment": "c",
+      "cellId": "Ec",
+      "kind": "currency",
+      "x": 1846.4,
+      "y": 881.6,
+      "r": 7,
+      "primary": false,
+      "visualRole": "secondary",
+      "reactionId": "Ec@PPNDH"
+    },
+    {
+      "id": "cur:Ec@PPNDH:Ec@h2o_c",
+      "mergedId": "Ec@h2o_c",
+      "localId": "h2o_c",
+      "base": "h2o_c_D",
+      "name": "H2O",
+      "compartment": "c",
+      "cellId": "Ec",
+      "kind": "currency",
+      "x": 1737.6,
+      "y": 798.4,
+      "r": 7,
+      "primary": false,
+      "visualRole": "secondary",
+      "reactionId": "Ec@PPNDH"
+    },
+    {
+      "id": "cur:Ec@PHETA1:Ec@akg_c",
+      "mergedId": "Ec@akg_c",
+      "localId": "akg_c",
+      "base": "akg_c_D",
+      "name": "2-Oxoglutarate",
+      "compartment": "c",
+      "cellId": "Ec",
+      "kind": "currency",
+      "x": 1517.6,
+      "y": 798.4,
+      "r": 7,
+      "primary": false,
+      "visualRole": "secondary",
+      "reactionId": "Ec@PHETA1"
+    },
+    {
+      "id": "cur:Ec@PHETA1:Ec@glu__L_c",
+      "mergedId": "Ec@glu__L_c",
+      "localId": "glu__L_c",
+      "base": "glu__L_c_D",
+      "name": "L-Glutamate",
+      "compartment": "c",
+      "cellId": "Ec",
+      "kind": "currency",
+      "x": 1626.4,
+      "y": 798.4,
+      "r": 7,
+      "primary": false,
+      "visualRole": "secondary",
+      "reactionId": "Ec@PHETA1"
+    },
+    {
+      "id": "cur:Ec@PHEt2rpp:Ec@h_c",
+      "mergedId": "Ec@h_c",
+      "localId": "h_c",
+      "base": "h_c_D",
+      "name": "H+",
+      "compartment": "c",
+      "cellId": "Ec",
+      "kind": "currency",
+      "x": 1234.5894886941542,
+      "y": 900.851263002094,
+      "r": 7,
+      "primary": false,
+      "visualRole": "secondary",
+      "reactionId": "Ec@PHEt2rpp"
+    },
+    {
+      "id": "cur:Ec@PHEt2rpp:Ec@h_p",
+      "mergedId": "Ec@h_p",
+      "localId": "h_p",
+      "base": "h_p_D",
+      "name": "H+",
+      "compartment": "p",
+      "cellId": "Ec",
+      "kind": "currency",
+      "x": 1182,
+      "y": 912,
+      "r": 7,
+      "primary": false,
+      "visualRole": "secondary",
+      "reactionId": "Ec@PHEt2rpp"
+    },
+    {
+      "id": "met:M@photon690",
+      "mergedId": "M@photon690",
+      "localId": "photon690",
+      "base": "photon690_[smp]",
+      "name": "photon (680nm-700nm)",
+      "compartment": "s",
+      "cellId": null,
+      "kind": "medium",
+      "x": 1010,
+      "y": 230,
+      "r": 13,
+      "primary": true,
+      "visualRole": "primary"
+    },
+    {
+      "id": "met:Se@chla_qy1*_c",
+      "mergedId": "Se@chla_qy1*_c",
+      "localId": "chla_qy1*_c",
+      "base": "chla_qy1*_c_A",
+      "name": "Photosystem I excited chlorophyll A, Qy band (long wavelength)",
+      "compartment": "c",
+      "cellId": "Se",
+      "kind": "metabolite",
+      "x": 544,
+      "y": 342,
+      "r": 13,
+      "primary": true,
+      "visualRole": "primary",
+      "labelAngle": 3.141592653589793
+    },
+    {
+      "id": "cur:Se@PHOA690um:Se@cholphya_c",
+      "mergedId": "Se@cholphya_c",
+      "localId": "cholphya_c",
+      "base": "cholphya_c_A",
+      "name": "Chlorophyll a",
+      "compartment": "c",
+      "cellId": "Se",
+      "kind": "currency",
+      "x": 820,
+      "y": 262,
+      "r": 7,
+      "primary": false,
+      "visualRole": "secondary",
+      "reactionId": "Se@PHOA690um"
+    },
+    {
+      "id": "cur:Se@PHOA690um:Se@chla_qy2*_c",
+      "mergedId": "Se@chla_qy2*_c",
+      "localId": "chla_qy2*_c",
+      "base": "chla_qy2*_c_A",
+      "name": "Photosystem II excited chlorophyll A, Qy band (long wavelength)",
+      "compartment": "c",
+      "cellId": "Se",
+      "kind": "currency",
+      "x": 554,
+      "y": 260,
+      "r": 7,
+      "primary": false,
+      "visualRole": "secondary",
+      "reactionId": "Se@PHOA690um"
+    },
+    {
+      "id": "met:Se@h_u",
+      "mergedId": "Se@h_u",
+      "localId": "h_u",
+      "base": "h_u_A",
+      "name": "H+",
+      "compartment": "u",
+      "cellId": "Se",
+      "kind": "metabolite",
+      "x": 618,
+      "y": 435,
+      "r": 13,
+      "primary": true,
+      "visualRole": "primary",
+      "labelAngle": 0
+    },
+    {
+      "id": "met:Se@atp_c",
+      "mergedId": "Se@atp_c",
+      "localId": "atp_c",
+      "base": "atp_c_A",
+      "name": "ATP",
+      "compartment": "c",
+      "cellId": "Se",
+      "kind": "metabolite",
+      "x": 616,
+      "y": 626,
+      "r": 13,
+      "primary": true,
+      "visualRole": "primary",
+      "labelAngle": 0
+    },
+    {
+      "id": "cur:Se@ATPSum:Se@pi_c",
+      "mergedId": "Se@pi_c",
+      "localId": "pi_c",
+      "base": "pi_c_A",
+      "name": "Orthophosphate",
+      "compartment": "c",
+      "cellId": "Se",
+      "kind": "currency",
+      "x": 556,
+      "y": 521,
+      "r": 7,
+      "primary": false,
+      "visualRole": "secondary",
+      "reactionId": "Se@ATPSum"
+    },
+    {
+      "id": "cur:Se@ATPSum:Se@adp_c",
+      "mergedId": "Se@adp_c",
+      "localId": "adp_c",
+      "base": "adp_c_A",
+      "name": "ADP",
+      "compartment": "c",
+      "cellId": "Se",
+      "kind": "currency",
+      "x": 511,
+      "y": 521,
+      "r": 7,
+      "primary": false,
+      "visualRole": "secondary",
+      "reactionId": "Se@ATPSum"
+    },
+    {
+      "id": "cur:Se@ATPSum:Se@h2o_c",
+      "mergedId": "Se@h2o_c",
+      "localId": "h2o_c",
+      "base": "h2o_c_A",
+      "name": "H2O",
+      "compartment": "c",
+      "cellId": "Se",
+      "kind": "currency",
+      "x": 696,
+      "y": 526,
+      "r": 7,
+      "primary": false,
+      "visualRole": "secondary",
+      "reactionId": "Se@ATPSum"
+    },
+    {
+      "id": "cur:Se@ATPSum:Se@h_c",
+      "mergedId": "Se@h_c",
+      "localId": "h_c",
+      "base": "h_c_A",
+      "name": "H+",
+      "compartment": "c",
+      "cellId": "Se",
+      "kind": "currency",
+      "x": 696,
+      "y": 581,
+      "r": 7,
+      "primary": false,
+      "visualRole": "secondary",
+      "reactionId": "Se@ATPSum"
+    }
+  ],
+  "reactions": [
+    {
+      "id": "Se@DDPA",
+      "localId": "DDPA",
+      "name": "3-deoxy-D-arabino-heptulosonate 7-phosphate synthetase",
+      "cellId": "Se",
+      "kind": "reaction",
+      "x": 275,
+      "y": 700,
+      "axis": {
+        "dir": {
+          "x": 1,
+          "y": 0
+        },
+        "a1": {
+          "x": 262,
+          "y": 700
+        },
+        "a2": {
+          "x": 288,
+          "y": 700
+        }
+      },
+      "onMembrane": false,
+      "membrane": null,
+      "boundaryId": null,
+      "compartments": [
+        "c"
+      ],
+      "bounds": {
+        "lower": 0,
+        "upper": 1000
+      },
+      "linear": {
+        "from": "met:Se@pep_c",
+        "to": "met:Se@2dda7p_c",
+        "t": 0.5
+      }
+    },
+    {
+      "id": "Se@DHQS",
+      "localId": "DHQS",
+      "name": "3-dehydroquinate synthase",
+      "cellId": "Se",
+      "kind": "reaction",
+      "x": 495,
+      "y": 700,
+      "axis": {
+        "dir": {
+          "x": 1,
+          "y": 0
+        },
+        "a1": {
+          "x": 482,
+          "y": 700
+        },
+        "a2": {
+          "x": 508,
+          "y": 700
+        }
+      },
+      "onMembrane": false,
+      "membrane": null,
+      "boundaryId": null,
+      "compartments": [
+        "c"
+      ],
+      "bounds": {
+        "lower": 0,
+        "upper": 1000
+      },
+      "linear": {
+        "from": "met:Se@2dda7p_c",
+        "to": "met:Se@3dhq_c",
+        "t": 0.5
+      }
+    },
+    {
+      "id": "Se@DHQTi",
+      "localId": "DHQTi",
+      "name": "3-dehydroquinate dehydratase, irreversible",
+      "cellId": "Se",
+      "kind": "reaction",
+      "x": 705,
+      "y": 700,
+      "axis": {
+        "dir": {
+          "x": 1,
+          "y": 0
+        },
+        "a1": {
+          "x": 692,
+          "y": 700
+        },
+        "a2": {
+          "x": 718,
+          "y": 700
+        }
+      },
+      "onMembrane": false,
+      "membrane": null,
+      "boundaryId": null,
+      "compartments": [
+        "c"
+      ],
+      "bounds": {
+        "lower": -1000,
+        "upper": 1000
+      },
+      "linear": {
+        "from": "met:Se@3dhq_c",
+        "to": "met:Se@3dhsk_c",
+        "t": 0.5
+      }
+    },
+    {
+      "id": "Se@SHK3Dr",
+      "localId": "SHK3Dr",
+      "name": "Shikimate dehydrogenase",
+      "cellId": "Se",
+      "kind": "reaction",
+      "x": 805,
+      "y": 805,
+      "axis": {
+        "dir": {
+          "x": 0,
+          "y": 1
+        },
+        "a1": {
+          "x": 805,
+          "y": 792
+        },
+        "a2": {
+          "x": 805,
+          "y": 818
+        }
+      },
+      "onMembrane": false,
+      "membrane": null,
+      "boundaryId": null,
+      "compartments": [
+        "c"
+      ],
+      "bounds": {
+        "lower": -1000,
+        "upper": 1000
+      },
+      "linear": {
+        "from": "met:Se@3dhsk_c",
+        "to": "met:Se@skm_c",
+        "t": 0.5
+      },
+      "labelOffset": {
+        "x": -17,
+        "y": 0
+      }
+    },
+    {
+      "id": "Se@SHKK",
+      "localId": "SHKK",
+      "name": "Shikimate kinase",
+      "cellId": "Se",
+      "kind": "reaction",
+      "x": 705,
+      "y": 910,
+      "axis": {
+        "dir": {
+          "x": -1,
+          "y": 0
+        },
+        "a1": {
+          "x": 718,
+          "y": 910
+        },
+        "a2": {
+          "x": 692,
+          "y": 910
+        }
+      },
+      "onMembrane": false,
+      "membrane": null,
+      "boundaryId": null,
+      "compartments": [
+        "c"
+      ],
+      "bounds": {
+        "lower": 0,
+        "upper": 1000
+      },
+      "linear": {
+        "from": "met:Se@skm_c",
+        "to": "met:Se@skm5p_c",
+        "t": 0.5
+      }
+    },
+    {
+      "id": "Se@PSCVT",
+      "localId": "PSCVT",
+      "name": "3-phosphoshikimate 1-carboxyvinyltransferase",
+      "cellId": "Se",
+      "kind": "reaction",
+      "x": 495,
+      "y": 910,
+      "axis": {
+        "dir": {
+          "x": -1,
+          "y": 0
+        },
+        "a1": {
+          "x": 508,
+          "y": 910
+        },
+        "a2": {
+          "x": 482,
+          "y": 910
+        }
+      },
+      "onMembrane": false,
+      "membrane": null,
+      "boundaryId": null,
+      "compartments": [
+        "c"
+      ],
+      "bounds": {
+        "lower": -1000,
+        "upper": 1000
+      },
+      "linear": {
+        "from": "met:Se@skm5p_c",
+        "to": "met:Se@3psme_c",
+        "t": 0.5
+      }
+    },
+    {
+      "id": "Se@CHORS",
+      "localId": "CHORS",
+      "name": "Chorismate synthase",
+      "cellId": "Se",
+      "kind": "reaction",
+      "x": 275,
+      "y": 910,
+      "axis": {
+        "dir": {
+          "x": -1,
+          "y": 0
+        },
+        "a1": {
+          "x": 288,
+          "y": 910
+        },
+        "a2": {
+          "x": 262,
+          "y": 910
+        }
+      },
+      "onMembrane": false,
+      "membrane": null,
+      "boundaryId": null,
+      "compartments": [
+        "c"
+      ],
+      "bounds": {
+        "lower": 0,
+        "upper": 1000
+      },
+      "linear": {
+        "from": "met:Se@3psme_c",
+        "to": "met:Se@chor_c",
+        "t": 0.5
+      }
+    },
+    {
+      "id": "Se@CHORM",
+      "localId": "CHORM",
+      "name": "Chorismate mutase",
+      "cellId": "Se",
+      "kind": "reaction",
+      "x": 165,
+      "y": 1015,
+      "axis": {
+        "dir": {
+          "x": 0,
+          "y": 1
+        },
+        "a1": {
+          "x": 165,
+          "y": 1002
+        },
+        "a2": {
+          "x": 165,
+          "y": 1028
+        }
+      },
+      "onMembrane": false,
+      "membrane": null,
+      "boundaryId": null,
+      "compartments": [
+        "c"
+      ],
+      "bounds": {
+        "lower": -1000,
+        "upper": 1000
+      },
+      "linear": {
+        "from": "met:Se@chor_c",
+        "to": "met:Se@pphn_c",
+        "t": 0.5
+      }
+    },
+    {
+      "id": "Se@PPNDH",
+      "localId": "PPNDH",
+      "name": "Prephenate dehydratase",
+      "cellId": "Se",
+      "kind": "reaction",
+      "x": 275,
+      "y": 1120,
+      "axis": {
+        "dir": {
+          "x": 1,
+          "y": 0
+        },
+        "a1": {
+          "x": 262,
+          "y": 1120
+        },
+        "a2": {
+          "x": 288,
+          "y": 1120
+        }
+      },
+      "onMembrane": false,
+      "membrane": null,
+      "boundaryId": null,
+      "compartments": [
+        "c"
+      ],
+      "bounds": {
+        "lower": 0,
+        "upper": 1000
+      },
+      "linear": {
+        "from": "met:Se@pphn_c",
+        "to": "met:Se@phpyr_c",
+        "t": 0.5
+      }
+    },
+    {
+      "id": "Se@PHETA1",
+      "localId": "PHETA1",
+      "name": "Phenylalanine transaminase",
+      "cellId": "Se",
+      "kind": "reaction",
+      "x": 495,
+      "y": 1120,
+      "axis": {
+        "dir": {
+          "x": -1,
+          "y": 0
+        },
+        "a1": {
+          "x": 508,
+          "y": 1120
+        },
+        "a2": {
+          "x": 482,
+          "y": 1120
+        }
+      },
+      "onMembrane": false,
+      "membrane": null,
+      "boundaryId": null,
+      "compartments": [
+        "c"
+      ],
+      "bounds": {
+        "lower": -1000,
+        "upper": 1000
+      },
+      "linear": {
+        "from": "met:Se@phe__L_c",
+        "to": "met:Se@phpyr_c",
+        "t": 0.5
+      }
+    },
+    {
+      "id": "Ec@DDPA",
+      "localId": "DDPA",
+      "name": "3-deoxy-D-arabino-heptulosonate 7-phosphate synthetase",
+      "cellId": "Ec",
+      "kind": "reaction",
+      "x": 1792,
+      "y": 420,
+      "axis": {
+        "dir": {
+          "x": -1,
+          "y": 0
+        },
+        "a1": {
+          "x": 1805,
+          "y": 420
+        },
+        "a2": {
+          "x": 1779,
+          "y": 420
+        }
+      },
+      "onMembrane": false,
+      "membrane": null,
+      "boundaryId": null,
+      "compartments": [
+        "c"
+      ],
+      "bounds": {
+        "lower": 0,
+        "upper": 1000
+      },
+      "linear": {
+        "from": "met:Ec@pep_c",
+        "to": "met:Ec@2dda7p_c",
+        "t": 0.5
+      }
+    },
+    {
+      "id": "Ec@DHQS",
+      "localId": "DHQS",
+      "name": "3-dehydroquinate synthase",
+      "cellId": "Ec",
+      "kind": "reaction",
+      "x": 1572,
+      "y": 420,
+      "axis": {
+        "dir": {
+          "x": -1,
+          "y": 0
+        },
+        "a1": {
+          "x": 1585,
+          "y": 420
+        },
+        "a2": {
+          "x": 1559,
+          "y": 420
+        }
+      },
+      "onMembrane": false,
+      "membrane": null,
+      "boundaryId": null,
+      "compartments": [
+        "c"
+      ],
+      "bounds": {
+        "lower": 0,
+        "upper": 1000
+      },
+      "linear": {
+        "from": "met:Ec@2dda7p_c",
+        "to": "met:Ec@3dhq_c",
+        "t": 0.5
+      }
+    },
+    {
+      "id": "Ec@DHQTi",
+      "localId": "DHQTi",
+      "name": "3-dehydroquinate dehydratase, irreversible",
+      "cellId": "Ec",
+      "kind": "reaction",
+      "x": 1362,
+      "y": 420,
+      "axis": {
+        "dir": {
+          "x": -1,
+          "y": 0
+        },
+        "a1": {
+          "x": 1375,
+          "y": 420
+        },
+        "a2": {
+          "x": 1349,
+          "y": 420
+        }
+      },
+      "onMembrane": false,
+      "membrane": null,
+      "boundaryId": null,
+      "compartments": [
+        "c"
+      ],
+      "bounds": {
+        "lower": 0,
+        "upper": 1000
+      },
+      "linear": {
+        "from": "met:Ec@3dhq_c",
+        "to": "met:Ec@3dhsk_c",
+        "t": 0.5
+      }
+    },
+    {
+      "id": "Ec@SHK3Dr",
+      "localId": "SHK3Dr",
+      "name": "Shikimate dehydrogenase",
+      "cellId": "Ec",
+      "kind": "reaction",
+      "x": 1262,
+      "y": 525,
+      "axis": {
+        "dir": {
+          "x": 0,
+          "y": 1
+        },
+        "a1": {
+          "x": 1262,
+          "y": 512
+        },
+        "a2": {
+          "x": 1262,
+          "y": 538
+        }
+      },
+      "onMembrane": false,
+      "membrane": null,
+      "boundaryId": null,
+      "compartments": [
+        "c"
+      ],
+      "bounds": {
+        "lower": -1000,
+        "upper": 1000
+      },
+      "linear": {
+        "from": "met:Ec@3dhsk_c",
+        "to": "met:Ec@skm_c",
+        "t": 0.5
+      }
+    },
+    {
+      "id": "Ec@SHKK",
+      "localId": "SHKK",
+      "name": "Shikimate kinase",
+      "cellId": "Ec",
+      "kind": "reaction",
+      "x": 1362,
+      "y": 630,
+      "axis": {
+        "dir": {
+          "x": 1,
+          "y": 0
+        },
+        "a1": {
+          "x": 1349,
+          "y": 630
+        },
+        "a2": {
+          "x": 1375,
+          "y": 630
+        }
+      },
+      "onMembrane": false,
+      "membrane": null,
+      "boundaryId": null,
+      "compartments": [
+        "c"
+      ],
+      "bounds": {
+        "lower": 0,
+        "upper": 1000
+      },
+      "linear": {
+        "from": "met:Ec@skm_c",
+        "to": "met:Ec@skm5p_c",
+        "t": 0.5
+      }
+    },
+    {
+      "id": "Ec@PSCVT",
+      "localId": "PSCVT",
+      "name": "3-phosphoshikimate 1-carboxyvinyltransferase",
+      "cellId": "Ec",
+      "kind": "reaction",
+      "x": 1572,
+      "y": 630,
+      "axis": {
+        "dir": {
+          "x": 1,
+          "y": 0
+        },
+        "a1": {
+          "x": 1559,
+          "y": 630
+        },
+        "a2": {
+          "x": 1585,
+          "y": 630
+        }
+      },
+      "onMembrane": false,
+      "membrane": null,
+      "boundaryId": null,
+      "compartments": [
+        "c"
+      ],
+      "bounds": {
+        "lower": -1000,
+        "upper": 1000
+      },
+      "linear": {
+        "from": "met:Ec@skm5p_c",
+        "to": "met:Ec@3psme_c",
+        "t": 0.5
+      }
+    },
+    {
+      "id": "Ec@CHORS",
+      "localId": "CHORS",
+      "name": "Chorismate synthase",
+      "cellId": "Ec",
+      "kind": "reaction",
+      "x": 1792,
+      "y": 630,
+      "axis": {
+        "dir": {
+          "x": 1,
+          "y": 0
+        },
+        "a1": {
+          "x": 1779,
+          "y": 630
+        },
+        "a2": {
+          "x": 1805,
+          "y": 630
+        }
+      },
+      "onMembrane": false,
+      "membrane": null,
+      "boundaryId": null,
+      "compartments": [
+        "c"
+      ],
+      "bounds": {
+        "lower": 0,
+        "upper": 1000
+      },
+      "linear": {
+        "from": "met:Ec@3psme_c",
+        "to": "met:Ec@chor_c",
+        "t": 0.5
+      }
+    },
+    {
+      "id": "Ec@CHORM",
+      "localId": "CHORM",
+      "name": "Chorismate mutase",
+      "cellId": "Ec",
+      "kind": "reaction",
+      "x": 1902,
+      "y": 735,
+      "axis": {
+        "dir": {
+          "x": 0,
+          "y": 1
+        },
+        "a1": {
+          "x": 1902,
+          "y": 722
+        },
+        "a2": {
+          "x": 1902,
+          "y": 748
+        }
+      },
+      "onMembrane": false,
+      "membrane": null,
+      "boundaryId": null,
+      "compartments": [
+        "c"
+      ],
+      "bounds": {
+        "lower": 0,
+        "upper": 1000
+      },
+      "linear": {
+        "from": "met:Ec@chor_c",
+        "to": "met:Ec@pphn_c",
+        "t": 0.5
+      }
+    },
+    {
+      "id": "Ec@PPNDH",
+      "localId": "PPNDH",
+      "name": "Prephenate dehydratase",
+      "cellId": "Ec",
+      "kind": "reaction",
+      "x": 1792,
+      "y": 840,
+      "axis": {
+        "dir": {
+          "x": -1,
+          "y": 0
+        },
+        "a1": {
+          "x": 1805,
+          "y": 840
+        },
+        "a2": {
+          "x": 1779,
+          "y": 840
+        }
+      },
+      "onMembrane": false,
+      "membrane": null,
+      "boundaryId": null,
+      "compartments": [
+        "c"
+      ],
+      "bounds": {
+        "lower": 0,
+        "upper": 1000
+      },
+      "linear": {
+        "from": "met:Ec@pphn_c",
+        "to": "met:Ec@phpyr_c",
+        "t": 0.5
+      }
+    },
+    {
+      "id": "Ec@PHETA1",
+      "localId": "PHETA1",
+      "name": "Phenylalanine transaminase",
+      "cellId": "Ec",
+      "kind": "reaction",
+      "x": 1572,
+      "y": 840,
+      "axis": {
+        "dir": {
+          "x": 1,
+          "y": 0
+        },
+        "a1": {
+          "x": 1559,
+          "y": 840
+        },
+        "a2": {
+          "x": 1585,
+          "y": 840
+        }
+      },
+      "onMembrane": false,
+      "membrane": null,
+      "boundaryId": null,
+      "compartments": [
+        "c"
+      ],
+      "bounds": {
+        "lower": -1000,
+        "upper": 1000
+      },
+      "linear": {
+        "from": "met:Ec@phe__L_c",
+        "to": "met:Ec@phpyr_c",
+        "t": 0.5
+      }
+    },
+    {
+      "id": "Se@PHELtex",
+      "localId": "PHELtex",
+      "name": "L-Phenylalanine transport via diffusion",
+      "cellId": "Se",
+      "kind": "transfer",
+      "x": 935,
+      "y": 1030,
+      "axis": {
+        "dir": {
+          "x": -0.9300519899559886,
+          "y": 0.3674279466492794
+        },
+        "a1": {
+          "x": 947.0906758694279,
+          "y": 1025.2234366935593
+        },
+        "a2": {
+          "x": 922.9093241305721,
+          "y": 1034.7765633064407
+        }
+      },
+      "onMembrane": true,
+      "membrane": "p",
+      "boundaryId": "Se/p",
+      "compartments": [
+        "s",
+        "c"
+      ],
+      "bounds": {
+        "lower": -1000,
+        "upper": 1000
+      },
+      "labelOffset": {
+        "x": 8,
+        "y": 18
+      }
+    },
+    {
+      "id": "Ec@PHEtex",
+      "localId": "PHEtex",
+      "name": "L-phenylalanine transport via diffusion (extracellular to periplasm)",
+      "cellId": "Ec",
+      "kind": "transfer",
+      "x": 1085,
+      "y": 960,
+      "axis": {
+        "dir": {
+          "x": 1,
+          "y": 0
+        },
+        "a1": {
+          "x": 1072,
+          "y": 960
+        },
+        "a2": {
+          "x": 1098,
+          "y": 960
+        }
+      },
+      "onMembrane": true,
+      "membrane": "p",
+      "boundaryId": "Ec/p",
+      "compartments": [
+        "s",
+        "p"
+      ],
+      "bounds": {
+        "lower": -1000,
+        "upper": 1000
+      },
+      "labelOffset": {
+        "x": 8,
+        "y": -20
+      }
+    },
+    {
+      "id": "Ec@PHEt2rpp",
+      "localId": "PHEt2rpp",
+      "name": "L-phenylalanine reversible transport via proton symport (periplasm)",
+      "cellId": "Ec",
+      "kind": "transfer",
+      "x": 1195,
+      "y": 960,
+      "axis": {
+        "dir": {
+          "x": 0.9370447756039934,
+          "y": -0.3492092331443453
+        },
+        "a1": {
+          "x": 1182.818417917148,
+          "y": 964.5397200308765
+        },
+        "a2": {
+          "x": 1207.181582082852,
+          "y": 955.4602799691235
+        }
+      },
+      "onMembrane": true,
+      "membrane": "c",
+      "boundaryId": "Ec/c",
+      "compartments": [
+        "c",
+        "p"
+      ],
+      "bounds": {
+        "lower": -1000,
+        "upper": 1000
+      },
+      "labelOffset": {
+        "x": 16,
+        "y": 12
+      }
+    },
+    {
+      "id": "Se@PHOA690um",
+      "localId": "PHOA690um",
+      "name": "Photon absorption (680-700nm) ",
+      "cellId": "Se",
+      "kind": "transfer",
+      "x": 935,
+      "y": 286,
+      "axis": {
+        "dir": {
+          "x": -0.9723114926087836,
+          "y": 0.23368859908193942
+        },
+        "a1": {
+          "x": 947.6400494039142,
+          "y": 282.9620482119348
+        },
+        "a2": {
+          "x": 922.3599505960858,
+          "y": 289.0379517880652
+        }
+      },
+      "onMembrane": true,
+      "membrane": "p",
+      "boundaryId": "Se/p",
+      "compartments": [
+        "c",
+        "s"
+      ],
+      "bounds": {
+        "lower": 0,
+        "upper": 1000
+      },
+      "labelOffset": {
+        "x": 8,
+        "y": 18
+      }
+    },
+    {
+      "id": "Se@ATPSum",
+      "localId": "ATPSum",
+      "name": "ATP synthase (thylakoid membrane)",
+      "cellId": "Se",
+      "kind": "transfer",
+      "x": 616,
+      "y": 476,
+      "axis": {
+        "dir": {
+          "x": 0,
+          "y": 1
+        },
+        "a1": {
+          "x": 616,
+          "y": 463
+        },
+        "a2": {
+          "x": 616,
+          "y": 489
+        }
+      },
+      "onMembrane": true,
+      "membrane": "u",
+      "boundaryId": "Se/u",
+      "compartments": [
+        "c",
+        "u"
+      ],
+      "bounds": {
+        "lower": -1000,
+        "upper": 1000
+      },
+      "labelOffset": {
+        "x": 30,
+        "y": 9
+      }
+    }
+  ],
+  "segments": [
+    {
+      "reactionId": "Se@DDPA",
+      "kind": "axis",
+      "from": {
+        "x": 262,
+        "y": 700
+      },
+      "to": {
+        "x": 288,
+        "y": 700
+      },
+      "arrow": false
+    },
+    {
+      "reactionId": "Se@DDPA",
+      "nodeId": "met:Se@pep_c",
+      "kind": "primary",
+      "coefficient": -1,
+      "side": "substrate",
+      "from": {
+        "x": 165,
+        "y": 700
+      },
+      "to": {
+        "x": 262,
+        "y": 700
+      },
+      "backboneAnchor": true,
+      "arrow": false,
+      "b1": {
+        "x": 197.98000000000002,
+        "y": 700
+      },
+      "b2": {
+        "x": 234.84,
+        "y": 700
+      }
+    },
+    {
+      "reactionId": "Se@DDPA",
+      "nodeId": "cur:Se@DDPA:Se@pi_c",
+      "kind": "currency",
+      "coefficient": 1,
+      "side": "product",
+      "from": {
+        "x": 288,
+        "y": 700
+      },
+      "to": {
+        "x": 329.4,
+        "y": 741.6
+      },
+      "backboneAnchor": true,
+      "arrow": true,
+      "b1": {
+        "x": 329.4,
+        "y": 718.72
+      },
+      "b2": {
+        "x": 321.12,
+        "y": 700
+      }
+    },
+    {
+      "reactionId": "Se@DDPA",
+      "nodeId": "cur:Se@DDPA:Se@h2o_c",
+      "kind": "currency",
+      "coefficient": -1,
+      "side": "substrate",
+      "from": {
+        "x": 220.6,
+        "y": 741.6
+      },
+      "to": {
+        "x": 262,
+        "y": 700
+      },
+      "backboneAnchor": true,
+      "arrow": false,
+      "b1": {
+        "x": 220.6,
+        "y": 718.72
+      },
+      "b2": {
+        "x": 228.88,
+        "y": 700
+      }
+    },
+    {
+      "reactionId": "Se@DDPA",
+      "nodeId": "met:Se@2dda7p_c",
+      "kind": "primary",
+      "coefficient": 1,
+      "side": "product",
+      "from": {
+        "x": 288,
+        "y": 700
+      },
+      "to": {
+        "x": 385,
+        "y": 700
+      },
+      "backboneAnchor": true,
+      "arrow": true,
+      "b1": {
+        "x": 352.02,
+        "y": 700
+      },
+      "b2": {
+        "x": 315.15999999999997,
+        "y": 700
+      }
+    },
+    {
+      "reactionId": "Se@DDPA",
+      "nodeId": "met:Se@e4p_c",
+      "kind": "primary",
+      "coefficient": -1,
+      "side": "substrate",
+      "from": {
+        "x": 215,
+        "y": 645
+      },
+      "to": {
+        "x": 262,
+        "y": 700
+      },
+      "backboneAnchor": true,
+      "arrow": false,
+      "b1": {
+        "x": 215,
+        "y": 675.25
+      },
+      "b2": {
+        "x": 224.4,
+        "y": 700
+      }
+    },
+    {
+      "reactionId": "Se@DHQS",
+      "kind": "axis",
+      "from": {
+        "x": 482,
+        "y": 700
+      },
+      "to": {
+        "x": 508,
+        "y": 700
+      },
+      "arrow": false
+    },
+    {
+      "reactionId": "Se@DHQS",
+      "nodeId": "cur:Se@DHQS:Se@pi_c",
+      "kind": "currency",
+      "coefficient": 1,
+      "side": "product",
+      "from": {
+        "x": 508,
+        "y": 700
+      },
+      "to": {
+        "x": 549.4,
+        "y": 741.6
+      },
+      "backboneAnchor": true,
+      "arrow": true,
+      "b1": {
+        "x": 549.4,
+        "y": 718.72
+      },
+      "b2": {
+        "x": 541.12,
+        "y": 700
+      }
+    },
+    {
+      "reactionId": "Se@DHQS",
+      "nodeId": "met:Se@3dhq_c",
+      "kind": "primary",
+      "coefficient": 1,
+      "side": "product",
+      "from": {
+        "x": 508,
+        "y": 700
+      },
+      "to": {
+        "x": 605,
+        "y": 700
+      },
+      "backboneAnchor": true,
+      "arrow": true,
+      "b1": {
+        "x": 572.02,
+        "y": 700
+      },
+      "b2": {
+        "x": 535.16,
+        "y": 700
+      }
+    },
+    {
+      "reactionId": "Se@DHQS",
+      "nodeId": "met:Se@2dda7p_c",
+      "kind": "primary",
+      "coefficient": -1,
+      "side": "substrate",
+      "from": {
+        "x": 385,
+        "y": 700
+      },
+      "to": {
+        "x": 482,
+        "y": 700
+      },
+      "backboneAnchor": true,
+      "arrow": false,
+      "b1": {
+        "x": 417.98,
+        "y": 700
+      },
+      "b2": {
+        "x": 454.84000000000003,
+        "y": 700
+      }
+    },
+    {
+      "reactionId": "Se@DHQTi",
+      "kind": "axis",
+      "from": {
+        "x": 692,
+        "y": 700
+      },
+      "to": {
+        "x": 718,
+        "y": 700
+      },
+      "arrow": false
+    },
+    {
+      "reactionId": "Se@DHQTi",
+      "nodeId": "cur:Se@DHQTi:Se@h2o_c",
+      "kind": "currency",
+      "coefficient": 1,
+      "side": "product",
+      "from": {
+        "x": 718,
+        "y": 700
+      },
+      "to": {
+        "x": 759.4,
+        "y": 741.6
+      },
+      "backboneAnchor": true,
+      "arrow": true,
+      "b1": {
+        "x": 759.4,
+        "y": 718.72
+      },
+      "b2": {
+        "x": 751.12,
+        "y": 700
+      }
+    },
+    {
+      "reactionId": "Se@DHQTi",
+      "nodeId": "met:Se@3dhq_c",
+      "kind": "primary",
+      "coefficient": -1,
+      "side": "substrate",
+      "from": {
+        "x": 605,
+        "y": 700
+      },
+      "to": {
+        "x": 692,
+        "y": 700
+      },
+      "backboneAnchor": true,
+      "arrow": false,
+      "b1": {
+        "x": 634.58,
+        "y": 700
+      },
+      "b2": {
+        "x": 667.64,
+        "y": 700
+      }
+    },
+    {
+      "reactionId": "Se@DHQTi",
+      "nodeId": "met:Se@3dhsk_c",
+      "kind": "primary",
+      "coefficient": 1,
+      "side": "product",
+      "from": {
+        "x": 718,
+        "y": 700
+      },
+      "to": {
+        "x": 805,
+        "y": 700
+      },
+      "backboneAnchor": true,
+      "arrow": true,
+      "b1": {
+        "x": 775.42,
+        "y": 700
+      },
+      "b2": {
+        "x": 742.36,
+        "y": 700
+      }
+    },
+    {
+      "reactionId": "Se@SHK3Dr",
+      "kind": "axis",
+      "from": {
+        "x": 805,
+        "y": 792
+      },
+      "to": {
+        "x": 805,
+        "y": 818
+      },
+      "arrow": false
+    },
+    {
+      "reactionId": "Se@SHK3Dr",
+      "nodeId": "cur:Se@SHK3Dr:Se@h_c",
+      "kind": "currency",
+      "coefficient": -1,
+      "side": "substrate",
+      "from": {
+        "x": 763,
+        "y": 767
+      },
+      "to": {
+        "x": 805,
+        "y": 792
+      },
+      "backboneAnchor": true,
+      "arrow": false,
+      "b1": {
+        "x": 786.1,
+        "y": 767
+      },
+      "b2": {
+        "x": 805,
+        "y": 772
+      }
+    },
+    {
+      "reactionId": "Se@SHK3Dr",
+      "nodeId": "met:Se@3dhsk_c",
+      "kind": "primary",
+      "coefficient": -1,
+      "side": "substrate",
+      "from": {
+        "x": 805,
+        "y": 700
+      },
+      "to": {
+        "x": 805,
+        "y": 792
+      },
+      "backboneAnchor": true,
+      "arrow": false,
+      "b1": {
+        "x": 805,
+        "y": 731.28
+      },
+      "b2": {
+        "x": 805,
+        "y": 766.24
+      }
+    },
+    {
+      "reactionId": "Se@SHK3Dr",
+      "nodeId": "cur:Se@SHK3Dr:Se@nadph_c",
+      "kind": "currency",
+      "coefficient": -1,
+      "side": "substrate",
+      "from": {
+        "x": 846.6,
+        "y": 741
+      },
+      "to": {
+        "x": 805,
+        "y": 792
+      },
+      "backboneAnchor": true,
+      "arrow": false,
+      "b1": {
+        "x": 823.72,
+        "y": 741
+      },
+      "b2": {
+        "x": 805,
+        "y": 751.2
+      }
+    },
+    {
+      "reactionId": "Se@SHK3Dr",
+      "nodeId": "cur:Se@SHK3Dr:Se@nadp_c",
+      "kind": "currency",
+      "coefficient": 1,
+      "side": "product",
+      "from": {
+        "x": 805,
+        "y": 818
+      },
+      "to": {
+        "x": 763,
+        "y": 840
+      },
+      "backboneAnchor": true,
+      "arrow": true,
+      "b1": {
+        "x": 786.1,
+        "y": 840
+      },
+      "b2": {
+        "x": 805,
+        "y": 835.6
+      }
+    },
+    {
+      "reactionId": "Se@SHK3Dr",
+      "nodeId": "met:Se@skm_c",
+      "kind": "primary",
+      "coefficient": 1,
+      "side": "product",
+      "from": {
+        "x": 805,
+        "y": 818
+      },
+      "to": {
+        "x": 805,
+        "y": 910
+      },
+      "backboneAnchor": true,
+      "arrow": true,
+      "b1": {
+        "x": 805,
+        "y": 878.72
+      },
+      "b2": {
+        "x": 805,
+        "y": 843.76
+      }
+    },
+    {
+      "reactionId": "Se@SHKK",
+      "kind": "axis",
+      "from": {
+        "x": 718,
+        "y": 910
+      },
+      "to": {
+        "x": 692,
+        "y": 910
+      },
+      "arrow": false
+    },
+    {
+      "reactionId": "Se@SHKK",
+      "nodeId": "cur:Se@SHKK:Se@adp_c",
+      "kind": "currency",
+      "coefficient": 1,
+      "side": "product",
+      "from": {
+        "x": 692,
+        "y": 910
+      },
+      "to": {
+        "x": 650.6,
+        "y": 868.4
+      },
+      "backboneAnchor": true,
+      "arrow": true,
+      "b1": {
+        "x": 650.6,
+        "y": 891.28
+      },
+      "b2": {
+        "x": 658.88,
+        "y": 910
+      }
+    },
+    {
+      "reactionId": "Se@SHKK",
+      "nodeId": "cur:Se@SHKK:Se@h_c",
+      "kind": "currency",
+      "coefficient": 1,
+      "side": "product",
+      "from": {
+        "x": 692,
+        "y": 910
+      },
+      "to": {
+        "x": 650.6,
+        "y": 951.6
+      },
+      "backboneAnchor": true,
+      "arrow": true,
+      "b1": {
+        "x": 650.6,
+        "y": 928.72
+      },
+      "b2": {
+        "x": 658.88,
+        "y": 910
+      }
+    },
+    {
+      "reactionId": "Se@SHKK",
+      "nodeId": "cur:Se@SHKK:Se@atp_c",
+      "kind": "currency",
+      "coefficient": -1,
+      "side": "substrate",
+      "from": {
+        "x": 759.4,
+        "y": 868.4
+      },
+      "to": {
+        "x": 718,
+        "y": 910
+      },
+      "backboneAnchor": true,
+      "arrow": false,
+      "b1": {
+        "x": 759.4,
+        "y": 891.28
+      },
+      "b2": {
+        "x": 751.12,
+        "y": 910
+      }
+    },
+    {
+      "reactionId": "Se@SHKK",
+      "nodeId": "met:Se@skm_c",
+      "kind": "primary",
+      "coefficient": -1,
+      "side": "substrate",
+      "from": {
+        "x": 805,
+        "y": 910
+      },
+      "to": {
+        "x": 718,
+        "y": 910
+      },
+      "backboneAnchor": true,
+      "arrow": false,
+      "b1": {
+        "x": 775.42,
+        "y": 910
+      },
+      "b2": {
+        "x": 742.36,
+        "y": 910
+      }
+    },
+    {
+      "reactionId": "Se@SHKK",
+      "nodeId": "met:Se@skm5p_c",
+      "kind": "primary",
+      "coefficient": 1,
+      "side": "product",
+      "from": {
+        "x": 692,
+        "y": 910
+      },
+      "to": {
+        "x": 605,
+        "y": 910
+      },
+      "backboneAnchor": true,
+      "arrow": true,
+      "b1": {
+        "x": 634.58,
+        "y": 910
+      },
+      "b2": {
+        "x": 667.64,
+        "y": 910
+      }
+    },
+    {
+      "reactionId": "Se@PSCVT",
+      "kind": "axis",
+      "from": {
+        "x": 508,
+        "y": 910
+      },
+      "to": {
+        "x": 482,
+        "y": 910
+      },
+      "arrow": false
+    },
+    {
+      "reactionId": "Se@PSCVT",
+      "nodeId": "met:Se@pep_c",
+      "kind": "primary",
+      "coefficient": -1,
+      "side": "substrate",
+      "from": {
+        "x": 165,
+        "y": 700
+      },
+      "to": {
+        "x": 508,
+        "y": 910
+      },
+      "backboneAnchor": true,
+      "arrow": false,
+      "b1": {
+        "x": 165,
+        "y": 800
+      },
+      "b2": {
+        "x": 508,
+        "y": 830
+      }
+    },
+    {
+      "reactionId": "Se@PSCVT",
+      "nodeId": "cur:Se@PSCVT:Se@pi_c",
+      "kind": "currency",
+      "coefficient": 1,
+      "side": "product",
+      "from": {
+        "x": 482,
+        "y": 910
+      },
+      "to": {
+        "x": 440.6,
+        "y": 868.4
+      },
+      "backboneAnchor": true,
+      "arrow": true,
+      "b1": {
+        "x": 440.6,
+        "y": 891.28
+      },
+      "b2": {
+        "x": 448.88,
+        "y": 910
+      }
+    },
+    {
+      "reactionId": "Se@PSCVT",
+      "nodeId": "met:Se@skm5p_c",
+      "kind": "primary",
+      "coefficient": -1,
+      "side": "substrate",
+      "from": {
+        "x": 605,
+        "y": 910
+      },
+      "to": {
+        "x": 508,
+        "y": 910
+      },
+      "backboneAnchor": true,
+      "arrow": false,
+      "b1": {
+        "x": 572.02,
+        "y": 910
+      },
+      "b2": {
+        "x": 535.16,
+        "y": 910
+      }
+    },
+    {
+      "reactionId": "Se@PSCVT",
+      "nodeId": "met:Se@3psme_c",
+      "kind": "primary",
+      "coefficient": 1,
+      "side": "product",
+      "from": {
+        "x": 482,
+        "y": 910
+      },
+      "to": {
+        "x": 385,
+        "y": 910
+      },
+      "backboneAnchor": true,
+      "arrow": true,
+      "b1": {
+        "x": 417.98,
+        "y": 910
+      },
+      "b2": {
+        "x": 454.84000000000003,
+        "y": 910
+      }
+    },
+    {
+      "reactionId": "Se@CHORS",
+      "kind": "axis",
+      "from": {
+        "x": 288,
+        "y": 910
+      },
+      "to": {
+        "x": 262,
+        "y": 910
+      },
+      "arrow": false
+    },
+    {
+      "reactionId": "Se@CHORS",
+      "nodeId": "cur:Se@CHORS:Se@pi_c",
+      "kind": "currency",
+      "coefficient": 1,
+      "side": "product",
+      "from": {
+        "x": 262,
+        "y": 910
+      },
+      "to": {
+        "x": 220.6,
+        "y": 868.4
+      },
+      "backboneAnchor": true,
+      "arrow": true,
+      "b1": {
+        "x": 220.6,
+        "y": 891.28
+      },
+      "b2": {
+        "x": 228.88,
+        "y": 910
+      }
+    },
+    {
+      "reactionId": "Se@CHORS",
+      "nodeId": "met:Se@chor_c",
+      "kind": "primary",
+      "coefficient": 1,
+      "side": "product",
+      "from": {
+        "x": 262,
+        "y": 910
+      },
+      "to": {
+        "x": 165,
+        "y": 910
+      },
+      "backboneAnchor": true,
+      "arrow": true,
+      "b1": {
+        "x": 197.98000000000002,
+        "y": 910
+      },
+      "b2": {
+        "x": 234.84,
+        "y": 910
+      }
+    },
+    {
+      "reactionId": "Se@CHORS",
+      "nodeId": "met:Se@3psme_c",
+      "kind": "primary",
+      "coefficient": -1,
+      "side": "substrate",
+      "from": {
+        "x": 385,
+        "y": 910
+      },
+      "to": {
+        "x": 288,
+        "y": 910
+      },
+      "backboneAnchor": true,
+      "arrow": false,
+      "b1": {
+        "x": 352.02,
+        "y": 910
+      },
+      "b2": {
+        "x": 315.15999999999997,
+        "y": 910
+      }
+    },
+    {
+      "reactionId": "Se@CHORM",
+      "kind": "axis",
+      "from": {
+        "x": 165,
+        "y": 1002
+      },
+      "to": {
+        "x": 165,
+        "y": 1028
+      },
+      "arrow": false
+    },
+    {
+      "reactionId": "Se@CHORM",
+      "nodeId": "met:Se@chor_c",
+      "kind": "primary",
+      "coefficient": -1,
+      "side": "substrate",
+      "from": {
+        "x": 165,
+        "y": 910
+      },
+      "to": {
+        "x": 165,
+        "y": 1002
+      },
+      "backboneAnchor": true,
+      "arrow": false,
+      "b1": {
+        "x": 165,
+        "y": 941.28
+      },
+      "b2": {
+        "x": 165,
+        "y": 976.24
+      }
+    },
+    {
+      "reactionId": "Se@CHORM",
+      "nodeId": "met:Se@pphn_c",
+      "kind": "primary",
+      "coefficient": 1,
+      "side": "product",
+      "from": {
+        "x": 165,
+        "y": 1028
+      },
+      "to": {
+        "x": 165,
+        "y": 1120
+      },
+      "backboneAnchor": true,
+      "arrow": true,
+      "b1": {
+        "x": 165,
+        "y": 1088.72
+      },
+      "b2": {
+        "x": 165,
+        "y": 1053.76
+      }
+    },
+    {
+      "reactionId": "Se@PPNDH",
+      "kind": "axis",
+      "from": {
+        "x": 262,
+        "y": 1120
+      },
+      "to": {
+        "x": 288,
+        "y": 1120
+      },
+      "arrow": false
+    },
+    {
+      "reactionId": "Se@PPNDH",
+      "nodeId": "met:Se@phpyr_c",
+      "kind": "primary",
+      "coefficient": 1,
+      "side": "product",
+      "from": {
+        "x": 288,
+        "y": 1120
+      },
+      "to": {
+        "x": 385,
+        "y": 1120
+      },
+      "backboneAnchor": true,
+      "arrow": true,
+      "b1": {
+        "x": 352.02,
+        "y": 1120
+      },
+      "b2": {
+        "x": 315.15999999999997,
+        "y": 1120
+      }
+    },
+    {
+      "reactionId": "Se@PPNDH",
+      "nodeId": "cur:Se@PPNDH:Se@co2_c",
+      "kind": "currency",
+      "coefficient": 1,
+      "side": "product",
+      "from": {
+        "x": 288,
+        "y": 1120
+      },
+      "to": {
+        "x": 329.4,
+        "y": 1161.6
+      },
+      "backboneAnchor": true,
+      "arrow": true,
+      "b1": {
+        "x": 329.4,
+        "y": 1138.72
+      },
+      "b2": {
+        "x": 321.12,
+        "y": 1120
+      }
+    },
+    {
+      "reactionId": "Se@PPNDH",
+      "nodeId": "cur:Se@PPNDH:Se@h2o_c",
+      "kind": "currency",
+      "coefficient": 1,
+      "side": "product",
+      "from": {
+        "x": 288,
+        "y": 1120
+      },
+      "to": {
+        "x": 329.4,
+        "y": 1078.4
+      },
+      "backboneAnchor": true,
+      "arrow": true,
+      "b1": {
+        "x": 329.4,
+        "y": 1101.28
+      },
+      "b2": {
+        "x": 321.12,
+        "y": 1120
+      }
+    },
+    {
+      "reactionId": "Se@PPNDH",
+      "nodeId": "cur:Se@PPNDH:Se@h_c",
+      "kind": "currency",
+      "coefficient": -1,
+      "side": "substrate",
+      "from": {
+        "x": 220.6,
+        "y": 1161.6
+      },
+      "to": {
+        "x": 262,
+        "y": 1120
+      },
+      "backboneAnchor": true,
+      "arrow": false,
+      "b1": {
+        "x": 220.6,
+        "y": 1138.72
+      },
+      "b2": {
+        "x": 228.88,
+        "y": 1120
+      }
+    },
+    {
+      "reactionId": "Se@PPNDH",
+      "nodeId": "met:Se@pphn_c",
+      "kind": "primary",
+      "coefficient": -1,
+      "side": "substrate",
+      "from": {
+        "x": 165,
+        "y": 1120
+      },
+      "to": {
+        "x": 262,
+        "y": 1120
+      },
+      "backboneAnchor": true,
+      "arrow": false,
+      "b1": {
+        "x": 197.98000000000002,
+        "y": 1120
+      },
+      "b2": {
+        "x": 234.84,
+        "y": 1120
+      }
+    },
+    {
+      "reactionId": "Se@PHETA1",
+      "kind": "axis",
+      "from": {
+        "x": 508,
+        "y": 1120
+      },
+      "to": {
+        "x": 482,
+        "y": 1120
+      },
+      "arrow": false
+    },
+    {
+      "reactionId": "Se@PHETA1",
+      "nodeId": "met:Se@phpyr_c",
+      "kind": "primary",
+      "coefficient": 1,
+      "side": "product",
+      "from": {
+        "x": 482,
+        "y": 1120
+      },
+      "to": {
+        "x": 385,
+        "y": 1120
+      },
+      "backboneAnchor": true,
+      "arrow": true,
+      "b1": {
+        "x": 417.98,
+        "y": 1120
+      },
+      "b2": {
+        "x": 454.84000000000003,
+        "y": 1120
+      }
+    },
+    {
+      "reactionId": "Se@PHETA1",
+      "nodeId": "cur:Se@PHETA1:Se@glu__L_c",
+      "kind": "currency",
+      "coefficient": 1,
+      "side": "product",
+      "from": {
+        "x": 482,
+        "y": 1120
+      },
+      "to": {
+        "x": 440.6,
+        "y": 1078.4
+      },
+      "backboneAnchor": true,
+      "arrow": true,
+      "b1": {
+        "x": 440.6,
+        "y": 1101.28
+      },
+      "b2": {
+        "x": 448.88,
+        "y": 1120
+      }
+    },
+    {
+      "reactionId": "Se@PHETA1",
+      "nodeId": "met:Se@phe__L_c",
+      "kind": "primary",
+      "coefficient": -1,
+      "side": "substrate",
+      "from": {
+        "x": 605,
+        "y": 1120
+      },
+      "to": {
+        "x": 508,
+        "y": 1120
+      },
+      "backboneAnchor": true,
+      "arrow": false,
+      "b1": {
+        "x": 572.02,
+        "y": 1120
+      },
+      "b2": {
+        "x": 535.16,
+        "y": 1120
+      }
+    },
+    {
+      "reactionId": "Se@PHETA1",
+      "nodeId": "cur:Se@PHETA1:Se@akg_c",
+      "kind": "currency",
+      "coefficient": -1,
+      "side": "substrate",
+      "from": {
+        "x": 549.4,
+        "y": 1078.4
+      },
+      "to": {
+        "x": 508,
+        "y": 1120
+      },
+      "backboneAnchor": true,
+      "arrow": false,
+      "b1": {
+        "x": 549.4,
+        "y": 1101.28
+      },
+      "b2": {
+        "x": 541.12,
+        "y": 1120
+      }
+    },
+    {
+      "reactionId": "Ec@DDPA",
+      "kind": "axis",
+      "from": {
+        "x": 1805,
+        "y": 420
+      },
+      "to": {
+        "x": 1779,
+        "y": 420
+      },
+      "arrow": false
+    },
+    {
+      "reactionId": "Ec@DDPA",
+      "nodeId": "met:Ec@2dda7p_c",
+      "kind": "primary",
+      "coefficient": 1,
+      "side": "product",
+      "from": {
+        "x": 1779,
+        "y": 420
+      },
+      "to": {
+        "x": 1682,
+        "y": 420
+      },
+      "backboneAnchor": true,
+      "arrow": true,
+      "b1": {
+        "x": 1714.98,
+        "y": 420
+      },
+      "b2": {
+        "x": 1751.84,
+        "y": 420
+      }
+    },
+    {
+      "reactionId": "Ec@DDPA",
+      "nodeId": "met:Ec@e4p_c",
+      "kind": "primary",
+      "coefficient": -1,
+      "side": "substrate",
+      "from": {
+        "x": 1852,
+        "y": 365
+      },
+      "to": {
+        "x": 1805,
+        "y": 420
+      },
+      "backboneAnchor": true,
+      "arrow": false,
+      "b1": {
+        "x": 1852,
+        "y": 395.25
+      },
+      "b2": {
+        "x": 1842.6,
+        "y": 420
+      }
+    },
+    {
+      "reactionId": "Ec@DDPA",
+      "nodeId": "cur:Ec@DDPA:Ec@h2o_c",
+      "kind": "currency",
+      "coefficient": -1,
+      "side": "substrate",
+      "from": {
+        "x": 1846.4,
+        "y": 461.6
+      },
+      "to": {
+        "x": 1805,
+        "y": 420
+      },
+      "backboneAnchor": true,
+      "arrow": false,
+      "b1": {
+        "x": 1846.4,
+        "y": 438.72
+      },
+      "b2": {
+        "x": 1838.1200000000001,
+        "y": 420
+      }
+    },
+    {
+      "reactionId": "Ec@DDPA",
+      "nodeId": "met:Ec@pep_c",
+      "kind": "primary",
+      "coefficient": -1,
+      "side": "substrate",
+      "from": {
+        "x": 1902,
+        "y": 420
+      },
+      "to": {
+        "x": 1805,
+        "y": 420
+      },
+      "backboneAnchor": true,
+      "arrow": false,
+      "b1": {
+        "x": 1869.02,
+        "y": 420
+      },
+      "b2": {
+        "x": 1832.16,
+        "y": 420
+      }
+    },
+    {
+      "reactionId": "Ec@DDPA",
+      "nodeId": "cur:Ec@DDPA:Ec@pi_c",
+      "kind": "currency",
+      "coefficient": 1,
+      "side": "product",
+      "from": {
+        "x": 1779,
+        "y": 420
+      },
+      "to": {
+        "x": 1737.6,
+        "y": 461.6
+      },
+      "backboneAnchor": true,
+      "arrow": true,
+      "b1": {
+        "x": 1737.6,
+        "y": 438.72
+      },
+      "b2": {
+        "x": 1745.8799999999999,
+        "y": 420
+      }
+    },
+    {
+      "reactionId": "Ec@DHQS",
+      "kind": "axis",
+      "from": {
+        "x": 1585,
+        "y": 420
+      },
+      "to": {
+        "x": 1559,
+        "y": 420
+      },
+      "arrow": false
+    },
+    {
+      "reactionId": "Ec@DHQS",
+      "nodeId": "met:Ec@2dda7p_c",
+      "kind": "primary",
+      "coefficient": -1,
+      "side": "substrate",
+      "from": {
+        "x": 1682,
+        "y": 420
+      },
+      "to": {
+        "x": 1585,
+        "y": 420
+      },
+      "backboneAnchor": true,
+      "arrow": false,
+      "b1": {
+        "x": 1649.02,
+        "y": 420
+      },
+      "b2": {
+        "x": 1612.16,
+        "y": 420
+      }
+    },
+    {
+      "reactionId": "Ec@DHQS",
+      "nodeId": "met:Ec@3dhq_c",
+      "kind": "primary",
+      "coefficient": 1,
+      "side": "product",
+      "from": {
+        "x": 1559,
+        "y": 420
+      },
+      "to": {
+        "x": 1462,
+        "y": 420
+      },
+      "backboneAnchor": true,
+      "arrow": true,
+      "b1": {
+        "x": 1494.98,
+        "y": 420
+      },
+      "b2": {
+        "x": 1531.84,
+        "y": 420
+      }
+    },
+    {
+      "reactionId": "Ec@DHQS",
+      "nodeId": "cur:Ec@DHQS:Ec@pi_c",
+      "kind": "currency",
+      "coefficient": 1,
+      "side": "product",
+      "from": {
+        "x": 1559,
+        "y": 420
+      },
+      "to": {
+        "x": 1517.6,
+        "y": 461.6
+      },
+      "backboneAnchor": true,
+      "arrow": true,
+      "b1": {
+        "x": 1517.6,
+        "y": 438.72
+      },
+      "b2": {
+        "x": 1525.8799999999999,
+        "y": 420
+      }
+    },
+    {
+      "reactionId": "Ec@DHQTi",
+      "kind": "axis",
+      "from": {
+        "x": 1375,
+        "y": 420
+      },
+      "to": {
+        "x": 1349,
+        "y": 420
+      },
+      "arrow": false
+    },
+    {
+      "reactionId": "Ec@DHQTi",
+      "nodeId": "met:Ec@3dhq_c",
+      "kind": "primary",
+      "coefficient": -1,
+      "side": "substrate",
+      "from": {
+        "x": 1462,
+        "y": 420
+      },
+      "to": {
+        "x": 1375,
+        "y": 420
+      },
+      "backboneAnchor": true,
+      "arrow": false,
+      "b1": {
+        "x": 1432.42,
+        "y": 420
+      },
+      "b2": {
+        "x": 1399.36,
+        "y": 420
+      }
+    },
+    {
+      "reactionId": "Ec@DHQTi",
+      "nodeId": "met:Ec@3dhsk_c",
+      "kind": "primary",
+      "coefficient": 1,
+      "side": "product",
+      "from": {
+        "x": 1349,
+        "y": 420
+      },
+      "to": {
+        "x": 1262,
+        "y": 420
+      },
+      "backboneAnchor": true,
+      "arrow": true,
+      "b1": {
+        "x": 1291.58,
+        "y": 420
+      },
+      "b2": {
+        "x": 1324.64,
+        "y": 420
+      }
+    },
+    {
+      "reactionId": "Ec@DHQTi",
+      "nodeId": "cur:Ec@DHQTi:Ec@h2o_c",
+      "kind": "currency",
+      "coefficient": 1,
+      "side": "product",
+      "from": {
+        "x": 1349,
+        "y": 420
+      },
+      "to": {
+        "x": 1307.6,
+        "y": 461.6
+      },
+      "backboneAnchor": true,
+      "arrow": true,
+      "b1": {
+        "x": 1307.6,
+        "y": 438.72
+      },
+      "b2": {
+        "x": 1315.8799999999999,
+        "y": 420
+      }
+    },
+    {
+      "reactionId": "Ec@SHK3Dr",
+      "kind": "axis",
+      "from": {
+        "x": 1262,
+        "y": 512
+      },
+      "to": {
+        "x": 1262,
+        "y": 538
+      },
+      "arrow": false
+    },
+    {
+      "reactionId": "Ec@SHK3Dr",
+      "nodeId": "met:Ec@3dhsk_c",
+      "kind": "primary",
+      "coefficient": -1,
+      "side": "substrate",
+      "from": {
+        "x": 1262,
+        "y": 420
+      },
+      "to": {
+        "x": 1262,
+        "y": 512
+      },
+      "backboneAnchor": true,
+      "arrow": false,
+      "b1": {
+        "x": 1262,
+        "y": 451.28
+      },
+      "b2": {
+        "x": 1262,
+        "y": 486.24
+      }
+    },
+    {
+      "reactionId": "Ec@SHK3Dr",
+      "nodeId": "cur:Ec@SHK3Dr:Ec@h_c",
+      "kind": "currency",
+      "coefficient": -1,
+      "side": "substrate",
+      "from": {
+        "x": 1304,
+        "y": 487
+      },
+      "to": {
+        "x": 1262,
+        "y": 512
+      },
+      "backboneAnchor": true,
+      "arrow": false,
+      "b1": {
+        "x": 1280.9,
+        "y": 487
+      },
+      "b2": {
+        "x": 1262,
+        "y": 492
+      }
+    },
+    {
+      "reactionId": "Ec@SHK3Dr",
+      "nodeId": "cur:Ec@SHK3Dr:Ec@nadp_c",
+      "kind": "currency",
+      "coefficient": 1,
+      "side": "product",
+      "from": {
+        "x": 1262,
+        "y": 538
+      },
+      "to": {
+        "x": 1304,
+        "y": 560
+      },
+      "backboneAnchor": true,
+      "arrow": true,
+      "b1": {
+        "x": 1280.9,
+        "y": 560
+      },
+      "b2": {
+        "x": 1262,
+        "y": 555.6
+      }
+    },
+    {
+      "reactionId": "Ec@SHK3Dr",
+      "nodeId": "cur:Ec@SHK3Dr:Ec@nadph_c",
+      "kind": "currency",
+      "coefficient": -1,
+      "side": "substrate",
+      "from": {
+        "x": 1220.4,
+        "y": 461
+      },
+      "to": {
+        "x": 1262,
+        "y": 512
+      },
+      "backboneAnchor": true,
+      "arrow": false,
+      "b1": {
+        "x": 1243.28,
+        "y": 461
+      },
+      "b2": {
+        "x": 1262,
+        "y": 471.2
+      }
+    },
+    {
+      "reactionId": "Ec@SHK3Dr",
+      "nodeId": "met:Ec@skm_c",
+      "kind": "primary",
+      "coefficient": 1,
+      "side": "product",
+      "from": {
+        "x": 1262,
+        "y": 538
+      },
+      "to": {
+        "x": 1262,
+        "y": 630
+      },
+      "backboneAnchor": true,
+      "arrow": true,
+      "b1": {
+        "x": 1262,
+        "y": 598.72
+      },
+      "b2": {
+        "x": 1262,
+        "y": 563.76
+      }
+    },
+    {
+      "reactionId": "Ec@SHKK",
+      "kind": "axis",
+      "from": {
+        "x": 1349,
+        "y": 630
+      },
+      "to": {
+        "x": 1375,
+        "y": 630
+      },
+      "arrow": false
+    },
+    {
+      "reactionId": "Ec@SHKK",
+      "nodeId": "cur:Ec@SHKK:Ec@adp_c",
+      "kind": "currency",
+      "coefficient": 1,
+      "side": "product",
+      "from": {
+        "x": 1375,
+        "y": 630
+      },
+      "to": {
+        "x": 1416.4,
+        "y": 588.4
+      },
+      "backboneAnchor": true,
+      "arrow": true,
+      "b1": {
+        "x": 1416.4,
+        "y": 611.28
+      },
+      "b2": {
+        "x": 1408.1200000000001,
+        "y": 630
+      }
+    },
+    {
+      "reactionId": "Ec@SHKK",
+      "nodeId": "cur:Ec@SHKK:Ec@atp_c",
+      "kind": "currency",
+      "coefficient": -1,
+      "side": "substrate",
+      "from": {
+        "x": 1307.6,
+        "y": 588.4
+      },
+      "to": {
+        "x": 1349,
+        "y": 630
+      },
+      "backboneAnchor": true,
+      "arrow": false,
+      "b1": {
+        "x": 1307.6,
+        "y": 611.28
+      },
+      "b2": {
+        "x": 1315.8799999999999,
+        "y": 630
+      }
+    },
+    {
+      "reactionId": "Ec@SHKK",
+      "nodeId": "cur:Ec@SHKK:Ec@h_c",
+      "kind": "currency",
+      "coefficient": 1,
+      "side": "product",
+      "from": {
+        "x": 1375,
+        "y": 630
+      },
+      "to": {
+        "x": 1416.4,
+        "y": 671.6
+      },
+      "backboneAnchor": true,
+      "arrow": true,
+      "b1": {
+        "x": 1416.4,
+        "y": 648.72
+      },
+      "b2": {
+        "x": 1408.1200000000001,
+        "y": 630
+      }
+    },
+    {
+      "reactionId": "Ec@SHKK",
+      "nodeId": "met:Ec@skm_c",
+      "kind": "primary",
+      "coefficient": -1,
+      "side": "substrate",
+      "from": {
+        "x": 1262,
+        "y": 630
+      },
+      "to": {
+        "x": 1349,
+        "y": 630
+      },
+      "backboneAnchor": true,
+      "arrow": false,
+      "b1": {
+        "x": 1291.58,
+        "y": 630
+      },
+      "b2": {
+        "x": 1324.64,
+        "y": 630
+      }
+    },
+    {
+      "reactionId": "Ec@SHKK",
+      "nodeId": "met:Ec@skm5p_c",
+      "kind": "primary",
+      "coefficient": 1,
+      "side": "product",
+      "from": {
+        "x": 1375,
+        "y": 630
+      },
+      "to": {
+        "x": 1462,
+        "y": 630
+      },
+      "backboneAnchor": true,
+      "arrow": true,
+      "b1": {
+        "x": 1432.42,
+        "y": 630
+      },
+      "b2": {
+        "x": 1399.36,
+        "y": 630
+      }
+    },
+    {
+      "reactionId": "Ec@PSCVT",
+      "kind": "axis",
+      "from": {
+        "x": 1559,
+        "y": 630
+      },
+      "to": {
+        "x": 1585,
+        "y": 630
+      },
+      "arrow": false
+    },
+    {
+      "reactionId": "Ec@PSCVT",
+      "nodeId": "met:Ec@3psme_c",
+      "kind": "primary",
+      "coefficient": 1,
+      "side": "product",
+      "from": {
+        "x": 1585,
+        "y": 630
+      },
+      "to": {
+        "x": 1682,
+        "y": 630
+      },
+      "backboneAnchor": true,
+      "arrow": true,
+      "b1": {
+        "x": 1649.02,
+        "y": 630
+      },
+      "b2": {
+        "x": 1612.16,
+        "y": 630
+      }
+    },
+    {
+      "reactionId": "Ec@PSCVT",
+      "nodeId": "met:Ec@pep_c",
+      "kind": "primary",
+      "coefficient": -1,
+      "side": "substrate",
+      "from": {
+        "x": 1902,
+        "y": 420
+      },
+      "to": {
+        "x": 1559,
+        "y": 630
+      },
+      "backboneAnchor": true,
+      "arrow": false,
+      "b1": {
+        "x": 1902,
+        "y": 520
+      },
+      "b2": {
+        "x": 1559,
+        "y": 550
+      }
+    },
+    {
+      "reactionId": "Ec@PSCVT",
+      "nodeId": "cur:Ec@PSCVT:Ec@pi_c",
+      "kind": "currency",
+      "coefficient": 1,
+      "side": "product",
+      "from": {
+        "x": 1585,
+        "y": 630
+      },
+      "to": {
+        "x": 1626.4,
+        "y": 588.4
+      },
+      "backboneAnchor": true,
+      "arrow": true,
+      "b1": {
+        "x": 1626.4,
+        "y": 611.28
+      },
+      "b2": {
+        "x": 1618.1200000000001,
+        "y": 630
+      }
+    },
+    {
+      "reactionId": "Ec@PSCVT",
+      "nodeId": "met:Ec@skm5p_c",
+      "kind": "primary",
+      "coefficient": -1,
+      "side": "substrate",
+      "from": {
+        "x": 1462,
+        "y": 630
+      },
+      "to": {
+        "x": 1559,
+        "y": 630
+      },
+      "backboneAnchor": true,
+      "arrow": false,
+      "b1": {
+        "x": 1494.98,
+        "y": 630
+      },
+      "b2": {
+        "x": 1531.84,
+        "y": 630
+      }
+    },
+    {
+      "reactionId": "Ec@CHORS",
+      "kind": "axis",
+      "from": {
+        "x": 1779,
+        "y": 630
+      },
+      "to": {
+        "x": 1805,
+        "y": 630
+      },
+      "arrow": false
+    },
+    {
+      "reactionId": "Ec@CHORS",
+      "nodeId": "met:Ec@3psme_c",
+      "kind": "primary",
+      "coefficient": -1,
+      "side": "substrate",
+      "from": {
+        "x": 1682,
+        "y": 630
+      },
+      "to": {
+        "x": 1779,
+        "y": 630
+      },
+      "backboneAnchor": true,
+      "arrow": false,
+      "b1": {
+        "x": 1714.98,
+        "y": 630
+      },
+      "b2": {
+        "x": 1751.84,
+        "y": 630
+      }
+    },
+    {
+      "reactionId": "Ec@CHORS",
+      "nodeId": "met:Ec@chor_c",
+      "kind": "primary",
+      "coefficient": 1,
+      "side": "product",
+      "from": {
+        "x": 1805,
+        "y": 630
+      },
+      "to": {
+        "x": 1902,
+        "y": 630
+      },
+      "backboneAnchor": true,
+      "arrow": true,
+      "b1": {
+        "x": 1869.02,
+        "y": 630
+      },
+      "b2": {
+        "x": 1832.16,
+        "y": 630
+      }
+    },
+    {
+      "reactionId": "Ec@CHORS",
+      "nodeId": "cur:Ec@CHORS:Ec@pi_c",
+      "kind": "currency",
+      "coefficient": 1,
+      "side": "product",
+      "from": {
+        "x": 1805,
+        "y": 630
+      },
+      "to": {
+        "x": 1846.4,
+        "y": 588.4
+      },
+      "backboneAnchor": true,
+      "arrow": true,
+      "b1": {
+        "x": 1846.4,
+        "y": 611.28
+      },
+      "b2": {
+        "x": 1838.1200000000001,
+        "y": 630
+      }
+    },
+    {
+      "reactionId": "Ec@CHORM",
+      "kind": "axis",
+      "from": {
+        "x": 1902,
+        "y": 722
+      },
+      "to": {
+        "x": 1902,
+        "y": 748
+      },
+      "arrow": false
+    },
+    {
+      "reactionId": "Ec@CHORM",
+      "nodeId": "met:Ec@chor_c",
+      "kind": "primary",
+      "coefficient": -1,
+      "side": "substrate",
+      "from": {
+        "x": 1902,
+        "y": 630
+      },
+      "to": {
+        "x": 1902,
+        "y": 722
+      },
+      "backboneAnchor": true,
+      "arrow": false,
+      "b1": {
+        "x": 1902,
+        "y": 661.28
+      },
+      "b2": {
+        "x": 1902,
+        "y": 696.24
+      }
+    },
+    {
+      "reactionId": "Ec@CHORM",
+      "nodeId": "met:Ec@pphn_c",
+      "kind": "primary",
+      "coefficient": 1,
+      "side": "product",
+      "from": {
+        "x": 1902,
+        "y": 748
+      },
+      "to": {
+        "x": 1902,
+        "y": 840
+      },
+      "backboneAnchor": true,
+      "arrow": true,
+      "b1": {
+        "x": 1902,
+        "y": 808.72
+      },
+      "b2": {
+        "x": 1902,
+        "y": 773.76
+      }
+    },
+    {
+      "reactionId": "Ec@PPNDH",
+      "kind": "axis",
+      "from": {
+        "x": 1805,
+        "y": 840
+      },
+      "to": {
+        "x": 1779,
+        "y": 840
+      },
+      "arrow": false
+    },
+    {
+      "reactionId": "Ec@PPNDH",
+      "nodeId": "cur:Ec@PPNDH:Ec@co2_c",
+      "kind": "currency",
+      "coefficient": 1,
+      "side": "product",
+      "from": {
+        "x": 1779,
+        "y": 840
+      },
+      "to": {
+        "x": 1737.6,
+        "y": 881.6
+      },
+      "backboneAnchor": true,
+      "arrow": true,
+      "b1": {
+        "x": 1737.6,
+        "y": 858.72
+      },
+      "b2": {
+        "x": 1745.8799999999999,
+        "y": 840
+      }
+    },
+    {
+      "reactionId": "Ec@PPNDH",
+      "nodeId": "cur:Ec@PPNDH:Ec@h_c",
+      "kind": "currency",
+      "coefficient": -1,
+      "side": "substrate",
+      "from": {
+        "x": 1846.4,
+        "y": 881.6
+      },
+      "to": {
+        "x": 1805,
+        "y": 840
+      },
+      "backboneAnchor": true,
+      "arrow": false,
+      "b1": {
+        "x": 1846.4,
+        "y": 858.72
+      },
+      "b2": {
+        "x": 1838.1200000000001,
+        "y": 840
+      }
+    },
+    {
+      "reactionId": "Ec@PPNDH",
+      "nodeId": "cur:Ec@PPNDH:Ec@h2o_c",
+      "kind": "currency",
+      "coefficient": 1,
+      "side": "product",
+      "from": {
+        "x": 1779,
+        "y": 840
+      },
+      "to": {
+        "x": 1737.6,
+        "y": 798.4
+      },
+      "backboneAnchor": true,
+      "arrow": true,
+      "b1": {
+        "x": 1737.6,
+        "y": 821.28
+      },
+      "b2": {
+        "x": 1745.8799999999999,
+        "y": 840
+      }
+    },
+    {
+      "reactionId": "Ec@PPNDH",
+      "nodeId": "met:Ec@phpyr_c",
+      "kind": "primary",
+      "coefficient": 1,
+      "side": "product",
+      "from": {
+        "x": 1779,
+        "y": 840
+      },
+      "to": {
+        "x": 1682,
+        "y": 840
+      },
+      "backboneAnchor": true,
+      "arrow": true,
+      "b1": {
+        "x": 1714.98,
+        "y": 840
+      },
+      "b2": {
+        "x": 1751.84,
+        "y": 840
+      }
+    },
+    {
+      "reactionId": "Ec@PPNDH",
+      "nodeId": "met:Ec@pphn_c",
+      "kind": "primary",
+      "coefficient": -1,
+      "side": "substrate",
+      "from": {
+        "x": 1902,
+        "y": 840
+      },
+      "to": {
+        "x": 1805,
+        "y": 840
+      },
+      "backboneAnchor": true,
+      "arrow": false,
+      "b1": {
+        "x": 1869.02,
+        "y": 840
+      },
+      "b2": {
+        "x": 1832.16,
+        "y": 840
+      }
+    },
+    {
+      "reactionId": "Ec@PHETA1",
+      "kind": "axis",
+      "from": {
+        "x": 1559,
+        "y": 840
+      },
+      "to": {
+        "x": 1585,
+        "y": 840
+      },
+      "arrow": false
+    },
+    {
+      "reactionId": "Ec@PHETA1",
+      "nodeId": "cur:Ec@PHETA1:Ec@akg_c",
+      "kind": "currency",
+      "coefficient": -1,
+      "side": "substrate",
+      "from": {
+        "x": 1517.6,
+        "y": 798.4
+      },
+      "to": {
+        "x": 1559,
+        "y": 840
+      },
+      "backboneAnchor": true,
+      "arrow": false,
+      "b1": {
+        "x": 1517.6,
+        "y": 821.28
+      },
+      "b2": {
+        "x": 1525.8799999999999,
+        "y": 840
+      }
+    },
+    {
+      "reactionId": "Ec@PHETA1",
+      "nodeId": "cur:Ec@PHETA1:Ec@glu__L_c",
+      "kind": "currency",
+      "coefficient": 1,
+      "side": "product",
+      "from": {
+        "x": 1585,
+        "y": 840
+      },
+      "to": {
+        "x": 1626.4,
+        "y": 798.4
+      },
+      "backboneAnchor": true,
+      "arrow": true,
+      "b1": {
+        "x": 1626.4,
+        "y": 821.28
+      },
+      "b2": {
+        "x": 1618.1200000000001,
+        "y": 840
+      }
+    },
+    {
+      "reactionId": "Ec@PHETA1",
+      "nodeId": "met:Ec@phe__L_c",
+      "kind": "primary",
+      "coefficient": -1,
+      "side": "substrate",
+      "from": {
+        "x": 1462,
+        "y": 840
+      },
+      "to": {
+        "x": 1559,
+        "y": 840
+      },
+      "backboneAnchor": true,
+      "arrow": false,
+      "b1": {
+        "x": 1494.98,
+        "y": 840
+      },
+      "b2": {
+        "x": 1531.84,
+        "y": 840
+      }
+    },
+    {
+      "reactionId": "Ec@PHETA1",
+      "nodeId": "met:Ec@phpyr_c",
+      "kind": "primary",
+      "coefficient": 1,
+      "side": "product",
+      "from": {
+        "x": 1585,
+        "y": 840
+      },
+      "to": {
+        "x": 1682,
+        "y": 840
+      },
+      "backboneAnchor": true,
+      "arrow": true,
+      "b1": {
+        "x": 1649.02,
+        "y": 840
+      },
+      "b2": {
+        "x": 1612.16,
+        "y": 840
+      }
+    },
+    {
+      "reactionId": "Se@PHELtex",
+      "kind": "axis",
+      "from": {
+        "x": 947.0906758694279,
+        "y": 1025.2234366935593
+      },
+      "to": {
+        "x": 922.9093241305721,
+        "y": 1034.7765633064407
+      },
+      "arrow": false
+    },
+    {
+      "reactionId": "Se@PHELtex",
+      "nodeId": "met:M@phe__L",
+      "kind": "primary",
+      "coefficient": -1,
+      "side": "substrate",
+      "from": {
+        "x": 1010,
+        "y": 960
+      },
+      "to": {
+        "x": 947.0906758694279,
+        "y": 1025.2234366935593
+      },
+      "backboneAnchor": true,
+      "arrow": false,
+      "b1": {
+        "x": 1017.5876071193144,
+        "y": 979.2061305207646
+      },
+      "b2": {
+        "x": 1008.4546546201611,
+        "y": 1000.9808771870968
+      }
+    },
+    {
+      "reactionId": "Se@PHELtex",
+      "nodeId": "met:Se@phe__L_c",
+      "kind": "primary",
+      "coefficient": 1,
+      "side": "product",
+      "from": {
+        "x": 922.9093241305721,
+        "y": 1034.7765633064407
+      },
+      "to": {
+        "x": 605,
+        "y": 1120
+      },
+      "backboneAnchor": true,
+      "arrow": true,
+      "b1": {
+        "x": 612.5876071193145,
+        "y": 1139.2061305207646
+      },
+      "b2": {
+        "x": 679.61838427239,
+        "y": 1130.891502509673
+      }
+    },
+    {
+      "reactionId": "Ec@PHEtex",
+      "kind": "axis",
+      "from": {
+        "x": 1072,
+        "y": 960
+      },
+      "to": {
+        "x": 1098,
+        "y": 960
+      },
+      "arrow": false
+    },
+    {
+      "reactionId": "Ec@PHEtex",
+      "nodeId": "met:M@phe__L",
+      "kind": "primary",
+      "coefficient": -1,
+      "side": "substrate",
+      "from": {
+        "x": 1010,
+        "y": 960
+      },
+      "to": {
+        "x": 1072,
+        "y": 960
+      },
+      "backboneAnchor": true,
+      "arrow": false,
+      "b1": {
+        "x": 1031.08,
+        "y": 960
+      },
+      "b2": {
+        "x": 1054.64,
+        "y": 960
+      }
+    },
+    {
+      "reactionId": "Ec@PHEtex",
+      "nodeId": "met:Ec@phe__L_p",
+      "kind": "primary",
+      "coefficient": 1,
+      "side": "product",
+      "from": {
+        "x": 1098,
+        "y": 960
+      },
+      "to": {
+        "x": 1140,
+        "y": 960
+      },
+      "backboneAnchor": true,
+      "arrow": true,
+      "b1": {
+        "x": 1125.72,
+        "y": 960
+      },
+      "b2": {
+        "x": 1109.76,
+        "y": 960
+      }
+    },
+    {
+      "reactionId": "Ec@PHEt2rpp",
+      "kind": "axis",
+      "from": {
+        "x": 1182.818417917148,
+        "y": 964.5397200308765
+      },
+      "to": {
+        "x": 1207.181582082852,
+        "y": 955.4602799691235
+      },
+      "arrow": false
+    },
+    {
+      "reactionId": "Ec@PHEt2rpp",
+      "nodeId": "cur:Ec@PHEt2rpp:Ec@h_c",
+      "kind": "currency",
+      "coefficient": 1,
+      "side": "product",
+      "from": {
+        "x": 1207.181582082852,
+        "y": 955.4602799691235
+      },
+      "to": {
+        "x": 1234.5894886941542,
+        "y": 900.851263002094
+      },
+      "backboneAnchor": true,
+      "arrow": true,
+      "b1": {
+        "x": 1242.5793959484968,
+        "y": 922.2908474679134
+      },
+      "b2": {
+        "x": 1240.7295906509376,
+        "y": 942.9579165276009
+      }
+    },
+    {
+      "reactionId": "Ec@PHEt2rpp",
+      "nodeId": "met:Ec@phe__L_c",
+      "kind": "primary",
+      "coefficient": 1,
+      "side": "product",
+      "from": {
+        "x": 1207.181582082852,
+        "y": 955.4602799691235
+      },
+      "to": {
+        "x": 1462,
+        "y": 840
+      },
+      "backboneAnchor": true,
+      "arrow": true,
+      "b1": {
+        "x": 1465.6888994275262,
+        "y": 849.8985467971952
+      },
+      "b2": {
+        "x": 1416.401988311154,
+        "y": 877.4899422442904
+      }
+    },
+    {
+      "reactionId": "Ec@PHEt2rpp",
+      "nodeId": "cur:Ec@PHEt2rpp:Ec@h_p",
+      "kind": "currency",
+      "coefficient": -1,
+      "side": "substrate",
+      "from": {
+        "x": 1182,
+        "y": 912
+      },
+      "to": {
+        "x": 1182.818417917148,
+        "y": 964.5397200308765
+      },
+      "backboneAnchor": true,
+      "arrow": false,
+      "b1": {
+        "x": 1191.5106534331494,
+        "y": 937.5202533789507
+      },
+      "b2": {
+        "x": 1164.2582336415476,
+        "y": 971.4565588913488
+      }
+    },
+    {
+      "reactionId": "Ec@PHEt2rpp",
+      "nodeId": "met:Ec@phe__L_p",
+      "kind": "primary",
+      "coefficient": -1,
+      "side": "substrate",
+      "from": {
+        "x": 1140,
+        "y": 960
+      },
+      "to": {
+        "x": 1182.818417917148,
+        "y": 964.5397200308765
+      },
+      "backboneAnchor": true,
+      "arrow": false,
+      "b1": {
+        "x": 1143.6888994275262,
+        "y": 969.8985467971952
+      },
+      "b2": {
+        "x": 1153.9293554780131,
+        "y": 975.3058302566411
+      }
+    },
+    {
+      "reactionId": "Se@PHOA690um",
+      "kind": "axis",
+      "from": {
+        "x": 947.6400494039142,
+        "y": 282.9620482119348
+      },
+      "to": {
+        "x": 922.3599505960858,
+        "y": 289.0379517880652
+      },
+      "arrow": false
+    },
+    {
+      "reactionId": "Se@PHOA690um",
+      "nodeId": "cur:Se@PHOA690um:Se@cholphya_c",
+      "kind": "currency",
+      "coefficient": -1,
+      "side": "substrate",
+      "from": {
+        "x": 820,
+        "y": 262
+      },
+      "to": {
+        "x": 947.6400494039142,
+        "y": 282.9620482119348
+      },
+      "backboneAnchor": true,
+      "arrow": false,
+      "b1": {
+        "x": 826.4533844144537,
+        "y": 288.8506887244232
+      },
+      "b2": {
+        "x": 967.1678230216766,
+        "y": 278.2686777286958
+      }
+    },
+    {
+      "reactionId": "Se@PHOA690um",
+      "nodeId": "met:M@photon690",
+      "kind": "primary",
+      "coefficient": -1,
+      "side": "substrate",
+      "from": {
+        "x": 1010,
+        "y": 230
+      },
+      "to": {
+        "x": 947.6400494039142,
+        "y": 282.9620482119348
+      },
+      "backboneAnchor": true,
+      "arrow": false,
+      "b1": {
+        "x": 1014.7456404005225,
+        "y": 249.74525380931652
+      },
+      "b2": {
+        "x": 1004.43075955427,
+        "y": 269.31277881957465
+      }
+    },
+    {
+      "reactionId": "Se@PHOA690um",
+      "nodeId": "met:Se@chla_qy1*_c",
+      "kind": "primary",
+      "coefficient": 0.9,
+      "side": "product",
+      "from": {
+        "x": 922.3599505960858,
+        "y": 289.0379517880652
+      },
+      "to": {
+        "x": 544,
+        "y": 342
+      },
+      "backboneAnchor": true,
+      "arrow": true,
+      "b1": {
+        "x": 548.7456404005225,
+        "y": 361.74525380931647
+      },
+      "b2": {
+        "x": 626.5747397927043,
+        "y": 360.12795953480065
+      }
+    },
+    {
+      "reactionId": "Se@PHOA690um",
+      "nodeId": "cur:Se@PHOA690um:Se@chla_qy2*_c",
+      "kind": "currency",
+      "coefficient": 0.1,
+      "side": "product",
+      "from": {
+        "x": 922.3599505960858,
+        "y": 289.0379517880652
+      },
+      "to": {
+        "x": 554,
+        "y": 260
+      },
+      "backboneAnchor": true,
+      "arrow": true,
+      "b1": {
+        "x": 568.6928202002612,
+        "y": 321.13262690465825
+      },
+      "b2": {
+        "x": 649.0433649559607,
+        "y": 354.72777494620686
+      }
+    },
+    {
+      "reactionId": "Se@ATPSum",
+      "kind": "axis",
+      "from": {
+        "x": 616,
+        "y": 463
+      },
+      "to": {
+        "x": 616,
+        "y": 489
+      },
+      "arrow": false
+    },
+    {
+      "reactionId": "Se@ATPSum",
+      "nodeId": "cur:Se@ATPSum:Se@pi_c",
+      "kind": "currency",
+      "coefficient": -3,
+      "side": "substrate",
+      "from": {
+        "x": 556,
+        "y": 521
+      },
+      "to": {
+        "x": 616,
+        "y": 463
+      },
+      "backboneAnchor": true,
+      "arrow": false,
+      "b1": {
+        "x": 556,
+        "y": 491
+      },
+      "b2": {
+        "x": 576,
+        "y": 463
+      }
+    },
+    {
+      "reactionId": "Se@ATPSum",
+      "nodeId": "cur:Se@ATPSum:Se@adp_c",
+      "kind": "currency",
+      "coefficient": -3,
+      "side": "substrate",
+      "from": {
+        "x": 511,
+        "y": 521
+      },
+      "to": {
+        "x": 616,
+        "y": 463
+      },
+      "backboneAnchor": true,
+      "arrow": false,
+      "b1": {
+        "x": 511,
+        "y": 491
+      },
+      "b2": {
+        "x": 576,
+        "y": 463
+      }
+    },
+    {
+      "reactionId": "Se@ATPSum",
+      "nodeId": "cur:Se@ATPSum:Se@h2o_c",
+      "kind": "currency",
+      "coefficient": 3,
+      "side": "product",
+      "from": {
+        "x": 616,
+        "y": 489
+      },
+      "to": {
+        "x": 696,
+        "y": 526
+      },
+      "backboneAnchor": true,
+      "arrow": true,
+      "b1": {
+        "x": 652,
+        "y": 526
+      },
+      "b2": {
+        "x": 616,
+        "y": 521
+      }
+    },
+    {
+      "reactionId": "Se@ATPSum",
+      "nodeId": "cur:Se@ATPSum:Se@h_c",
+      "kind": "currency",
+      "coefficient": 10,
+      "side": "product",
+      "from": {
+        "x": 616,
+        "y": 489
+      },
+      "to": {
+        "x": 696,
+        "y": 581
+      },
+      "backboneAnchor": true,
+      "arrow": true,
+      "b1": {
+        "x": 652,
+        "y": 581
+      },
+      "b2": {
+        "x": 616,
+        "y": 562.6
+      }
+    },
+    {
+      "reactionId": "Se@ATPSum",
+      "nodeId": "met:Se@atp_c",
+      "kind": "primary",
+      "coefficient": 3,
+      "side": "product",
+      "from": {
+        "x": 616,
+        "y": 489
+      },
+      "to": {
+        "x": 616,
+        "y": 626
+      },
+      "backboneAnchor": true,
+      "arrow": true,
+      "b1": {
+        "x": 616,
+        "y": 579.42
+      },
+      "b2": {
+        "x": 616,
+        "y": 527.36
+      }
+    },
+    {
+      "reactionId": "Se@ATPSum",
+      "nodeId": "met:Se@h_u",
+      "kind": "primary",
+      "coefficient": -13,
+      "side": "substrate",
+      "from": {
+        "x": 618,
+        "y": 435
+      },
+      "to": {
+        "x": 616,
+        "y": 463
+      },
+      "backboneAnchor": true,
+      "arrow": false,
+      "b1": {
+        "x": 617.32,
+        "y": 444.52
+      },
+      "b2": {
+        "x": 616.56,
+        "y": 455.16
+      }
+    }
+  ],
+  "texts": [
+    {
+      "id": "title",
+      "text": "Zuñiga et al. (2020) · ΔpheA phenylalanine rescue",
+      "x": 65,
+      "y": 55,
+      "fontSize": 28
+    },
+    {
+      "id": "scope",
+      "text": "Curated pathway map · the simulation uses the complete original models",
+      "x": 65,
+      "y": 87,
+      "fontSize": 17
+    },
+    {
+      "id": "Se-path",
+      "text": "Phototroph · phenylalanine biosynthesis",
+      "x": 139,
+      "y": 590,
+      "fontSize": 16
+    },
+    {
+      "id": "Ec-path",
+      "text": "Heterotroph · phenylalanine biosynthesis",
+      "x": 1215,
+      "y": 350,
+      "fontSize": 16
+    },
+    {
+      "id": "transfer",
+      "text": "Phenylalanine transfer",
+      "x": 950,
+      "y": 1110,
+      "fontSize": 17
+    },
+    {
+      "id": "ko-gene",
+      "text": "pheA / b2599 → PPNDH",
+      "x": 1215,
+      "y": 800,
+      "fontSize": 16
+    }
+  ],
+  "provenance": {
+    "source": "CM-modelsKO.mat:modelCo2{2}",
+    "purpose": "Editable curated geometry; not a simulation model",
+    "allReactionIdsVerifiedInOriginalSource": true,
+    "selectedReactions": 25,
+    "displayLabels": "original model metabolite IDs",
+    "layout": "identical for all three scenarios"
+  }
+}

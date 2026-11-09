@@ -1,0 +1,1120 @@
+//! The Zuñiga et al. (2020) published case (the `zuniga*` methods of
+//! `store.js`).
+//!
+//! The case downloads the authors' complete models, verifies their hashes and
+//! solves three scenarios with `loadZunigaStudy`, `createZunigaScenario` and
+//! `solveZunigaScenario` (`coxeter_analysis::zuniga`). Author models are
+//! fetched privately; the drawing never becomes the LP.
+//!
+//! In JS `store.community` is then the case's own community object (the
+//! authors' matrix with ownership read off the identifiers). Here the store
+//! keeps that [`ZunigaCommunity`] in [`ZunigaStudyState::prepared`] and puts
+//! a [`CommunityModel`] holding the same merged model and ownership in
+//! `store.community`, which is what the map, the labels and the search read;
+//! what the case computes differently (cross-feeding, growth, the explorer
+//! and the omics mapping) is asked of the case's community
+//! ([`Store::community_view`]).
+//!
+//! Downloading the sources is a background job ([`JobKind::Zuniga`]): the
+//! store answers at once and [`Store::poll_jobs`] installs the study, unless
+//! another scenario was opened meanwhile (`_zunigaGeneration`), in which case
+//! the late download is dropped with an `AbortError`.
+
+use std::path::PathBuf;
+use std::sync::Arc;
+use std::sync::atomic::{AtomicBool, Ordering};
+use std::time::{Duration, Instant};
+
+use coxeter_analysis::community_view::{CommunityView, TransferRef};
+use coxeter_analysis::zuniga::{ZunigaModels, ZunigaRun, ZunigaScenario, ZunigaSourceModels};
+use coxeter_analysis::{
+    DirectoryCache, SourceCache, ZunigaCommunity, ZunigaLoadOptions, ZunigaPrepared, ZunigaStudy, create_zuniga_scenario,
+    load_zuniga_study, solve_zuniga_scenario,
+};
+use coxeter_core::community::{CommunityModel, CrossFeeding, Objective, ReactionOwner, SpeciesEntry, Transfer};
+use coxeter_core::js;
+use coxeter_core::model::Model;
+use coxeter_map::editable_map::EditableMap;
+use coxeter_map::multi_selection::empty_selection;
+use coxeter_io::reproducibility::{Tolerances, compare_archived_solution, verify_reproducibility_bundle};
+use coxeter_solver::backends::Solver;
+use indexmap::IndexMap;
+use serde_json::{Map, Value, json};
+
+use crate::assets::Fetcher;
+use crate::error::{Result, StoreError};
+use crate::jobs::{JobContext, JobKind, JobMessage, JobPayload};
+use crate::store::Store;
+use crate::types::{SteadyComConfig, Solution, Species, Status, StatusState, LogKind};
+use crate::util::num_json;
+
+pub use coxeter_analysis::ZUNIGA_SCENARIOS;
+pub use coxeter_analysis::zuniga::ZUNIGA_ID;
+
+/// The scenario with this id.
+pub fn zuniga_scenario(id: &str) -> Option<&'static ZunigaScenario> {
+    ZUNIGA_SCENARIOS.iter().find(|s| s.id == id)
+}
+
+/// What a solved scenario records about itself (`result.zuniga`): the run,
+/// with the growth and cross-feeding the store adds to it.
+#[derive(Debug, Clone)]
+pub struct ZunigaRecord {
+    pub run: ZunigaRun,
+    pub growth: IndexMap<String, f64>,
+    pub cross_feeding: CrossFeeding,
+}
+
+impl ZunigaRecord {
+    pub fn to_json(&self) -> Value {
+        let mut out = match self.run.to_json() {
+            Value::Object(m) => m,
+            _ => Map::new(),
+        };
+        out.insert("growth".into(), Value::Object(self.growth.iter().map(|(k, v)| (k.clone(), num_json(*v))).collect()));
+        out.insert("crossFeeding".into(), cross_feeding_json(&self.cross_feeding));
+        Value::Object(out)
+    }
+}
+
+/// `{links, perMetabolite}` as the JS object prints.
+pub fn cross_feeding_json(cf: &CrossFeeding) -> Value {
+    let share = |s: &coxeter_core::community::FluxShare| json!({"speciesId": s.species_id, "flux": num_json(s.flux)});
+    json!({
+        "links": cf.links.iter().map(|l| json!({"base": l.base, "from": l.from, "to": l.to, "flux": num_json(l.flux)})).collect::<Vec<_>>(),
+        "perMetabolite": cf.per_metabolite.iter().map(|m| json!({
+            "base": m.base,
+            "producers": m.producers.iter().map(share).collect::<Vec<_>>(),
+            "consumers": m.consumers.iter().map(share).collect::<Vec<_>>(),
+            "total": num_json(m.total),
+        })).collect::<Vec<_>>(),
+    })
+}
+
+/// The Zuñiga fields of the store.
+#[derive(Debug, Clone)]
+pub struct ZunigaStudyState {
+    /// `zunigaStudy`: the manifest, source hashes, source models and the
+    /// two member models.
+    pub study: Option<Arc<ZunigaStudy>>,
+    /// `zunigaPrepared`: the open scenario's community and problem.
+    pub prepared: Option<Arc<ZunigaPrepared>>,
+    pub scenario_id: Option<String>,
+    /// `absolute` or `difference`.
+    pub comparison: String,
+    pub solutions: IndexMap<String, Arc<Solution>>,
+    /// `_zunigaGeneration`.
+    pub generation: u64,
+    /// `showCrossFeeding` before the case hid it (`_zunigaPreviousView`).
+    pub previous_view: Option<bool>,
+}
+
+impl Default for ZunigaStudyState {
+    fn default() -> Self {
+        ZunigaStudyState {
+            study: None,
+            prepared: None,
+            scenario_id: None,
+            comparison: "absolute".into(),
+            solutions: IndexMap::new(),
+            generation: 0,
+            previous_view: None,
+        }
+    }
+}
+
+// The community
+
+/// The community the analysis functions read: the ordinary one, or the
+/// Zuñiga case's own.
+#[derive(Debug, Clone, Copy)]
+pub enum CommunityRef<'a> {
+    Model(&'a CommunityModel),
+    Zuniga(&'a ZunigaCommunity),
+}
+
+impl CommunityView for CommunityRef<'_> {
+    fn merged_reaction_ids(&self) -> Vec<&str> {
+        match self {
+            CommunityRef::Model(c) => c.merged_reaction_ids(),
+            CommunityRef::Zuniga(c) => c.merged_reaction_ids(),
+        }
+    }
+
+    fn reaction_owner(&self, reaction_id: &str) -> Option<&ReactionOwner> {
+        match self {
+            CommunityRef::Model(c) => CommunityView::reaction_owner(*c, reaction_id),
+            CommunityRef::Zuniga(c) => CommunityView::reaction_owner(*c, reaction_id),
+        }
+    }
+
+    fn transfers(&self, base: &str) -> Vec<TransferRef<'_>> {
+        match self {
+            CommunityRef::Model(c) => c.transfers(base),
+            CommunityRef::Zuniga(c) => c.transfers(base),
+        }
+    }
+
+    fn cross_feeding(&self, fluxes: &IndexMap<String, f64>, threshold: f64) -> CrossFeeding {
+        match self {
+            CommunityRef::Model(c) => c.cross_feeding(fluxes, threshold),
+            CommunityRef::Zuniga(c) => c.cross_feeding(fluxes, threshold),
+        }
+    }
+}
+
+impl CommunityRef<'_> {
+    /// `community.growthRates(fluxes)`.
+    pub fn growth_rates(&self, fluxes: &IndexMap<String, f64>) -> IndexMap<String, f64> {
+        match self {
+            CommunityRef::Model(c) => c.growth_rates(fluxes),
+            CommunityRef::Zuniga(c) => c.growth_rates(fluxes),
+        }
+    }
+}
+
+/// The case's community as a [`CommunityModel`]: the same merged model,
+/// members, ownership and transfers, for everything that only reads them.
+pub fn zuniga_community_model(c: &ZunigaCommunity) -> CommunityModel {
+    CommunityModel {
+        name: c.name.clone(),
+        // `source-biomass-objective` has no counterpart among the community
+        // objectives; nothing rebuilds this community, so it is never read.
+        objective_type: Objective::EqualGrowth,
+        product_target: None,
+        medium: IndexMap::new(),
+        species: c
+            .species
+            .iter()
+            .map(|m| SpeciesEntry { id: m.id.clone(), model: m.model.clone(), abundance: m.abundance, enabled: m.enabled, color: m.color.clone() })
+            .collect(),
+        merged: (*c.merged).clone(),
+        reaction_owner: c.reaction_owner.clone(),
+        metabolite_owner: c.metabolite_owner.clone(),
+        transfers_by_base: c
+            .transfers_by_base
+            .iter()
+            .map(|(base, list)| {
+                let list = list
+                    .iter()
+                    .map(|t| Transfer { species_id: t.species_id.clone(), reaction_id: t.reaction_id.clone(), local_id: t.local_id.clone().unwrap_or_default() })
+                    .collect();
+                (base.clone(), list)
+            })
+            .collect(),
+        species_compartments: c.species_compartments.clone(),
+        biomass_ids: c.biomass_ids.clone(),
+        abundances: c.abundances.clone(),
+    }
+}
+
+// The loader
+
+/// `loadZunigaStudy(manifest, { onProgress })`, replaceable as the JS tests
+/// replace `store.loadZunigaStudy`. It runs on a background thread.
+pub trait ZunigaLoader: Send + Sync {
+    fn load(&self, manifest: &Value, fetcher: &dyn Fetcher, on_progress: &mut dyn FnMut(&str)) -> Result<ZunigaStudy>;
+}
+
+/// The real loader: download every pinned source through the store's
+/// fetcher (or take it from the cache), verify it, convert the models.
+#[derive(Debug, Clone, Default)]
+pub struct SourceZunigaLoader {
+    /// Where verified downloads are kept between runs (the JS keeps them in a
+    /// private IndexedDB store); `None` downloads every time.
+    pub cache_dir: Option<PathBuf>,
+}
+
+impl ZunigaLoader for SourceZunigaLoader {
+    fn load(&self, manifest: &Value, fetcher: &dyn Fetcher, on_progress: &mut dyn FnMut(&str)) -> Result<ZunigaStudy> {
+        let adapter = |url: &str| -> coxeter_analysis::Result<coxeter_analysis::FetchResponse> {
+            fetcher
+                .fetch(url)
+                .map(|r| coxeter_analysis::FetchResponse { status: r.status, body: r.body })
+                .map_err(|e| coxeter_analysis::Error::new(coxeter_analysis::ErrorKind::Download, e.to_string()))
+        };
+        let cache = self.cache_dir.as_ref().map(DirectoryCache::new);
+        let options = ZunigaLoadOptions {
+            fetcher: &adapter,
+            cache: cache.as_ref().map(|c| c as &dyn SourceCache),
+            on_progress: Some(on_progress),
+        };
+        Ok(load_zuniga_study(manifest, options)?)
+    }
+}
+
+/// A Zuñiga load running in the background.
+pub(crate) struct ZunigaJob {
+    pub generation: u64,
+    pub manifest: Value,
+    pub scenario_id: String,
+}
+
+impl Store {
+    /// `isZunigaStudy`.
+    pub fn is_zuniga_study(&self) -> bool {
+        self.scenario_published().as_deref() == Some(ZUNIGA_ID) && self.zuniga.study.is_some()
+    }
+
+    /// The community the analysis functions read: the Zuñiga case's own when
+    /// it is open, the ordinary one otherwise.
+    pub fn community_view(&self) -> Option<CommunityRef<'_>> {
+        if self.is_zuniga_study() {
+            if let Some(prepared) = &self.zuniga.prepared {
+                return Some(CommunityRef::Zuniga(&prepared.community));
+            }
+        }
+        self.community.as_deref().map(CommunityRef::Model)
+    }
+
+    /// `resetZunigaStudy()`.
+    pub fn reset_zuniga_study(&mut self) {
+        self.zuniga.generation += 1;
+        if let Some(show) = self.zuniga.previous_view.take() {
+            self.view.show_cross_feeding = show;
+        }
+        // Every switch of context comes here, so this also gives back the
+        // view a SteadyCom community changed when it opened solved.
+        if let Some(show) = self.case_view.take() {
+            self.view.show_cross_feeding = show;
+        }
+        let generation = self.zuniga.generation;
+        self.zuniga = ZunigaStudyState { generation, ..ZunigaStudyState::default() };
+        // A download still running belongs to the case just left.
+        for entry in self.jobs.running.values() {
+            if entry.kind == JobKind::Zuniga {
+                entry.cancel.store(true, Ordering::SeqCst);
+            }
+        }
+    }
+
+    /// `useZunigaStudy({ study, scenarioId })`: open the case.
+    ///
+    /// With a `study` in hand (a test fixture, a restored bundle) the case is
+    /// installed at once. Without one the sources are downloaded by
+    /// [`Store::zuniga_loader`] on a background thread and
+    /// [`Store::poll_jobs`] installs them; the call returns as soon as the
+    /// download has started. [`Store::use_zuniga_study_blocking`] waits.
+    pub fn use_zuniga_study(&mut self, study: Option<ZunigaStudy>, scenario_id: Option<&str>) -> Result<()> {
+        let scenario_id = scenario_id.unwrap_or("mutant-coculture").to_string();
+        self.invalidate_steady_com();
+        self.reset_zuniga_study();
+        self.reset_community_gimme();
+        self.solution_cleared = false;
+        let generation = self.zuniga.generation;
+        self.published_community_id = Some(ZUNIGA_ID.into());
+        let name = self
+            .published_communities
+            .iter()
+            .find(|c| c.get("id").and_then(Value::as_str) == Some(ZUNIGA_ID))
+            .and_then(|c| c.get("name"))
+            .filter(|n| !n.is_null())
+            .cloned()
+            .unwrap_or_else(|| json!("Zuñiga et al. (2020) — pheA rescue"));
+        self.scenario = Some(json!({ "id": format!("published:{ZUNIGA_ID}"), "name": name, "published": ZUNIGA_ID }));
+        self.set_status_message(StatusState::Busy, "Loading the authors’ complete models and verifying their SHA-256 hashes…");
+        self.emit("status");
+        if let Some(study) = study {
+            let manifest = study.manifest.clone();
+            return self.finish_zuniga_load(generation, Ok(study), manifest, &scenario_id);
+        }
+        let Some(manifest) = self.published_manifest(ZUNIGA_ID) else {
+            return self.finish_zuniga_load(
+                generation,
+                Err(StoreError::msg("The Zuñiga case manifest is unavailable.")),
+                Value::Null,
+                &scenario_id,
+            );
+        };
+        let loader = self.zuniga_loader.clone();
+        let fetcher = self.fetcher.clone();
+        let job = ZunigaJob { generation, manifest: manifest.clone(), scenario_id };
+        let cancel = Arc::new(AtomicBool::new(false));
+        self.jobs.spawn(JobKind::Zuniga, "zuniga", 0, JobContext::Zuniga(Box::new(job)), cancel, move |id, tx, _cancel| {
+            let progress_tx = tx.clone();
+            let mut on_progress = |message: &str| {
+                let _ = progress_tx.send(JobMessage::Progress { id, message: message.to_string() });
+            };
+            let result = loader.load(&manifest, fetcher.as_ref(), &mut on_progress);
+            let _ = tx.send(JobMessage::Done { id, payload: JobPayload::Zuniga(Box::new(result)) });
+        });
+        Ok(())
+    }
+
+    /// [`Store::use_zuniga_study`] to the end: start the download and wait
+    /// for it (what an `await` of the JS call does).
+    pub fn use_zuniga_study_blocking(&mut self, scenario_id: Option<&str>, timeout: Duration) -> Result<()> {
+        self.use_zuniga_study(None, scenario_id)?;
+        let until = Instant::now() + timeout;
+        loop {
+            for outcome in self.wait_for_kind(JobKind::Zuniga, until.saturating_duration_since(Instant::now())) {
+                if outcome.kind == JobKind::Zuniga {
+                    return outcome.result;
+                }
+            }
+            if !self.job_running(JobKind::Zuniga) {
+                // Installed synchronously (no manifest) or already applied.
+                return if self.is_zuniga_study() { Ok(()) } else { Err(StoreError::msg(self.status().message.clone())) };
+            }
+            if Instant::now() >= until {
+                return Err(StoreError::aborted("The Zuñiga models did not load in time."));
+            }
+        }
+    }
+
+    /// A progress message of the download, shown while it is still the
+    /// current one.
+    pub(crate) fn apply_zuniga_progress(&mut self, generation: u64, message: &str) {
+        if generation != self.zuniga.generation {
+            return;
+        }
+        self.set_status_message(StatusState::Busy, message);
+        self.emit("status");
+    }
+
+    /// The end of a background load.
+    pub(crate) fn apply_zuniga_job(&mut self, job: ZunigaJob, result: Result<ZunigaStudy>) -> Result<()> {
+        self.finish_zuniga_load(job.generation, result, job.manifest, &job.scenario_id)
+    }
+
+    /// The rest of `useZunigaStudy` once the study is loaded (or failed).
+    fn finish_zuniga_load(&mut self, generation: u64, loaded: Result<ZunigaStudy>, manifest: Value, scenario_id: &str) -> Result<()> {
+        let superseded = || StoreError::aborted("The Zuñiga load was superseded by another scenario.");
+        if generation != self.zuniga.generation {
+            return Err(match loaded {
+                Err(e) if e.is_abort() => e,
+                _ => superseded(),
+            });
+        }
+        let attempt = loaded.and_then(|study| self.install_zuniga_study(study, manifest, scenario_id, generation));
+        match attempt {
+            Ok(()) => Ok(()),
+            Err(error) => {
+                if generation != self.zuniga.generation {
+                    return Err(error);
+                }
+                self.reset_zuniga_study();
+                self.community = None;
+                self.set_problem(None);
+                self.map = None;
+                self.solution = None;
+                self.scale = None;
+                self.growth = IndexMap::new();
+                self.cross_feeding = CrossFeeding::default();
+                self.cross_feeding_explorer.index = None;
+                self.map_history.clear();
+                self.selected_reaction = None;
+                self.selected_entity = None;
+                self.set_status_message(StatusState::Error, error.to_string());
+                self.emit("rebuild");
+                Err(error)
+            }
+        }
+    }
+
+    fn install_zuniga_study(&mut self, study: ZunigaStudy, manifest: Value, scenario_id: &str, generation: u64) -> Result<()> {
+        let manifest = if manifest.is_null() { study.manifest.clone() } else { manifest };
+        let study = Arc::new(study);
+        self.zuniga.study = Some(study.clone());
+        self.published_manifests.insert(ZUNIGA_ID.into(), Some(manifest.clone()));
+        self.species = ["Ec", "Se"]
+            .iter()
+            .map(|id| {
+                let file = format!("published/{ZUNIGA_ID}/model-{id}");
+                if let Some(model) = study.models.get(id) {
+                    self.models.insert_arc(file.clone(), model.clone());
+                }
+                Species::new(id, &file, 1.0, true)
+            })
+            .collect();
+        self.model_editor_species_id = Some("Ec".into());
+        self.model_editor_mode = None;
+        self.objective = "published-original".into();
+        self.zuniga.previous_view = Some(self.view.show_cross_feeding);
+        self.view.show_cross_feeding = false;
+        self.view.reaction_color_mode = coxeter_render::reaction_colors::ReactionColorMode::Flux;
+        self.view.pathway_ribbon_mode = coxeter_render::reaction_colors::PathwayRibbonMode::Off;
+        self.product_target = None;
+        self.custom_objective = None;
+        self.parsimonious = false;
+        self.loopless = false;
+        self.cycle_free = false;
+        self.fva_enabled = false;
+        self.pfva_enabled = false;
+        self.cancel_fva(true, false);
+        self.medium = IndexMap::new();
+        self.overrides.clear();
+        self.gene_knockouts.clear();
+        self.manual_pathways.clear();
+        self.pathway_settings.clear();
+        self.clear_omics(false);
+        self.joint_projection_spec = None;
+        self.community_exchange_ids = None;
+        self.steady_com_config = SteadyComConfig::default();
+        self.selected_reaction = None;
+        self.selected_geometry = None;
+        self.selected_entity = None;
+        self.multi_selection = empty_selection();
+        self.variability = None;
+        for scenario in ZUNIGA_SCENARIOS.iter() {
+            self.set_status_message(StatusState::Busy, format!("Calculating {} on the complete model…", scenario.name));
+            self.emit("status");
+            if generation != self.zuniga.generation {
+                return Err(StoreError::aborted("The Zuñiga load was superseded by another scenario."));
+            }
+            let prepared = create_zuniga_scenario(&study, scenario.id)?;
+            let solution = zuniga_solution(&prepared, &self.solver);
+            if !solution.is_optimal() {
+                let mut why = solution.status.as_str().to_string();
+                if !solution.message.is_empty() {
+                    why.push_str(": ");
+                    why.push_str(&solution.message);
+                }
+                return Err(StoreError::msg(format!("{}: {why}", scenario.name)));
+            }
+            self.zuniga.solutions.insert(scenario.id.to_string(), Arc::new(solution));
+        }
+        let map_file = manifest.get("map").filter(|m| !m.is_null()).map_or_else(|| "map.json".to_string(), js::to_string);
+        let drawing = self.assets.read_json(&format!("models/published/{ZUNIGA_ID}/{map_file}"))?;
+        let doc = drawing.get("map").filter(|m| !m.is_null()).unwrap_or(&drawing);
+        self.map = Some(EditableMap::from_json(doc)?);
+        self.map_mode = "published-case".into();
+        self.map_history.clear();
+        self.use_zuniga_scenario(scenario_id, false)?;
+        self.settle_opened_work();
+        self.emit("rebuild");
+        Ok(())
+    }
+
+    /// `useZunigaScenario(id, { emit })`: switch the case to one of its three
+    /// scenarios. The drawing and its history stay; the exact model, its
+    /// knockout and the solution change.
+    pub fn use_zuniga_scenario(&mut self, id: &str, emit: bool) -> Result<Arc<Solution>> {
+        if !self.is_zuniga_study() {
+            return Err(StoreError::msg("Open the Zuñiga published case first."));
+        }
+        let Some(scenario) = zuniga_scenario(id) else {
+            return Err(StoreError::msg(format!("Unknown Zuñiga case scenario: {id}")));
+        };
+        let study = self.zuniga.study.clone().expect("is_zuniga_study");
+        let prepared = Arc::new(create_zuniga_scenario(&study, id)?);
+        self.zuniga.prepared = Some(prepared.clone());
+        self.zuniga.scenario_id = Some(id.to_string());
+        self.community = Some(Arc::new(zuniga_community_model(&prepared.community)));
+        self.community_exchange_ids = None;
+        self.default_bounds = Some(prepared.problem.snapshot_bounds());
+        self.set_problem(Some(prepared.problem.clone()));
+        self.overrides.clear();
+        self.gene_knockouts.clear();
+        let record_name = self
+            .published_communities
+            .iter()
+            .find(|c| c.get("id").and_then(Value::as_str) == Some(ZUNIGA_ID))
+            .and_then(|c| c.get("name"))
+            .filter(|n| !n.is_null())
+            .map_or_else(|| "Zuñiga et al. (2020)".to_string(), js::to_string);
+        if let Some(Value::Object(s)) = self.scenario.as_mut() {
+            s.insert("caseScenario".into(), json!(id));
+            s.insert("name".into(), json!(format!("{record_name} — {}", scenario.name)));
+        }
+        self.selected_reaction = None;
+        self.selected_entity = None;
+        let solution = match self.zuniga.solutions.get(id) {
+            Some(s) => {
+                // The JS writes growth and cross-feeding into the stored
+                // result again; they are the same numbers.
+                let mut s = (**s).clone();
+                if let Some(record) = s.zuniga.as_mut() {
+                    let mut r = (**record).clone();
+                    r.growth = prepared.community.growth_rates(&s.fluxes);
+                    r.cross_feeding = prepared.community.cross_feeding(&s.fluxes, 1e-6);
+                    *record = Arc::new(r);
+                }
+                s
+            }
+            None => zuniga_solution(&prepared, &self.solver),
+        };
+        let solution = Arc::new(solution);
+        self.zuniga.solutions.insert(id.to_string(), solution.clone());
+        self.apply_solution_arc(solution.clone(), false);
+        self.set_status_message(
+            if solution.is_optimal() { StatusState::Ok } else { StatusState::Error },
+            format!("{} · exact source constraints · stationary FBA.", scenario.name),
+        );
+        if emit {
+            self.emit("solution");
+        }
+        Ok(solution)
+    }
+
+    /// Solve every scenario the case keeps again on the store's solver, after
+    /// a change of solver: the difference view compares with the WT one.
+    pub(crate) fn resolve_zuniga_scenarios(&mut self) -> Result<()> {
+        let Some(study) = self.zuniga.study.clone() else { return Ok(()) };
+        let ids: Vec<String> = self.zuniga.solutions.keys().cloned().collect();
+        for id in ids {
+            let prepared = create_zuniga_scenario(&study, &id)?;
+            let solution = zuniga_solution(&prepared, &self.solver);
+            self.zuniga.solutions.insert(id, Arc::new(solution));
+        }
+        Ok(())
+    }
+
+    /// The `solve()` of the case: the open scenario again, on its exact LP.
+    pub(crate) fn solve_zuniga(&mut self, silent: bool) -> Option<Arc<Solution>> {
+        let prepared = self.zuniga.prepared.clone()?;
+        let t = Instant::now();
+        let solution = Arc::new(zuniga_solution(&prepared, &self.solver));
+        let id = self.zuniga.scenario_id.clone().unwrap_or_default();
+        self.zuniga.solutions.insert(id.clone(), solution.clone());
+        self.apply_solution_arc(solution.clone(), false);
+        // Like an ordinary solve: a success leaves the header to its summary
+        // and goes to the log. Shown as a notice it would hide the objective
+        // for six seconds after every re-solve.
+        let name = zuniga_scenario(&id).map_or("undefined", |s| s.name);
+        let case_name = format!("{name} · exact source constraints");
+        let optimal = solution.is_optimal();
+        let solve_ms = js::round(t.elapsed().as_secs_f64() * 1000.0);
+        let next = Status {
+            state: if optimal { StatusState::Ok } else { StatusState::Error },
+            message: if optimal { String::new() } else { case_name.clone() },
+            solve_ms,
+            ..self.status().clone()
+        };
+        self.set_status(next);
+        if optimal {
+            self.add_log(StatusState::Ok, &format!("{case_name} solved: optimal, {} ms", js::number_to_string(solve_ms)), LogKind::Solve);
+        }
+        if !silent {
+            self.emit("solution");
+        }
+        Some(solution)
+    }
+
+    /// `setZunigaComparison(mode)`: absolute fluxes, or their difference from
+    /// the WT monoculture on a fixed scale.
+    pub fn set_zuniga_comparison(&mut self, mode: &str) -> Result<()> {
+        if !self.is_zuniga_study() {
+            return Ok(());
+        }
+        if mode != "absolute" && mode != "difference" {
+            return Err(StoreError::msg("The comparison must be absolute or difference."));
+        }
+        self.zuniga.comparison = mode.to_string();
+        if mode == "difference" {
+            self.view.reaction_color_mode = coxeter_render::reaction_colors::ReactionColorMode::Flux;
+        }
+        self.refresh_flux_scale();
+        self.emit("view");
+        Ok(())
+    }
+
+    /// `zunigaState()`: what a saved map or scenario records about the case,
+    /// or `null`.
+    pub fn zuniga_state(&self) -> Value {
+        if !self.is_zuniga_study() {
+            return Value::Null;
+        }
+        let study = self.zuniga.study.as_ref().expect("is_zuniga_study");
+        let flux_reference = study.manifest.get("fluxReference").filter(|v| !v.is_null()).cloned().unwrap_or(json!(0.1));
+        json!({
+            "id": ZUNIGA_ID,
+            "scenarioId": self.zuniga.scenario_id,
+            "comparison": self.zuniga.comparison,
+            "fluxReference": flux_reference,
+            "sourceHashes": study.source_hashes,
+        })
+    }
+
+    /// `validateZunigaState(state)`.
+    pub fn validate_zuniga_state(&self, state: &Value) -> Result<()> {
+        self.validate_zuniga_state_against(state, &self.zuniga_state())
+    }
+
+    fn validate_zuniga_state_against(&self, state: &Value, current: &Value) -> Result<()> {
+        let scenario = state.get("scenarioId").and_then(Value::as_str);
+        if !scenario.is_some_and(|id| zuniga_scenario(id).is_some()) {
+            return Err(StoreError::msg("The saved Zuñiga scenario is invalid."));
+        }
+        let comparison = match state.get("comparison") {
+            None | Some(Value::Null) => "absolute",
+            Some(Value::String(value)) => value.as_str(),
+            Some(_) => return Err(StoreError::msg("The saved Zuñiga comparison is invalid.")),
+        };
+        if comparison != "absolute" && comparison != "difference" {
+            return Err(StoreError::msg("The saved Zuñiga comparison is invalid."));
+        }
+        if let Some(reference) = state.get("fluxReference") {
+            let same = match (reference.as_f64(), current.get("fluxReference").and_then(Value::as_f64)) {
+                (Some(a), Some(b)) => a == b,
+                _ => Some(reference) == current.get("fluxReference"),
+            };
+            if !same {
+                return Err(StoreError::msg("The saved Zuñiga document uses a different flux scale reference."));
+            }
+        }
+        if let (Some(saved), Some(Value::Object(hashes))) = (state.get("sourceHashes").filter(|v| js::truthy(v)), current.get("sourceHashes")) {
+            if hashes.iter().any(|(file, hash)| saved.get(file) != Some(hash)) {
+                return Err(StoreError::msg("The saved Zuñiga document refers to different source model hashes."));
+            }
+        }
+        Ok(())
+    }
+
+    /// Check saved case settings before starting a private model download.
+    pub(crate) fn validate_zuniga_document(&mut self, state: &Value) -> Result<()> {
+        if self.is_zuniga_study() {
+            return self.validate_zuniga_state(state);
+        }
+        let Some(manifest) = self.published_manifest(ZUNIGA_ID) else {
+            return Err(StoreError::msg("The Zuñiga case manifest is unavailable."));
+        };
+        let mut hashes = Map::new();
+        if let Some(sources) = manifest.get("sources").and_then(Value::as_array) {
+            for source in sources {
+                if let Some(file) = source.get("file").and_then(Value::as_str) {
+                    hashes.insert(file.to_string(), source.get("sha256").cloned().unwrap_or(Value::Null));
+                }
+            }
+        }
+        let reference = manifest.get("fluxReference").filter(|value| !value.is_null()).cloned().unwrap_or(json!(0.1));
+        self.validate_zuniga_state_against(state, &json!({"fluxReference": reference, "sourceHashes": hashes}))
+    }
+
+    /// The case's study as a reproducibility bundle archives it.
+    pub(crate) fn zuniga_bundle_state(&self) -> Option<coxeter_io::reproducibility::ZunigaStudyState> {
+        if !self.is_zuniga_study() {
+            return None;
+        }
+        let study = self.zuniga.study.as_ref()?;
+        Some(coxeter_io::reproducibility::ZunigaStudyState {
+            state: self.zuniga_state(),
+            manifest: study.manifest.clone(),
+            source_models: json!({ "mono": study.source_models.mono, "joint": study.source_models.joint }),
+            active_model: self.community.as_ref().map_or(Value::Null, |c| c.merged.to_json()),
+        })
+    }
+
+    /// `importZunigaBundle(bundle, check)`: replay a private bundle against
+    /// its complete source models, without the generic community merger.
+    pub fn import_zuniga_bundle(&mut self, bundle: &Value) -> Result<Value> {
+        let check = verify_reproducibility_bundle(bundle)?;
+        if !check.valid {
+            return Err(StoreError::msg("The bundle fails SHA-256 verification; it may have been modified or be corrupt."));
+        }
+        let archived = bundle.get("study").cloned().unwrap_or(Value::Null);
+        let source = |k: &str| archived.get("sourceModels").and_then(|s| s.get(k)).filter(|v| js::truthy(v)).cloned();
+        let (Some(mono), Some(joint)) = (source("mono"), source("joint")) else {
+            return Err(StoreError::msg("The private Zuñiga bundle lacks its complete source models."));
+        };
+        let model = |id: &str| -> Result<Arc<Model>> {
+            let doc = bundle.get("models").and_then(|m| m.get(id)).cloned().unwrap_or(Value::Null);
+            Ok(Arc::new(coxeter_io::model_import::parse_model_json(&doc.to_string(), &format!("Bundle model \"{id}\""))?))
+        };
+        let source_hashes: IndexMap<String, String> = match archived.get("sourceHashes") {
+            Some(Value::Object(m)) => m.iter().map(|(k, v)| (k.clone(), js::to_string(v))).collect(),
+            _ => IndexMap::new(),
+        };
+        let study = ZunigaStudy {
+            manifest: archived.get("manifest").cloned().unwrap_or(Value::Null),
+            source_hashes,
+            source_models: ZunigaSourceModels { mono, joint },
+            models: ZunigaModels { ec: model("Ec")?, se: model("Se")? },
+        };
+        for (name, source) in [("mono", &study.source_models.mono), ("joint", &study.source_models.joint)] {
+            coxeter_io::model_import::parse_model_json(&source.to_string(), &format!("Private source model \"{name}\""))?;
+        }
+        for scenario in ZUNIGA_SCENARIOS {
+            let prepared = create_zuniga_scenario(&study, scenario.id)?;
+            let result = zuniga_solution(&prepared, &self.solver);
+            if !result.is_optimal() {
+                let mut reason = result.status.as_str().to_string();
+                if !result.message.is_empty() {
+                    reason.push_str(": ");
+                    reason.push_str(&result.message);
+                }
+                return Err(StoreError::msg(format!("{}: {reason}", scenario.name)));
+            }
+        }
+        let scenario_id = archived.get("scenarioId").and_then(Value::as_str).map(str::to_string);
+        if !scenario_id.as_deref().is_some_and(|id| ZUNIGA_SCENARIOS.iter().any(|s| s.id == id)) {
+            return Err(StoreError::msg("The saved Zuñiga scenario is invalid."));
+        }
+        let comparison = match archived.get("comparison") {
+            None | Some(Value::Null) => "absolute".to_string(),
+            Some(Value::String(value)) => value.clone(),
+            Some(_) => return Err(StoreError::msg("The saved Zuñiga comparison is invalid.")),
+        };
+        if !["absolute", "difference"].contains(&comparison.as_str()) {
+            return Err(StoreError::msg("The saved Zuñiga comparison is invalid."));
+        }
+        let map = if let Some(map) = bundle.get("map").filter(|m| !m.is_null()) {
+            let context = create_zuniga_scenario(&study, "mutant-coculture")?;
+            let community = zuniga_community_model(&context.community);
+            let species = [Species::new("Ec", "", 1.0, true), Species::new("Se", "", 1.0, true)];
+            crate::documents::validate_map_document(map, &community, &species)?;
+            Some(EditableMap::from_json(map)?)
+        } else {
+            None
+        };
+        self.use_zuniga_study(Some(study), scenario_id.as_deref())?;
+        self.set_zuniga_comparison(&comparison)?;
+        if let Some(map) = map {
+            self.map = Some(map);
+            self.map_history.clear();
+        }
+        let tolerances = bundle
+            .get("replay")
+            .and_then(|r| r.get("tolerances"))
+            .filter(|t| !t.is_null())
+            .map(|t| Tolerances {
+                absolute: t.get("absolute").and_then(Value::as_f64).unwrap_or(1e-7),
+                relative: t.get("relative").and_then(Value::as_f64).unwrap_or(1e-6),
+            })
+            .unwrap_or_default();
+        let current = self.solution.as_ref().map_or(Value::Null, |s| s.replay_json());
+        let replay = compare_archived_solution(bundle.get("solution").unwrap_or(&Value::Null), &current, tolerances);
+        let replay_json = replay.as_ref().map_or(Value::Null, |comparison| comparison.to_json());
+        let mut check_json = serde_json::to_value(&check)?;
+        if let Some(o) = check_json.as_object_mut() {
+            o.insert("replay".into(), replay_json.clone());
+        }
+        self.reproducibility_replay = Some(json!({
+            "integrity": check_json,
+            "replay": replay_json,
+            "archivedAt": bundle.get("metadata").and_then(|m| m.get("createdAt")).cloned().unwrap_or(Value::Null),
+            "restored": { "map": bundle.get("map").is_some_and(js::truthy), "omicsExpected": false, "omics": false },
+        }));
+        self.settle_opened_work();
+        let hash: String =
+            bundle.get("integrity").and_then(|i| i.get("payloadHash")).and_then(Value::as_str).unwrap_or("").chars().take(12).collect();
+        let mut verdict = "no archived numerical result to compare".to_string();
+        let mut state = StatusState::Ok;
+        if let Some(comparison) = &replay {
+            if !comparison.pass {
+                verdict = "numerical differences".into();
+                state = StatusState::Warn;
+            } else if !self.solution.as_ref().is_some_and(|s| s.is_optimal()) {
+                let status = self.solution.as_ref().map_or("not run", |s| s.status.as_str());
+                verdict = format!("analysis status reproduced: {status}");
+                state = StatusState::Warn;
+            } else {
+                verdict = "numerical replay OK".into();
+            }
+        } else if !self.solution.as_ref().is_some_and(|s| s.is_optimal()) {
+            let status = self.solution.as_ref().map_or("not run", |s| s.status.as_str());
+            verdict.push_str(&format!(" · new analysis: {status}"));
+            state = StatusState::Error;
+        }
+        self.set_status_message(state, format!("Private Zuñiga bundle restored · {verdict} · SHA-256 {hash}…"));
+        self.emit("rebuild");
+        Ok(check_json)
+    }
+
+    /// The knockouts of the open Zuñiga scenario (`zunigaPrepared.knockouts`).
+    pub fn zuniga_knockouts(&self) -> Vec<String> {
+        self.zuniga.prepared.as_ref().map(|p| p.knockouts.clone()).unwrap_or_default()
+    }
+}
+
+/// `solveZunigaScenario(prepared)` on `solver`, with the growth and
+/// cross-feeding the store records on it.
+fn zuniga_solution(prepared: &ZunigaPrepared, solver: &Solver) -> Solution {
+    let solved = if prepared.problem.solver().same_as(solver) {
+        solve_zuniga_scenario(prepared)
+    } else {
+        let mut on_solver = prepared.clone();
+        on_solver.problem.set_solver(solver.clone());
+        solve_zuniga_scenario(&on_solver)
+    };
+    let growth = prepared.community.growth_rates(&solved.result.fluxes);
+    let cross_feeding = prepared.community.cross_feeding(&solved.result.fluxes, 1e-6);
+    let mut solution = Solution::from_result(solved.result);
+    solution.zuniga = Some(Arc::new(ZunigaRecord { run: solved.zuniga, growth, cross_feeding }));
+    solution
+}
+
+#[cfg(test)]
+mod private_context_tests {
+    use super::*;
+    use crate::assets::{DirAssets, MemoryAssets};
+    use crate::types::ViewPatch;
+    use coxeter_analysis::zuniga::{ZunigaModels, ZunigaSourceModels};
+    use coxeter_io::reproducibility::sha256;
+    use std::sync::Barrier;
+    use std::sync::atomic::AtomicUsize;
+
+    fn fixture() -> (ZunigaStudy, Value) {
+        let mut mono: Value = serde_json::from_str(include_str!("../../../../models/ecoli_core_mc.json")).expect("bundled model");
+        mono["id"] = json!("core-private-fixture-Ec");
+        mono["genes"] = json!([{"id": "b2599"}]);
+        for reaction in mono["reactions"].as_array_mut().expect("reactions") {
+            reaction["gene_reaction_rule"] = json!("");
+            reaction["objective_coefficient"] = json!(0);
+            if reaction["id"] == "PGI" {
+                reaction["id"] = json!("PPNDH");
+                reaction["gene_reaction_rule"] = json!("b2599");
+            }
+            if reaction["id"] == "BIOMASS_Ec_core" {
+                reaction["id"] = json!("BIOMASS_Ec_iJO1366_core_53p95M");
+                reaction["objective_coefficient"] = json!(1);
+            }
+        }
+        mono["objective"] = json!({"BIOMASS_Ec_iJO1366_core_53p95M": 1});
+        let mut se = mono.clone();
+        se["id"] = json!("core-private-fixture-Se");
+        se["genes"] = json!([]);
+        for reaction in se["reactions"].as_array_mut().expect("reactions") {
+            reaction["gene_reaction_rule"] = json!("");
+            if reaction["id"] == "BIOMASS_Ec_iJO1366_core_53p95M" {
+                reaction["id"] = json!("BOF");
+            }
+        }
+        se["objective"] = json!({"BOF": 1});
+        let mut joint = json!({"id": "core-private-fixture-joint", "compartments": mono["compartments"], "metabolites": [], "reactions": [], "genes": mono["genes"], "objective": {}});
+        for (model, suffix) in [(&mono, "D"), (&se, "A")] {
+            for metabolite in model["metabolites"].as_array().expect("metabolites") {
+                let mut next = metabolite.clone();
+                next["id"] = json!(format!("{}_{suffix}", metabolite["id"].as_str().expect("metabolite ID")));
+                joint["metabolites"].as_array_mut().expect("joint metabolites").push(next);
+            }
+            for reaction in model["reactions"].as_array().expect("reactions") {
+                let mut next = reaction.clone();
+                next["id"] = json!(format!("{}_{suffix}", reaction["id"].as_str().expect("reaction ID")));
+                let mut metabolites = Map::new();
+                for (id, coefficient) in reaction["metabolites"].as_object().expect("stoichiometry") {
+                    metabolites.insert(format!("{id}_{suffix}"), coefficient.clone());
+                }
+                next["metabolites"] = Value::Object(metabolites);
+                joint["reactions"].as_array_mut().expect("joint reactions").push(next);
+            }
+            for (id, coefficient) in model["objective"].as_object().expect("objective") {
+                joint["objective"][format!("{id}_{suffix}")] = coefficient.clone();
+            }
+        }
+        let study = ZunigaStudy {
+            manifest: json!({"id": ZUNIGA_ID, "community": ZUNIGA_ID, "runtime": "zuniga-mat", "map": "map.json", "fluxReference": 0.1,
+                "members": [{"id": "Ec"}, {"id": "Se"}], "sources": [{"file": "core-fixture", "sha256": "bundled-core-fixture"}]}),
+            source_hashes: IndexMap::from([("core-fixture".into(), "bundled-core-fixture".into())]),
+            models: ZunigaModels { ec: Arc::new(Model::from_value(&mono).expect("Ec model")), se: Arc::new(Model::from_value(&se).expect("Se fixture")) },
+            source_models: ZunigaSourceModels { mono, joint },
+        };
+        let prepared = create_zuniga_scenario(&study, "mutant-coculture").expect("fixture case");
+        let community = zuniga_community_model(&prepared.community);
+        let map = EditableMap::empty_from_community(&community, &Default::default()).to_json();
+        (study, map)
+    }
+
+    fn ordinary_store() -> Store {
+        let (study, map) = fixture();
+        let assets = Arc::new(MemoryAssets::over(DirAssets::new(coxeter_core::testkit::repo_root())));
+        assets.insert(format!("models/published/{ZUNIGA_ID}/map.json"), map.to_string().into_bytes());
+        let mut store = Store::new(assets);
+        store.init().expect("bundled models");
+        store.use_scenario("solo-ecoli").expect("ordinary scenario");
+        store.published_manifests.insert(ZUNIGA_ID.into(), Some(study.manifest));
+        store
+    }
+
+    fn private_store() -> Store {
+        let mut store = ordinary_store();
+        let (study, _) = fixture();
+        store.use_zuniga_study(Some(study), None).expect("core-derived private fixture");
+        store
+    }
+
+    struct FixtureLoader {
+        study: ZunigaStudy,
+        downloads: Arc<AtomicUsize>,
+        started: Option<Arc<Barrier>>,
+        release: Option<Arc<Barrier>>,
+    }
+
+    impl ZunigaLoader for FixtureLoader {
+        fn load(&self, _manifest: &Value, _fetcher: &dyn Fetcher, on_progress: &mut dyn FnMut(&str)) -> Result<ZunigaStudy> {
+            self.downloads.fetch_add(1, Ordering::SeqCst);
+            if let Some(started) = &self.started {
+                started.wait();
+            }
+            if let Some(release) = &self.release {
+                release.wait();
+            }
+            on_progress("Late private download progress");
+            Ok(self.study.clone())
+        }
+    }
+
+    #[test]
+    fn loading_an_ordinary_scenario_retires_the_previous_private_case_and_restores_its_view() {
+        let ordinary = ordinary_store();
+        let mut store = private_store();
+        store.set_view(ViewPatch { show_cross_feeding: Some(true), ..Default::default() }).expect("view");
+        store.load_state(&ordinary.state_json()).expect("ordinary file");
+        assert!(!store.is_zuniga_study());
+        assert!(store.zuniga.study.is_none());
+        assert!(store.zuniga.prepared.is_none());
+        assert!(store.zuniga.solutions.is_empty());
+        assert!(!store.view.show_cross_feeding);
+        assert!(store.solution.as_ref().expect("ordinary result").zuniga.is_none());
+        let objective = store.solution.as_ref().expect("result").objective_value;
+        store.set_medium_limit("glc__D", 5.0).expect("editable medium");
+        assert!(store.solution.as_ref().expect("changed result").objective_value < objective);
+    }
+
+    #[test]
+    fn a_missing_ordinary_model_leaves_the_private_case_available_and_unchanged() {
+        let ordinary = ordinary_store();
+        let mut state: Value = serde_json::from_str(&ordinary.state_json()).expect("scenario");
+        state["species"][0]["file"] = json!("missing-private-context-model");
+        let mut store = private_store();
+        let solution = store.solution.clone().expect("private result");
+        let study = store.zuniga.study.clone().expect("private study");
+        assert!(store.load_state(&state.to_string()).is_err());
+        assert!(Arc::ptr_eq(store.zuniga.study.as_ref().expect("retained study"), &study));
+        assert!(Arc::ptr_eq(store.solution.as_ref().expect("retained result"), &solution));
+        assert!(store.is_zuniga_study());
+    }
+
+    #[test]
+    fn an_ordinary_scenario_supersedes_a_pending_private_load_and_its_late_progress() {
+        let ordinary = ordinary_store();
+        let mut store = private_store();
+        let started = Arc::new(Barrier::new(2));
+        let release = Arc::new(Barrier::new(2));
+        store.zuniga_loader = Arc::new(FixtureLoader { study: fixture().0, downloads: Arc::new(AtomicUsize::new(0)), started: Some(started.clone()), release: Some(release.clone()) });
+        store.use_zuniga_study(None, None).expect("start pending load");
+        started.wait();
+        let loaded = store.load_state(&ordinary.state_json());
+        let active = store.job_running(JobKind::Zuniga);
+        let export = store.reproducibility_bundle();
+        release.wait();
+        loaded.expect("ordinary file");
+        let solution = store.solution.clone().expect("ordinary result");
+        for outcome in store.wait_for_jobs(Duration::from_secs(10)) {
+            assert!(outcome.result.is_err());
+        }
+        assert!(Arc::ptr_eq(store.solution.as_ref().expect("retained result"), &solution));
+        assert!(!store.status().message.contains("Late private"));
+        assert_eq!(store.scenario_id().as_deref(), Some("solo-ecoli"));
+        assert!(!active, "a retired private download remained active");
+        assert!(export.is_ok(), "a retired private download blocked export of the ordinary context");
+    }
+
+    #[test]
+    fn invalid_private_scenario_metadata_is_refused_before_downloading_or_replacing_ordinary_work() {
+        let source = private_store();
+        let valid: Value = serde_json::from_str(&source.state_json()).expect("private scenario");
+        for (key, value) in [("comparison", json!(42)), ("scenarioId", json!("invented-case")), ("comparison", json!("invented-comparison")), ("fluxReference", json!(999))] {
+            let mut store = ordinary_store();
+            let downloads = Arc::new(AtomicUsize::new(0));
+            store.zuniga_loader = Arc::new(FixtureLoader { study: fixture().0, downloads: downloads.clone(), started: None, release: None });
+            let solution = store.solution.clone().expect("ordinary result");
+            let mut state = valid.clone();
+            state["study"][key] = value;
+            assert!(store.load_state(&state.to_string()).is_err());
+            assert_eq!(downloads.load(Ordering::SeqCst), 0);
+            assert!(Arc::ptr_eq(store.solution.as_ref().expect("retained result"), &solution));
+            assert_eq!(store.scenario_id().as_deref(), Some("solo-ecoli"));
+        }
+    }
+
+    #[test]
+    fn invalid_private_map_metadata_is_refused_before_downloading_or_replacing_ordinary_work() {
+        let source = private_store();
+        let mut map = source.map_document().expect("map");
+        map["study"]["scenarioId"] = json!("invented-case");
+        let mut store = ordinary_store();
+        let downloads = Arc::new(AtomicUsize::new(0));
+        store.zuniga_loader = Arc::new(FixtureLoader { study: fixture().0, downloads: downloads.clone(), started: None, release: None });
+        let solution = store.solution.clone().expect("ordinary result");
+        let drawing = store.map.as_ref().expect("map").to_json();
+        assert!(store.load_map_document(&map.to_string()).is_err());
+        assert_eq!(downloads.load(Ordering::SeqCst), 0);
+        assert!(Arc::ptr_eq(store.solution.as_ref().expect("retained result"), &solution));
+        assert_eq!(store.map.as_ref().expect("retained map").to_json(), drawing);
+    }
+
+    #[test]
+    fn a_private_bundle_with_an_unusable_source_lp_is_refused_before_replacing_ordinary_work() {
+        let source = private_store();
+        for include_map in [true, false] {
+            let mut bundle = source.reproducibility_bundle().expect("bundle");
+            for reaction in bundle["study"]["sourceModels"]["mono"]["reactions"].as_array_mut().expect("reactions") {
+                if reaction["id"] == "PPNDH" {
+                    reaction["gene_reaction_rule"] = json!("");
+                }
+            }
+            if !include_map {
+                bundle["map"] = Value::Null;
+            }
+            bundle.as_object_mut().expect("bundle").remove("integrity");
+            bundle["integrity"] = json!({"algorithm": "SHA-256", "payloadHash": sha256(&bundle)});
+            let mut store = ordinary_store();
+            let solution = store.solution.clone().expect("ordinary result");
+            let drawing = store.map.as_ref().expect("map").to_json();
+            assert!(store.import_reproducibility_bundle(&bundle).is_err());
+            assert!(Arc::ptr_eq(store.solution.as_ref().expect("retained result"), &solution));
+            assert_eq!(store.map.as_ref().expect("retained map").to_json(), drawing);
+            assert_eq!(store.scenario_id().as_deref(), Some("solo-ecoli"));
+        }
+    }
+
+    #[test]
+    fn valid_private_bundles_restore_their_exact_source_lp_and_permit_a_later_ordinary_scenario() {
+        let mut source = private_store();
+        source.set_zuniga_comparison("difference").expect("comparison");
+        let bundle = source.reproducibility_bundle().expect("bundle");
+        let mut store = ordinary_store();
+        let ordinary = store.state_json();
+        let check = store.import_reproducibility_bundle(&bundle).expect("private replay");
+        assert_eq!(check["replay"]["pass"], true);
+        assert_eq!(store.problem.as_ref().expect("private LP").rxn_ids.len(), source.problem.as_ref().expect("source LP").rxn_ids.len());
+        assert_eq!(store.zuniga.comparison, "difference");
+        store.load_state(&ordinary).expect("ordinary file");
+        assert!(store.solution.as_ref().expect("ordinary result").is_optimal());
+        assert_eq!(store.scenario_id().as_deref(), Some("solo-ecoli"));
+    }
+
+    #[test]
+    fn valid_private_scenario_and_map_metadata_load_from_an_ordinary_context() {
+        let mut source = private_store();
+        source.use_zuniga_scenario("mutant-monoculture", true).expect("case");
+        source.set_zuniga_comparison("difference").expect("comparison");
+        for format in ["scenario", "map"] {
+            let mut store = ordinary_store();
+            let downloads = Arc::new(AtomicUsize::new(0));
+            store.zuniga_loader = Arc::new(FixtureLoader { study: fixture().0, downloads: downloads.clone(), started: None, release: None });
+            if format == "scenario" {
+                store.load_state(&source.state_json()).expect("private scenario");
+            } else {
+                store.load_map_document(&source.map_json().expect("map JSON")).expect("private map");
+            }
+            assert_eq!(downloads.load(Ordering::SeqCst), 1);
+            assert!(store.is_zuniga_study());
+            assert_eq!(store.zuniga.scenario_id.as_deref(), Some("mutant-monoculture"));
+            assert_eq!(store.zuniga.comparison, "difference");
+            assert!(store.solution.as_ref().expect("private result").is_optimal());
+        }
+    }
+
+    #[test]
+    fn a_private_source_lp_that_is_infeasible_is_refused_before_replacing_ordinary_work() {
+        let source = private_store();
+        let mut bundle = source.reproducibility_bundle().expect("bundle");
+        for reaction in bundle["study"]["sourceModels"]["mono"]["reactions"].as_array_mut().expect("reactions") {
+            if reaction["id"].as_str().expect("ID").starts_with("EX_") && reaction["lower_bound"].as_f64().expect("lower bound") < 0.0 {
+                reaction["lower_bound"] = json!(0);
+            }
+        }
+        bundle.as_object_mut().expect("bundle").remove("integrity");
+        bundle["integrity"] = json!({"algorithm": "SHA-256", "payloadHash": sha256(&bundle)});
+        let mut store = ordinary_store();
+        let solution = store.solution.clone().expect("ordinary result");
+        let drawing = store.map.as_ref().expect("map").to_json();
+        let failure = store.import_reproducibility_bundle(&bundle).expect_err("infeasible source LP");
+        assert!(Arc::ptr_eq(store.solution.as_ref().expect("retained result"), &solution));
+        assert_eq!(store.map.as_ref().expect("retained map").to_json(), drawing);
+        assert_eq!(store.scenario_id().as_deref(), Some("solo-ecoli"));
+        assert!(failure.to_string().contains("infeasible"));
+    }
+}

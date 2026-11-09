@@ -22,6 +22,6 @@ SOFTWARE.
 
 This license covers the source code in this repository. Third-party
 components and data keep their own licenses: the GLPK solver bundled in
-app/web/coxeter_mfv.html and code/assets/vendor is GPL-3.0 (see
-code/assets/vendor/PROVENANCE.md), and the models and datasets are listed with
+app/coxeter_mfv.html and assets/vendor is GPL-3.0 (see
+assets/vendor/PROVENANCE.md), and the models and datasets are listed with
 their terms in data/README.md and in each example folder.

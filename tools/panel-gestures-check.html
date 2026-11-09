@@ -1,0 +1,292 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Running panel gesture checks</title>
+<style>
+  body { margin: 16px; font: 14px system-ui; background: #0b1220; color: #e2e8f0; }
+  .pass { color: #4ade80; }
+  .fail { color: #fb7185; }
+  iframe { width: 1300px; height: 900px; border: 1px solid #334155; margin-top: 16px; }
+</style>
+</head>
+<body>
+<h1>Narrow-stage menus, pointer isolation and interrupted header drags</h1>
+<div id="out"></div>
+<script type="module">
+/** Exercise small floating menus and interrupted pointer gestures without desktop input. */
+const out = document.getElementById('out');
+let failures = 0;
+
+function check(name, passed, details = null) {
+  if (!passed) {
+    failures += 1;
+  }
+  const line = document.createElement('div');
+  line.className = passed ? 'pass' : 'fail';
+  line.textContent = `${passed ? 'OK' : 'FAIL'} ${name}`;
+  if (!passed && details) {
+    line.textContent += ` ${JSON.stringify(details)}`;
+  }
+  out.appendChild(line);
+}
+
+async function tick() {
+  await new Promise(resolve => requestAnimationFrame(resolve));
+  await new Promise(resolve => setTimeout(resolve, 60));
+}
+
+async function waitFor(read, label) {
+  const deadline = Date.now() + 30000;
+  while (!read()) {
+    if (Date.now() > deadline) {
+      throw new Error(`Timed out: ${label}`);
+    }
+    await tick();
+  }
+}
+
+try {
+  const frame = document.createElement('iframe');
+  frame.src = new URLSearchParams(location.search).has('standalone') ? '../coxeter_mfv.html' : '../index.html';
+  document.body.appendChild(frame);
+  await waitFor(() => frame.contentWindow?.escherMCMC?.store?.solution?.status === 'optimal', 'startup');
+  const app = frame.contentWindow;
+  const doc = app.document;
+  const store = app.escherMCMC.store;
+  await store.useScenario('solo-ecoli');
+  const EditableMap = store.map.constructor;
+  const biology = JSON.stringify(store.modelEditorModel().toJSON());
+  const bounds = JSON.stringify(store.problem.snapshotBounds());
+  const solution = store.solution;
+  const stage = doc.getElementById('stage');
+  doc.querySelector('[data-action="left-tab"][data-tab="build"]').click();
+
+  function screen(point) {
+    const rect = stage.getBoundingClientRect();
+    return {
+      clientX: rect.left + app.escherMCMC.camera.x + point.x * app.escherMCMC.camera.scale,
+      clientY: rect.top + app.escherMCMC.camera.y + point.y * app.escherMCMC.camera.scale,
+    };
+  }
+
+  function pointer(target, type, pointerId, at) {
+    target.dispatchEvent(new app.PointerEvent(type, {
+      bubbles: true, pointerType: 'touch', pointerId, button: 0, ...at,
+    }));
+  }
+
+  async function press(target, point) {
+    const at = screen(point);
+    pointer(target, 'pointerdown', 601, at);
+    pointer(target, 'pointerup', 601, at);
+    await tick();
+  }
+
+  function contained(element, parent) {
+    const box = element.getBoundingClientRect();
+    const outer = parent.getBoundingClientRect();
+    return box.left >= outer.left - 1 && box.right <= outer.right + 1
+      && box.top >= outer.top - 1 && box.bottom <= outer.bottom + 1;
+  }
+
+  async function reset() {
+    store.map = EditableMap.emptyFromCommunity(store.community);
+    store.mapHistory.clear();
+    store.select(null);
+    store.emit('map');
+    await tick();
+  }
+
+  async function openManual(point) {
+    doc.querySelector('[data-tool="metabolite"]').click();
+    await tick();
+    await press(doc.querySelector('[data-cell-space="eco"][data-compartment-space="c"]'), point);
+  }
+
+  function query(selector, value) {
+    const input = doc.querySelector(selector);
+    input.value = value;
+    input.dispatchEvent(new app.Event('input', { bubbles: true }));
+  }
+
+  const gesturesOnly = new URLSearchParams(location.search).has('gestures');
+  if (!gesturesOnly) {
+    stage.style.width = '210px';
+    stage.style.height = '180px';
+    stage.style.flex = 'none';
+  }
+  await tick();
+  if (!gesturesOnly) {
+    check('the fixture presents an actual 210 by 180 stage', stage.clientWidth === 210 && stage.clientHeight === 180);
+  }
+  const kinds = gesturesOnly ? [] : ['compartment', 'metabolite', 'manual', 'boundary'];
+  for (const kind of kinds) {
+    await reset();
+    if (kind === 'metabolite') {
+      store.addMapReaction('eco@PFK');
+    }
+    doc.querySelector('[data-action="zoom-fit"]').click();
+    await tick();
+    const compartment = store.map.cells[0].compartments.find(item => item.id === 'c');
+    const point = { x: compartment.rect.x + compartment.rect.w / 2, y: compartment.rect.y + compartment.rect.h / 2 };
+    if (kind === 'manual') {
+      await openManual(point);
+    } else {
+      doc.querySelector('[data-tool="reaction"]').click();
+      await tick();
+      if (kind === 'metabolite') {
+        const node = store.map.nodesForMetabolite('eco@fdp_c')[0];
+        await press(doc.querySelector(`circle[data-node="${node.id}"]`), node);
+      } else if (kind === 'boundary') {
+        const boundary = store.map.boundary('eco/p');
+        await press(doc.querySelector('[data-boundary="eco/p"]'), {
+          x: boundary.rect.x + boundary.rect.w / 2, y: boundary.rect.y,
+        });
+      } else {
+        await press(doc.querySelector('[data-cell-space="eco"][data-compartment-space="c"]'), point);
+      }
+    }
+    let menu = doc.querySelector('.add-reaction-menu, .boundary-menu');
+    check(`${kind}: the complete panel fits the narrow short stage`, menu && contained(menu, stage));
+    check(`${kind}: Close is reachable when the panel opens`, contained(menu.querySelector('button[aria-label*="Close"], button[title="Close"]'), stage));
+    let action;
+    if (kind === 'manual') {
+      query('[data-filter-metabolites]', 'g6p_c');
+      action = doc.querySelector('[data-add-metabolite="eco@g6p_c"]');
+    } else if (kind === 'boundary') {
+      action = doc.querySelector('[data-add-boundary-rxn="eco@GLCtex"]');
+    } else {
+      query('[data-action="filter-add-reactions"]', 'FBA');
+      const choice = doc.querySelector('[data-select-add-rxn="eco@FBA"]');
+      choice.scrollIntoView({ block: 'nearest' });
+      choice.click();
+      await tick();
+      menu = doc.querySelector('.add-reaction-menu');
+      check(`${kind}: selecting a reaction retains the narrow panel bounds and filter`,
+        contained(menu, stage) && doc.querySelector('[data-action="filter-add-reactions"]').value === 'FBA');
+      action = doc.querySelector('[data-add-rxn-direction="e"]');
+    }
+    action.scrollIntoView({ block: 'nearest' });
+    await tick();
+    check(`${kind}: scrolling reaches the insertion control inside the stage`, contained(action, stage));
+    action.click();
+    await tick();
+    const added = kind === 'manual'
+      ? store.map.nodesForMetabolite('eco@g6p_c').length === 1
+      : store.map.reactions.has(kind === 'boundary' ? 'eco@GLCtex' : 'eco@FBA');
+    check(`${kind}: the actual insertion control adds its drawing and closes the panel`,
+      added && !doc.querySelector('.add-reaction-menu, .boundary-menu'));
+    const after = JSON.stringify(store.map.toJSON());
+    doc.querySelector('[data-action="map-undo"]').click();
+    await tick();
+    const undone = JSON.stringify(store.map.toJSON()) !== after;
+    doc.querySelector('[data-action="map-redo"]').click();
+    await tick();
+    check(`${kind}: Undo and Redo restore the complete insertion`, undone && JSON.stringify(store.map.toJSON()) === after);
+  }
+
+  stage.style.removeProperty('width');
+  stage.style.removeProperty('height');
+  stage.style.removeProperty('flex');
+  await reset();
+  doc.querySelector('[data-action="zoom-fit"]').click();
+  await tick();
+  const rect = store.map.cells[0].compartments.find(item => item.id === 'c').rect;
+  const center = { x: rect.x + rect.w / 2, y: rect.y + rect.h / 2 };
+  await openManual(center);
+  const oldHeader = doc.querySelector('.add-metabolite-menu .add-reaction-head');
+  const oldBox = oldHeader.getBoundingClientRect();
+  const replacementStart = { clientX: oldBox.left + 15, clientY: oldBox.top + 15 };
+  pointer(oldHeader, 'pointerdown', 607, replacementStart);
+  doc.querySelector('[data-action="open-workspace"][data-workspace="structure"]').click();
+  await tick();
+  check('opening a workspace dismisses the manual menu and its active drag', !doc.querySelector('.add-metabolite-menu'));
+  doc.querySelector('[data-workspace-content="structure"] [data-action="map-full"]').click();
+  await tick();
+  check('Full map replacement leaves no manual menu from the old drawing', !doc.querySelector('.add-metabolite-menu'));
+  const replacementDrawing = JSON.stringify(store.map.toJSON());
+  pointer(oldHeader, 'pointermove', 607, { clientX: replacementStart.clientX + 100, clientY: replacementStart.clientY + 100 });
+  pointer(oldHeader, 'pointerup', 607, replacementStart);
+  check('an old header release cannot edit the replacement drawing', JSON.stringify(store.map.toJSON()) === replacementDrawing);
+  pointer(stage, 'pointercancel', 607, replacementStart);
+  doc.querySelector('[data-close-add-metabolite]')?.click();
+  await reset();
+  doc.querySelector('[data-action="zoom-fit"]').click();
+  await tick();
+  await openManual(center);
+  query('[data-filter-metabolites]', 'g6p_c');
+  let menu = doc.querySelector('.add-metabolite-menu');
+  let head = menu.querySelector('.add-reaction-head');
+  const before = menu.getBoundingClientRect();
+  const start = { clientX: before.left + 20, clientY: before.top + 20 };
+  pointer(head, 'pointerdown', 602, start);
+  const dragStarted = menu.classList.contains('is-dragging');
+  const cameraBefore = JSON.stringify({ x: app.escherMCMC.camera.x, y: app.escherMCMC.camera.y, scale: app.escherMCMC.camera.scale });
+  pointer(head, 'pointerdown', 603, { clientX: start.clientX + 70, clientY: start.clientY + 60 });
+  pointer(head, 'pointermove', 603, { clientX: start.clientX + 100, clientY: start.clientY + 100 });
+  pointer(head, 'pointerup', 603, start);
+  await tick();
+  check('a second pointer cannot move or finish the active header drag',
+    menu.isConnected && menu.getBoundingClientRect().left === before.left && menu.getBoundingClientRect().top === before.top
+    && JSON.stringify({ x: app.escherMCMC.camera.x, y: app.escherMCMC.camera.y, scale: app.escherMCMC.camera.scale }) === cameraBefore);
+  pointer(head, 'pointermove', 602, { clientX: start.clientX - 20, clientY: start.clientY - 10 });
+  await tick();
+  const moved = menu.getBoundingClientRect();
+  pointer(head, 'pointercancel', 602, start);
+  pointer(head, 'pointermove', 602, { clientX: start.clientX + 70, clientY: start.clientY + 60 });
+  await tick();
+  check('cancellation ends the drag at its last position and keeps the filter',
+    Math.abs(moved.left - before.left + 20) < 1 && menu.getBoundingClientRect().left === moved.left
+    && doc.querySelector('[data-filter-metabolites]')?.value === 'g6p_c',
+    { before: before.left, moved: moved.left, final: menu.getBoundingClientRect().left,
+      filter: doc.querySelector('[data-filter-metabolites]')?.value, dragStarted });
+
+  pointer(head, 'pointerdown', 604, start);
+  store.emit('map');
+  await tick();
+  const repainted = doc.querySelector('.add-metabolite-menu').getBoundingClientRect();
+  pointer(head, 'pointermove', 604, { clientX: start.clientX + 100, clientY: start.clientY + 100 });
+  store.emit('map');
+  await tick();
+  check('a detached header cannot move its replacement after a map repaint',
+    doc.querySelector('.add-metabolite-menu').getBoundingClientRect().left === repainted.left);
+
+  menu = doc.querySelector('.add-metabolite-menu');
+  head = menu.querySelector('.add-reaction-head');
+  pointer(head, 'pointerdown', 605, start);
+  pointer(head, 'lostpointercapture', 605, start);
+  pointer(head, 'pointermove', 605, { clientX: start.clientX + 100, clientY: start.clientY + 100 });
+  await tick();
+  check('lost capture ends the drag without changing the last panel position',
+    menu.getBoundingClientRect().left === repainted.left);
+
+  pointer(head, 'pointerdown', 606, start);
+  doc.querySelector('[data-close-add-metabolite]').click();
+  await tick();
+  await openManual({ x: center.x + 80, y: center.y + 80 });
+  query('[data-filter-metabolites]', 'f6p_c');
+  const replacement = doc.querySelector('.add-metabolite-menu').getBoundingClientRect();
+  pointer(head, 'pointermove', 606, { clientX: start.clientX + 100, clientY: start.clientY + 100 });
+  store.emit('map');
+  await tick();
+  check('a closed panel drag cannot move a newly opened menu or replace its query',
+    doc.querySelector('.add-metabolite-menu').getBoundingClientRect().left === replacement.left
+    && doc.querySelector('[data-filter-metabolites]').value === 'f6p_c');
+  doc.querySelector('[data-add-metabolite="eco@f6p_c"]').click();
+  await tick();
+  const inserted = store.map.nodesForMetabolite('eco@f6p_c')[0];
+  check('the replacement menu keeps its own insertion origin',
+    inserted && Math.hypot(inserted.x - center.x - 80, inserted.y - center.y - 80) < 1e-8);
+  check('panel gestures add no history beyond the final insertion', store.mapHistory.undoStack.length === 1);
+  check('all menu and gesture combinations preserve biology, bounds and the installed calculation',
+    JSON.stringify(store.modelEditorModel().toJSON()) === biology
+    && JSON.stringify(store.problem.snapshotBounds()) === bounds && store.solution === solution);
+} catch (error) {
+  check(error.message, false);
+}
+
+document.title = failures ? `FAIL (${failures})` : 'PASS';
+</script>
+</body>
+</html>

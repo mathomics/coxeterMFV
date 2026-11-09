@@ -1,0 +1,276 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>SteadyCom persistence checks</title>
+<style>
+  body { font: 13px/1.6 ui-monospace, monospace; margin: 24px; background: #0b1220; color: #e2e8f0; }
+  .pass { color: #4ade80; }
+  .fail { color: #fb7185; }
+  iframe { width: 1200px; height: 800px; border: 1px solid #334155; margin-top: 16px; }
+</style>
+</head>
+<body>
+<h1>SteadyCom Scenario files and saved work</h1>
+<p>Exports stay in memory. The desktop and system file dialogs are not used.</p>
+<div id="out"></div>
+<script type="module">
+/** Check real growth calculations, Scenario controls and saved-state badges. */
+const out = document.getElementById('out');
+const lines = [];
+let failures = 0;
+let total = 0;
+
+function check(name, passed) {
+  total += 1;
+  if (!passed) {
+    failures += 1;
+  }
+  const line = document.createElement('div');
+  line.className = passed ? 'pass' : 'fail';
+  line.textContent = `${passed ? 'OK' : 'FAIL'} ${name}`;
+  out.appendChild(line);
+  lines.push(line.textContent);
+}
+
+async function tick() {
+  await new Promise(resolve => requestAnimationFrame(resolve));
+  await new Promise(resolve => setTimeout(resolve, 30));
+}
+
+async function waitFor(read, label) {
+  const deadline = Date.now() + 30000;
+  while (!read()) {
+    if (Date.now() > deadline) {
+      throw new Error(`Timed out: ${label}`);
+    }
+    await tick();
+  }
+}
+
+try {
+  const frame = document.createElement('iframe');
+  frame.src = new URLSearchParams(location.search).has('standalone') ? '../coxeter_mfv.html' : '../index.html';
+  document.body.appendChild(frame);
+  await waitFor(() => frame.contentWindow?.escherMCMC?.store?.solution?.status === 'optimal', 'startup');
+  const app = frame.contentWindow;
+  const doc = app.document;
+  const store = app.escherMCMC.store;
+  const saved = [];
+  app.showSaveFilePicker = async (options) => {
+    let blob;
+    return {
+      name: options.suggestedName,
+      async createWritable() {
+        return {
+          async write(content) {
+            blob = content;
+          },
+          async close() {
+            saved.push(blob);
+          },
+          async abort() {},
+        };
+      },
+    };
+  };
+
+  async function workspace() {
+    doc.querySelector('[data-action="close-workspace"]')?.click();
+    doc.querySelector('[data-action="left-tab"][data-tab="model"]').click();
+    await tick();
+    doc.querySelector('#task-panel [data-workspace="scenario"]').click();
+    await tick();
+  }
+
+  function change(selector, value) {
+    const input = doc.querySelector(selector);
+    if (!input) {
+      throw new Error(`Missing control: ${selector}`);
+    }
+    input.value = value;
+    input.dispatchEvent(new app.Event('change', { bubbles: true }));
+  }
+
+  function clickExport(action) {
+    const menu = doc.querySelector('.file-menu');
+    menu.open = true;
+    menu.querySelector(`[data-action="${action}"]`).click();
+  }
+
+  async function scenarioFile() {
+    const before = saved.length;
+    clickExport('export-state');
+    await waitFor(() => saved.length === before + 1, 'Scenario export');
+    return JSON.parse(await saved.at(-1).text());
+  }
+
+  async function upload(document) {
+    const input = doc.getElementById('file-input');
+    const transfer = new app.DataTransfer();
+    transfer.items.add(new app.File([JSON.stringify(document)], 'steadycom-scenario.json'));
+    input.files = transfer.files;
+    input.dispatchEvent(new app.Event('change', { bubbles: true }));
+    await waitFor(() => input.value === '' && store.status.state !== 'busy', 'Scenario import');
+    await tick();
+  }
+
+  async function badge(unsaved) {
+    await waitFor(() => doc.getElementById('save-state').classList.contains('is-unsaved') === unsaved, 'save badge');
+  }
+
+  function toggleWidth() {
+    const input = doc.querySelector('[data-action="toggle-width-by-flux"]');
+    if (!input) {
+      throw new Error('Missing Width by flux control');
+    }
+    const menu = input.closest('details');
+    if (menu) {
+      menu.open = true;
+    }
+    input.click();
+  }
+
+  await workspace();
+  change('[data-action="scenario"]', 'sc:aerobio-mixto');
+  await waitFor(() => store.scenario?.id === 'aerobio-mixto' && store.status.state !== 'busy', 'two bundled members');
+  const scenario = await scenarioFile();
+  scenario.steadyCom = { mu: 0.1 };
+  await upload(scenario);
+  await badge(false);
+  check('opening fixed growth recalculates composition and shows Saved',
+    store.solution?.steadyCom?.mu === 0.1 && !store.unsavedWork().scenario
+    && store.species.some(species => species.abundance !== 0.5));
+  const fixed = await scenarioFile();
+  check('the actual Scenario export records fixed growth and its calculated composition',
+    fixed.steadyCom.mu === 0.1 && fixed.species.every((species, index) => species.abundance === store.species[index].abundance));
+
+  for (const action of ['export-reproducibility', 'export-methods-provenance']) {
+    const before = saved.length;
+    const message = store.status.message;
+    clickExport(action);
+    await waitFor(() => store.status.state === 'error' && store.status.message !== message, action);
+    check(`${action} directs fixed-growth results to Scenario JSON without producing a file`,
+      store.status.message.includes('Scenario JSON') && saved.length === before && store.solution.steadyCom.mu === 0.1);
+  }
+
+  await workspace();
+  change('[data-action="steadycom-mu-number"]', '0.2');
+  doc.querySelector('[data-action="steadycom-solve"]').click();
+  await waitFor(() => store.solution?.steadyCom?.mu === 0.2 && store.status.state !== 'busy', 'changed growth');
+  await badge(true);
+  check('changing fixed growth marks the actual badge Unsaved', store.unsavedWork().scenario);
+  const changed = await scenarioFile();
+  await badge(false);
+  check('saving the changed growth restores Saved and writes the new target', changed.steadyCom.mu === 0.2);
+
+  const runPending = store.runSteadyComTask;
+  let releasePending;
+  let pendingStarted = false;
+  const pendingTask = new Promise(resolve => {
+    releasePending = resolve;
+  });
+  let holdPending = true;
+  store.runSteadyComTask = async (...args) => {
+    const result = await runPending(...args);
+    if (holdPending) {
+      holdPending = false;
+      pendingStarted = true;
+      await pendingTask;
+    }
+    return result;
+  };
+  const savedBeforePending = saved.length;
+  try {
+    change('[data-action="steadycom-mu-number"]', '0.3');
+    doc.querySelector('[data-action="steadycom-solve"]').click();
+    await waitFor(() => pendingStarted, 'pending growth request');
+    clickExport('export-state');
+    await tick();
+    check('Scenario Save during a pending growth request waits before writing', saved.length === savedBeforePending);
+    store.status = { ...store.status, state: 'warn', message: 'A different action changed the notice.' };
+    const errors = [];
+    for (const makeReport of [() => store.reproducibilityBundle(), () => store.methodsProvenanceReport()]) {
+      try {
+        await makeReport();
+      } catch (error) {
+        errors.push(error.message);
+      }
+    }
+    check('a changed status notice cannot permit either report during fixed growth',
+      errors.length === 2 && errors.every(message => message.includes('Wait for the current analysis')));
+  } finally {
+    releasePending();
+  }
+  await waitFor(() => saved.length === savedBeforePending + 1, 'pending Scenario export');
+  store.runSteadyComTask = runPending;
+  const pendingScenario = JSON.parse(await saved.at(-1).text());
+  await badge(false);
+  check('the waiting Scenario Save writes the requested growth and calculated composition',
+    pendingScenario.steadyCom.mu === 0.3
+    && pendingScenario.species.every((species, index) => species.abundance === store.species[index].abundance));
+  doc.querySelector('[data-action="clear-solution"]').click();
+  await waitFor(() => store.solution === null, 'Clear solution');
+  await badge(true);
+  check('Clear solution marks removal of the saved growth analysis Unsaved', store.unsavedWork().scenario);
+  const cleared = await scenarioFile();
+  await upload(cleared);
+  check('a cleared Scenario export reloads as ordinary FBA', cleared.steadyCom === null && !store.solution.steadyCom && store.solution.status === 'optimal');
+
+  const run = store.runSteadyComTask;
+  let release;
+  let started = false;
+  const held = new Promise(resolve => {
+    release = resolve;
+  });
+  let first = true;
+  store.runSteadyComTask = async (...args) => {
+    const result = await run(...args);
+    if (first) {
+      first = false;
+      started = true;
+      await held;
+    }
+    return result;
+  };
+  const pending = upload(scenario);
+  await waitFor(() => started, 'held growth calculation');
+  try {
+    toggleWidth();
+  } finally {
+    release();
+  }
+  await pending;
+  store.runSteadyComTask = run;
+  await badge(true);
+  check('a display edit made during file recalculation remains Unsaved', store.unsavedWork().scenario);
+  toggleWidth();
+  await badge(false);
+  check('undoing that edit returns to Saved after the calculated composition is adopted', !store.unsavedWork().scenario);
+
+  const custom = structuredClone(scenario);
+  custom.scenario = 'custom-steadycom';
+  custom.medium.glc__D = 3;
+  store.scenario = { ...store.scenario, id: 'published:steadycom-gut-nine', published: 'steadycom-gut-nine' };
+  store.publishedCommunityId = 'steadycom-gut-nine';
+  await upload(custom);
+  await badge(false);
+  check('a custom Scenario replaces the previous published identity and formulation',
+    store.scenario.id === custom.scenario && !store.scenario.published && store.publishedCommunityId === null
+    && store.steadyComSupport().kind === 'separate' && store.baseMedium.glc__D === 3);
+  await workspace();
+  const select = doc.querySelector('[data-action="scenario"]');
+  check('the Scenario chooser names the imported context outside its catalogue',
+    select.value === 'sc:custom-steadycom' && select.selectedOptions[0].textContent.includes('Imported scenario'));
+  doc.querySelector('[data-action="close-workspace"]').click();
+  await tick();
+  check('Return to map keeps the imported fixed-growth context', store.scenario.id === custom.scenario && store.solution.steadyCom.mu === 0.1);
+} catch (error) {
+  check(error.message, false);
+}
+
+document.title = failures ? `FAIL (${failures})` : 'PASS';
+window.__checkComplete = Promise.resolve({ failures, total, lines });
+</script>
+</body>
+</html>

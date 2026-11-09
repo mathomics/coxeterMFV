@@ -19,7 +19,8 @@ This checklist supports submission preparation. It does not claim that the appli
 - [ ] Confirm the final software version, release date, author list, affiliations, ORCIDs and maintainer contact. Replace the collective attribution in `CITATION.cff` with the agreed software authors when available.
 - [ ] Verify redistribution permissions for every literature-derived model. A request to cite an article does not by itself grant redistribution rights. Record the exact applicable licence, permissions or upstream terms in `data/README.md`.
 - [ ] Complete third-party source and licence distribution for each binary, including GLPK corresponding source and native dependency notices. Preserve the exact upstream revisions and build instructions.
-- [ ] Curate the scripts, parameters, input identifiers and outputs behind every manuscript figure and table. Archive them with the exact application release or link their permanent dataset records.
+- [x] Curate the scripts, parameters, input identifiers and outputs behind every manuscript figure and table, in [`paper`](../paper).
+- [ ] Archive the case studies in `paper/` with the exact application release or link their permanent dataset records.
 - [ ] Complete the platform and public-download validation matrix beyond the Windows and Chromium/Firefox smoke checks already recorded in [VALIDATION.md](VALIDATION.md). Record actual results and resource requirements. Test the container on a host with Docker or Podman.
 - [ ] Choose the target journal and submission route. Confirm its current requirements with the editors where the application does not fit a conventional web server.
 - [ ] Provide a stable, freely accessible application URL if submitting as a web resource. A download link alone should not be represented as a hosted, tested service.

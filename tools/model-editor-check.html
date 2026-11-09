@@ -1,0 +1,247 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Running model editor checks</title>
+<style>
+  body { margin: 16px; font: 14px system-ui; background: #0b1220; color: #e2e8f0; }
+  .pass { color: #4ade80; }
+  .fail { color: #fb7185; }
+  iframe { width: 1300px; height: 900px; border: 1px solid #334155; margin-top: 16px; }
+  pre { white-space: pre-wrap; }
+</style>
+</head>
+<body>
+<h1>Model creation, correction, drawing and export</h1>
+<div id="out"></div>
+<pre id="errors"></pre>
+<script type="module">
+/** Exercise model creation controls and capture exports in memory without opening system dialogs. */
+const out = document.getElementById('out');
+let failures = 0;
+
+function captureError(event) {
+  const details = [event.message, event.filename, event.lineno, event.error?.stack].filter(Boolean);
+  document.getElementById('errors').textContent += `${details.join('\n')}\n`;
+}
+
+window.addEventListener('error', captureError);
+
+function check(name, passed) {
+  if (!passed) {
+    failures += 1;
+  }
+  const line = document.createElement('div');
+  line.className = passed ? 'pass' : 'fail';
+  line.textContent = `${passed ? 'OK' : 'FAIL'} ${name}`;
+  out.appendChild(line);
+}
+
+async function tick() {
+  await new Promise(resolve => requestAnimationFrame(resolve));
+  await new Promise(resolve => setTimeout(resolve, 60));
+}
+
+async function waitFor(read, label) {
+  const deadline = Date.now() + 30000;
+  while (!read()) {
+    if (Date.now() > deadline) {
+      throw new Error(`Timed out: ${label}`);
+    }
+    await tick();
+  }
+}
+
+try {
+  const frame = document.createElement('iframe');
+  frame.addEventListener('load', () => frame.contentWindow.addEventListener('error', captureError));
+  frame.src = new URLSearchParams(location.search).has('standalone') ? '../coxeter_mfv.html' : '../index.html';
+  document.body.appendChild(frame);
+  await waitFor(() => frame.contentWindow?.escherMCMC?.store?.solution?.status === 'optimal', 'startup');
+  const app = frame.contentWindow;
+  const doc = app.document;
+  const store = app.escherMCMC.store;
+  await store.useScenario('solo-ecoli');
+  doc.querySelector('[data-action="left-tab"][data-tab="model"]').click();
+  await tick();
+  doc.querySelector('[data-action="open-workspace"][data-workspace="model"]').click();
+  await tick();
+
+  function button(action) {
+    const found = doc.querySelector(`.model-editor-card [data-action="${action}"]`);
+    if (!found) {
+      throw new Error(`Missing model editor control: ${action}`);
+    }
+    return found;
+  }
+
+  function field(name, value) {
+    const input = doc.querySelector(`.model-editor-form [name="${name}"]`);
+    if (!input) {
+      throw new Error(`Missing model editor field: ${name}`);
+    }
+    if (input.type === 'checkbox') {
+      input.checked = value;
+    } else {
+      input.value = String(value);
+    }
+    input.dispatchEvent(new app.Event('input', { bubbles: true }));
+    input.dispatchEvent(new app.Event('change', { bubbles: true }));
+  }
+
+  const initialSolution = store.solution;
+  const initialModel = JSON.stringify(store.modelEditorModel().toJSON());
+  const initialDrawing = JSON.stringify(store.map.toJSON());
+  button('new-metabolite').click();
+  await tick();
+  field('name', 'QA metabolite');
+  field('compartment', 'c');
+  button('create-metabolite').click();
+  await tick();
+  check('an empty metabolite ID reports an English error and keeps Create available',
+    /metabolite ID/.test(doc.querySelector('.model-editor-error')?.textContent ?? '')
+    && !button('create-metabolite').disabled);
+  check('a rejected metabolite preserves the model, drawing and numerical result',
+    JSON.stringify(store.modelEditorModel().toJSON()) === initialModel
+    && JSON.stringify(store.map.toJSON()) === initialDrawing && store.solution === initialSolution);
+  check('a rejected metabolite keeps its typed name',
+    doc.querySelector('.model-editor-form [name="name"]').value === 'QA metabolite');
+  button('cancel-model-editor').click();
+  await tick();
+  button('new-metabolite').click();
+  await tick();
+  check('Cancel discards the metabolite draft', doc.querySelector('.model-editor-form [name="name"]').value === '');
+  field('id', 'qa_metabolite_c');
+  field('name', 'QA metabolite');
+  field('compartment', 'c');
+  field('charge', '');
+  button('create-metabolite').click();
+  await waitFor(() => store.modelEditorMode === null, 'metabolite creation');
+  await tick();
+  check('Create metabolite adds the new biology with optional charge zero',
+    store.modelEditorModel().metabolites.get('qa_metabolite_c')?.charge === 0);
+  check('metabolite creation recomputes an optimal result without adding drawing geometry',
+    store.solution?.status === 'optimal' && JSON.stringify(store.map.toJSON()) === initialDrawing);
+
+  button('new-reaction').click();
+  await tick();
+  field('id', 'QA_PGI');
+  field('name', 'QA parallel glucose isomerase');
+  field('stoichiometry', 'g6p_c:-1, f6p_c:1');
+  field('lower', '-10');
+  field('upper', '');
+  field('gpr', 'qa_a and (qa_b or qa_c)');
+  const beforeReaction = JSON.stringify(store.modelEditorModel().toJSON());
+  const beforeSolution = store.solution;
+  button('create-reaction').click();
+  await tick();
+  check('a cleared required bound reports an error instead of creating a zero bound',
+    /bounds must be numbers/.test(doc.querySelector('.model-editor-error')?.textContent ?? '')
+    && !store.modelEditorModel().reactions.has('QA_PGI'));
+  check('a rejected bound preserves the model and installed result',
+    JSON.stringify(store.modelEditorModel().toJSON()) === beforeReaction && store.solution === beforeSolution);
+  check('rejection keeps the other typed reaction fields and Create available',
+    doc.querySelector('.model-editor-form [name="id"]').value === 'QA_PGI'
+    && doc.querySelector('.model-editor-form [name="lower"]').value === '-10'
+    && !button('create-reaction').disabled);
+  field('upper', '10');
+  field('gpr', 'qa_a and (qa_b');
+  button('create-reaction').click();
+  await tick();
+  check('an unbalanced gene rule reports a validation error',
+    /Invalid gene rule/.test(doc.querySelector('.model-editor-error')?.textContent ?? ''));
+  check('a rejected gene rule inserts neither its reaction nor its genes',
+    JSON.stringify(store.modelEditorModel().toJSON()) === beforeReaction && store.solution === beforeSolution);
+  field('gpr', 'qa_a and (qa_b or qa_c)');
+  button('create-reaction').click();
+  await waitFor(() => store.modelEditorMode === null, 'reaction creation');
+  await tick();
+  check('correcting the form creates the reaction with its bounds and gene metadata',
+    store.modelEditorModel().reactions.get('QA_PGI')?.lowerBound === -10
+    && store.modelEditorModel().reactions.get('QA_PGI')?.upperBound === 10
+    && ['qa_a', 'qa_b', 'qa_c'].every(id => store.modelEditorModel().genes.some(gene => gene.id === id)));
+  check('Add to the map draws and selects the new reaction',
+    store.map.reactions.has('eco@QA_PGI') && store.selectedReaction === 'eco@QA_PGI');
+  check('the new reaction reaches an optimal merged LP',
+    store.problem.rxnIndex.has('eco@QA_PGI') && store.solution?.status === 'optimal');
+  const geneCount = () => [...doc.querySelectorAll('.model-overview-card dt')]
+    .find(element => element.textContent === 'Genes (GPR)')?.nextElementSibling?.textContent;
+  check('Model overview counts the three genes used by the created reaction', geneCount() === '3');
+  const biology = JSON.stringify(store.modelEditorModel().toJSON());
+  doc.querySelector('[data-action="close-workspace"]').click();
+  await waitFor(() => doc.querySelector('#workspace-editor').hidden, 'return to map');
+  doc.querySelector('[data-action="map-undo"]').click();
+  await tick();
+  check('Undo removes the drawing insertion while preserving the biological reaction and LP',
+    !store.map.reactions.has('eco@QA_PGI') && store.problem.rxnIndex.has('eco@QA_PGI')
+    && JSON.stringify(store.modelEditorModel().toJSON()) === biology);
+  doc.querySelector('[data-action="map-redo"]').click();
+  await tick();
+  check('Redo restores the reaction drawing', store.map.reactions.has('eco@QA_PGI'));
+
+  doc.querySelector('[data-action="open-workspace"][data-workspace="model"]').click();
+  await tick();
+  button('new-reaction').click();
+  await tick();
+  check('successful creation clears the old reaction draft', doc.querySelector('.model-editor-form [name="id"]').value === '');
+  field('id', 'QA_NOT_DRAWN');
+  field('stoichiometry', 'g6p_c:-1, f6p_c:1');
+  field('addToMap', false);
+  button('create-reaction').click();
+  await waitFor(() => store.modelEditorMode === null, 'undrawn reaction creation');
+  await tick();
+  check('clearing Add to the map creates biology without drawing it',
+    store.modelEditorModel().reactions.has('QA_NOT_DRAWN') && store.problem.rxnIndex.has('eco@QA_NOT_DRAWN')
+    && !store.map.reactions.has('eco@QA_NOT_DRAWN'));
+
+  const saved = [];
+  app.showSaveFilePicker = async (options) => {
+    let blob;
+    return {
+      name: options.suggestedName,
+      async createWritable() {
+        return {
+          async write(content) {
+            blob = content;
+          },
+          async close() {
+            saved.push({ name: options.suggestedName, blob });
+          },
+          async abort() {},
+        };
+      },
+    };
+  };
+  button('export-model-json').click();
+  await waitFor(() => saved.length === 1, 'COBRA JSON export');
+  const json = JSON.parse(await saved[0].blob.text());
+  check('Export COBRA JSON includes both reactions, the new metabolite and all new genes',
+    json.reactions.some(reaction => reaction.id === 'QA_PGI')
+    && json.reactions.some(reaction => reaction.id === 'QA_NOT_DRAWN')
+    && json.metabolites.some(metabolite => metabolite.id === 'qa_metabolite_c')
+    && ['qa_a', 'qa_b', 'qa_c'].every(id => json.genes.some(gene => gene.id === id)));
+  button('export-model-sbml').click();
+  await waitFor(() => saved.length === 2, 'SBML export');
+  const xml = new DOMParser().parseFromString(await saved[1].blob.text(), 'application/xml');
+  check('Export SBML is valid XML with every source reaction and new gene product',
+    !xml.querySelector('parsererror') && xml.getElementsByTagName('reaction').length === json.reactions.length
+    && xml.getElementsByTagNameNS('*', 'geneProduct').length === json.genes.length);
+  check('successful model exports mark the edited model as saved', !store.unsavedWork().model);
+  store.toggleGeneKnockout('eco@qa_b');
+  check('one deleted isozyme leaves the new reaction open', !store.geneClosedReactions().has('eco@QA_PGI'));
+  store.toggleGeneKnockout('eco@qa_c');
+  check('deleting both isozymes closes the new reaction', store.geneClosedReactions().has('eco@QA_PGI'));
+  await store.importReproducibilityBundle(await store.reproducibilityBundle());
+  check('the edited model and gene closures replay through a reproducibility bundle',
+    store.reproducibilityReplay?.replay?.pass === true && store.geneClosedReactions().has('eco@QA_PGI')
+    && store.modelEditorModel().reactions.has('QA_NOT_DRAWN'));
+  await tick();
+  check('Model overview still counts three GPR genes after file replay', geneCount() === '3');
+} catch (error) {
+  check(error.message, false);
+}
+
+document.title = failures ? `FAIL (${failures})` : 'PASS';
+</script>
+</body>
+</html>

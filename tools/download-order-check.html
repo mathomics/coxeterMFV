@@ -1,0 +1,243 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Download order checks</title>
+<style>
+  body { font: 13px/1.6 ui-monospace, monospace; margin: 24px; background: #0b1220; color: #e2e8f0; }
+  .pass { color: #4ade80; }
+  .fail { color: #fb7185; }
+  iframe { width: 1200px; height: 800px; border: 1px solid #334155; margin-top: 16px; }
+</style>
+</head>
+<body>
+<h1>Model downloads, newer selections and recovery</h1>
+<p>Downloads use the bundled E. coli fixture. Save pickers stay in memory. No desktop input is used.</p>
+<div id="out"></div>
+<script type="module">
+/** Exercise download controls with held headers and bodies, failed responses and newer contexts. */
+import { Model } from '../src/core/model.js';
+import { toSBML } from '../src/core/sbml-write.js';
+import { YEAST9_SOURCE } from '../src/core/yeast9.js';
+
+const out = document.getElementById('out');
+const responses = [];
+const lines = [];
+let failures = 0;
+let total = 0;
+
+function check(name, passed) {
+  total += 1;
+  if (!passed) {
+    failures += 1;
+  }
+  const line = document.createElement('div');
+  line.className = passed ? 'pass' : 'fail';
+  line.textContent = `${passed ? 'OK' : 'FAIL'} ${name}`;
+  out.appendChild(line);
+  lines.push(line.textContent);
+}
+
+async function tick() {
+  await new Promise(resolve => requestAnimationFrame(resolve));
+  await new Promise(resolve => setTimeout(resolve, 30));
+}
+
+async function waitFor(read, label) {
+  const deadline = Date.now() + 30000;
+  while (!read()) {
+    if (Date.now() > deadline) {
+      throw new Error(`Timed out: ${label}`);
+    }
+    await tick();
+  }
+}
+
+try {
+  const raw = await (await fetch('../models/ecoli_core_mc.json')).json();
+  const xml = toSBML(new Model(raw));
+  const frame = document.createElement('iframe');
+  frame.src = new URLSearchParams(location.search).has('standalone') ? '../coxeter_mfv.html' : '../index.html';
+  document.body.appendChild(frame);
+  await waitFor(() => frame.contentWindow?.escherMCMC?.store?.solution?.status === 'optimal', 'startup');
+  const app = frame.contentWindow;
+  const doc = app.document;
+  const store = app.escherMCMC.store;
+  await store.useScenario('solo-ecoli');
+  const scenario = {
+    id: 'download-ui-fixture', name: 'Bundled core download fixture', loader: 'yeast9',
+    objective: 'sum-biomass', species: [{ id: 'sce', model: 'yeast9-9-1-1', abundance: 1 }],
+  };
+  store.scenarios.push(scenario);
+  store.emit('scenario');
+  const fetchOriginal = app.fetch.bind(app);
+  let nextResponse;
+  app.fetch = async (url, ...options) => {
+    if (url !== YEAST9_SOURCE.url) {
+      return fetchOriginal(url, ...options);
+    }
+    const response = nextResponse;
+    nextResponse = null;
+    if (!response) {
+      throw new Error('The checker did not prepare a download response.');
+    }
+    response.started = true;
+    if (response.stage === 'headers') {
+      await response.held;
+    }
+    return {
+      ok: response.status === 200,
+      status: response.status,
+      async text() {
+        response.bodyStarted = true;
+        if (response.stage === 'body') {
+          await response.held;
+        }
+        return xml;
+      },
+    };
+  };
+
+  function prepareResponse(stage = 'headers', status = 200) {
+    let release;
+    const held = new Promise(resolve => {
+      release = resolve;
+    });
+    const response = { stage, status, held, release };
+    nextResponse = response;
+    responses.push(response);
+    return response;
+  }
+
+  async function workspace(name) {
+    doc.querySelector('[data-action="close-workspace"]')?.click();
+    doc.querySelector('[data-action="left-tab"][data-tab="model"]').click();
+    await tick();
+    doc.querySelector(`#task-panel [data-workspace="${name}"]`).click();
+    await tick();
+  }
+
+  async function choose(id) {
+    await workspace('scenario');
+    const input = doc.querySelector('[data-action="scenario"]');
+    input.value = `sc:${id}`;
+    input.dispatchEvent(new app.Event('change', { bubbles: true }));
+    await tick();
+  }
+
+  const saved = [];
+  app.showSaveFilePicker = async options => ({
+    name: options.suggestedName,
+    async createWritable() {
+      let blob;
+      return {
+        async write(content) {
+          blob = content;
+        },
+        async close() {
+          saved.push(blob);
+        },
+        async abort() {},
+      };
+    },
+  });
+
+  function saveScenario() {
+    const menu = doc.querySelector('.file-menu');
+    menu.open = true;
+    menu.querySelector('[data-action="export-state"]').click();
+  }
+
+  const originalSolution = store.solution;
+  const originalMap = store.map;
+  const first = prepareResponse();
+  await choose(scenario.id);
+  await waitFor(() => first.started, 'download from Scenario chooser');
+  check('the Scenario chooser starts the requested download', store.status.state === 'busy');
+  check('a pending download keeps the previously installed drawing and solution', store.map === originalMap && store.solution === originalSolution);
+  await choose('aerobio-mixto');
+  saveScenario();
+  first.release();
+  await waitFor(() => store.scenario.id === 'aerobio-mixto' && saved.length === 1, 'newer selection and queued export');
+  const selected = JSON.parse(await saved[0].text());
+  check('a newer Scenario selection wins after a held download finishes', store.solution?.status === 'optimal' && store.species.length === 2);
+  check('Save queued after that selection records the newer community', selected.scenario === 'aerobio-mixto' && selected.species.length === 2);
+
+  doc.querySelector('[data-action="clear-solution"]').click();
+  await waitFor(() => store.solution === null, 'Clear solution');
+  const clearedMap = store.map;
+  await workspace('community');
+  const failure = prepareResponse('headers', 503);
+  doc.querySelector('[data-action="load-yeast9"]').click();
+  await waitFor(() => failure.started, 'download button');
+  check('the model-download button preserves a deliberately cleared solution while waiting', store.solutionCleared && store.solution === null);
+  failure.release();
+  await waitFor(() => store.status.state === 'error', 'download failure');
+  check('a failed download gives a visible HTTP error and preserves cleared work',
+    store.status.message.includes('503') && store.solutionCleared && store.solution === null && store.map === clearedMap);
+
+  await choose('solo-ecoli');
+  await waitFor(() => store.solution?.status === 'optimal', 'recovery scenario');
+  const body = prepareResponse('body');
+  await choose(scenario.id);
+  await waitFor(() => body.bodyStarted, 'held response body');
+  await store.useScenario('aerobio-mixto');
+  const newerSolution = store.solution;
+  const newerMap = store.map;
+  saveScenario();
+  body.release();
+  await waitFor(() => saved.length === 2, 'export after superseded response body');
+  check('a late response body cannot replace a newer context opened through the Store API', store.solution === newerSolution && store.map === newerMap);
+  check('the superseded chooser request does not overwrite the newer status with an error', store.status.state === 'ok');
+  check('the subsequent Scenario export still belongs to the newer context', JSON.parse(await saved[1].text()).scenario === 'aerobio-mixto');
+
+  await workspace('community');
+  const buttonResponse = prepareResponse();
+  doc.querySelector('[data-action="load-yeast9"]').click();
+  await waitFor(() => buttonResponse.started, 'superseded download button');
+  await store.useScenario('solo-ecoli');
+  const buttonMap = store.map;
+  saveScenario();
+  buttonResponse.release();
+  await waitFor(() => saved.length === 3, 'export after superseded download button');
+  check('the download button also retires quietly when a newer context is opened',
+    store.scenario.id === 'solo-ecoli' && store.map === buttonMap && store.status.state === 'ok');
+
+  const olderResponse = prepareResponse();
+  const older = store.useYeast9Scenario({ ...scenario, id: 'older-download' }).then(value => ({ value }), error => ({ error }));
+  await waitFor(() => olderResponse.started, 'older download');
+  const newerResponse = prepareResponse('none');
+  await store.useYeast9Scenario({ ...scenario, id: 'newer-download' });
+  check('the current fixture download installs without inheriting an old numerical solution', newerResponse.started && store.scenario.id === 'newer-download' && store.solution === null);
+  olderResponse.release();
+  const oldOutcome = await older;
+  check('reverse response order retains the newest requested model', oldOutcome.error?.name === 'AbortError' && store.scenario.id === 'newer-download');
+
+  store.publishedCommunityId = 'previous-published-fixture';
+  store.scenario = { ...store.scenario, published: 'previous-published-fixture' };
+  store.steadyComConfig.parsimonious = true;
+  const input = doc.getElementById('model-file-input');
+  const transfer = new app.DataTransfer();
+  transfer.items.add(new app.File([JSON.stringify(raw)], 'ordinary-core.json'));
+  input.files = transfer.files;
+  input.dispatchEvent(new app.Event('change', { bubbles: true }));
+  await waitFor(() => input.value === '' && store.scenario.id === 'uploaded-models', 'ordinary model import');
+  check('an ordinary model file retires the previous published identity and settings', store.publishedCommunityId === null && !store.steadyComConfig.parsimonious);
+  const menu = doc.querySelector('.analysis-menu');
+  menu.open = true;
+  menu.querySelector('[data-action="run-fba"]').click();
+  await waitFor(() => store.lastRun?.phase === 'done' && store.solution?.status === 'optimal', 'FBA after recovery');
+  check('the app remains usable after failed and superseded downloads', Number.isFinite(store.solution.objectiveValue) && store.status.state === 'ok');
+} catch (error) {
+  check(error.message, false);
+} finally {
+  for (const response of responses) {
+    response.release();
+  }
+}
+
+document.title = failures ? `FAIL (${failures})` : 'PASS';
+window.__checkComplete = Promise.resolve({ failures, total, lines });
+</script>
+</body>
+</html>

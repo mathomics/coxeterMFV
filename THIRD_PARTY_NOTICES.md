@@ -4,15 +4,15 @@ The root MIT licence applies to Coxeter-MFV's own source. It does not relicense 
 
 ## Browser distribution
 
-`app/web/coxeter_mfv.html` embeds glpk.js 5.0.0 and GNU GLPK. The combined browser distribution is provided under GPL-3.0, while Coxeter-MFV's own source remains available under MIT. The full GPL text is in [`LICENSES/GPL-3.0.txt`](LICENSES/GPL-3.0.txt) and is embedded in new standalone builds.
+`app/coxeter_mfv.html` embeds glpk.js 5.0.0 and GNU GLPK. The combined browser distribution is provided under GPL-3.0, while Coxeter-MFV's own source remains available under MIT. The full GPL text is in [`LICENSES/GPL-3.0.txt`](LICENSES/GPL-3.0.txt) and is embedded in new standalone builds.
 
-The vendored factory patch and file provenance are documented in [`code/assets/vendor/PROVENANCE.md`](code/assets/vendor/PROVENANCE.md). Matching glpk.js and GLPK source archives, exact revisions, checksums and build instructions are preserved in [`code/assets/vendor/source`](code/assets/vendor/source/README.md). The wrapper and standalone build scripts are part of this repository's source.
+The vendored factory patch and file provenance are documented in [`assets/vendor/PROVENANCE.md`](assets/vendor/PROVENANCE.md). Matching glpk.js and GLPK source archives, exact revisions, checksums and build instructions are preserved in [`assets/vendor/source`](assets/vendor/source/README.md). The wrapper and standalone build scripts are part of this repository's source.
 
-The npm dependency graph, including pako's MIT/Zlib terms where applicable, is recorded in `code/package-lock.json`. Installing the npm packages is a build/test step; their presence in that graph does not mean that every package is embedded in the browser artifact. The embedded solver uses the direct glpk.js factory and WASM, rather than the npm worker loader.
+The npm dependency graph, including pako's MIT/Zlib terms where applicable, is recorded in `package-lock.json`. Installing the npm packages is a build/test step; their presence in that graph does not mean that every package is embedded in the browser artifact. The embedded solver uses the direct glpk.js factory and WASM, rather than the npm worker loader.
 
 ## Windows distribution
 
-The native application includes the HiGHS solver. Its MIT licence is preserved in [`LICENSES/HiGHS-MIT.txt`](LICENSES/HiGHS-MIT.txt). The locked Rust dependency graph is in `code/rust/Cargo.lock`. Dependency licence texts and upstream references are collected in [`app/windows/THIRD_PARTY_LICENSES.txt`](app/windows/THIRD_PARTY_LICENSES.txt), including build and target-specific dependencies in that graph.
+The native application includes the HiGHS solver. Its MIT licence is preserved in [`LICENSES/HiGHS-MIT.txt`](LICENSES/HiGHS-MIT.txt). The locked Rust dependency graph is in `rust/Cargo.lock`. Dependency licence texts and upstream references are collected in [`app/THIRD_PARTY_LICENSES.txt`](app/THIRD_PARTY_LICENSES.txt), including build and target-specific dependencies in that graph.
 
 Regenerate native notices with `python tools/native-licenses.py` after changing the lockfile, and review any missing upstream licence text. Include the resulting notices when distributing the executable independently of the repository.
 

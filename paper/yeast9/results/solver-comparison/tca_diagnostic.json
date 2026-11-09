@@ -1,0 +1,145 @@
+[
+  {
+    "id": "r_0302",
+    "name": "citrate to cis-aconitate(3-)",
+    "bounds": [
+      -1000,
+      1000
+    ],
+    "stoichiometry": {
+      "s_0524": -1,
+      "s_0517": 1,
+      "s_0807": 1
+    },
+    "fba": -1000,
+    "pfba": 0,
+    "cyclefree": 0,
+    "drawn": true
+  },
+  {
+    "id": "r_0280",
+    "name": "cis-aconitate(3-) to isocitrate",
+    "bounds": [
+      -1000,
+      1000
+    ],
+    "stoichiometry": {
+      "s_0517": -1,
+      "s_0807": -1,
+      "s_0941": 1
+    },
+    "fba": -1000,
+    "pfba": 0,
+    "cyclefree": 0,
+    "drawn": true
+  },
+  {
+    "id": "r_4262",
+    "name": "citrate hydroxymutase",
+    "bounds": [
+      -1000,
+      1000
+    ],
+    "stoichiometry": {
+      "s_0524": -1,
+      "s_0941": 1
+    },
+    "fba": 0.7721336521537978,
+    "pfba": 0.633850206491855,
+    "cyclefree": 0.07807815741501165,
+    "drawn": true
+  },
+  {
+    "id": "r_0658",
+    "name": "isocitrate dehydrogenase (NAD+)",
+    "bounds": [
+      0,
+      1000
+    ],
+    "stoichiometry": {
+      "s_0941": -1,
+      "s_1200": -1,
+      "s_0182": 1,
+      "s_0460": 1,
+      "s_1205": 1
+    },
+    "fba": 0,
+    "pfba": 0.5557726978756958,
+    "cyclefree": 0,
+    "drawn": true
+  },
+  {
+    "id": "r_2131",
+    "name": "isocitrate dehydrogenase",
+    "bounds": [
+      0,
+      1000
+    ],
+    "stoichiometry": {
+      "s_0941": -1,
+      "s_1210": -1,
+      "s_0182": 1,
+      "s_0460": 1,
+      "s_1214": 1
+    },
+    "fba": 0.07807815741501165,
+    "pfba": 0.07807750861615938,
+    "cyclefree": 0.07807815741501165,
+    "drawn": true
+  },
+  {
+    "id": "r_0659",
+    "name": "isocitrate dehydrogenase (NADP)",
+    "bounds": [
+      -1000,
+      1000
+    ],
+    "stoichiometry": {
+      "s_0940": -1,
+      "s_1207": -1,
+      "s_0180": 1,
+      "s_0456": 1,
+      "s_1212": 1
+    },
+    "fba": 0.6940554947389046,
+    "pfba": 0.02713004442928284,
+    "cyclefree": 0.6940554947562234,
+    "drawn": true
+  },
+  {
+    "id": "r_1112",
+    "name": "AKG transporter, mitochonrial",
+    "bounds": [
+      -1000,
+      1000
+    ],
+    "stoichiometry": {
+      "s_0180": -1,
+      "s_0524": -1,
+      "s_0182": 1,
+      "s_0522": 1
+    },
+    "fba": 0.5417598173841043,
+    "pfba": 0,
+    "cyclefree": 0.5417598173840137,
+    "drawn": false
+  },
+  {
+    "id": "r_1128",
+    "name": "citrate transport",
+    "bounds": [
+      -1000,
+      1000
+    ],
+    "stoichiometry": {
+      "s_0522": -1,
+      "s_0941": -1,
+      "s_0524": 1,
+      "s_0940": 1
+    },
+    "fba": -999.3059445052611,
+    "pfba": 0,
+    "cyclefree": 0,
+    "drawn": false
+  }
+]

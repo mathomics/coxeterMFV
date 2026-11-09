@@ -1,0 +1,189 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Workspace return checks</title>
+<style>
+  body { font: 13px/1.6 ui-monospace, monospace; margin: 24px; background: #0b1220; color: #e2e8f0; }
+  .pass { color: #4ade80; }
+  .fail { color: #fb7185; }
+  iframe { width: 1200px; height: 800px; border: 1px solid #334155; margin-top: 16px; }
+</style>
+</head>
+<body>
+<h1>Return to map while workspaces change</h1>
+<p>Held downloads use bundled-core SBML. No desktop input or system dialogs are used.</p>
+<div id="out"></div>
+<script type="module">
+/** Check that an asynchronous Return action owns only the workspace that started it. */
+import { Model } from '../src/core/model.js';
+import { toSBML } from '../src/core/sbml-write.js';
+import { YEAST9_SOURCE } from '../src/core/yeast9.js';
+
+const out = document.getElementById('out');
+const requests = [];
+const lines = [];
+let total = 0;
+let failures = 0;
+
+function check(name, passed) {
+  total += 1;
+  if (!passed) {
+    failures += 1;
+  }
+  const line = document.createElement('div');
+  line.className = passed ? 'pass' : 'fail';
+  line.textContent = `${passed ? 'OK' : 'FAIL'} ${name}`;
+  out.appendChild(line);
+  lines.push(line.textContent);
+}
+
+async function tick() {
+  await new Promise(resolve => requestAnimationFrame(resolve));
+  await new Promise(resolve => setTimeout(resolve, 30));
+}
+
+async function waitFor(read, label) {
+  const deadline = Date.now() + 30000;
+  while (!read()) {
+    if (Date.now() > deadline) {
+      throw new Error(`Timed out: ${label}`);
+    }
+    await tick();
+  }
+}
+
+try {
+  const raw = await (await fetch('../models/ecoli_core_mc.json')).json();
+  const xml = toSBML(new Model(raw));
+  const frame = document.createElement('iframe');
+  frame.src = new URLSearchParams(location.search).has('standalone') ? '../coxeter_mfv.html' : '../index.html';
+  document.body.appendChild(frame);
+  await waitFor(() => frame.contentWindow?.escherMCMC?.store?.solution?.status === 'optimal', 'startup');
+  const app = frame.contentWindow;
+  const doc = app.document;
+  const store = app.escherMCMC.store;
+  await store.useScenario('solo-ecoli');
+  for (const id of ['return-fixture-a', 'return-fixture-b']) {
+    store.scenarios.push({
+      id, name: id, loader: 'yeast9', objective: 'sum-biomass',
+      species: [{ id: 'sce', model: 'yeast9-9-1-1', abundance: 1 }],
+    });
+  }
+  const fetchOriginal = app.fetch.bind(app);
+  let nextRequest;
+  app.fetch = async (url, ...options) => {
+    if (url !== YEAST9_SOURCE.url) {
+      return fetchOriginal(url, ...options);
+    }
+    const request = nextRequest;
+    nextRequest = null;
+    if (!request) {
+      throw new Error('No workspace-check response was prepared.');
+    }
+    request.started = true;
+    await request.held;
+    return { ok: request.status === 200, status: request.status, text: async () => xml };
+  };
+
+  function prepare(status = 200) {
+    let release;
+    const held = new Promise(resolve => {
+      release = resolve;
+    });
+    const request = { status, held, release };
+    nextRequest = request;
+    requests.push(request);
+    return request;
+  }
+
+  async function open(name) {
+    doc.querySelector('[data-action="left-tab"][data-tab="model"]').click();
+    await tick();
+    doc.querySelector(`#task-panel [data-workspace="${name}"]`).click();
+    await tick();
+  }
+
+  async function choose(id) {
+    const input = doc.querySelector('[data-action="scenario"]');
+    input.value = `sc:${id}`;
+    input.dispatchEvent(new app.Event('change', { bubbles: true }));
+    await tick();
+  }
+
+  function back() {
+    return doc.querySelector('#workspace-editor [data-action="close-workspace"]');
+  }
+
+  function usable() {
+    return !back().disabled && back().textContent.includes('Return to map');
+  }
+
+  const editor = doc.getElementById('workspace-editor');
+  await open('scenario');
+  const first = prepare();
+  await choose('return-fixture-a');
+  await waitFor(() => first.started, 'first download');
+  back().click();
+  await tick();
+  check('Return to map waits visibly while its requested context is loading', back().disabled && back().textContent.includes('Loading'));
+  await open('community');
+  check('opening another workspace restores its own usable Return control', !editor.hidden && editor.dataset.workspace === 'community' && usable());
+  first.release();
+  await waitFor(() => store.scenario.id === 'return-fixture-a' && store.status.state !== 'busy', 'first context');
+  await tick();
+  await tick();
+  check('the older Return action does not close the newly opened workspace', !editor.hidden && editor.dataset.workspace === 'community');
+  await open('community');
+  back().click();
+  await tick();
+  check('a reused Return control closes the new workspace', editor.hidden && !doc.getElementById('stage').inert);
+
+  await store.useScenario('solo-ecoli');
+  await open('scenario');
+  const second = prepare();
+  await choose('return-fixture-b');
+  await waitFor(() => second.started, 'second download');
+  back().click();
+  await tick();
+  await open('scenario');
+  check('reopening the same workspace creates a fresh usable Return control', !editor.hidden && usable());
+  second.release();
+  await waitFor(() => store.scenario.id === 'return-fixture-b' && store.status.state !== 'busy', 'second context');
+  await tick();
+  await tick();
+  check('an older Return action cannot close a reopened workspace with the same name', !editor.hidden && editor.dataset.workspace === 'scenario' && usable());
+  await open('scenario');
+  back().click();
+  await tick();
+  check('Return remains usable after the waiting calculation completes', editor.hidden);
+
+  await store.useScenario('solo-ecoli');
+  await open('scenario');
+  const failed = prepare(503);
+  await choose('return-fixture-a');
+  await waitFor(() => failed.started, 'failed download');
+  back().click();
+  failed.release();
+  await waitFor(() => store.status.state === 'error', 'failed context error');
+  await tick();
+  await open('scenario');
+  check('a failed context load also leaves the reopened Return control usable', usable());
+  await store.useScenario('solo-ecoli');
+  await open('scenario');
+  back().click();
+  await tick();
+  check('the final Return restores an interactive map and optimal ordinary result', editor.hidden && !doc.getElementById('stage').inert && store.solution?.status === 'optimal');
+} catch (error) {
+  check(error.message, false);
+} finally {
+  for (const request of requests) {
+    request.release();
+  }
+}
+
+document.title = failures ? `FAIL (${failures})` : 'PASS';
+window.__checkComplete = Promise.resolve({ failures, total, lines });
+</script>
+</body>
+</html>

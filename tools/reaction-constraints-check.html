@@ -1,0 +1,157 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Running reaction constraint checks</title>
+<style>
+  body { margin: 16px; font: 14px system-ui; background: #0b1220; color: #e2e8f0; }
+  .pass { color: #4ade80; }
+  .fail { color: #fb7185; }
+  iframe { width: 1300px; height: 900px; border: 1px solid #334155; margin-top: 16px; }
+</style>
+</head>
+<body>
+<h1>Reaction bounds, resets and gene knockouts</h1>
+<div id="out"></div>
+<script type="module">
+/** Exercise the real constraint controls against the bundled E. coli network. */
+const out = document.getElementById('out');
+let failures = 0;
+
+function check(name, passed) {
+  if (!passed) {
+    failures += 1;
+  }
+  const line = document.createElement('div');
+  line.className = passed ? 'pass' : 'fail';
+  line.textContent = `${passed ? 'OK' : 'FAIL'} ${name}`;
+  out.appendChild(line);
+}
+
+async function tick() {
+  await new Promise(resolve => requestAnimationFrame(resolve));
+  await new Promise(resolve => setTimeout(resolve, 80));
+}
+
+async function waitFor(read, label) {
+  const deadline = Date.now() + 30000;
+  while (!read()) {
+    if (Date.now() > deadline) {
+      throw new Error(`Timed out: ${label}`);
+    }
+    await tick();
+  }
+}
+
+try {
+  const frame = document.createElement('iframe');
+  frame.src = new URLSearchParams(location.search).has('standalone') ? '../coxeter_mfv.html' : '../index.html';
+  document.body.appendChild(frame);
+  await waitFor(() => frame.contentWindow?.escherMCMC?.store?.solution?.status === 'optimal', 'startup');
+  const app = frame.contentWindow;
+  const doc = app.document;
+  const store = app.escherMCMC.store;
+  const model = store.models.get('ecoli_core_mc');
+  model.reactions.get('PGI').geneReactionRule = 'qa_pgi and qa_partner';
+  await store.useScenario('solo-ecoli');
+  store.select('eco@PGI');
+  await tick();
+  const inspector = doc.getElementById('inspector-panel');
+  if (inspector.getBoundingClientRect().width < 100) {
+    doc.querySelector('.canvas-toolbar [data-action="toggle-inspector"]').click();
+    await tick();
+  }
+
+  function button(action, label = null) {
+    const buttons = [...inspector.querySelectorAll(`[data-action="${action}"]`)];
+    const found = buttons.find(element => label === null || element.textContent.trim() === label);
+    if (!found) {
+      throw new Error(`Missing control: ${action} ${label ?? ''}`);
+    }
+    return found;
+  }
+
+  async function typeBound(value) {
+    const input = inspector.querySelector('[data-action="bound-upper-number"]');
+    input.value = String(value);
+    input.dispatchEvent(new app.Event('change', { bubbles: true }));
+    await tick();
+    await tick();
+  }
+
+  await store.solveSteadyComAt(0.1);
+  await tick();
+  const fixed = store.solution;
+  const snapshot = JSON.stringify(store.constraintSnapshot());
+  button('reset-reaction', 'Reset').click();
+  await tick();
+  check('Reset on an unchanged reaction preserves the completed fixed growth result', store.solution === fixed);
+  button('reset-all').click();
+  await tick();
+  check('All on unchanged bounds preserves the completed fixed growth result', store.solution === fixed);
+  await typeBound(store.currentReactionBounds('eco@PGI').upper);
+  check('committing the same upper bound does not schedule a replacement solve', store.solution === fixed);
+  const slider = inspector.querySelector('[data-action="bound-upper"]');
+  slider.dispatchEvent(new app.Event('input', { bubbles: true }));
+  await tick();
+  await tick();
+  check('an unchanged slider preserves the result and creates no hidden override',
+    store.solution === fixed && JSON.stringify(store.constraintSnapshot()) === snapshot);
+
+  await typeBound(20);
+  check('a changed bound replaces fixed growth with an ordinary optimal result',
+    store.solution?.status === 'optimal' && !store.solution.steadyCom && store.solution !== fixed);
+  check('the changed upper bound reaches the biological constraints', store.currentReactionBounds('eco@PGI').upper === 20);
+  button('knockout').click();
+  await tick();
+  check('Knockout closes the selected reaction', store.reactionKnockedOut('eco@PGI'));
+  button('reset-reaction', 'Restore').click();
+  await tick();
+  check('Restore reopens a reaction closed by reaction knockout', !store.reactionKnockedOut('eco@PGI'));
+
+  await typeBound(20);
+  const gene = () => inspector.querySelector('[data-action="gene-ko"][data-gene="eco@qa_pgi"]');
+  gene().click();
+  await tick();
+  check('the gene KO control closes its reaction and shows its active state',
+    store.geneKnockouts.has('eco@qa_pgi') && store.currentReactionBounds('eco@PGI').upper === 0
+    && gene().getAttribute('aria-pressed') === 'true');
+  const restore = button('reset-reaction', 'Restore');
+  check('Restore explains why a gene-closed reaction cannot be reopened by resetting bounds',
+    restore.disabled && restore.title === 'Restore the gene to reopen this reaction');
+  check('gene-closed bounds cannot be edited through either number field',
+    inspector.querySelector('[data-action="bound-lower-number"]').disabled
+    && inspector.querySelector('[data-action="bound-upper-number"]').disabled);
+  const closedSolution = store.solution;
+  restore.click();
+  await tick();
+  check('the disabled Restore does not erase a gene-closed result', store.solution === closedSolution);
+  gene().click();
+  await tick();
+  check('restoring the gene reveals the earlier reaction bound', store.currentReactionBounds('eco@PGI').upper === 20);
+
+  gene().click();
+  await tick();
+  button('reset-reaction', 'Reset').click();
+  await tick();
+  check('Reset removes the earlier explicit bound while keeping the gene closure',
+    !store.overrides.has('eco@PGI') && store.geneKnockouts.has('eco@qa_pgi')
+    && store.currentReactionBounds('eco@PGI').upper === 0);
+  const objective = JSON.stringify(store.objectiveCoefficients());
+  button('reset-all').click();
+  await tick();
+  check('All restores genes and reaction bounds while preserving the objective',
+    store.geneKnockouts.size === 0 && !store.reactionKnockedOut('eco@PGI')
+    && JSON.stringify(store.objectiveCoefficients()) === objective);
+  check('the completed sequence leaves an optimal result and no explicit bounds',
+    store.solution?.status === 'optimal' && store.overrides.size === 0);
+  gene().click();
+  await tick();
+} catch (error) {
+  check(error.message, false);
+}
+
+document.title = failures ? `FAIL (${failures})` : 'PASS';
+</script>
+</body>
+</html>

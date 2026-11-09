@@ -1,0 +1,706 @@
+{
+  "aminoAcids": [
+    {
+      "name": "L-glycine",
+      "exchange": "r_1810",
+      "bounds": [
+        0,
+        1000
+      ],
+      "cytosolicMetabolite": "s_1003",
+      "chargingReactions": [
+        "r_0512"
+      ],
+      "fluxes": {
+        "fba": {
+          "exchange": 0.006609820015787216,
+          "cytosolicTRNACharging": 0.02301211077119793
+        },
+        "pfba": {
+          "exchange": 0.006608963520746859,
+          "cytosolicTRNACharging": 0.02301211077119793
+        },
+        "cyclefree": {
+          "exchange": 0.006609820015787216,
+          "cytosolicTRNACharging": 0.02301211077119793
+        }
+      }
+    },
+    {
+      "name": "L-alanine",
+      "exchange": "r_1873",
+      "bounds": [
+        0,
+        1000
+      ],
+      "cytosolicMetabolite": "s_0955",
+      "chargingReactions": [
+        "r_0157"
+      ],
+      "fluxes": {
+        "fba": {
+          "exchange": 0,
+          "cytosolicTRNACharging": 0.02820152438506994
+        },
+        "pfba": {
+          "exchange": 0,
+          "cytosolicTRNACharging": 0.02820152438506994
+        },
+        "cyclefree": {
+          "exchange": 0,
+          "cytosolicTRNACharging": 0.02820152438506994
+        }
+      }
+    },
+    {
+      "name": "L-arginine",
+      "exchange": "r_1879",
+      "bounds": [
+        0,
+        1000
+      ],
+      "cytosolicMetabolite": "s_0965",
+      "chargingReactions": [
+        "r_0209"
+      ],
+      "fluxes": {
+        "fba": {
+          "exchange": 0,
+          "cytosolicTRNACharging": 0.015757468969190162
+        },
+        "pfba": {
+          "exchange": 0,
+          "cytosolicTRNACharging": 0.015757468969195658
+        },
+        "cyclefree": {
+          "exchange": 0,
+          "cytosolicTRNACharging": 0.015757468969190162
+        }
+      }
+    },
+    {
+      "name": "L-asparagine",
+      "exchange": "r_1880",
+      "bounds": [
+        0,
+        1000
+      ],
+      "cytosolicMetabolite": "s_0969",
+      "chargingReactions": [
+        "r_0212"
+      ],
+      "fluxes": {
+        "fba": {
+          "exchange": 0,
+          "cytosolicTRNACharging": 0.015528106298121161
+        },
+        "pfba": {
+          "exchange": 0,
+          "cytosolicTRNACharging": 0.015528106298121158
+        },
+        "cyclefree": {
+          "exchange": 0,
+          "cytosolicTRNACharging": 0.015528106298121161
+        }
+      }
+    },
+    {
+      "name": "L-aspartate",
+      "exchange": "r_1881",
+      "bounds": [
+        0,
+        1000
+      ],
+      "cytosolicMetabolite": "s_0973",
+      "chargingReactions": [
+        "r_0220"
+      ],
+      "fluxes": {
+        "fba": {
+          "exchange": 0,
+          "cytosolicTRNACharging": 0.019493249486880627
+        },
+        "pfba": {
+          "exchange": 0,
+          "cytosolicTRNACharging": 0.019493249486880623
+        },
+        "cyclefree": {
+          "exchange": 0,
+          "cytosolicTRNACharging": 0.019493249486880627
+        }
+      }
+    },
+    {
+      "name": "L-cysteine",
+      "exchange": "r_1883",
+      "bounds": [
+        0,
+        1000
+      ],
+      "cytosolicMetabolite": "s_0981",
+      "chargingReactions": [
+        "r_0313"
+      ],
+      "fluxes": {
+        "fba": {
+          "exchange": 0,
+          "cytosolicTRNACharging": 0.0030460844551302773
+        },
+        "pfba": {
+          "exchange": 0,
+          "cytosolicTRNACharging": 0.0030460844551302778
+        },
+        "cyclefree": {
+          "exchange": 0,
+          "cytosolicTRNACharging": 0.0030460844551302773
+        }
+      }
+    },
+    {
+      "name": "L-glutamate",
+      "exchange": "r_1889",
+      "bounds": [
+        0,
+        1000
+      ],
+      "cytosolicMetabolite": "s_0991",
+      "chargingReactions": [
+        "r_0479"
+      ],
+      "fluxes": {
+        "fba": {
+          "exchange": 0,
+          "cytosolicTRNACharging": 0.02404519230893538
+        },
+        "pfba": {
+          "exchange": 0,
+          "cytosolicTRNACharging": 0.024045192308935384
+        },
+        "cyclefree": {
+          "exchange": 0,
+          "cytosolicTRNACharging": 0.02404519230893538
+        }
+      }
+    },
+    {
+      "name": "L-glutamine",
+      "exchange": "r_1891",
+      "bounds": [
+        0,
+        1000
+      ],
+      "cytosolicMetabolite": "s_0999",
+      "chargingReactions": [
+        "r_0478"
+      ],
+      "fluxes": {
+        "fba": {
+          "exchange": 0,
+          "cytosolicTRNACharging": 0.011448136897487908
+        },
+        "pfba": {
+          "exchange": 0,
+          "cytosolicTRNACharging": 0.011448136897487908
+        },
+        "cyclefree": {
+          "exchange": 0,
+          "cytosolicTRNACharging": 0.011448136897487908
+        }
+      }
+    },
+    {
+      "name": "L-histidine",
+      "exchange": "r_1893",
+      "bounds": [
+        0,
+        1000
+      ],
+      "cytosolicMetabolite": "s_1006",
+      "chargingReactions": [
+        "r_0539"
+      ],
+      "fluxes": {
+        "fba": {
+          "exchange": 0,
+          "cytosolicTRNACharging": 0.0067773109046722945
+        },
+        "pfba": {
+          "exchange": 0,
+          "cytosolicTRNACharging": 0.0067773109046722945
+        },
+        "cyclefree": {
+          "exchange": 0,
+          "cytosolicTRNACharging": 0.0067773109046722945
+        }
+      }
+    },
+    {
+      "name": "L-isoleucine",
+      "exchange": "r_1897",
+      "bounds": [
+        0,
+        1000
+      ],
+      "cytosolicMetabolite": "s_1016",
+      "chargingReactions": [
+        "r_0665"
+      ],
+      "fluxes": {
+        "fba": {
+          "exchange": 0,
+          "cytosolicTRNACharging": 0.021531328815846754
+        },
+        "pfba": {
+          "exchange": 0,
+          "cytosolicTRNACharging": 0.021531328815846757
+        },
+        "cyclefree": {
+          "exchange": 0,
+          "cytosolicTRNACharging": 0.021531328815846754
+        }
+      }
+    },
+    {
+      "name": "L-leucine",
+      "exchange": "r_1899",
+      "bounds": [
+        0,
+        1000
+      ],
+      "cytosolicMetabolite": "s_1021",
+      "chargingReactions": [
+        "r_0701"
+      ],
+      "fluxes": {
+        "fba": {
+          "exchange": 0,
+          "cytosolicTRNACharging": 0.029400726324839827
+        },
+        "pfba": {
+          "exchange": 0,
+          "cytosolicTRNACharging": 0.02940072632483983
+        },
+        "cyclefree": {
+          "exchange": 0,
+          "cytosolicTRNACharging": 0.029400726324839827
+        }
+      }
+    },
+    {
+      "name": "L-lysine",
+      "exchange": "r_1900",
+      "bounds": [
+        0,
+        1000
+      ],
+      "cytosolicMetabolite": "s_1025",
+      "chargingReactions": [
+        "r_0711"
+      ],
+      "fluxes": {
+        "fba": {
+          "exchange": 0,
+          "cytosolicTRNACharging": 0.026714390028327678
+        },
+        "pfba": {
+          "exchange": 0,
+          "cytosolicTRNACharging": 0.02671439002832767
+        },
+        "cyclefree": {
+          "exchange": 0,
+          "cytosolicTRNACharging": 0.026714390028327678
+        }
+      }
+    },
+    {
+      "name": "L-methionine",
+      "exchange": "r_1902",
+      "bounds": [
+        0,
+        1000
+      ],
+      "cytosolicMetabolite": "s_1029",
+      "chargingReactions": [
+        "r_0729"
+      ],
+      "fluxes": {
+        "fba": {
+          "exchange": 0,
+          "cytosolicTRNACharging": 0.006609464130864504
+        },
+        "pfba": {
+          "exchange": 0,
+          "cytosolicTRNACharging": 0.006609464130864504
+        },
+        "cyclefree": {
+          "exchange": 0,
+          "cytosolicTRNACharging": 0.006609464130864504
+        }
+      }
+    },
+    {
+      "name": "L-phenylalanine",
+      "exchange": "r_1903",
+      "bounds": [
+        0,
+        1000
+      ],
+      "cytosolicMetabolite": "s_1032",
+      "chargingReactions": [
+        "r_0852"
+      ],
+      "fluxes": {
+        "fba": {
+          "exchange": 0,
+          "cytosolicTRNACharging": 0.013527192309953537
+        },
+        "pfba": {
+          "exchange": 0,
+          "cytosolicTRNACharging": 0.013527192309953534
+        },
+        "cyclefree": {
+          "exchange": 0,
+          "cytosolicTRNACharging": 0.013527192309953537
+        }
+      }
+    },
+    {
+      "name": "L-proline",
+      "exchange": "r_1904",
+      "bounds": [
+        0,
+        1000
+      ],
+      "cytosolicMetabolite": "s_1035",
+      "chargingReactions": [
+        "r_0941"
+      ],
+      "fluxes": {
+        "fba": {
+          "exchange": 0,
+          "cytosolicTRNACharging": 0.014583538462980382
+        },
+        "pfba": {
+          "exchange": 0,
+          "cytosolicTRNACharging": 0.01458353846298038
+        },
+        "cyclefree": {
+          "exchange": 0,
+          "cytosolicTRNACharging": 0.014583538462980382
+        }
+      }
+    },
+    {
+      "name": "L-serine",
+      "exchange": "r_1906",
+      "bounds": [
+        0,
+        1000
+      ],
+      "cytosolicMetabolite": "s_1039",
+      "chargingReactions": [
+        "r_0995"
+      ],
+      "fluxes": {
+        "fba": {
+          "exchange": 0,
+          "cytosolicTRNACharging": 0.02252361773581201
+        },
+        "pfba": {
+          "exchange": 0,
+          "cytosolicTRNACharging": 0.02252361773581201
+        },
+        "cyclefree": {
+          "exchange": 0,
+          "cytosolicTRNACharging": 0.02252361773581201
+        }
+      }
+    },
+    {
+      "name": "L-threonine",
+      "exchange": "r_1911",
+      "bounds": [
+        0,
+        1000
+      ],
+      "cytosolicMetabolite": "s_1045",
+      "chargingReactions": [
+        "r_1042"
+      ],
+      "fluxes": {
+        "fba": {
+          "exchange": 0,
+          "cytosolicTRNACharging": 0.019072589153491675
+        },
+        "pfba": {
+          "exchange": 0,
+          "cytosolicTRNACharging": 0.01907258915349167
+        },
+        "cyclefree": {
+          "exchange": 0,
+          "cytosolicTRNACharging": 0.019072589153491675
+        }
+      }
+    },
+    {
+      "name": "L-tryptophan",
+      "exchange": "r_1912",
+      "bounds": [
+        0,
+        1000
+      ],
+      "cytosolicMetabolite": "s_1048",
+      "chargingReactions": [
+        "r_1057"
+      ],
+      "fluxes": {
+        "fba": {
+          "exchange": 0,
+          "cytosolicTRNACharging": 0.003128021228519333
+        },
+        "pfba": {
+          "exchange": 0,
+          "cytosolicTRNACharging": 0.003128021228519333
+        },
+        "cyclefree": {
+          "exchange": 0,
+          "cytosolicTRNACharging": 0.003128021228519333
+        }
+      }
+    },
+    {
+      "name": "L-tyrosine",
+      "exchange": "r_1913",
+      "bounds": [
+        0,
+        1000
+      ],
+      "cytosolicMetabolite": "s_1051",
+      "chargingReactions": [
+        "r_1066"
+      ],
+      "fluxes": {
+        "fba": {
+          "exchange": 0,
+          "cytosolicTRNACharging": 0.009977410677646601
+        },
+        "pfba": {
+          "exchange": 0,
+          "cytosolicTRNACharging": 0.0099774106776466
+        },
+        "cyclefree": {
+          "exchange": 0,
+          "cytosolicTRNACharging": 0.009977410677646601
+        }
+      }
+    },
+    {
+      "name": "L-valine",
+      "exchange": "r_1914",
+      "bounds": [
+        0,
+        1000
+      ],
+      "cytosolicMetabolite": "s_1056",
+      "chargingReactions": [
+        "r_1089"
+      ],
+      "fluxes": {
+        "fba": {
+          "exchange": 0,
+          "cytosolicTRNACharging": 0.025514504648303342
+        },
+        "pfba": {
+          "exchange": 0,
+          "cytosolicTRNACharging": 0.025514504648303342
+        },
+        "cyclefree": {
+          "exchange": 0,
+          "cytosolicTRNACharging": 0.025514504648303342
+        }
+      }
+    }
+  ],
+  "activeExchanges": [
+    {
+      "id": "r_1654",
+      "name": "ammonium exchange",
+      "fluxes": {
+        "fba": -0.5338960802451237,
+        "pfba": -0.5338905977523205,
+        "cyclefree": -0.5338960802451237
+      }
+    },
+    {
+      "id": "r_1672",
+      "name": "carbon dioxide exchange",
+      "fluxes": {
+        "fba": 2.653006707295958,
+        "pfba": 2.6529997123082856,
+        "cyclefree": 2.653006707295958
+      }
+    },
+    {
+      "id": "r_1714",
+      "name": "D-glucose exchange",
+      "fluxes": {
+        "fba": -1,
+        "pfba": -1,
+        "cyclefree": -1
+      }
+    },
+    {
+      "id": "r_1810",
+      "name": "L-glycine exchange",
+      "fluxes": {
+        "fba": 0.006609820015787216,
+        "pfba": 0.006608963520746859,
+        "cyclefree": 0.006609820015787216
+      }
+    },
+    {
+      "id": "r_1814",
+      "name": "glycolaldehyde exchange",
+      "fluxes": {
+        "fba": 0.000005239075942623075,
+        "pfba": 0.000005141755453991387,
+        "cyclefree": 0.000005239075942623075
+      }
+    },
+    {
+      "id": "r_1832",
+      "name": "H+ exchange",
+      "fluxes": {
+        "fba": 0.4674421902717712,
+        "pfba": 0.4674367890156593,
+        "cyclefree": 0.4674421902717712
+      }
+    },
+    {
+      "id": "r_1861",
+      "name": "iron(2+) exchange",
+      "fluxes": {
+        "fba": -0.0000025465475894436867,
+        "pfba": -0.0000024654473491510898,
+        "cyclefree": -0.0000025465475894436867
+      }
+    },
+    {
+      "id": "r_1992",
+      "name": "oxygen exchange",
+      "fluxes": {
+        "fba": -2.3519299148562283,
+        "pfba": -2.3519261257468895,
+        "cyclefree": -2.3519299148562283
+      }
+    },
+    {
+      "id": "r_2005",
+      "name": "phosphate exchange",
+      "fluxes": {
+        "fba": -0.022646005635478056,
+        "pfba": -0.0226459082391988,
+        "cyclefree": -0.022646005635478056
+      }
+    },
+    {
+      "id": "r_2020",
+      "name": "potassium exchange",
+      "fluxes": {
+        "fba": -0.00029439386763367194,
+        "pfba": -0.0002943938676336719,
+        "cyclefree": -0.00029439386763367194
+      }
+    },
+    {
+      "id": "r_2049",
+      "name": "sodium exchange",
+      "fluxes": {
+        "fba": -0.0003219679516632823,
+        "pfba": -0.00032196795165660187,
+        "cyclefree": -0.0003219679516632823
+      }
+    },
+    {
+      "id": "r_2060",
+      "name": "sulphate exchange",
+      "fluxes": {
+        "fba": -0.011293140827010939,
+        "pfba": -0.011293043506117989,
+        "cyclefree": -0.011293140827010939
+      }
+    },
+    {
+      "id": "r_2100",
+      "name": "water exchange",
+      "fluxes": {
+        "fba": 3.854702731240195,
+        "pfba": 3.8546915869031935,
+        "cyclefree": 3.854702731240195
+      }
+    },
+    {
+      "id": "r_2111",
+      "name": "growth",
+      "fluxes": {
+        "fba": 0.08110024049735533,
+        "pfba": 0.08110024049735533,
+        "cyclefree": 0.08110024049735533
+      }
+    },
+    {
+      "id": "r_4593",
+      "name": "chloride exchange",
+      "fluxes": {
+        "fba": -0.00010461931379454208,
+        "pfba": -0.00010461931379454208,
+        "cyclefree": -0.00010461931379454208
+      }
+    },
+    {
+      "id": "r_4594",
+      "name": "Cu2(+) exchange",
+      "fluxes": {
+        "fba": -0.00005344505946844496,
+        "pfba": -0.000053445059468444946,
+        "cyclefree": -0.00005344505946844496
+      }
+    },
+    {
+      "id": "r_4595",
+      "name": "Mn(2+) exchange",
+      "fluxes": {
+        "fba": -0.00022140366188116902,
+        "pfba": -0.00022140366188116902,
+        "cyclefree": -0.00022140366188116902
+      }
+    },
+    {
+      "id": "r_4596",
+      "name": "Zn(2+) exchange",
+      "fluxes": {
+        "fba": -0.00006066297918566068,
+        "pfba": -0.000060662979185660665,
+        "cyclefree": -0.00006066297918566068
+      }
+    },
+    {
+      "id": "r_4597",
+      "name": "Mg(2+) exchange",
+      "fluxes": {
+        "fba": -0.00010077053520544143,
+        "pfba": -0.00010077053520544142,
+        "cyclefree": -0.00010077053520544143
+      }
+    },
+    {
+      "id": "r_4600",
+      "name": "Ca(2+) exchange",
+      "fluxes": {
+        "fba": -0.000017598751654831926,
+        "pfba": -0.000017598751654831923,
+        "cyclefree": -0.000017598751654831926
+      }
+    }
+  ]
+}

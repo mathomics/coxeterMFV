@@ -1,0 +1,212 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Running canvas interruption checks</title>
+<style>
+  body { margin: 16px; font: 14px system-ui; background: #0b1220; color: #e2e8f0; }
+  .pass { color: #4ade80; }
+  .fail { color: #fb7185; }
+  iframe { width: 1300px; height: 900px; border: 1px solid #334155; margin-top: 16px; }
+</style>
+</head>
+<body>
+<h1>Held drags across tools, workspaces, drawing replacement and focus loss</h1>
+<div id="out"></div>
+<script type="module">
+/** Exercise interrupted canvas edits and retire old input without desktop focus changes. */
+const out = document.getElementById('out');
+let failures = 0;
+
+function check(name, passed) {
+  if (!passed) {
+    failures += 1;
+  }
+  const line = document.createElement('div');
+  line.className = passed ? 'pass' : 'fail';
+  line.textContent = `${passed ? 'OK' : 'FAIL'} ${name}`;
+  out.appendChild(line);
+}
+
+async function tick() {
+  await new Promise(resolve => requestAnimationFrame(resolve));
+  await new Promise(resolve => setTimeout(resolve, 60));
+}
+
+async function waitFor(read, label) {
+  const deadline = Date.now() + 30000;
+  while (!read()) {
+    if (Date.now() > deadline) {
+      throw new Error(`Timed out: ${label}`);
+    }
+    await tick();
+  }
+}
+
+try {
+  const frame = document.createElement('iframe');
+  frame.src = new URLSearchParams(location.search).has('standalone') ? '../coxeter_mfv.html' : '../index.html';
+  document.body.appendChild(frame);
+  await waitFor(() => frame.contentWindow?.escherMCMC?.store?.solution?.status === 'optimal', 'startup');
+  const app = frame.contentWindow;
+  const doc = app.document;
+  const store = app.escherMCMC.store;
+  await store.useScenario('solo-ecoli');
+  const EditableMap = store.map.constructor;
+  const stage = doc.getElementById('stage');
+  const biology = JSON.stringify(store.modelEditorModel().toJSON());
+  const bounds = JSON.stringify(store.problem.snapshotBounds());
+  doc.querySelector('[data-action="left-tab"][data-tab="build"]').click();
+
+  function pointer(target, type, at, id = 501, pointerType = 'mouse') {
+    target.dispatchEvent(new app.PointerEvent(type, {
+      bubbles: true, pointerId: id, pointerType, button: 0,
+      buttons: type === 'pointerdown' || type === 'pointermove' ? 1 : 0, ...at,
+    }));
+  }
+
+  function screen(point) {
+    const rect = stage.getBoundingClientRect();
+    return {
+      clientX: rect.left + app.escherMCMC.camera.x + point.x * app.escherMCMC.camera.scale,
+      clientY: rect.top + app.escherMCMC.camera.y + point.y * app.escherMCMC.camera.scale,
+    };
+  }
+
+  async function reset(tool = 'select') {
+    for (const id of [501, 502]) {
+      pointer(stage, 'pointercancel', { clientX: 0, clientY: 0 }, id, 'touch');
+    }
+    doc.querySelector('[data-action="close-workspace"]')?.click();
+    store.map = EditableMap.emptyFromCommunity(store.community);
+    store.addMapReaction('eco@PGI');
+    store.mapHistory.clear();
+    store.select(null);
+    store.emit('map');
+    doc.querySelector(`[data-tool="${tool}"]`).click();
+    doc.querySelector('[data-action="zoom-fit"]').click();
+    await tick();
+  }
+
+  async function drag(pointerType = 'mouse') {
+    await reset();
+    const node = store.map.nodesForMetabolite('eco@g6p_c')[0];
+    const start = screen(node);
+    const before = JSON.stringify(store.map.toJSON());
+    pointer(doc.querySelector(`circle[data-node="${node.id}"]`), 'pointerdown', start, 501, pointerType);
+    const end = { clientX: start.clientX + 30, clientY: start.clientY + 20 };
+    pointer(stage, 'pointermove', end, 501, pointerType);
+    await tick();
+    return { start, end, before, moved: JSON.stringify(store.map.toJSON()), solution: store.solution };
+  }
+
+  async function lateEvents(end, pointerType = 'mouse') {
+    pointer(stage, 'pointermove', { clientX: end.clientX + 80, clientY: end.clientY + 60 }, 501, pointerType);
+    pointer(stage, 'pointerup', end, 501, pointerType);
+    await tick();
+  }
+
+  async function history(name, before, after) {
+    doc.querySelector('[data-action="map-undo"]').click();
+    await tick();
+    const undone = JSON.stringify(store.map.toJSON()) === before;
+    doc.querySelector('[data-action="map-redo"]').click();
+    await tick();
+    check(`${name}: exact Undo and Redo preserve the interrupted edit`, undone && JSON.stringify(store.map.toJSON()) === after);
+  }
+
+  for (const action of ['tool', 'workspace']) {
+    const edit = await drag();
+    if (action === 'tool') {
+      doc.querySelector('[data-tool="pan"]').click();
+    } else {
+      doc.querySelector('[data-action="open-workspace"][data-workspace="structure"]').click();
+    }
+    await tick();
+    check(`${action}: changing the interface finishes the visible drag once`,
+      edit.before !== edit.moved && !app.escherMCMC.gestures().node && store.mapHistory.undoStack.length === 1);
+    await lateEvents(edit.end);
+    check(`${action}: late moves and release leave the committed drawing unchanged`,
+      JSON.stringify(store.map.toJSON()) === edit.moved && store.mapHistory.undoStack.length === 1);
+    if (action === 'workspace') {
+      doc.querySelector('[data-action="close-workspace"]').click();
+      await tick();
+    }
+    await history(action, edit.before, edit.moved);
+    check(`${action}: the installed calculation survives the interruption`, store.solution === edit.solution);
+  }
+
+  const replaced = await drag();
+  store.showFullMap();
+  const fullMap = JSON.stringify(store.map.toJSON());
+  const fullVersion = store.mapHistory.version;
+  await lateEvents(replaced.end);
+  check('Full map replacement retires the old drag before it can move a reused node identifier',
+    JSON.stringify(store.map.toJSON()) === fullMap && !app.escherMCMC.gestures().node);
+  check('a retired Full map drag cannot add a stale history entry', store.mapHistory.version === fullVersion);
+
+  const reloaded = await drag();
+  await store.useScenario('solo-ecoli');
+  const scenarioMap = JSON.stringify(store.map.toJSON());
+  const scenarioVersion = store.mapHistory.version;
+  const scenarioSolution = store.solution;
+  await lateEvents(reloaded.end);
+  check('scenario replacement ignores the old drag and preserves its fresh history',
+    JSON.stringify(store.map.toJSON()) === scenarioMap && store.mapHistory.version === scenarioVersion
+    && store.mapHistory.undoStack.length === 0 && !app.escherMCMC.gestures().node);
+  check('a retired scenario drag leaves the new numerical result installed', store.solution === scenarioSolution);
+
+  for (const pointerType of ['mouse', 'touch']) {
+    const edit = await drag(pointerType);
+    app.dispatchEvent(new app.Event('blur'));
+    await tick();
+    check(`${pointerType}: simulated window blur finishes the visible edit and clears pointer tracking`,
+      !app.escherMCMC.gestures().node && !app.escherMCMC.gestures().pinch
+      && app.escherMCMC.gestures().touchPointers === 0 && store.mapHistory.undoStack.length === 1);
+    await lateEvents(edit.end, pointerType);
+    check(`${pointerType}: input after blur cannot continue the old edit`,
+      JSON.stringify(store.map.toJSON()) === edit.moved && store.mapHistory.undoStack.length === 1);
+    await history(pointerType, edit.before, edit.moved);
+  }
+
+  await reset('pan');
+  const box = stage.getBoundingClientRect();
+  const first = { clientX: box.left + 120, clientY: box.top + 120 };
+  const second = { clientX: first.clientX + 100, clientY: first.clientY };
+  pointer(stage, 'pointerdown', first, 501, 'touch');
+  pointer(stage, 'pointerdown', second, 502, 'touch');
+  check('the focus-loss fixture starts with a real canvas pinch', Boolean(app.escherMCMC.gestures().pinch));
+  app.dispatchEvent(new app.Event('blur'));
+  check('blur clears the entire pinch and both tracked touches',
+    !app.escherMCMC.gestures().pinch && app.escherMCMC.gestures().touchPointers === 0);
+  const panBefore = app.escherMCMC.camera.x;
+  pointer(stage, 'pointerdown', first);
+  pointer(stage, 'pointermove', { clientX: first.clientX + 30, clientY: first.clientY + 20 });
+  pointer(stage, 'pointerup', first);
+  check('fresh mouse panning works after touch focus loss',
+    app.escherMCMC.camera.x !== panBefore && !app.escherMCMC.gestures().pan);
+
+  await reset('reaction');
+  const node = store.map.nodesForMetabolite('eco@g6p_c')[0];
+  const at = screen(node);
+  pointer(doc.querySelector(`circle[data-node="${node.id}"]`), 'pointerdown', at, 501, 'touch');
+  pointer(stage, 'pointerdown', { clientX: at.clientX + 100, clientY: at.clientY }, 502, 'touch');
+  check('a pinch retires a pending reaction pick instead of preserving its click',
+    Boolean(app.escherMCMC.gestures().pinch) && !app.escherMCMC.gestures().reactionPick);
+  pointer(stage, 'pointerup', at, 501, 'touch');
+  pointer(stage, 'pointerup', at, 502, 'touch');
+  pointer(stage, 'pointerdown', first);
+  pointer(stage, 'pointerup', first);
+  await tick();
+  check('later background input cannot open the retired reaction-pick menu',
+    !app.escherMCMC.gestures().reactionPick && !doc.querySelector('.add-reaction-menu'));
+  check('all interruptions preserve biological model JSON and LP bounds',
+    JSON.stringify(store.modelEditorModel().toJSON()) === biology && JSON.stringify(store.problem.snapshotBounds()) === bounds);
+} catch (error) {
+  check(error.message, false);
+}
+
+document.title = failures ? `FAIL (${failures})` : 'PASS';
+</script>
+</body>
+</html>

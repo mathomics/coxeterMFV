@@ -1,0 +1,627 @@
+<svg xmlns="http://www.w3.org/2000/svg" class="emc-map" viewBox="0 0 2020 1327" width="2020" height="1327" role="img" aria-label="Multicell community metabolic map" style="--frame-label-scale:1.746"><style>/*
+ * Typography and interaction states for the SVG map.
+ *
+ * Every label size is multiplied by --label-scale, which the app raises as the
+ * map zooms out: the geometry is laid out at full canvas resolution, so without
+ * this the names shrink into specks in the fitted view.
+ */
+
+.emc-map {
+  font-family: "Inter", "Segoe UI", system-ui, -apple-system, sans-serif;
+  --label-scale: 1;
+  --frame-label-scale: 1;
+}
+
+/*
+ * Name plates of compartments, cells and the medium are scaled whole, pill and
+ * text together, so the text cannot outgrow the pill it is written in. They
+ * all share one size: --frame-label-scale keeps it constant on screen as the
+ * map zooms out, and --fit holds a plate back only where its own compartment
+ * is too small for that. The scaling is about the plate's own corner, which
+ * the renderer puts at the origin of the group.
+ */
+.emc-frame-label {
+  transform: scale(min(var(--frame-label-scale, 1), var(--fit, 1000)));
+}
+.emc-cell-name { font-size: 17px; font-weight: 700; }
+.emc-comp-text { font-size: 11.5px; font-weight: 700; text-transform: uppercase; }
+
+.emc-label { pointer-events: none; }
+.emc-label-draggable {
+  pointer-events: all;
+  cursor: grab;
+  user-select: none;
+  touch-action: none;
+}
+.stage.is-dragging-metabolite-label,
+.stage.is-dragging-metabolite-label * { cursor: grabbing !important; }
+/* A reaction's name can be picked up and put elsewhere too. */
+.emc-label-rxn {
+  pointer-events: all;
+  cursor: grab;
+  user-select: none;
+  touch-action: none;
+}
+.stage.is-dragging-reaction-label,
+.stage.is-dragging-reaction-label * { cursor: grabbing !important; }
+.emc-label-met { font-size: calc(12.5px * var(--label-scale)); font-weight: 600; }
+.emc-label-medium { font-size: calc(15px * var(--label-scale)); font-weight: 700; }
+.emc-label-currency { font-size: calc(9.5px * var(--label-scale)); font-weight: 500; opacity: 0.72; }
+.emc-label-rxn { font-size: calc(11px * var(--label-scale)); font-weight: 600; opacity: 0.92; }
+.emc-label-rxn-adjacent {
+  dominant-baseline: central;
+  font-weight: 700;
+}
+/* The name of a reaction lying on its side stands clear of its bar. */
+.emc-label-rxn-above { font-weight: 700; }
+.emc-label-rxn-below {
+  dominant-baseline: hanging;
+  font-weight: 700;
+}
+
+/* Zoomed far out, the small type is noise rather than information. */
+.emc-map.is-far .emc-label-currency,
+.emc-map.is-far .emc-label-rxn { display: none; }
+
+.emc-seg { transition: stroke-width 120ms ease, opacity 120ms ease; }
+.emc-seg.is-selected { opacity: 1; }
+
+.emc-marker { cursor: pointer; }
+.emc-marker:hover rect { stroke: var(--ink, #0f172a); stroke-width: 2.4; }
+
+.emc-node { cursor: pointer; }
+.emc-node:hover { stroke: var(--ink, #0f172a); }
+
+/*
+ * Primary metabolites and shared-medium metabolites can be picked up and moved
+ * by hand; cofactor satellites are positioned by their reaction and keep the
+ * plain pointer.
+ */
+.emc-node-metabolite,
+.emc-node-medium { cursor: grab; }
+.emc-node.is-dragging { cursor: grabbing; }
+
+.emc-crossfeed { pointer-events: none; }
+.emc-arrow { pointer-events: none; }
+
+/*
+ * Cross-feeding lines. The pointer finds a line by a wide transparent stroke
+ * over it; the line under the pointer thickens (never thinner than a few
+ * pixels on screen) and the others step back, so one line can be followed
+ * through a bundle. A click pins a name tag to it (mapview.js).
+ */
+.emc-crossfeed-route { cursor: pointer; }
+.emc-crossfeed-arrow { pointer-events: none; }
+.emc-crossfeed-hit { pointer-events: stroke; }
+.emc-layer-crossfeed-routed:hover .emc-crossfeed-route { opacity: 0.18; }
+.emc-layer-crossfeed-routed .emc-crossfeed-route:hover { opacity: 1; }
+.emc-crossfeed-route:hover .emc-crossfeed,
+.emc-crossfeed-route.is-picked .emc-crossfeed {
+  stroke-width: max(calc(var(--w, 4) * 2.2px), calc(5px * var(--frame-label-scale, 1)));
+}
+.emc-crossfeed-route:hover .emc-crossfeed-arrow,
+.emc-crossfeed-route.is-picked .emc-crossfeed-arrow {
+  transform-box: fill-box;
+  transform-origin: center;
+  transform: scale(1.7);
+}
+.emc-layer-crossfeed-tag { pointer-events: none; }
+.emc-seg.is-disabled-reaction { stroke-dasharray: 8 5; }
+.emc-label-rxn.is-disabled-reaction { fill: #db2777; font-weight: 700; }
+.emc-ko-mark { pointer-events: none; }
+.emc-marker.is-inactive-species:hover rect { stroke-width: 1.1; }
+.emc-map .emc-layer-text .emc-label.is-inactive-species { opacity: 0.28; }
+.emc-comp-label { pointer-events: all; cursor: grab; }
+.stage.is-dragging-compartment-label .emc-comp-label { cursor: grabbing; }
+.emc-cell-plate { pointer-events: auto; cursor: pointer; }
+.emc-cell-plate:hover text { text-decoration: underline; text-underline-offset: 3px; }
+
+
+/* ------------------------------------------------ boundary interaction */
+
+/*
+ * The band that receives the pointer never changes shape, and never paints.
+ *
+ * It used to do both: hovering set stroke-width to a fixed 20, and once the
+ * band was sized for the zoom (tens of map units) that *shrank* it. The pointer
+ * fell outside, hover ended, the band grew back under the pointer, hover began
+ * again — a loop at frame rate, which is the flicker, the cursor switching
+ * between two hands, and the reason a press could not land.
+ *
+ * The glow is a separate rect with no pointer events, so lighting it up cannot
+ * move anything. Its stroke does not scale, so the highlight is the same few
+ * pixels at every zoom.
+ */
+.emc-boundary-hit {
+  cursor: pointer;
+}
+
+.emc-boundary-glow {
+  vector-effect: non-scaling-stroke;
+  transition: stroke 120ms ease;
+}
+
+.emc-boundary-hit:hover + .emc-boundary-glow {
+  stroke: rgba(37, 99, 235, 0.55);
+}
+
+.emc-map.emc-dark .emc-boundary-hit:hover + .emc-boundary-glow {
+  stroke: rgba(96, 165, 250, 0.65);
+}
+
+
+/* ------------------------------------------------ reaction editing */
+
+.emc-reaction-handle,
+.emc-control-handle,
+.emc-control-hit { cursor: grab; }
+.emc-control-hit {
+  fill: transparent;
+  stroke: none;
+  pointer-events: all;
+  touch-action: none;
+}
+.emc-reaction-handle:hover,
+.emc-control-handle:hover { stroke-width: 3; }
+.emc-reaction-handle.is-dragging,
+.emc-control-handle.is-dragging { cursor: grabbing; }
+.emc-control-guide {
+  pointer-events: none;
+  stroke: currentColor;
+  stroke-width: 1;
+  stroke-dasharray: 3 4;
+  opacity: 0.28;
+}
+
+
+/* ------------------------------------------------ cell geometry editor */
+.emc-geometry-handle { cursor: pointer; }
+.emc-geometry-move { cursor: move; }
+.emc-geometry-nw, .emc-geometry-se { cursor: nwse-resize; }
+.emc-geometry-ne, .emc-geometry-sw { cursor: nesw-resize; }
+.emc-geometry-n, .emc-geometry-s { cursor: ns-resize; }
+.emc-geometry-e, .emc-geometry-w { cursor: ew-resize; }
+/* Each shape diamond runs along one edge: the corner one along the top, the oval one down the side. */
+.emc-geometry-corner { cursor: ew-resize; }
+.emc-geometry-oval { cursor: ns-resize; }
+.emc-geometry-handle:hover { stroke-width: 3; }
+.emc-geometry-selection { vector-effect: non-scaling-stroke; }
+
+
+/* Escher-style cubic branch controls */
+.emc-control-b1 { cursor: grab; }
+.emc-control-b2 { cursor: grab; }
+.emc-control-anchor { cursor: grab; }
+.emc-control-guide-metabolite,
+.emc-control-guide-reaction {
+  pointer-events: none;
+  opacity: 0.42;
+}
+/* The lever that turns a reaction's backbone about its centre. */
+.emc-rotate-handle { cursor: alias; }
+.emc-rotate-guide {
+  pointer-events: none;
+  stroke: #16a34a;
+  opacity: 0.55;
+  stroke-dasharray: 3 3;
+  vector-effect: non-scaling-stroke;
+}
+
+
+/* ------------------------------------------------ multi-selection */
+/* The shaded region a group covers. Kept faint: it marks an area, and the
+   marks inside it carry the selection colour themselves. */
+.emc-multi-area {
+  fill: var(--accent, #2563eb);
+  fill-opacity: .10;
+  stroke: var(--accent, #2563eb);
+  stroke-opacity: .45;
+  stroke-width: 1.5;
+  stroke-dasharray: 8 6;
+  vector-effect: non-scaling-stroke;
+}
+.emc-dark .emc-multi-area { fill-opacity: .16; stroke-opacity: .6; }
+
+.emc-multi-drag-hit {
+  fill: none;
+  stroke: transparent;
+  pointer-events: stroke;
+  cursor: grab;
+}
+.emc-multi-drag-outline {
+  fill: none;
+  stroke: var(--accent, #60a5fa);
+  stroke-width: 1.5;
+  stroke-opacity: 0;
+  vector-effect: non-scaling-stroke;
+  pointer-events: none;
+}
+.emc-layer-multi-border:hover .emc-multi-drag-outline {
+  stroke-opacity: .9;
+}
+.stage.is-dragging-group .emc-multi-drag-hit {
+  cursor: grabbing;
+}
+
+.emc-node.is-multi-selected {
+  stroke: var(--accent, #2563eb) !important;
+  stroke-width: 4px !important;
+  filter: url(#emc-glow);
+}
+/* A matching visual instance will be joined here when the dragged node drops. */
+.emc-node.is-merge-target {
+  stroke: #16a34a !important;
+  stroke-width: 4px !important;
+  vector-effect: non-scaling-stroke;
+  filter: url(#emc-glow);
+}
+.emc-dark .emc-node.is-merge-target { stroke: #4ade80 !important; }
+.emc-marker.is-multi-selected rect {
+  stroke: var(--accent, #2563eb) !important;
+  stroke-width: 3px !important;
+}
+.emc-seg.is-multi-selected {
+  opacity: 1;
+  filter: url(#emc-glow);
+}
+.emc-select-ring.is-multi {
+  pointer-events: none;
+}
+
+/* An annotation caught by the rectangle. Text cannot carry a selection stroke
+   the way a circle can — it would thicken the glyphs — so it gets a plate
+   behind it instead, drawn under the text in the same layer. */
+.emc-map-text-selected {
+  fill: var(--accent, #2563eb);
+  fill-opacity: .18;
+  stroke: var(--accent, #2563eb);
+  stroke-opacity: .75;
+  stroke-width: 1.5;
+  vector-effect: non-scaling-stroke;
+  pointer-events: none;
+}
+.emc-dark .emc-map-text-selected { fill-opacity: .28; }
+
+
+/* ------------------------------------------------------ free map annotations */
+.emc-map-text {
+  cursor: grab;
+  font-family: "Inter", "Segoe UI", system-ui, -apple-system, sans-serif;
+  font-weight: 650;
+  letter-spacing: 0.01em;
+  user-select: none;
+  -webkit-user-select: none;
+}
+.emc-map-text:hover {
+  text-decoration: underline;
+  text-decoration-thickness: 1.5px;
+  text-underline-offset: 3px;
+}
+.stage.is-dragging-text .emc-map-text { cursor: grabbing; }
+
+
+/* ------------------------------------------------ flux variability labels */
+.emc-label-fva {
+  font-size: calc(10.5px * var(--label-scale));
+  font-variant-numeric: tabular-nums;
+  font-weight: 650;
+}
+
+
+/* ------------------------------------------------ primary / secondary metabolites */
+.emc-node-primary {
+  opacity: 1;
+}
+.emc-node-secondary {
+  opacity: 0.78;
+  stroke-width: 1.8px !important;
+}
+.emc-label-primary {
+  opacity: 1;
+}
+.emc-label-secondary {
+  font-size: calc(9.5px * var(--label-scale));
+  font-weight: 500;
+  opacity: 0.68;
+}
+.emc-map.is-far .emc-label-secondary {
+  display: none;
+}
+
+/*
+ * Quiet cofactors: a map that sets cofactorStyle 'quiet' draws its secondary
+ * metabolites small and light, so its overview reads as pathways. The renderer
+ * shrinks the circles and thins their branches (QUIET_COFACTORS in
+ * mapview.js); these rules lighten them and set their names smaller.
+ */
+.emc-map.emc-quiet-cofactors .emc-node-secondary {
+  opacity: 0.5;
+  stroke-width: 1.1px !important;
+}
+.emc-map.emc-quiet-cofactors .emc-seg.is-cofactor { stroke-opacity: 0.5; }
+.emc-map.emc-quiet-cofactors .emc-arrow.is-cofactor { fill-opacity: 0.5; }
+.emc-map.emc-quiet-cofactors .emc-label-currency,
+.emc-map.emc-quiet-cofactors .emc-label-secondary {
+  font-size: calc(7.5px * var(--label-scale));
+  opacity: 0.55;
+}
+.emc-map.emc-dark.emc-quiet-cofactors .emc-node-secondary { opacity: 0.65; }
+.emc-map.emc-dark.emc-quiet-cofactors .emc-label-currency,
+.emc-map.emc-dark.emc-quiet-cofactors .emc-label-secondary { opacity: 0.7; }
+
+
+/* ------------------------------------------------ resizable drawing canvas */
+.emc-canvas-frame {
+  vector-effect: non-scaling-stroke;
+}
+.emc-canvas-resize-hit {
+  touch-action: none;
+}
+.emc-canvas-resize-right,
+.emc-canvas-resize-left {
+  cursor: ew-resize;
+}
+.emc-canvas-resize-bottom,
+.emc-canvas-resize-top {
+  cursor: ns-resize;
+}
+.emc-canvas-resize-corner {
+  cursor: nwse-resize;
+}
+.emc-canvas-resize-guide {
+  vector-effect: non-scaling-stroke;
+}
+
+/* ------------------------------------------------ pathway ribbons */
+.emc-layer-pathway-ribbons,
+.emc-pathway-ribbon { pointer-events: none; }
+.emc-pathway-ribbon { transition: opacity 120ms ease, stroke-width 120ms ease; }
+
+/* ------------------------------------------------------------ Cell boundary */
+.emc-cell-boundary {
+  vector-effect: non-scaling-stroke;
+  cursor: pointer;
+  transition: stroke-width 120ms ease, opacity 120ms ease;
+}
+.emc-cell-boundary:hover {
+  stroke-width: 4.5;
+  opacity: 1;
+}
+
+/*
+ * Invisible pointer targets (renderHitTargets in mapview.js). They sit under
+ * the artwork, so the glyphs keep their own hover styling, and the app resizes
+ * them from the live zoom so a target never shrinks below ~24 px on screen.
+ */
+.emc-hit { fill: transparent; stroke: none; pointer-events: all; }
+.emc-hit-reaction { cursor: pointer; }
+.emc-hit-node { cursor: grab; }
+.stage.is-dragging-node .emc-hit-node { cursor: grabbing; }
+
+/* While a drawing tool is live, presses belong to the canvas underneath. */
+.stage.is-drawing-tool .emc-hit { pointer-events: none; }
+
+/* Keep species colours while making labels on dark compartments legible. */
+.emc-map.emc-dark .emc-cell-name { filter: brightness(1.3); }
+.emc-map.emc-dark .emc-label-secondary,
+.emc-map.emc-dark .emc-label-currency { opacity: .85; }
+.emc-map.emc-dark .emc-control-guide { opacity: .5; }
+.emc-map.emc-dark .emc-select-ring.is-multi { stroke: var(--accent, #60a5fa); }
+
+/* A reaction with no flux in the solution, drawn the way the segments are: off. */
+.emc-label-rxn.is-off { fill: #8a8d96; }
+.emc-map.emc-dark .emc-label-rxn.is-off { fill: #7c8799; }
+
+/* The reaction whose row is under the pointer in a reactions table. */
+.emc-table-hover {
+  fill: none; stroke: #f59e0b; stroke-width: 4; opacity: .9;
+  vector-effect: non-scaling-stroke; animation: emc-table-hover 1.2s ease-in-out infinite;
+}
+@keyframes emc-table-hover { 50% { opacity: .35; } }
+@media (prefers-reduced-motion: reduce) { .emc-table-hover { animation: none; } }
+.emc-map .is-table-hover { filter: drop-shadow(0 0 3px #f59e0b); }
+</style><defs>
+    <pattern id="emc-wall" width="9" height="9" patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
+      <line x1="0" y1="0" x2="0" y2="9" stroke="#a8a29e" stroke-width="3" opacity="0.5"/>
+    </pattern>
+    <filter id="emc-cell-shadow" x="-12%" y="-12%" width="124%" height="124%">
+      <feDropShadow dx="0" dy="6" stdDeviation="12" flood-opacity="0.16"/>
+    </filter>
+    <filter id="emc-glow" x="-40%" y="-40%" width="180%" height="180%">
+      <feGaussianBlur stdDeviation="4" result="b"/>
+      <feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+    <filter id="emc-ribbon-soft" x="-30%" y="-30%" width="160%" height="160%">
+      <feGaussianBlur stdDeviation="5.5"/>
+    </filter>
+  </defs><g class="emc-layer emc-layer-canvas">
+    <rect class="emc-canvas-frame" data-canvas-bg
+      x="0.75" y="0.75" width="2018.5" height="1325.5"
+      fill="#ffffff" stroke="#cbd5e1" stroke-width="1.5"/>
+  </g><g class="emc-layer emc-layer-env">
+    <rect x="20" y="110" width="1980" height="1182" rx="26" fill="#f8fafc" stroke="#cbd5e1" stroke-width="2" stroke-dasharray="10 7"/>
+    <rect class="emc-boundary-hit emc-environment-boundary" data-boundary="*/s"
+      x="20" y="110" width="1980" height="1182" rx="26" fill="none" stroke="transparent" stroke-width="18"
+      pointer-events="stroke"/>
+    <rect class="emc-boundary-glow" x="20" y="110" width="1980" height="1182" rx="26" fill="none" stroke="transparent" stroke-width="5"
+      pointer-events="none"/>
+  </g><g class="emc-layer emc-layer-cells"><g class="emc-cell" data-cell="Se"><g class="emc-compartment emc-comp-p" data-compartment="p"><rect class="emc-compartment-space" data-cell-space="Se" data-compartment-space="p" x="60" y="170" width="875" height="1087" rx="40" ry="40" fill="#fef3c7" filter="url(#emc-cell-shadow)"/><rect x="60" y="170" width="875" height="1087" rx="40" ry="40" fill="none" stroke="#d97706" stroke-width="4.5"/><rect x="65" y="175" width="865" height="1077" rx="35" ry="35" fill="none" stroke="#d97706" stroke-width="1.4" opacity="0.55"/><rect class="emc-boundary-hit" data-boundary="Se/p" x="60" y="170" width="875" height="1087" rx="40" ry="40" fill="none" stroke="transparent" stroke-width="18" pointer-events="stroke"/><rect class="emc-boundary-glow" x="60" y="170" width="875" height="1087" rx="40" ry="40" fill="none" stroke="transparent" stroke-width="5" pointer-events="none"/></g><g class="emc-compartment emc-comp-c" data-compartment="c"><rect class="emc-compartment-space" data-cell-space="Se" data-compartment-space="c" x="123" y="233" width="755" height="959" rx="40" ry="40" fill="#e0f2fe"/><rect x="123" y="233" width="755" height="959" rx="40" ry="40" fill="none" stroke="#0284c7" stroke-width="4.5"/><rect x="128" y="238" width="745" height="949" rx="35" ry="35" fill="none" stroke="#0284c7" stroke-width="1.4" opacity="0.55"/><rect class="emc-boundary-hit" data-boundary="Se/c" x="123" y="233" width="755" height="959" rx="40" ry="40" fill="none" stroke="transparent" stroke-width="18" pointer-events="stroke"/><rect class="emc-boundary-glow" x="123" y="233" width="755" height="959" rx="40" ry="40" fill="none" stroke="transparent" stroke-width="5" pointer-events="none"/></g><g class="emc-compartment emc-comp-k" data-compartment="k"><rect class="emc-compartment-space" data-cell-space="Se" data-compartment-space="k" x="266" y="369" width="500" height="127" rx="20.32" ry="20.32" fill="#fefce8"/><rect x="266" y="369" width="500" height="127" rx="20.32" ry="20.32" fill="none" stroke="#eab308" stroke-width="4.5"/><rect x="271" y="374" width="490" height="117" rx="15.32" ry="15.32" fill="none" stroke="#eab308" stroke-width="1.4" opacity="0.55"/><rect class="emc-boundary-hit" data-boundary="Se/k" x="266" y="369" width="500" height="127" rx="20.32" ry="20.32" fill="none" stroke="transparent" stroke-width="18" pointer-events="stroke"/><rect class="emc-boundary-glow" x="266" y="369" width="500" height="127" rx="20.32" ry="20.32" fill="none" stroke="transparent" stroke-width="5" pointer-events="none"/></g><g class="emc-compartment emc-comp-u" data-compartment="u"><rect class="emc-compartment-space" data-cell-space="Se" data-compartment-space="u" x="311" y="416" width="405" height="60" rx="21.6" ry="21.6" fill="#d1fae5"/><rect x="311" y="416" width="405" height="60" rx="21.6" ry="21.6" fill="none" stroke="#059669" stroke-width="4.5"/><rect x="316" y="421" width="395" height="50" rx="16.6" ry="16.6" fill="none" stroke="#059669" stroke-width="1.4" opacity="0.55"/><rect class="emc-boundary-hit" data-boundary="Se/u" x="311" y="416" width="405" height="60" rx="21.6" ry="21.6" fill="none" stroke="transparent" stroke-width="18" pointer-events="stroke"/><rect class="emc-boundary-glow" x="311" y="416" width="405" height="60" rx="21.6" ry="21.6" fill="none" stroke="transparent" stroke-width="5" pointer-events="none"/></g><rect class="emc-cell-boundary" data-cell-boundary="Se"
+    data-boundary="Se/p"
+    x="60" y="170" width="875" height="1087" rx="40" ry="40"
+    fill="none" stroke="#047857" stroke-width="3" opacity="0.72"
+    pointer-events="stroke"/><g class="emc-cell-plate" data-cell-plate="Se" transform="translate(60 160)">
+      <g class="emc-frame-label" style="--fit:1.563" transform="scale(1.563)">
+        <rect x="0" y="-30" width="391.8" height="30" rx="15"
+          fill="#047857" opacity="0.14"/>
+        <circle cx="17" cy="-15" r="6" fill="#047857"/>
+        <text class="emc-cell-name" x="30" y="-10" textLength="347.8" lengthAdjust="spacingAndGlyphs"
+          fill="#047857">S. elongatus cscB+  ·  µ = 0.0348 h⁻¹</text>
+      </g>
+    </g></g><g class="emc-cell" data-cell="Ec"><g class="emc-compartment emc-comp-p" data-compartment="p"><rect class="emc-compartment-space" data-cell-space="Ec" data-compartment-space="p" x="1085" y="170" width="875" height="900" rx="40" ry="40" fill="#fef3c7" filter="url(#emc-cell-shadow)"/><rect x="1085" y="170" width="875" height="900" rx="40" ry="40" fill="none" stroke="#d97706" stroke-width="4.5"/><rect x="1090" y="175" width="865" height="890" rx="35" ry="35" fill="none" stroke="#d97706" stroke-width="1.4" opacity="0.55"/><rect class="emc-boundary-hit" data-boundary="Ec/p" x="1085" y="170" width="875" height="900" rx="40" ry="40" fill="none" stroke="transparent" stroke-width="18" pointer-events="stroke"/><rect class="emc-boundary-glow" x="1085" y="170" width="875" height="900" rx="40" ry="40" fill="none" stroke="transparent" stroke-width="5" pointer-events="none"/></g><g class="emc-compartment emc-comp-c" data-compartment="c"><rect class="emc-compartment-space" data-cell-space="Ec" data-compartment-space="c" x="1195" y="205" width="745" height="830" rx="40" ry="40" fill="#e0f2fe"/><rect x="1195" y="205" width="745" height="830" rx="40" ry="40" fill="none" stroke="#0284c7" stroke-width="4.5"/><rect x="1200" y="210" width="735" height="820" rx="35" ry="35" fill="none" stroke="#0284c7" stroke-width="1.4" opacity="0.55"/><rect class="emc-boundary-hit" data-boundary="Ec/c" x="1195" y="205" width="745" height="830" rx="40" ry="40" fill="none" stroke="transparent" stroke-width="18" pointer-events="stroke"/><rect class="emc-boundary-glow" x="1195" y="205" width="745" height="830" rx="40" ry="40" fill="none" stroke="transparent" stroke-width="5" pointer-events="none"/></g><rect class="emc-cell-boundary" data-cell-boundary="Ec"
+    data-boundary="Ec/p"
+    x="1085" y="170" width="875" height="900" rx="40" ry="40"
+    fill="none" stroke="#b45309" stroke-width="3" opacity="0.72"
+    pointer-events="stroke"/><g class="emc-cell-plate" data-cell-plate="Ec" transform="translate(1085 160)">
+      <g class="emc-frame-label" style="--fit:1.563" transform="scale(1.563)">
+        <rect x="0" y="-30" width="335.4" height="30" rx="15"
+          fill="#b45309" opacity="0.14"/>
+        <circle cx="17" cy="-15" r="6" fill="#b45309"/>
+        <text class="emc-cell-name" x="30" y="-10" textLength="291.4" lengthAdjust="spacingAndGlyphs"
+          fill="#b45309">E. coli K-12  ·  µ = 0.0776 h⁻¹</text>
+      </g>
+    </g></g></g><g class="emc-layer emc-layer-segments"><path class="emc-seg emc-seg-axis is-active" fill="none" stroke="#ba8f94" stroke-width="8.93" stroke-linecap="round" opacity="1" data-rxn="Se@DDPA" d="M 262 700 L 288 700"/><path class="emc-seg emc-seg-primary is-active" fill="none" stroke="#ba8f94" stroke-width="8.93" stroke-linecap="butt" opacity="1" data-rxn="Se@DDPA" data-node="met:Se@pep_c" d="M 262 700 C 239.43 700, 210.17 700, 182 700"/><path class="emc-seg emc-seg-currency is-active" fill="none" stroke="#ba8f94" stroke-width="8.93" stroke-linecap="butt" opacity="1" data-rxn="Se@DDPA" data-node="cur:Se@DDPA:Se@pi_c" d="M 288 700 C 303.78 700, 313.92 704.25, 320.22 711.18"/><path class="emc-seg emc-seg-currency is-active" fill="none" stroke="#ba8f94" stroke-width="8.93" stroke-linecap="butt" opacity="1" data-rxn="Se@DDPA" data-node="cur:Se@DDPA:Se@h2o_c" d="M 262 700 C 234.37 700, 224.03 713.03, 221.36 730.63"/><path class="emc-seg emc-seg-primary is-active" fill="none" stroke="#ba8f94" stroke-width="8.93" stroke-linecap="butt" opacity="1" data-rxn="Se@DDPA" data-node="met:Se@2dda7p_c" d="M 288 700 C 304.93 700, 325.63 700, 346.8 700"/><path class="emc-seg emc-seg-primary is-active" fill="none" stroke="#ba8f94" stroke-width="8.93" stroke-linecap="butt" opacity="1" data-rxn="Se@DDPA" data-node="met:Se@e4p_c" d="M 262 700 C 231.75 700, 219.75 683.98, 216.22 661.96"/><path class="emc-seg emc-seg-axis is-active" fill="none" stroke="#ba8f94" stroke-width="8.93" stroke-linecap="round" opacity="1" data-rxn="Se@DHQS" d="M 482 700 L 508 700"/><path class="emc-seg emc-seg-currency is-active" fill="none" stroke="#ba8f94" stroke-width="8.93" stroke-linecap="butt" opacity="1" data-rxn="Se@DHQS" data-node="cur:Se@DHQS:Se@pi_c" d="M 508 700 C 523.78 700, 533.92 704.25, 540.22 711.18"/><path class="emc-seg emc-seg-primary is-active" fill="none" stroke="#ba8f94" stroke-width="8.93" stroke-linecap="butt" opacity="1" data-rxn="Se@DHQS" data-node="met:Se@3dhq_c" d="M 508 700 C 524.93 700, 545.63 700, 566.8 700"/><path class="emc-seg emc-seg-primary is-active" fill="none" stroke="#ba8f94" stroke-width="8.93" stroke-linecap="butt" opacity="1" data-rxn="Se@DHQS" data-node="met:Se@2dda7p_c" d="M 482 700 C 459.43 700, 430.17 700, 402 700"/><path class="emc-seg emc-seg-axis is-active" fill="none" stroke="#ba8f94" stroke-width="8.93" stroke-linecap="round" opacity="1" data-rxn="Se@DHQTi" d="M 692 700 L 718 700"/><path class="emc-seg emc-seg-currency is-active" fill="none" stroke="#ba8f94" stroke-width="8.93" stroke-linecap="butt" opacity="1" data-rxn="Se@DHQTi" data-node="cur:Se@DHQTi:Se@h2o_c" d="M 718 700 C 733.78 700, 743.92 704.25, 750.22 711.18"/><path class="emc-seg emc-seg-primary is-active" fill="none" stroke="#ba8f94" stroke-width="8.93" stroke-linecap="butt" opacity="1" data-rxn="Se@DHQTi" data-node="met:Se@3dhq_c" d="M 692 700 C 672.23 700, 646.72 700, 622 700"/><path class="emc-seg emc-seg-primary is-active" fill="none" stroke="#ba8f94" stroke-width="8.93" stroke-linecap="butt" opacity="1" data-rxn="Se@DHQTi" data-node="met:Se@3dhsk_c" d="M 718 700 C 732.13 700, 749.19 700, 766.8 700"/><path class="emc-seg emc-seg-axis is-active" fill="none" stroke="#ba8f94" stroke-width="8.93" stroke-linecap="round" opacity="1" data-rxn="Se@SHK3Dr" d="M 805 792 L 805 818"/><path class="emc-seg emc-seg-currency is-active" fill="none" stroke="#ba8f94" stroke-width="8.93" stroke-linecap="butt" opacity="1" data-rxn="Se@SHK3Dr" data-node="cur:Se@SHK3Dr:Se@h_c" d="M 805 792 C 805 775.29, 791.81 769.05, 773.99 767.45"/><path class="emc-seg emc-seg-primary is-active" fill="none" stroke="#ba8f94" stroke-width="8.93" stroke-linecap="butt" opacity="1" data-rxn="Se@SHK3Dr" data-node="met:Se@3dhsk_c" d="M 805 792 C 805 770.83, 805 743.45, 805 717"/><path class="emc-seg emc-seg-currency is-active" fill="none" stroke="#ba8f94" stroke-width="8.93" stroke-linecap="butt" opacity="1" data-rxn="Se@SHK3Dr" data-node="cur:Se@SHK3Dr:Se@nadph_c" d="M 805 792 C 805 757.96, 818.03 745.22, 835.64 741.93"/><path class="emc-seg emc-seg-currency is-active" fill="none" stroke="#ba8f94" stroke-width="8.93" stroke-linecap="butt" opacity="1" data-rxn="Se@SHK3Dr" data-node="cur:Se@SHK3Dr:Se@nadp_c" d="M 805 818 C 805 826.02, 801.07 831.3, 794.61 834.67"/><path class="emc-seg emc-seg-primary is-active" fill="none" stroke="#ba8f94" stroke-width="8.93" stroke-linecap="butt" opacity="1" data-rxn="Se@SHK3Dr" data-node="met:Se@skm_c" d="M 805 818 C 805 833.53, 805 852.41, 805 871.8"/><path class="emc-seg emc-seg-axis is-active" fill="none" stroke="#ba8f94" stroke-width="8.93" stroke-linecap="round" opacity="1" data-rxn="Se@SHKK" d="M 718 910 L 692 910"/><path class="emc-seg emc-seg-currency is-active" fill="none" stroke="#ba8f94" stroke-width="8.93" stroke-linecap="butt" opacity="1" data-rxn="Se@SHKK" data-node="cur:Se@SHKK:Se@adp_c" d="M 692 910 C 676.22 910, 666.08 905.75, 659.78 898.82"/><path class="emc-seg emc-seg-currency is-active" fill="none" stroke="#ba8f94" stroke-width="8.93" stroke-linecap="butt" opacity="1" data-rxn="Se@SHKK" data-node="cur:Se@SHKK:Se@h_c" d="M 692 910 C 676.22 910, 666.08 914.25, 659.78 921.18"/><path class="emc-seg emc-seg-currency is-active" fill="none" stroke="#ba8f94" stroke-width="8.93" stroke-linecap="butt" opacity="1" data-rxn="Se@SHKK" data-node="cur:Se@SHKK:Se@atp_c" d="M 718 910 C 745.63 910, 755.97 896.97, 758.64 879.37"/><path class="emc-seg emc-seg-primary is-active" fill="none" stroke="#ba8f94" stroke-width="8.93" stroke-linecap="butt" opacity="1" data-rxn="Se@SHKK" data-node="met:Se@skm_c" d="M 718 910 C 737.77 910, 763.28 910, 788 910"/><path class="emc-seg emc-seg-primary is-active" fill="none" stroke="#ba8f94" stroke-width="8.93" stroke-linecap="butt" opacity="1" data-rxn="Se@SHKK" data-node="met:Se@skm5p_c" d="M 692 910 C 677.87 910, 660.81 910, 643.2 910"/><path class="emc-seg emc-seg-axis is-active" fill="none" stroke="#ba8f94" stroke-width="8.93" stroke-linecap="round" opacity="1" data-rxn="Se@PSCVT" d="M 508 910 L 482 910"/><path class="emc-seg emc-seg-primary is-active" fill="none" stroke="#ba8f94" stroke-width="8.93" stroke-linecap="butt" opacity="1" data-rxn="Se@PSCVT" data-node="met:Se@pep_c" d="M 508 910 C 508 834.63, 203.54 803.64, 168.31 716.67"/><path class="emc-seg emc-seg-currency is-active" fill="none" stroke="#ba8f94" stroke-width="8.93" stroke-linecap="butt" opacity="1" data-rxn="Se@PSCVT" data-node="cur:Se@PSCVT:Se@pi_c" d="M 482 910 C 466.22 910, 456.08 905.75, 449.78 898.82"/><path class="emc-seg emc-seg-primary is-active" fill="none" stroke="#ba8f94" stroke-width="8.93" stroke-linecap="butt" opacity="1" data-rxn="Se@PSCVT" data-node="met:Se@skm5p_c" d="M 508 910 C 530.57 910, 559.83 910, 588 910"/><path class="emc-seg emc-seg-primary is-active" fill="none" stroke="#ba8f94" stroke-width="8.93" stroke-linecap="butt" opacity="1" data-rxn="Se@PSCVT" data-node="met:Se@3psme_c" d="M 482 910 C 465.07 910, 444.37 910, 423.2 910"/><path class="emc-seg emc-seg-axis is-active" fill="none" stroke="#ba8f94" stroke-width="8.93" stroke-linecap="round" opacity="1" data-rxn="Se@CHORS" d="M 288 910 L 262 910"/><path class="emc-seg emc-seg-currency is-active" fill="none" stroke="#ba8f94" stroke-width="8.93" stroke-linecap="butt" opacity="1" data-rxn="Se@CHORS" data-node="cur:Se@CHORS:Se@pi_c" d="M 262 910 C 246.22 910, 236.08 905.75, 229.78 898.82"/><path class="emc-seg emc-seg-primary is-active" fill="none" stroke="#ba8f94" stroke-width="8.93" stroke-linecap="butt" opacity="1" data-rxn="Se@CHORS" data-node="met:Se@chor_c" d="M 262 910 C 245.07 910, 224.37 910, 203.2 910"/><path class="emc-seg emc-seg-primary is-active" fill="none" stroke="#ba8f94" stroke-width="8.93" stroke-linecap="butt" opacity="1" data-rxn="Se@CHORS" data-node="met:Se@3psme_c" d="M 288 910 C 310.57 910, 339.83 910, 368 910"/><path class="emc-seg emc-seg-axis is-active" fill="none" stroke="#ba9398" stroke-width="8.54" stroke-linecap="round" opacity="1" data-rxn="Se@CHORM" d="M 165 1002 L 165 1028"/><path class="emc-seg emc-seg-primary is-active" fill="none" stroke="#ba9398" stroke-width="8.54" stroke-linecap="butt" opacity="1" data-rxn="Se@CHORM" data-node="met:Se@chor_c" d="M 165 1002 C 165 980.83, 165 953.45, 165 927"/><path class="emc-seg emc-seg-primary is-active" fill="none" stroke="#ba9398" stroke-width="8.54" stroke-linecap="butt" opacity="1" data-rxn="Se@CHORM" data-node="met:Se@pphn_c" d="M 165 1028 C 165 1043.77, 165 1063, 165 1082.71"/><path class="emc-seg emc-seg-axis is-active" fill="none" stroke="#bb9b9f" stroke-width="7.74" stroke-linecap="round" opacity="1" data-rxn="Se@PPNDH" d="M 262 1120 L 288 1120"/><path class="emc-seg emc-seg-primary is-active" fill="none" stroke="#bb9b9f" stroke-width="7.74" stroke-linecap="butt" opacity="1" data-rxn="Se@PPNDH" data-node="met:Se@phpyr_c" d="M 288 1120 C 305.68 1120, 327.46 1120, 349.61 1120"/><path class="emc-seg emc-seg-currency is-active" fill="none" stroke="#bb9b9f" stroke-width="7.74" stroke-linecap="butt" opacity="1" data-rxn="Se@PPNDH" data-node="cur:Se@PPNDH:Se@co2_c" d="M 288 1120 C 305.44 1120, 315.99 1125.19, 322.08 1133.45"/><path class="emc-seg emc-seg-currency is-active" fill="none" stroke="#bb9b9f" stroke-width="7.74" stroke-linecap="butt" opacity="1" data-rxn="Se@PPNDH" data-node="cur:Se@PPNDH:Se@h2o_c" d="M 288 1120 C 305.44 1120, 315.99 1114.81, 322.08 1106.55"/><path class="emc-seg emc-seg-currency is-active" fill="none" stroke="#bb9b9f" stroke-width="7.74" stroke-linecap="butt" opacity="1" data-rxn="Se@PPNDH" data-node="cur:Se@PPNDH:Se@h_c" d="M 262 1120 C 234.37 1120, 224.03 1133.03, 221.36 1150.63"/><path class="emc-seg emc-seg-primary is-active" fill="none" stroke="#bb9b9f" stroke-width="7.74" stroke-linecap="butt" opacity="1" data-rxn="Se@PPNDH" data-node="met:Se@pphn_c" d="M 262 1120 C 239.43 1120, 210.17 1120, 182 1120"/><path class="emc-seg emc-seg-axis is-active" fill="none" stroke="#9dabb9" stroke-width="7.74" stroke-linecap="round" opacity="1" data-rxn="Se@PHETA1" d="M 508 1120 L 482 1120"/><path class="emc-seg emc-seg-primary is-active" fill="none" stroke="#9dabb9" stroke-width="7.74" stroke-linecap="butt" opacity="1" data-rxn="Se@PHETA1" data-node="met:Se@phpyr_c" d="M 482 1120 C 459.43 1120, 430.17 1120, 402 1120"/><path class="emc-seg emc-seg-currency is-active" fill="none" stroke="#9dabb9" stroke-width="7.74" stroke-linecap="butt" opacity="1" data-rxn="Se@PHETA1" data-node="cur:Se@PHETA1:Se@glu__L_c" d="M 482 1120 C 454.37 1120, 444.03 1106.97, 441.36 1089.37"/><path class="emc-seg emc-seg-primary is-active" fill="none" stroke="#9dabb9" stroke-width="7.74" stroke-linecap="butt" opacity="1" data-rxn="Se@PHETA1" data-node="met:Se@phe__L_c" d="M 508 1120 C 525.68 1120, 547.46 1120, 569.61 1120"/><path class="emc-seg emc-seg-currency is-active" fill="none" stroke="#9dabb9" stroke-width="7.74" stroke-linecap="butt" opacity="1" data-rxn="Se@PHETA1" data-node="cur:Se@PHETA1:Se@akg_c" d="M 508 1120 C 525.44 1120, 535.99 1114.81, 542.08 1106.55"/><path class="emc-seg emc-seg-axis is-active" fill="none" stroke="#a0adba" stroke-width="7.27" stroke-linecap="round" opacity="1" data-rxn="Ec@DDPA" d="M 1805 420 L 1779 420"/><path class="emc-seg emc-seg-primary is-active" fill="none" stroke="#a0adba" stroke-width="7.27" stroke-linecap="butt" opacity="1" data-rxn="Ec@DDPA" data-node="met:Ec@2dda7p_c" d="M 1779 420 C 1761.03 420, 1738.8 420, 1716.27 420"/><path class="emc-seg emc-seg-primary is-active" fill="none" stroke="#a0adba" stroke-width="7.27" stroke-linecap="butt" opacity="1" data-rxn="Ec@DDPA" data-node="met:Ec@e4p_c" d="M 1805 420 C 1835.25 420, 1847.25 403.98, 1850.78 381.96"/><path class="emc-seg emc-seg-currency is-active" fill="none" stroke="#a0adba" stroke-width="7.27" stroke-linecap="butt" opacity="1" data-rxn="Ec@DDPA" data-node="cur:Ec@DDPA:Ec@h2o_c" d="M 1805 420 C 1832.63 420, 1842.97 433.03, 1845.64 450.63"/><path class="emc-seg emc-seg-primary is-active" fill="none" stroke="#a0adba" stroke-width="7.27" stroke-linecap="butt" opacity="1" data-rxn="Ec@DDPA" data-node="met:Ec@pep_c" d="M 1805 420 C 1827.57 420, 1856.83 420, 1885 420"/><path class="emc-seg emc-seg-currency is-active" fill="none" stroke="#a0adba" stroke-width="7.27" stroke-linecap="butt" opacity="1" data-rxn="Ec@DDPA" data-node="cur:Ec@DDPA:Ec@pi_c" d="M 1779 420 C 1760.9 420, 1750.22 425.59, 1744.26 434.39"/><path class="emc-seg emc-seg-axis is-active" fill="none" stroke="#a0adba" stroke-width="7.27" stroke-linecap="round" opacity="1" data-rxn="Ec@DHQS" d="M 1585 420 L 1559 420"/><path class="emc-seg emc-seg-primary is-active" fill="none" stroke="#a0adba" stroke-width="7.27" stroke-linecap="butt" opacity="1" data-rxn="Ec@DHQS" data-node="met:Ec@2dda7p_c" d="M 1585 420 C 1607.57 420, 1636.83 420, 1665 420"/><path class="emc-seg emc-seg-primary is-active" fill="none" stroke="#a0adba" stroke-width="7.27" stroke-linecap="butt" opacity="1" data-rxn="Ec@DHQS" data-node="met:Ec@3dhq_c" d="M 1559 420 C 1541.03 420, 1518.8 420, 1496.27 420"/><path class="emc-seg emc-seg-currency is-active" fill="none" stroke="#a0adba" stroke-width="7.27" stroke-linecap="butt" opacity="1" data-rxn="Ec@DHQS" data-node="cur:Ec@DHQS:Ec@pi_c" d="M 1559 420 C 1540.9 420, 1530.22 425.59, 1524.26 434.39"/><path class="emc-seg emc-seg-axis is-active" fill="none" stroke="#a0adba" stroke-width="7.27" stroke-linecap="round" opacity="1" data-rxn="Ec@DHQTi" d="M 1375 420 L 1349 420"/><path class="emc-seg emc-seg-primary is-active" fill="none" stroke="#a0adba" stroke-width="7.27" stroke-linecap="butt" opacity="1" data-rxn="Ec@DHQTi" data-node="met:Ec@3dhq_c" d="M 1375 420 C 1394.77 420, 1420.28 420, 1445 420"/><path class="emc-seg emc-seg-primary is-active" fill="none" stroke="#a0adba" stroke-width="7.27" stroke-linecap="butt" opacity="1" data-rxn="Ec@DHQTi" data-node="met:Ec@3dhsk_c" d="M 1349 420 C 1333.82 420, 1315.26 420, 1296.27 420"/><path class="emc-seg emc-seg-currency is-active" fill="none" stroke="#a0adba" stroke-width="7.27" stroke-linecap="butt" opacity="1" data-rxn="Ec@DHQTi" data-node="cur:Ec@DHQTi:Ec@h2o_c" d="M 1349 420 C 1330.9 420, 1320.22 425.59, 1314.26 434.39"/><path class="emc-seg emc-seg-axis is-active" fill="none" stroke="#a0adba" stroke-width="7.27" stroke-linecap="round" opacity="1" data-rxn="Ec@SHK3Dr" d="M 1262 512 L 1262 538"/><path class="emc-seg emc-seg-primary is-active" fill="none" stroke="#a0adba" stroke-width="7.27" stroke-linecap="butt" opacity="1" data-rxn="Ec@SHK3Dr" data-node="met:Ec@3dhsk_c" d="M 1262 512 C 1262 490.83, 1262 463.45, 1262 437"/><path class="emc-seg emc-seg-currency is-active" fill="none" stroke="#a0adba" stroke-width="7.27" stroke-linecap="butt" opacity="1" data-rxn="Ec@SHK3Dr" data-node="cur:Ec@SHK3Dr:Ec@h_c" d="M 1262 512 C 1262 495.29, 1275.19 489.05, 1293.01 487.45"/><path class="emc-seg emc-seg-currency is-active" fill="none" stroke="#a0adba" stroke-width="7.27" stroke-linecap="butt" opacity="1" data-rxn="Ec@SHK3Dr" data-node="cur:Ec@SHK3Dr:Ec@nadp_c" d="M 1262 538 C 1262 547.45, 1267.44 553.09, 1276.06 556.29"/><path class="emc-seg emc-seg-currency is-active" fill="none" stroke="#a0adba" stroke-width="7.27" stroke-linecap="butt" opacity="1" data-rxn="Ec@SHK3Dr" data-node="cur:Ec@SHK3Dr:Ec@nadph_c" d="M 1262 512 C 1262 477.96, 1248.97 465.22, 1231.36 461.93"/><path class="emc-seg emc-seg-primary is-active" fill="none" stroke="#a0adba" stroke-width="7.27" stroke-linecap="butt" opacity="1" data-rxn="Ec@SHK3Dr" data-node="met:Ec@skm_c" d="M 1262 538 C 1262 554.58, 1262 574.96, 1262 595.73"/><path class="emc-seg emc-seg-axis is-active" fill="none" stroke="#a0adba" stroke-width="7.27" stroke-linecap="round" opacity="1" data-rxn="Ec@SHKK" d="M 1349 630 L 1375 630"/><path class="emc-seg emc-seg-currency is-active" fill="none" stroke="#a0adba" stroke-width="7.27" stroke-linecap="butt" opacity="1" data-rxn="Ec@SHKK" data-node="cur:Ec@SHKK:Ec@adp_c" d="M 1375 630 C 1393.1 630, 1403.78 624.41, 1409.74 615.61"/><path class="emc-seg emc-seg-currency is-active" fill="none" stroke="#a0adba" stroke-width="7.27" stroke-linecap="butt" opacity="1" data-rxn="Ec@SHKK" data-node="cur:Ec@SHKK:Ec@atp_c" d="M 1349 630 C 1321.37 630, 1311.03 616.97, 1308.36 599.37"/><path class="emc-seg emc-seg-currency is-active" fill="none" stroke="#a0adba" stroke-width="7.27" stroke-linecap="butt" opacity="1" data-rxn="Ec@SHKK" data-node="cur:Ec@SHKK:Ec@h_c" d="M 1375 630 C 1393.1 630, 1403.78 635.59, 1409.74 644.39"/><path class="emc-seg emc-seg-primary is-active" fill="none" stroke="#a0adba" stroke-width="7.27" stroke-linecap="butt" opacity="1" data-rxn="Ec@SHKK" data-node="met:Ec@skm_c" d="M 1349 630 C 1329.23 630, 1303.72 630, 1279 630"/><path class="emc-seg emc-seg-primary is-active" fill="none" stroke="#a0adba" stroke-width="7.27" stroke-linecap="butt" opacity="1" data-rxn="Ec@SHKK" data-node="met:Ec@skm5p_c" d="M 1375 630 C 1390.18 630, 1408.74 630, 1427.73 630"/><path class="emc-seg emc-seg-axis is-active" fill="none" stroke="#a0adba" stroke-width="7.27" stroke-linecap="round" opacity="1" data-rxn="Ec@PSCVT" d="M 1559 630 L 1585 630"/><path class="emc-seg emc-seg-primary is-active" fill="none" stroke="#a0adba" stroke-width="7.27" stroke-linecap="butt" opacity="1" data-rxn="Ec@PSCVT" data-node="met:Ec@3psme_c" d="M 1585 630 C 1602.97 630, 1625.2 630, 1647.73 630"/><path class="emc-seg emc-seg-primary is-active" fill="none" stroke="#a0adba" stroke-width="7.27" stroke-linecap="butt" opacity="1" data-rxn="Ec@PSCVT" data-node="met:Ec@pep_c" d="M 1559 630 C 1559 554.63, 1863.46 523.64, 1898.69 436.67"/><path class="emc-seg emc-seg-currency is-active" fill="none" stroke="#a0adba" stroke-width="7.27" stroke-linecap="butt" opacity="1" data-rxn="Ec@PSCVT" data-node="cur:Ec@PSCVT:Ec@pi_c" d="M 1585 630 C 1603.1 630, 1613.78 624.41, 1619.74 615.61"/><path class="emc-seg emc-seg-primary is-active" fill="none" stroke="#a0adba" stroke-width="7.27" stroke-linecap="butt" opacity="1" data-rxn="Ec@PSCVT" data-node="met:Ec@skm5p_c" d="M 1559 630 C 1536.43 630, 1507.17 630, 1479 630"/><path class="emc-seg emc-seg-axis is-active" fill="none" stroke="#a0adba" stroke-width="7.27" stroke-linecap="round" opacity="1" data-rxn="Ec@CHORS" d="M 1779 630 L 1805 630"/><path class="emc-seg emc-seg-primary is-active" fill="none" stroke="#a0adba" stroke-width="7.27" stroke-linecap="butt" opacity="1" data-rxn="Ec@CHORS" data-node="met:Ec@3psme_c" d="M 1779 630 C 1756.43 630, 1727.17 630, 1699 630"/><path class="emc-seg emc-seg-primary is-active" fill="none" stroke="#a0adba" stroke-width="7.27" stroke-linecap="butt" opacity="1" data-rxn="Ec@CHORS" data-node="met:Ec@chor_c" d="M 1805 630 C 1822.97 630, 1845.2 630, 1867.73 630"/><path class="emc-seg emc-seg-currency is-active" fill="none" stroke="#a0adba" stroke-width="7.27" stroke-linecap="butt" opacity="1" data-rxn="Ec@CHORS" data-node="cur:Ec@CHORS:Ec@pi_c" d="M 1805 630 C 1823.1 630, 1833.78 624.41, 1839.74 615.61"/><path class="emc-seg emc-seg-axis is-active" fill="none" stroke="#a1aeba" stroke-width="7.15" stroke-linecap="round" opacity="1" data-rxn="Ec@CHORM" d="M 1902 722 L 1902 748"/><path class="emc-seg emc-seg-primary is-active" fill="none" stroke="#a1aeba" stroke-width="7.15" stroke-linecap="butt" opacity="1" data-rxn="Ec@CHORM" data-node="met:Ec@chor_c" d="M 1902 722 C 1902 700.83, 1902 673.45, 1902 647"/><path class="emc-seg emc-seg-primary is-active" fill="none" stroke="#a1aeba" stroke-width="7.15" stroke-linecap="butt" opacity="1" data-rxn="Ec@CHORM" data-node="met:Ec@pphn_c" d="M 1902 748 C 1902 764.65, 1902 785.15, 1902 806.01"/><path class="emc-seg emc-seg-axis is-disabled-reaction" fill="none" stroke="#db2777" stroke-width="6.85" stroke-linecap="round" opacity="1" stroke-dasharray="8 5" data-rxn="Ec@PPNDH" d="M 1805 840 L 1779 840"/><path class="emc-seg emc-seg-currency is-disabled-reaction" fill="none" stroke="#db2777" stroke-width="6.85" stroke-linecap="butt" opacity="1" stroke-dasharray="8 5" data-rxn="Ec@PPNDH" data-node="cur:Ec@PPNDH:Ec@co2_c" d="M 1779 840 C 1751.37 840, 1741.03 853.03, 1738.36 870.63"/><path class="emc-seg emc-seg-currency is-disabled-reaction" fill="none" stroke="#db2777" stroke-width="6.85" stroke-linecap="butt" opacity="1" stroke-dasharray="8 5" data-rxn="Ec@PPNDH" data-node="cur:Ec@PPNDH:Ec@h_c" d="M 1805 840 C 1832.63 840, 1842.97 853.03, 1845.64 870.63"/><path class="emc-seg emc-seg-currency is-disabled-reaction" fill="none" stroke="#db2777" stroke-width="6.85" stroke-linecap="butt" opacity="1" stroke-dasharray="8 5" data-rxn="Ec@PPNDH" data-node="cur:Ec@PPNDH:Ec@h2o_c" d="M 1779 840 C 1751.37 840, 1741.03 826.97, 1738.36 809.37"/><path class="emc-seg emc-seg-primary is-disabled-reaction" fill="none" stroke="#db2777" stroke-width="6.85" stroke-linecap="butt" opacity="1" stroke-dasharray="8 5" data-rxn="Ec@PPNDH" data-node="met:Ec@phpyr_c" d="M 1779 840 C 1756.43 840, 1727.17 840, 1699 840"/><path class="emc-seg emc-seg-primary is-disabled-reaction" fill="none" stroke="#db2777" stroke-width="6.85" stroke-linecap="butt" opacity="1" stroke-dasharray="8 5" data-rxn="Ec@PPNDH" data-node="met:Ec@pphn_c" d="M 1805 840 C 1827.57 840, 1856.83 840, 1885 840"/><path class="emc-seg emc-seg-axis is-off" fill="none" stroke="#9b9da5" stroke-width="6.85" stroke-linecap="round" opacity="1" stroke-dasharray="10.28 7.88" data-rxn="Ec@PHETA1" d="M 1559 840 L 1585 840"/><path class="emc-seg emc-seg-currency is-off" fill="none" stroke="#9b9da5" stroke-width="6.85" stroke-linecap="butt" opacity="1" stroke-dasharray="10.28 7.88" data-rxn="Ec@PHETA1" data-node="cur:Ec@PHETA1:Ec@akg_c" d="M 1559 840 C 1531.37 840, 1521.03 826.97, 1518.36 809.37"/><path class="emc-seg emc-seg-currency is-off" fill="none" stroke="#9b9da5" stroke-width="6.85" stroke-linecap="butt" opacity="1" stroke-dasharray="10.28 7.88" data-rxn="Ec@PHETA1" data-node="cur:Ec@PHETA1:Ec@glu__L_c" d="M 1585 840 C 1612.63 840, 1622.97 826.97, 1625.64 809.37"/><path class="emc-seg emc-seg-primary is-off" fill="none" stroke="#9b9da5" stroke-width="6.85" stroke-linecap="butt" opacity="1" stroke-dasharray="10.28 7.88" data-rxn="Ec@PHETA1" data-node="met:Ec@phe__L_c" d="M 1559 840 C 1536.43 840, 1507.17 840, 1479 840"/><path class="emc-seg emc-seg-primary is-off" fill="none" stroke="#9b9da5" stroke-width="6.85" stroke-linecap="butt" opacity="1" stroke-dasharray="10.28 7.88" data-rxn="Ec@PHETA1" data-node="met:Ec@phpyr_c" d="M 1585 840 C 1607.57 840, 1636.83 840, 1665 840"/><path class="emc-seg emc-seg-axis is-active" fill="none" stroke="#a7b0bb" stroke-width="6.43" stroke-linecap="round" opacity="1" data-rxn="Se@PHELtex" d="M 947.09 1025.22 L 922.91 1034.78"/><path class="emc-seg emc-seg-primary is-active" fill="none" stroke="#a7b0bb" stroke-width="6.43" stroke-linecap="butt" opacity="1" data-rxn="Se@PHELtex" data-node="met:M@phe__L" d="M 947.09 1025.22 C 978 1013.01, 995.65 1001.43, 1004.6 990.49"/><path class="emc-seg emc-seg-primary is-active" fill="none" stroke="#a7b0bb" stroke-width="6.43" stroke-linecap="butt" opacity="1" data-rxn="Se@PHELtex" data-node="met:Se@phe__L_c" d="M 922.91 1034.78 C 733.33 1109.67, 650.78 1131.26, 619.97 1128.05"/><path class="emc-seg emc-seg-axis is-active" fill="none" stroke="#bba5a8" stroke-width="6.43" stroke-linecap="round" opacity="1" data-rxn="Ec@PHEtex" d="M 1072 960 L 1098 960"/><path class="emc-seg emc-seg-primary is-active" fill="none" stroke="#bba5a8" stroke-width="6.43" stroke-linecap="butt" opacity="1" data-rxn="Ec@PHEtex" data-node="met:M@phe__L" d="M 1072 960 C 1059.21 960, 1043.05 960, 1027 960"/><path class="emc-seg emc-seg-primary is-active" fill="none" stroke="#bba5a8" stroke-width="6.43" stroke-linecap="butt" opacity="1" data-rxn="Ec@PHEtex" data-node="met:Ec@phe__L_p" d="M 1098 960 C 1101 960, 1104.28 960, 1107.73 960"/><path class="emc-seg emc-seg-axis is-active" fill="none" stroke="#bba5a8" stroke-width="6.43" stroke-linecap="round" opacity="1" data-rxn="Ec@PHEt2rpp" d="M 1182.82 964.54 L 1207.18 955.46"/><path class="emc-seg emc-seg-currency is-active" fill="none" stroke="#bba5a8" stroke-width="6.43" stroke-linecap="butt" opacity="1" data-rxn="Ec@PHEt2rpp" data-node="cur:Ec@PHEt2rpp:Ec@h_c" d="M 1207.18 955.46 C 1226.77 948.16, 1235.55 938.08, 1237.88 926.69"/><path class="emc-seg emc-seg-primary is-active" fill="none" stroke="#bba5a8" stroke-width="6.43" stroke-linecap="butt" opacity="1" data-rxn="Ec@PHEt2rpp" data-node="met:Ec@phe__L_c" d="M 1207.18 955.46 C 1337.3 906.97, 1405.56 877.96, 1437.69 860.58"/><path class="emc-seg emc-seg-currency is-active" fill="none" stroke="#bba5a8" stroke-width="6.43" stroke-linecap="butt" opacity="1" data-rxn="Ec@PHEt2rpp" data-node="cur:Ec@PHEt2rpp:Ec@h_p" d="M 1182.82 964.54 C 1166.79 970.51, 1184.92 946.03, 1184.05 922.81"/><path class="emc-seg emc-seg-primary is-active" fill="none" stroke="#bba5a8" stroke-width="6.43" stroke-linecap="butt" opacity="1" data-rxn="Ec@PHEt2rpp" data-node="met:Ec@phe__L_p" d="M 1182.82 964.54 C 1169.49 969.51, 1160.13 971.03, 1153.55 970.26"/><path class="emc-seg emc-seg-axis is-active" fill="none" stroke="#b2182b" stroke-width="15" stroke-linecap="round" opacity="1" data-rxn="Se@PHOA690um" d="M 947.64 282.96 L 922.36 289.04"/><path class="emc-seg emc-seg-currency is-active" fill="none" stroke="#b2182b" stroke-width="15" stroke-linecap="butt" opacity="1" data-rxn="Se@PHOA690um" data-node="cur:Se@PHOA690um:Se@cholphya_c" d="M 947.64 282.96 C 964.85 278.83, 857.6 286.55, 827.48 270.07"/><path class="emc-seg emc-seg-primary is-active" fill="none" stroke="#b2182b" stroke-width="15" stroke-linecap="butt" opacity="1" data-rxn="Se@PHOA690um" data-node="met:M@photon690" d="M 947.64 282.96 C 987.96 273.27, 1004.85 260.6, 1009.56 246.99"/><path class="emc-seg emc-seg-primary is-active" fill="none" stroke="#b2182b" stroke-width="15" stroke-linecap="butt" opacity="1" data-rxn="Se@PHOA690um" data-node="met:Se@chla_qy1*_c" d="M 922.36 289.04 C 744.71 331.74, 645.68 349.37, 593.89 352.37"/><path class="emc-seg emc-seg-currency is-active" fill="none" stroke="#b2182b" stroke-width="15" stroke-linecap="butt" opacity="1" data-rxn="Se@PHOA690um" data-node="cur:Se@PHOA690um:Se@chla_qy2*_c" d="M 922.36 289.04 C 716.23 338.58, 619.86 331.65, 578.63 299.03"/><path class="emc-seg emc-seg-axis is-active" fill="none" stroke="#b2182b" stroke-width="15" stroke-linecap="round" opacity="1" data-rxn="Se@ATPSum" d="M 616 463 L 616 489"/><path class="emc-seg emc-seg-currency is-active" fill="none" stroke="#b2182b" stroke-width="15" stroke-linecap="butt" opacity="1" data-rxn="Se@ATPSum" data-node="cur:Se@ATPSum:Se@pi_c" d="M 616 463 C 580.93 463, 561.24 484.52, 556.91 510.04"/><path class="emc-seg emc-seg-currency is-active" fill="none" stroke="#b2182b" stroke-width="15" stroke-linecap="butt" opacity="1" data-rxn="Se@ATPSum" data-node="cur:Se@ATPSum:Se@adp_c" d="M 616 463 C 580.8 463, 526.25 484.68, 513.66 510.33"/><path class="emc-seg emc-seg-currency is-active" fill="none" stroke="#b2182b" stroke-width="15" stroke-linecap="butt" opacity="1" data-rxn="Se@ATPSum" data-node="cur:Se@ATPSum:Se@h2o_c" d="M 616 489 C 616 508.43, 629.27 517.91, 649.55 522.35"/><path class="emc-seg emc-seg-currency is-active" fill="none" stroke="#b2182b" stroke-width="15" stroke-linecap="butt" opacity="1" data-rxn="Se@ATPSum" data-node="cur:Se@ATPSum:Se@h_c" d="M 616 489 C 616 534.54, 629.78 558.95, 650.71 570.94"/><path class="emc-seg emc-seg-primary is-active" fill="none" stroke="#b2182b" stroke-width="15" stroke-linecap="butt" opacity="1" data-rxn="Se@ATPSum" data-node="met:Se@atp_c" d="M 616 489 C 616 513.26, 616 543, 616 573.38"/><path class="emc-seg emc-seg-primary is-active" fill="none" stroke="#b2182b" stroke-width="15" stroke-linecap="butt" opacity="1" data-rxn="Se@ATPSum" data-node="met:Se@h_u" d="M 616 463 C 616.23 459.71, 616.5 455.94, 616.79 451.96"/><polygon class="emc-arrow" points="328.64,730.63 310.57,715.35 329.86,707" fill="#ba8f94" opacity="1" data-rxn="Se@DDPA" data-node="cur:Se@DDPA:Se@pi_c"/><polygon class="emc-arrow" points="368,700 346.8,710.51 346.8,689.49" fill="#ba8f94" opacity="1" data-rxn="Se@DDPA" data-node="met:Se@2dda7p_c"/><polygon class="emc-arrow" points="548.64,730.63 530.57,715.35 549.86,707" fill="#ba8f94" opacity="1" data-rxn="Se@DHQS" data-node="cur:Se@DHQS:Se@pi_c"/><polygon class="emc-arrow" points="588,700 566.8,710.51 566.8,689.49" fill="#ba8f94" opacity="1" data-rxn="Se@DHQS" data-node="met:Se@3dhq_c"/><polygon class="emc-arrow" points="758.64,730.63 740.57,715.35 759.86,707" fill="#ba8f94" opacity="1" data-rxn="Se@DHQTi" data-node="cur:Se@DHQTi:Se@h2o_c"/><polygon class="emc-arrow" points="788,700 766.8,710.51 766.8,689.49" fill="#ba8f94" opacity="1" data-rxn="Se@DHQTi" data-node="met:Se@3dhsk_c"/><polygon class="emc-arrow" points="773.99,839.6 792.16,824.45 797.05,844.9" fill="#ba8f94" opacity="1" data-rxn="Se@SHK3Dr" data-node="cur:Se@SHK3Dr:Se@nadp_c"/><polygon class="emc-arrow" points="805,893 794.49,871.8 815.51,871.8" fill="#ba8f94" opacity="1" data-rxn="Se@SHK3Dr" data-node="met:Se@skm_c"/><polygon class="emc-arrow" points="651.36,879.37 669.43,894.65 650.14,903" fill="#ba8f94" opacity="1" data-rxn="Se@SHKK" data-node="cur:Se@SHKK:Se@adp_c"/><polygon class="emc-arrow" points="651.36,940.63 650.14,917 669.43,925.35" fill="#ba8f94" opacity="1" data-rxn="Se@SHKK" data-node="cur:Se@SHKK:Se@h_c"/><polygon class="emc-arrow" points="622,910 643.2,899.49 643.2,920.51" fill="#ba8f94" opacity="1" data-rxn="Se@SHKK" data-node="met:Se@skm5p_c"/><polygon class="emc-arrow" points="441.36,879.37 459.43,894.65 440.14,903" fill="#ba8f94" opacity="1" data-rxn="Se@PSCVT" data-node="cur:Se@PSCVT:Se@pi_c"/><polygon class="emc-arrow" points="402,910 423.2,899.49 423.2,920.51" fill="#ba8f94" opacity="1" data-rxn="Se@PSCVT" data-node="met:Se@3psme_c"/><polygon class="emc-arrow" points="221.36,879.37 239.43,894.65 220.14,903" fill="#ba8f94" opacity="1" data-rxn="Se@CHORS" data-node="cur:Se@CHORS:Se@pi_c"/><polygon class="emc-arrow" points="182,910 203.2,899.49 203.2,920.51" fill="#ba8f94" opacity="1" data-rxn="Se@CHORS" data-node="met:Se@chor_c"/><polygon class="emc-arrow" points="165,1103 154.94,1082.71 175.06,1082.71" fill="#ba9398" opacity="1" data-rxn="Se@CHORM" data-node="met:Se@pphn_c"/><polygon class="emc-arrow" points="368,1120 349.61,1129.12 349.61,1110.88" fill="#bb9b9f" opacity="1" data-rxn="Se@PPNDH" data-node="met:Se@phpyr_c"/><polygon class="emc-arrow" points="328.64,1150.63 313.55,1136.7 330.6,1130.19" fill="#bb9b9f" opacity="1" data-rxn="Se@PPNDH" data-node="cur:Se@PPNDH:Se@co2_c"/><polygon class="emc-arrow" points="328.64,1089.37 330.6,1109.81 313.55,1103.3" fill="#bb9b9f" opacity="1" data-rxn="Se@PPNDH" data-node="cur:Se@PPNDH:Se@h2o_c"/><polygon class="emc-arrow" points="588,1120 569.61,1129.12 569.61,1110.88" fill="#9dabb9" opacity="1" data-rxn="Se@PHETA1" data-node="met:Se@phe__L_c"/><polygon class="emc-arrow" points="548.64,1089.37 550.6,1109.81 533.55,1103.3" fill="#9dabb9" opacity="1" data-rxn="Se@PHETA1" data-node="cur:Se@PHETA1:Se@akg_c"/><polygon class="emc-arrow" points="1699,420 1716.27,411.43 1716.27,428.57" fill="#a0adba" opacity="1" data-rxn="Ec@DDPA" data-node="met:Ec@2dda7p_c"/><polygon class="emc-arrow" points="1738.36,450.63 1736.2,431.47 1752.31,437.32" fill="#a0adba" opacity="1" data-rxn="Ec@DDPA" data-node="cur:Ec@DDPA:Ec@pi_c"/><polygon class="emc-arrow" points="1479,420 1496.27,411.43 1496.27,428.57" fill="#a0adba" opacity="1" data-rxn="Ec@DHQS" data-node="met:Ec@3dhq_c"/><polygon class="emc-arrow" points="1518.36,450.63 1516.2,431.47 1532.31,437.32" fill="#a0adba" opacity="1" data-rxn="Ec@DHQS" data-node="cur:Ec@DHQS:Ec@pi_c"/><polygon class="emc-arrow" points="1279,420 1296.27,411.43 1296.27,428.57" fill="#a0adba" opacity="1" data-rxn="Ec@DHQTi" data-node="met:Ec@3dhsk_c"/><polygon class="emc-arrow" points="1308.36,450.63 1306.2,431.47 1322.31,437.32" fill="#a0adba" opacity="1" data-rxn="Ec@DHQTi" data-node="cur:Ec@DHQTi:Ec@h2o_c"/><polygon class="emc-arrow" points="1293.01,559.6 1274.41,564.7 1277.7,547.88" fill="#a0adba" opacity="1" data-rxn="Ec@SHK3Dr" data-node="cur:Ec@SHK3Dr:Ec@nadp_c"/><polygon class="emc-arrow" points="1262,613 1253.43,595.73 1270.57,595.73" fill="#a0adba" opacity="1" data-rxn="Ec@SHK3Dr" data-node="met:Ec@skm_c"/><polygon class="emc-arrow" points="1415.64,599.37 1417.8,618.53 1401.69,612.68" fill="#a0adba" opacity="1" data-rxn="Ec@SHKK" data-node="cur:Ec@SHKK:Ec@adp_c"/><polygon class="emc-arrow" points="1415.64,660.63 1401.69,647.32 1417.8,641.47" fill="#a0adba" opacity="1" data-rxn="Ec@SHKK" data-node="cur:Ec@SHKK:Ec@h_c"/><polygon class="emc-arrow" points="1445,630 1427.73,638.57 1427.73,621.43" fill="#a0adba" opacity="1" data-rxn="Ec@SHKK" data-node="met:Ec@skm5p_c"/><polygon class="emc-arrow" points="1665,630 1647.73,638.57 1647.73,621.43" fill="#a0adba" opacity="1" data-rxn="Ec@PSCVT" data-node="met:Ec@3psme_c"/><polygon class="emc-arrow" points="1625.64,599.37 1627.8,618.53 1611.69,612.68" fill="#a0adba" opacity="1" data-rxn="Ec@PSCVT" data-node="cur:Ec@PSCVT:Ec@pi_c"/><polygon class="emc-arrow" points="1885,630 1867.73,638.57 1867.73,621.43" fill="#a0adba" opacity="1" data-rxn="Ec@CHORS" data-node="met:Ec@chor_c"/><polygon class="emc-arrow" points="1845.64,599.37 1847.8,618.53 1831.69,612.68" fill="#a0adba" opacity="1" data-rxn="Ec@CHORS" data-node="cur:Ec@CHORS:Ec@pi_c"/><polygon class="emc-arrow" points="1902,823 1893.58,806.01 1910.42,806.01" fill="#a1aeba" opacity="1" data-rxn="Ec@CHORM" data-node="met:Ec@pphn_c"/><polygon class="emc-arrow" points="1011.62,976.92 1011.32,993.97 997.87,987" fill="#a7b0bb" opacity="1" data-rxn="Se@PHELtex" data-node="met:M@phe__L"/><polygon class="emc-arrow" points="1123,960 1107.73,967.58 1107.73,952.42" fill="#bba5a8" opacity="1" data-rxn="Ec@PHEtex" data-node="met:Ec@phe__L_p"/><polygon class="emc-arrow" points="1237.65,911.42 1245.45,926.58 1230.3,926.8" fill="#bba5a8" opacity="1" data-rxn="Ec@PHEt2rpp" data-node="cur:Ec@PHEt2rpp:Ec@h_c"/><polygon class="emc-arrow" points="1450.85,852.83 1441.53,867.11 1433.84,854.05" fill="#bba5a8" opacity="1" data-rxn="Ec@PHEt2rpp" data-node="met:Ec@phe__L_c"/><polygon class="emc-arrow" points="558.28,351.22 594.45,334.71 593.32,370.03" fill="#b2182b" opacity="1" data-rxn="Se@PHOA690um" data-node="met:Se@chla_qy1*_c"/><polygon class="emc-arrow" points="557.3,270.49 592.78,288.45 564.48,309.61" fill="#b2182b" opacity="1" data-rxn="Se@PHOA690um" data-node="cur:Se@PHOA690um:Se@chla_qy2*_c"/><polygon class="emc-arrow" points="685,525.88 647.8,539.94 651.3,504.77" fill="#b2182b" opacity="1" data-rxn="Se@ATPSum" data-node="cur:Se@ATPSum:Se@h2o_c"/><polygon class="emc-arrow" points="685.01,580.58 645.93,587.95 655.5,553.93" fill="#b2182b" opacity="1" data-rxn="Se@ATPSum" data-node="cur:Se@ATPSum:Se@h_c"/><polygon class="emc-arrow" points="616,609 598.33,573.38 633.67,573.38" fill="#b2182b" opacity="1" data-rxn="Se@ATPSum" data-node="met:Se@atp_c"/></g><g class="emc-layer emc-layer-markers"><g class="emc-marker is-active" data-rxn="Se@DDPA" transform="translate(275 700) rotate(90)">
+        <rect x="-9" y="-3" width="18" height="6" rx="3" fill="#ba8f94"/>
+        <rect x="-9" y="-3" width="18" height="6" rx="3" fill="none" stroke="#ffffff" stroke-width="1.1" opacity="0.8"/>
+      </g><g class="emc-marker is-active" data-rxn="Se@DHQS" transform="translate(495 700) rotate(90)">
+        <rect x="-9" y="-3" width="18" height="6" rx="3" fill="#ba8f94"/>
+        <rect x="-9" y="-3" width="18" height="6" rx="3" fill="none" stroke="#ffffff" stroke-width="1.1" opacity="0.8"/>
+      </g><g class="emc-marker is-active" data-rxn="Se@DHQTi" transform="translate(705 700) rotate(90)">
+        <rect x="-9" y="-3" width="18" height="6" rx="3" fill="#ba8f94"/>
+        <rect x="-9" y="-3" width="18" height="6" rx="3" fill="none" stroke="#ffffff" stroke-width="1.1" opacity="0.8"/>
+      </g><g class="emc-marker is-active" data-rxn="Se@SHK3Dr" transform="translate(805 805) rotate(180)">
+        <rect x="-9" y="-3" width="18" height="6" rx="3" fill="#ba8f94"/>
+        <rect x="-9" y="-3" width="18" height="6" rx="3" fill="none" stroke="#ffffff" stroke-width="1.1" opacity="0.8"/>
+      </g><g class="emc-marker is-active" data-rxn="Se@SHKK" transform="translate(705 910) rotate(270)">
+        <rect x="-9" y="-3" width="18" height="6" rx="3" fill="#ba8f94"/>
+        <rect x="-9" y="-3" width="18" height="6" rx="3" fill="none" stroke="#ffffff" stroke-width="1.1" opacity="0.8"/>
+      </g><g class="emc-marker is-active" data-rxn="Se@PSCVT" transform="translate(495 910) rotate(270)">
+        <rect x="-9" y="-3" width="18" height="6" rx="3" fill="#ba8f94"/>
+        <rect x="-9" y="-3" width="18" height="6" rx="3" fill="none" stroke="#ffffff" stroke-width="1.1" opacity="0.8"/>
+      </g><g class="emc-marker is-active" data-rxn="Se@CHORS" transform="translate(275 910) rotate(270)">
+        <rect x="-9" y="-3" width="18" height="6" rx="3" fill="#ba8f94"/>
+        <rect x="-9" y="-3" width="18" height="6" rx="3" fill="none" stroke="#ffffff" stroke-width="1.1" opacity="0.8"/>
+      </g><g class="emc-marker is-active" data-rxn="Se@CHORM" transform="translate(165 1015) rotate(180)">
+        <rect x="-9" y="-3" width="18" height="6" rx="3" fill="#ba9398"/>
+        <rect x="-9" y="-3" width="18" height="6" rx="3" fill="none" stroke="#ffffff" stroke-width="1.1" opacity="0.8"/>
+      </g><g class="emc-marker is-active" data-rxn="Se@PPNDH" transform="translate(275 1120) rotate(90)">
+        <rect x="-9" y="-3" width="18" height="6" rx="3" fill="#bb9b9f"/>
+        <rect x="-9" y="-3" width="18" height="6" rx="3" fill="none" stroke="#ffffff" stroke-width="1.1" opacity="0.8"/>
+      </g><g class="emc-marker is-active" data-rxn="Se@PHETA1" transform="translate(495 1120) rotate(270)">
+        <rect x="-9" y="-3" width="18" height="6" rx="3" fill="#9dabb9"/>
+        <rect x="-9" y="-3" width="18" height="6" rx="3" fill="none" stroke="#ffffff" stroke-width="1.1" opacity="0.8"/>
+      </g><g class="emc-marker is-active" data-rxn="Ec@DDPA" transform="translate(1792 420) rotate(270)">
+        <rect x="-9" y="-3" width="18" height="6" rx="3" fill="#a0adba"/>
+        <rect x="-9" y="-3" width="18" height="6" rx="3" fill="none" stroke="#ffffff" stroke-width="1.1" opacity="0.8"/>
+      </g><g class="emc-marker is-active" data-rxn="Ec@DHQS" transform="translate(1572 420) rotate(270)">
+        <rect x="-9" y="-3" width="18" height="6" rx="3" fill="#a0adba"/>
+        <rect x="-9" y="-3" width="18" height="6" rx="3" fill="none" stroke="#ffffff" stroke-width="1.1" opacity="0.8"/>
+      </g><g class="emc-marker is-active" data-rxn="Ec@DHQTi" transform="translate(1362 420) rotate(270)">
+        <rect x="-9" y="-3" width="18" height="6" rx="3" fill="#a0adba"/>
+        <rect x="-9" y="-3" width="18" height="6" rx="3" fill="none" stroke="#ffffff" stroke-width="1.1" opacity="0.8"/>
+      </g><g class="emc-marker is-active" data-rxn="Ec@SHK3Dr" transform="translate(1262 525) rotate(180)">
+        <rect x="-9" y="-3" width="18" height="6" rx="3" fill="#a0adba"/>
+        <rect x="-9" y="-3" width="18" height="6" rx="3" fill="none" stroke="#ffffff" stroke-width="1.1" opacity="0.8"/>
+      </g><g class="emc-marker is-active" data-rxn="Ec@SHKK" transform="translate(1362 630) rotate(90)">
+        <rect x="-9" y="-3" width="18" height="6" rx="3" fill="#a0adba"/>
+        <rect x="-9" y="-3" width="18" height="6" rx="3" fill="none" stroke="#ffffff" stroke-width="1.1" opacity="0.8"/>
+      </g><g class="emc-marker is-active" data-rxn="Ec@PSCVT" transform="translate(1572 630) rotate(90)">
+        <rect x="-9" y="-3" width="18" height="6" rx="3" fill="#a0adba"/>
+        <rect x="-9" y="-3" width="18" height="6" rx="3" fill="none" stroke="#ffffff" stroke-width="1.1" opacity="0.8"/>
+      </g><g class="emc-marker is-active" data-rxn="Ec@CHORS" transform="translate(1792 630) rotate(90)">
+        <rect x="-9" y="-3" width="18" height="6" rx="3" fill="#a0adba"/>
+        <rect x="-9" y="-3" width="18" height="6" rx="3" fill="none" stroke="#ffffff" stroke-width="1.1" opacity="0.8"/>
+      </g><g class="emc-marker is-active" data-rxn="Ec@CHORM" transform="translate(1902 735) rotate(180)">
+        <rect x="-9" y="-3" width="18" height="6" rx="3" fill="#a1aeba"/>
+        <rect x="-9" y="-3" width="18" height="6" rx="3" fill="none" stroke="#ffffff" stroke-width="1.1" opacity="0.8"/>
+      </g><g class="emc-marker is-disabled-reaction" data-rxn="Ec@PPNDH" transform="translate(1792 840) rotate(270)">
+        <rect x="-9" y="-3" width="18" height="6" rx="3" fill="#db2777"/>
+        <rect x="-9" y="-3" width="18" height="6" rx="3" fill="none" stroke="#ffffff" stroke-width="1.1" opacity="0.8"/>
+      </g><g class="emc-ko-mark" data-disabled-reaction="Ec@PPNDH" transform="translate(1792 840)" stroke="#db2777" stroke-width="3" pointer-events="none">
+        <title>Disabled reaction: both bounds fixed to zero</title><path d="M -9 -9 L 9 9 M -9 9 L 9 -9"/></g><g class="emc-marker is-off" data-rxn="Ec@PHETA1" transform="translate(1572 840) rotate(90)">
+        <rect x="-9" y="-3" width="18" height="6" rx="3" fill="#9b9da5"/>
+        <rect x="-9" y="-3" width="18" height="6" rx="3" fill="none" stroke="#ffffff" stroke-width="1.1" opacity="0.8"/>
+      </g><g class="emc-marker is-active emc-transporter" data-rxn="Se@PHELtex" transform="translate(935 1030) rotate(158.44)">
+          <rect x="-13" y="-11" width="26" height="22" rx="7" fill="#fef3c7" stroke="#d97706" stroke-width="2.4"/>
+          <rect x="-4.5" y="-11" width="9" height="22" rx="4" fill="#a7b0bb" opacity="0.85"/>
+        </g><g class="emc-marker is-active emc-transporter" data-rxn="Ec@PHEtex" transform="translate(1085 960) rotate(0)">
+          <rect x="-13" y="-11" width="26" height="22" rx="7" fill="#fef3c7" stroke="#d97706" stroke-width="2.4"/>
+          <rect x="-4.5" y="-11" width="9" height="22" rx="4" fill="#bba5a8" opacity="0.85"/>
+        </g><g class="emc-marker is-active emc-transporter" data-rxn="Ec@PHEt2rpp" transform="translate(1195 960) rotate(-20.44)">
+          <rect x="-13" y="-11" width="26" height="22" rx="7" fill="#e0f2fe" stroke="#0284c7" stroke-width="2.4"/>
+          <rect x="-4.5" y="-11" width="9" height="22" rx="4" fill="#bba5a8" opacity="0.85"/>
+        </g><g class="emc-marker is-active emc-transporter" data-rxn="Se@PHOA690um" transform="translate(935 286) rotate(166.49)">
+          <rect x="-13" y="-11" width="26" height="22" rx="7" fill="#fef3c7" stroke="#d97706" stroke-width="2.4"/>
+          <rect x="-4.5" y="-11" width="9" height="22" rx="4" fill="#b2182b" opacity="0.85"/>
+        </g><g class="emc-marker is-active emc-transporter" data-rxn="Se@ATPSum" transform="translate(616 476) rotate(90)">
+          <rect x="-13" y="-11" width="26" height="22" rx="7" fill="#d1fae5" stroke="#059669" stroke-width="2.4"/>
+          <rect x="-4.5" y="-11" width="9" height="22" rx="4" fill="#b2182b" opacity="0.85"/>
+        </g></g><g class="emc-layer emc-layer-nodes"><circle class="emc-node emc-node-metabolite emc-node-primary" data-node="met:Se@pep_c" data-met="Se@pep_c" cx="165" cy="700" r="13" fill="#e67e4c" stroke="#a64613" stroke-width="1.8"/><circle class="emc-node emc-node-metabolite emc-node-primary" data-node="met:Se@e4p_c" data-met="Se@e4p_c" cx="215" cy="645" r="13" fill="#e67e4c" stroke="#a64613" stroke-width="1.8"/><circle class="emc-node emc-node-metabolite emc-node-primary" data-node="met:Se@2dda7p_c" data-met="Se@2dda7p_c" cx="385" cy="700" r="13" fill="#e67e4c" stroke="#a64613" stroke-width="1.8"/><circle class="emc-node emc-node-metabolite emc-node-primary" data-node="met:Se@3dhq_c" data-met="Se@3dhq_c" cx="605" cy="700" r="13" fill="#e67e4c" stroke="#a64613" stroke-width="1.8"/><circle class="emc-node emc-node-metabolite emc-node-primary" data-node="met:Se@3dhsk_c" data-met="Se@3dhsk_c" cx="805" cy="700" r="13" fill="#e67e4c" stroke="#a64613" stroke-width="1.8"/><circle class="emc-node emc-node-metabolite emc-node-primary" data-node="met:Se@skm_c" data-met="Se@skm_c" cx="805" cy="910" r="13" fill="#e67e4c" stroke="#a64613" stroke-width="1.8"/><circle class="emc-node emc-node-metabolite emc-node-primary" data-node="met:Se@skm5p_c" data-met="Se@skm5p_c" cx="605" cy="910" r="13" fill="#e67e4c" stroke="#a64613" stroke-width="1.8"/><circle class="emc-node emc-node-metabolite emc-node-primary" data-node="met:Se@3psme_c" data-met="Se@3psme_c" cx="385" cy="910" r="13" fill="#e67e4c" stroke="#a64613" stroke-width="1.8"/><circle class="emc-node emc-node-metabolite emc-node-primary" data-node="met:Se@chor_c" data-met="Se@chor_c" cx="165" cy="910" r="13" fill="#e67e4c" stroke="#a64613" stroke-width="1.8"/><circle class="emc-node emc-node-metabolite emc-node-primary" data-node="met:Se@pphn_c" data-met="Se@pphn_c" cx="165" cy="1120" r="13" fill="#e67e4c" stroke="#a64613" stroke-width="1.8"/><circle class="emc-node emc-node-metabolite emc-node-primary" data-node="met:Se@phpyr_c" data-met="Se@phpyr_c" cx="385" cy="1120" r="13" fill="#e67e4c" stroke="#a64613" stroke-width="1.8"/><circle class="emc-node emc-node-metabolite emc-node-primary" data-node="met:Se@phe__L_c" data-met="Se@phe__L_c" cx="605" cy="1120" r="13" fill="#e67e4c" stroke="#a64613" stroke-width="1.8"/><circle class="emc-node emc-node-metabolite emc-node-primary" data-node="met:Ec@pep_c" data-met="Ec@pep_c" cx="1902" cy="420" r="13" fill="#e67e4c" stroke="#a64613" stroke-width="1.8"/><circle class="emc-node emc-node-metabolite emc-node-primary" data-node="met:Ec@e4p_c" data-met="Ec@e4p_c" cx="1852" cy="365" r="13" fill="#e67e4c" stroke="#a64613" stroke-width="1.8"/><circle class="emc-node emc-node-metabolite emc-node-primary" data-node="met:Ec@2dda7p_c" data-met="Ec@2dda7p_c" cx="1682" cy="420" r="13" fill="#e67e4c" stroke="#a64613" stroke-width="1.8"/><circle class="emc-node emc-node-metabolite emc-node-primary" data-node="met:Ec@3dhq_c" data-met="Ec@3dhq_c" cx="1462" cy="420" r="13" fill="#e67e4c" stroke="#a64613" stroke-width="1.8"/><circle class="emc-node emc-node-metabolite emc-node-primary" data-node="met:Ec@3dhsk_c" data-met="Ec@3dhsk_c" cx="1262" cy="420" r="13" fill="#e67e4c" stroke="#a64613" stroke-width="1.8"/><circle class="emc-node emc-node-metabolite emc-node-primary" data-node="met:Ec@skm_c" data-met="Ec@skm_c" cx="1262" cy="630" r="13" fill="#e67e4c" stroke="#a64613" stroke-width="1.8"/><circle class="emc-node emc-node-metabolite emc-node-primary" data-node="met:Ec@skm5p_c" data-met="Ec@skm5p_c" cx="1462" cy="630" r="13" fill="#e67e4c" stroke="#a64613" stroke-width="1.8"/><circle class="emc-node emc-node-metabolite emc-node-primary" data-node="met:Ec@3psme_c" data-met="Ec@3psme_c" cx="1682" cy="630" r="13" fill="#e67e4c" stroke="#a64613" stroke-width="1.8"/><circle class="emc-node emc-node-metabolite emc-node-primary" data-node="met:Ec@chor_c" data-met="Ec@chor_c" cx="1902" cy="630" r="13" fill="#e67e4c" stroke="#a64613" stroke-width="1.8"/><circle class="emc-node emc-node-metabolite emc-node-primary" data-node="met:Ec@pphn_c" data-met="Ec@pphn_c" cx="1902" cy="840" r="13" fill="#e67e4c" stroke="#a64613" stroke-width="1.8"/><circle class="emc-node emc-node-metabolite emc-node-primary" data-node="met:Ec@phpyr_c" data-met="Ec@phpyr_c" cx="1682" cy="840" r="13" fill="#e67e4c" stroke="#a64613" stroke-width="1.8"/><circle class="emc-node emc-node-metabolite emc-node-primary" data-node="met:Ec@phe__L_c" data-met="Ec@phe__L_c" cx="1462" cy="840" r="13" fill="#e67e4c" stroke="#a64613" stroke-width="1.8"/><circle class="emc-node emc-node-medium emc-node-primary" data-node="met:M@phe__L" data-met="M@phe__L" cx="1010" cy="960" r="13" fill="#e67e4c" stroke="#a64613" stroke-width="1.8"/><circle class="emc-node emc-node-metabolite emc-node-primary" data-node="met:Ec@phe__L_p" data-met="Ec@phe__L_p" cx="1140" cy="960" r="13" fill="#e67e4c" stroke="#a64613" stroke-width="1.8"/><circle class="emc-node emc-node-currency emc-node-secondary" data-node="cur:Se@DDPA:Se@pi_c" data-met="Se@pi_c" cx="329.4" cy="741.6" r="7" fill="#e67e4c" stroke="#a64613" stroke-width="1.8"/><circle class="emc-node emc-node-currency emc-node-secondary" data-node="cur:Se@DDPA:Se@h2o_c" data-met="Se@h2o_c" cx="220.6" cy="741.6" r="7" fill="#e67e4c" stroke="#a64613" stroke-width="1.8"/><circle class="emc-node emc-node-currency emc-node-secondary" data-node="cur:Se@DHQS:Se@pi_c" data-met="Se@pi_c" cx="549.4" cy="741.6" r="7" fill="#e67e4c" stroke="#a64613" stroke-width="1.8"/><circle class="emc-node emc-node-currency emc-node-secondary" data-node="cur:Se@DHQTi:Se@h2o_c" data-met="Se@h2o_c" cx="759.4" cy="741.6" r="7" fill="#e67e4c" stroke="#a64613" stroke-width="1.8"/><circle class="emc-node emc-node-currency emc-node-secondary" data-node="cur:Se@SHK3Dr:Se@h_c" data-met="Se@h_c" cx="763" cy="767" r="7" fill="#e67e4c" stroke="#a64613" stroke-width="1.8"/><circle class="emc-node emc-node-currency emc-node-secondary" data-node="cur:Se@SHK3Dr:Se@nadph_c" data-met="Se@nadph_c" cx="846.6" cy="741" r="7" fill="#e67e4c" stroke="#a64613" stroke-width="1.8"/><circle class="emc-node emc-node-currency emc-node-secondary" data-node="cur:Se@SHK3Dr:Se@nadp_c" data-met="Se@nadp_c" cx="763" cy="840" r="7" fill="#e67e4c" stroke="#a64613" stroke-width="1.8"/><circle class="emc-node emc-node-currency emc-node-secondary" data-node="cur:Se@SHKK:Se@adp_c" data-met="Se@adp_c" cx="650.6" cy="868.4" r="7" fill="#e67e4c" stroke="#a64613" stroke-width="1.8"/><circle class="emc-node emc-node-currency emc-node-secondary" data-node="cur:Se@SHKK:Se@h_c" data-met="Se@h_c" cx="650.6" cy="951.6" r="7" fill="#e67e4c" stroke="#a64613" stroke-width="1.8"/><circle class="emc-node emc-node-currency emc-node-secondary" data-node="cur:Se@SHKK:Se@atp_c" data-met="Se@atp_c" cx="759.4" cy="868.4" r="7" fill="#e67e4c" stroke="#a64613" stroke-width="1.8"/><circle class="emc-node emc-node-currency emc-node-secondary" data-node="cur:Se@PSCVT:Se@pi_c" data-met="Se@pi_c" cx="440.6" cy="868.4" r="7" fill="#e67e4c" stroke="#a64613" stroke-width="1.8"/><circle class="emc-node emc-node-currency emc-node-secondary" data-node="cur:Se@CHORS:Se@pi_c" data-met="Se@pi_c" cx="220.6" cy="868.4" r="7" fill="#e67e4c" stroke="#a64613" stroke-width="1.8"/><circle class="emc-node emc-node-currency emc-node-secondary" data-node="cur:Se@PPNDH:Se@co2_c" data-met="Se@co2_c" cx="329.4" cy="1161.6" r="7" fill="#e67e4c" stroke="#a64613" stroke-width="1.8"/><circle class="emc-node emc-node-currency emc-node-secondary" data-node="cur:Se@PPNDH:Se@h2o_c" data-met="Se@h2o_c" cx="329.4" cy="1078.4" r="7" fill="#e67e4c" stroke="#a64613" stroke-width="1.8"/><circle class="emc-node emc-node-currency emc-node-secondary" data-node="cur:Se@PPNDH:Se@h_c" data-met="Se@h_c" cx="220.6" cy="1161.6" r="7" fill="#e67e4c" stroke="#a64613" stroke-width="1.8"/><circle class="emc-node emc-node-currency emc-node-secondary" data-node="cur:Se@PHETA1:Se@glu__L_c" data-met="Se@glu__L_c" cx="440.6" cy="1078.4" r="7" fill="#e67e4c" stroke="#a64613" stroke-width="1.8"/><circle class="emc-node emc-node-currency emc-node-secondary" data-node="cur:Se@PHETA1:Se@akg_c" data-met="Se@akg_c" cx="549.4" cy="1078.4" r="7" fill="#e67e4c" stroke="#a64613" stroke-width="1.8"/><circle class="emc-node emc-node-currency emc-node-secondary" data-node="cur:Ec@DDPA:Ec@h2o_c" data-met="Ec@h2o_c" cx="1846.4" cy="461.6" r="7" fill="#e67e4c" stroke="#a64613" stroke-width="1.8"/><circle class="emc-node emc-node-currency emc-node-secondary" data-node="cur:Ec@DDPA:Ec@pi_c" data-met="Ec@pi_c" cx="1737.6" cy="461.6" r="7" fill="#e67e4c" stroke="#a64613" stroke-width="1.8"/><circle class="emc-node emc-node-currency emc-node-secondary" data-node="cur:Ec@DHQS:Ec@pi_c" data-met="Ec@pi_c" cx="1517.6" cy="461.6" r="7" fill="#e67e4c" stroke="#a64613" stroke-width="1.8"/><circle class="emc-node emc-node-currency emc-node-secondary" data-node="cur:Ec@DHQTi:Ec@h2o_c" data-met="Ec@h2o_c" cx="1307.6" cy="461.6" r="7" fill="#e67e4c" stroke="#a64613" stroke-width="1.8"/><circle class="emc-node emc-node-currency emc-node-secondary" data-node="cur:Ec@SHK3Dr:Ec@h_c" data-met="Ec@h_c" cx="1304" cy="487" r="7" fill="#e67e4c" stroke="#a64613" stroke-width="1.8"/><circle class="emc-node emc-node-currency emc-node-secondary" data-node="cur:Ec@SHK3Dr:Ec@nadp_c" data-met="Ec@nadp_c" cx="1304" cy="560" r="7" fill="#e67e4c" stroke="#a64613" stroke-width="1.8"/><circle class="emc-node emc-node-currency emc-node-secondary" data-node="cur:Ec@SHK3Dr:Ec@nadph_c" data-met="Ec@nadph_c" cx="1220.4" cy="461" r="7" fill="#e67e4c" stroke="#a64613" stroke-width="1.8"/><circle class="emc-node emc-node-currency emc-node-secondary" data-node="cur:Ec@SHKK:Ec@adp_c" data-met="Ec@adp_c" cx="1416.4" cy="588.4" r="7" fill="#e67e4c" stroke="#a64613" stroke-width="1.8"/><circle class="emc-node emc-node-currency emc-node-secondary" data-node="cur:Ec@SHKK:Ec@atp_c" data-met="Ec@atp_c" cx="1307.6" cy="588.4" r="7" fill="#e67e4c" stroke="#a64613" stroke-width="1.8"/><circle class="emc-node emc-node-currency emc-node-secondary" data-node="cur:Ec@SHKK:Ec@h_c" data-met="Ec@h_c" cx="1416.4" cy="671.6" r="7" fill="#e67e4c" stroke="#a64613" stroke-width="1.8"/><circle class="emc-node emc-node-currency emc-node-secondary" data-node="cur:Ec@PSCVT:Ec@pi_c" data-met="Ec@pi_c" cx="1626.4" cy="588.4" r="7" fill="#e67e4c" stroke="#a64613" stroke-width="1.8"/><circle class="emc-node emc-node-currency emc-node-secondary" data-node="cur:Ec@CHORS:Ec@pi_c" data-met="Ec@pi_c" cx="1846.4" cy="588.4" r="7" fill="#e67e4c" stroke="#a64613" stroke-width="1.8"/><circle class="emc-node emc-node-currency emc-node-secondary" data-node="cur:Ec@PPNDH:Ec@co2_c" data-met="Ec@co2_c" cx="1737.6" cy="881.6" r="7" fill="#e67e4c" stroke="#a64613" stroke-width="1.8"/><circle class="emc-node emc-node-currency emc-node-secondary" data-node="cur:Ec@PPNDH:Ec@h_c" data-met="Ec@h_c" cx="1846.4" cy="881.6" r="7" fill="#e67e4c" stroke="#a64613" stroke-width="1.8"/><circle class="emc-node emc-node-currency emc-node-secondary" data-node="cur:Ec@PPNDH:Ec@h2o_c" data-met="Ec@h2o_c" cx="1737.6" cy="798.4" r="7" fill="#e67e4c" stroke="#a64613" stroke-width="1.8"/><circle class="emc-node emc-node-currency emc-node-secondary" data-node="cur:Ec@PHETA1:Ec@akg_c" data-met="Ec@akg_c" cx="1517.6" cy="798.4" r="7" fill="#e67e4c" stroke="#a64613" stroke-width="1.8"/><circle class="emc-node emc-node-currency emc-node-secondary" data-node="cur:Ec@PHETA1:Ec@glu__L_c" data-met="Ec@glu__L_c" cx="1626.4" cy="798.4" r="7" fill="#e67e4c" stroke="#a64613" stroke-width="1.8"/><circle class="emc-node emc-node-currency emc-node-secondary" data-node="cur:Ec@PHEt2rpp:Ec@h_c" data-met="Ec@h_c" cx="1234.59" cy="900.85" r="7" fill="#e67e4c" stroke="#a64613" stroke-width="1.8"/><circle class="emc-node emc-node-currency emc-node-secondary" data-node="cur:Ec@PHEt2rpp:Ec@h_p" data-met="Ec@h_p" cx="1182" cy="912" r="7" fill="#e67e4c" stroke="#a64613" stroke-width="1.8"/><circle class="emc-node emc-node-medium emc-node-primary" data-node="met:M@photon690" data-met="M@photon690" cx="1010" cy="230" r="13" fill="#e67e4c" stroke="#a64613" stroke-width="1.8"/><circle class="emc-node emc-node-metabolite emc-node-primary" data-node="met:Se@chla_qy1*_c" data-met="Se@chla_qy1*_c" cx="544" cy="342" r="13" fill="#e67e4c" stroke="#a64613" stroke-width="1.8"/><circle class="emc-node emc-node-currency emc-node-secondary" data-node="cur:Se@PHOA690um:Se@cholphya_c" data-met="Se@cholphya_c" cx="820" cy="262" r="7" fill="#e67e4c" stroke="#a64613" stroke-width="1.8"/><circle class="emc-node emc-node-currency emc-node-secondary" data-node="cur:Se@PHOA690um:Se@chla_qy2*_c" data-met="Se@chla_qy2*_c" cx="554" cy="260" r="7" fill="#e67e4c" stroke="#a64613" stroke-width="1.8"/><circle class="emc-node emc-node-metabolite emc-node-primary" data-node="met:Se@h_u" data-met="Se@h_u" cx="618" cy="435" r="13" fill="#e67e4c" stroke="#a64613" stroke-width="1.8"/><circle class="emc-node emc-node-metabolite emc-node-primary" data-node="met:Se@atp_c" data-met="Se@atp_c" cx="616" cy="626" r="13" fill="#e67e4c" stroke="#a64613" stroke-width="1.8"/><circle class="emc-node emc-node-currency emc-node-secondary" data-node="cur:Se@ATPSum:Se@pi_c" data-met="Se@pi_c" cx="556" cy="521" r="7" fill="#e67e4c" stroke="#a64613" stroke-width="1.8"/><circle class="emc-node emc-node-currency emc-node-secondary" data-node="cur:Se@ATPSum:Se@adp_c" data-met="Se@adp_c" cx="511" cy="521" r="7" fill="#e67e4c" stroke="#a64613" stroke-width="1.8"/><circle class="emc-node emc-node-currency emc-node-secondary" data-node="cur:Se@ATPSum:Se@h2o_c" data-met="Se@h2o_c" cx="696" cy="526" r="7" fill="#e67e4c" stroke="#a64613" stroke-width="1.8"/><circle class="emc-node emc-node-currency emc-node-secondary" data-node="cur:Se@ATPSum:Se@h_c" data-met="Se@h_c" cx="696" cy="581" r="7" fill="#e67e4c" stroke="#a64613" stroke-width="1.8"/></g><g class="emc-layer emc-layer-text"><text class="emc-label emc-label-met emc-label-primary emc-label-draggable" x="165" y="682" text-anchor="middle" stroke="#ffffff" stroke-width="3.2" stroke-linejoin="round" paint-order="stroke" fill="#1e293b" data-metabolite-label="met:Se@pep_c" dominant-baseline="auto">pep_c_A</text><text class="emc-label emc-label-met emc-label-primary emc-label-draggable" x="215" y="627" text-anchor="middle" stroke="#ffffff" stroke-width="3.2" stroke-linejoin="round" paint-order="stroke" fill="#1e293b" data-metabolite-label="met:Se@e4p_c" dominant-baseline="auto">e4p_c_A</text><text class="emc-label emc-label-met emc-label-primary emc-label-draggable" x="385" y="682" text-anchor="middle" stroke="#ffffff" stroke-width="3.2" stroke-linejoin="round" paint-order="stroke" fill="#1e293b" data-metabolite-label="met:Se@2dda7p_c" dominant-baseline="auto">2dda7p_c_A</text><text class="emc-label emc-label-met emc-label-primary emc-label-draggable" x="605" y="682" text-anchor="middle" stroke="#ffffff" stroke-width="3.2" stroke-linejoin="round" paint-order="stroke" fill="#1e293b" data-metabolite-label="met:Se@3dhq_c" dominant-baseline="auto">3dhq_c_A</text><text class="emc-label emc-label-met emc-label-primary emc-label-draggable" x="805" y="682" text-anchor="middle" stroke="#ffffff" stroke-width="3.2" stroke-linejoin="round" paint-order="stroke" fill="#1e293b" data-metabolite-label="met:Se@3dhsk_c" dominant-baseline="auto">3dhsk_c_A</text><text class="emc-label emc-label-met emc-label-primary emc-label-draggable" x="805" y="928" text-anchor="middle" stroke="#ffffff" stroke-width="3.2" stroke-linejoin="round" paint-order="stroke" fill="#1e293b" data-metabolite-label="met:Se@skm_c" dominant-baseline="hanging">skm_c_A</text><text class="emc-label emc-label-met emc-label-primary emc-label-draggable" x="605" y="892" text-anchor="middle" stroke="#ffffff" stroke-width="3.2" stroke-linejoin="round" paint-order="stroke" fill="#1e293b" data-metabolite-label="met:Se@skm5p_c" dominant-baseline="auto">skm5p_c_A</text><text class="emc-label emc-label-met emc-label-primary emc-label-draggable" x="385" y="892" text-anchor="middle" stroke="#ffffff" stroke-width="3.2" stroke-linejoin="round" paint-order="stroke" fill="#1e293b" data-metabolite-label="met:Se@3psme_c" dominant-baseline="auto">3psme_c_A</text><text class="emc-label emc-label-met emc-label-primary emc-label-draggable" x="165" y="892" text-anchor="middle" stroke="#ffffff" stroke-width="3.2" stroke-linejoin="round" paint-order="stroke" fill="#1e293b" data-metabolite-label="met:Se@chor_c" dominant-baseline="auto">chor_c_A</text><text class="emc-label emc-label-met emc-label-primary emc-label-draggable" x="165" y="1138" text-anchor="middle" stroke="#ffffff" stroke-width="3.2" stroke-linejoin="round" paint-order="stroke" fill="#1e293b" data-metabolite-label="met:Se@pphn_c" dominant-baseline="hanging">pphn_c_A</text><text class="emc-label emc-label-met emc-label-primary emc-label-draggable" x="385" y="1102" text-anchor="middle" stroke="#ffffff" stroke-width="3.2" stroke-linejoin="round" paint-order="stroke" fill="#1e293b" data-metabolite-label="met:Se@phpyr_c" dominant-baseline="auto">phpyr_c_A</text><text class="emc-label emc-label-met emc-label-primary emc-label-draggable" x="605" y="1102" text-anchor="middle" stroke="#ffffff" stroke-width="3.2" stroke-linejoin="round" paint-order="stroke" fill="#1e293b" data-metabolite-label="met:Se@phe__L_c" dominant-baseline="auto">phe__L_c_A</text><text class="emc-label emc-label-met emc-label-primary emc-label-draggable" x="1902" y="402" text-anchor="middle" stroke="#ffffff" stroke-width="3.2" stroke-linejoin="round" paint-order="stroke" fill="#1e293b" data-metabolite-label="met:Ec@pep_c" dominant-baseline="auto">pep_c_D</text><text class="emc-label emc-label-met emc-label-primary emc-label-draggable" x="1852" y="347" text-anchor="middle" stroke="#ffffff" stroke-width="3.2" stroke-linejoin="round" paint-order="stroke" fill="#1e293b" data-metabolite-label="met:Ec@e4p_c" dominant-baseline="auto">e4p_c_D</text><text class="emc-label emc-label-met emc-label-primary emc-label-draggable" x="1682" y="402" text-anchor="middle" stroke="#ffffff" stroke-width="3.2" stroke-linejoin="round" paint-order="stroke" fill="#1e293b" data-metabolite-label="met:Ec@2dda7p_c" dominant-baseline="auto">2dda7p_c_D</text><text class="emc-label emc-label-met emc-label-primary emc-label-draggable" x="1462" y="402" text-anchor="middle" stroke="#ffffff" stroke-width="3.2" stroke-linejoin="round" paint-order="stroke" fill="#1e293b" data-metabolite-label="met:Ec@3dhq_c" dominant-baseline="auto">3dhq_c_D</text><text class="emc-label emc-label-met emc-label-primary emc-label-draggable" x="1262" y="402" text-anchor="middle" stroke="#ffffff" stroke-width="3.2" stroke-linejoin="round" paint-order="stroke" fill="#1e293b" data-metabolite-label="met:Ec@3dhsk_c" dominant-baseline="auto">3dhsk_c_D</text><text class="emc-label emc-label-met emc-label-primary emc-label-draggable" x="1262" y="648" text-anchor="middle" stroke="#ffffff" stroke-width="3.2" stroke-linejoin="round" paint-order="stroke" fill="#1e293b" data-metabolite-label="met:Ec@skm_c" dominant-baseline="hanging">skm_c_D</text><text class="emc-label emc-label-met emc-label-primary emc-label-draggable" x="1462" y="612" text-anchor="middle" stroke="#ffffff" stroke-width="3.2" stroke-linejoin="round" paint-order="stroke" fill="#1e293b" data-metabolite-label="met:Ec@skm5p_c" dominant-baseline="auto">skm5p_c_D</text><text class="emc-label emc-label-met emc-label-primary emc-label-draggable" x="1682" y="612" text-anchor="middle" stroke="#ffffff" stroke-width="3.2" stroke-linejoin="round" paint-order="stroke" fill="#1e293b" data-metabolite-label="met:Ec@3psme_c" dominant-baseline="auto">3psme_c_D</text><text class="emc-label emc-label-met emc-label-primary emc-label-draggable" x="1902" y="612" text-anchor="middle" stroke="#ffffff" stroke-width="3.2" stroke-linejoin="round" paint-order="stroke" fill="#1e293b" data-metabolite-label="met:Ec@chor_c" dominant-baseline="auto">chor_c_D</text><text class="emc-label emc-label-met emc-label-primary emc-label-draggable" x="1902" y="858" text-anchor="middle" stroke="#ffffff" stroke-width="3.2" stroke-linejoin="round" paint-order="stroke" fill="#1e293b" data-metabolite-label="met:Ec@pphn_c" dominant-baseline="hanging">pphn_c_D</text><text class="emc-label emc-label-met emc-label-primary emc-label-draggable" x="1682" y="822" text-anchor="middle" stroke="#ffffff" stroke-width="3.2" stroke-linejoin="round" paint-order="stroke" fill="#1e293b" data-metabolite-label="met:Ec@phpyr_c" dominant-baseline="auto">phpyr_c_D</text><text class="emc-label emc-label-met emc-label-primary emc-label-draggable" x="1462" y="822" text-anchor="middle" stroke="#ffffff" stroke-width="3.2" stroke-linejoin="round" paint-order="stroke" fill="#1e293b" data-metabolite-label="met:Ec@phe__L_c" dominant-baseline="auto">phe__L_c_D</text><text class="emc-label emc-label-medium emc-label-primary emc-label-draggable" x="1010" y="942" text-anchor="middle" stroke="#ffffff" stroke-width="3.2" stroke-linejoin="round" paint-order="stroke" fill="#1e293b" data-metabolite-label="met:M@phe__L" dominant-baseline="auto">phe__L_[smp]</text><text class="emc-label emc-label-met emc-label-primary emc-label-draggable" x="1140" y="978" text-anchor="middle" stroke="#ffffff" stroke-width="3.2" stroke-linejoin="round" paint-order="stroke" fill="#1e293b" data-metabolite-label="met:Ec@phe__L_p" dominant-baseline="hanging">phe__L_p_D</text><text class="emc-label emc-label-currency emc-label-draggable" x="329.4" y="731.1" text-anchor="middle" stroke="#ffffff" stroke-width="3.2" stroke-linejoin="round" paint-order="stroke" fill="#1e293b" data-metabolite-label="cur:Se@DDPA:Se@pi_c" dominant-baseline="auto">pi_c_A</text><text class="emc-label emc-label-currency emc-label-draggable" x="220.6" y="731.1" text-anchor="middle" stroke="#ffffff" stroke-width="3.2" stroke-linejoin="round" paint-order="stroke" fill="#1e293b" data-metabolite-label="cur:Se@DDPA:Se@h2o_c" dominant-baseline="auto">h2o_c_A</text><text class="emc-label emc-label-currency emc-label-draggable" x="549.4" y="731.1" text-anchor="middle" stroke="#ffffff" stroke-width="3.2" stroke-linejoin="round" paint-order="stroke" fill="#1e293b" data-metabolite-label="cur:Se@DHQS:Se@pi_c" dominant-baseline="auto">pi_c_A</text><text class="emc-label emc-label-currency emc-label-draggable" x="759.4" y="731.1" text-anchor="middle" stroke="#ffffff" stroke-width="3.2" stroke-linejoin="round" paint-order="stroke" fill="#1e293b" data-metabolite-label="cur:Se@DHQTi:Se@h2o_c" dominant-baseline="auto">h2o_c_A</text><text class="emc-label emc-label-currency emc-label-draggable" x="763" y="756.5" text-anchor="middle" stroke="#ffffff" stroke-width="3.2" stroke-linejoin="round" paint-order="stroke" fill="#1e293b" data-metabolite-label="cur:Se@SHK3Dr:Se@h_c" dominant-baseline="auto">h_c_A</text><text class="emc-label emc-label-currency emc-label-draggable" x="846.6" y="730.5" text-anchor="middle" stroke="#ffffff" stroke-width="3.2" stroke-linejoin="round" paint-order="stroke" fill="#1e293b" data-metabolite-label="cur:Se@SHK3Dr:Se@nadph_c" dominant-baseline="auto">nadph_c_A</text><text class="emc-label emc-label-currency emc-label-draggable" x="763" y="829.5" text-anchor="middle" stroke="#ffffff" stroke-width="3.2" stroke-linejoin="round" paint-order="stroke" fill="#1e293b" data-metabolite-label="cur:Se@SHK3Dr:Se@nadp_c" dominant-baseline="auto">nadp_c_A</text><text class="emc-label emc-label-currency emc-label-draggable" x="650.6" y="857.9" text-anchor="middle" stroke="#ffffff" stroke-width="3.2" stroke-linejoin="round" paint-order="stroke" fill="#1e293b" data-metabolite-label="cur:Se@SHKK:Se@adp_c" dominant-baseline="auto">adp_c_A</text><text class="emc-label emc-label-currency emc-label-draggable" x="650.6" y="941.1" text-anchor="middle" stroke="#ffffff" stroke-width="3.2" stroke-linejoin="round" paint-order="stroke" fill="#1e293b" data-metabolite-label="cur:Se@SHKK:Se@h_c" dominant-baseline="auto">h_c_A</text><text class="emc-label emc-label-currency emc-label-draggable" x="759.4" y="857.9" text-anchor="middle" stroke="#ffffff" stroke-width="3.2" stroke-linejoin="round" paint-order="stroke" fill="#1e293b" data-metabolite-label="cur:Se@SHKK:Se@atp_c" dominant-baseline="auto">atp_c_A</text><text class="emc-label emc-label-currency emc-label-draggable" x="440.6" y="857.9" text-anchor="middle" stroke="#ffffff" stroke-width="3.2" stroke-linejoin="round" paint-order="stroke" fill="#1e293b" data-metabolite-label="cur:Se@PSCVT:Se@pi_c" dominant-baseline="auto">pi_c_A</text><text class="emc-label emc-label-currency emc-label-draggable" x="220.6" y="857.9" text-anchor="middle" stroke="#ffffff" stroke-width="3.2" stroke-linejoin="round" paint-order="stroke" fill="#1e293b" data-metabolite-label="cur:Se@CHORS:Se@pi_c" dominant-baseline="auto">pi_c_A</text><text class="emc-label emc-label-currency emc-label-draggable" x="329.4" y="1151.1" text-anchor="middle" stroke="#ffffff" stroke-width="3.2" stroke-linejoin="round" paint-order="stroke" fill="#1e293b" data-metabolite-label="cur:Se@PPNDH:Se@co2_c" dominant-baseline="auto">co2_c_A</text><text class="emc-label emc-label-currency emc-label-draggable" x="329.4" y="1067.9" text-anchor="middle" stroke="#ffffff" stroke-width="3.2" stroke-linejoin="round" paint-order="stroke" fill="#1e293b" data-metabolite-label="cur:Se@PPNDH:Se@h2o_c" dominant-baseline="auto">h2o_c_A</text><text class="emc-label emc-label-currency emc-label-draggable" x="220.6" y="1151.1" text-anchor="middle" stroke="#ffffff" stroke-width="3.2" stroke-linejoin="round" paint-order="stroke" fill="#1e293b" data-metabolite-label="cur:Se@PPNDH:Se@h_c" dominant-baseline="auto">h_c_A</text><text class="emc-label emc-label-currency emc-label-draggable" x="440.6" y="1067.9" text-anchor="middle" stroke="#ffffff" stroke-width="3.2" stroke-linejoin="round" paint-order="stroke" fill="#1e293b" data-metabolite-label="cur:Se@PHETA1:Se@glu__L_c" dominant-baseline="auto">glu__L_c_A</text><text class="emc-label emc-label-currency emc-label-draggable" x="549.4" y="1067.9" text-anchor="middle" stroke="#ffffff" stroke-width="3.2" stroke-linejoin="round" paint-order="stroke" fill="#1e293b" data-metabolite-label="cur:Se@PHETA1:Se@akg_c" dominant-baseline="auto">akg_c_A</text><text class="emc-label emc-label-currency emc-label-draggable" x="1846.4" y="451.1" text-anchor="middle" stroke="#ffffff" stroke-width="3.2" stroke-linejoin="round" paint-order="stroke" fill="#1e293b" data-metabolite-label="cur:Ec@DDPA:Ec@h2o_c" dominant-baseline="auto">h2o_c_D</text><text class="emc-label emc-label-currency emc-label-draggable" x="1737.6" y="451.1" text-anchor="middle" stroke="#ffffff" stroke-width="3.2" stroke-linejoin="round" paint-order="stroke" fill="#1e293b" data-metabolite-label="cur:Ec@DDPA:Ec@pi_c" dominant-baseline="auto">pi_c_D</text><text class="emc-label emc-label-currency emc-label-draggable" x="1517.6" y="451.1" text-anchor="middle" stroke="#ffffff" stroke-width="3.2" stroke-linejoin="round" paint-order="stroke" fill="#1e293b" data-metabolite-label="cur:Ec@DHQS:Ec@pi_c" dominant-baseline="auto">pi_c_D</text><text class="emc-label emc-label-currency emc-label-draggable" x="1307.6" y="451.1" text-anchor="middle" stroke="#ffffff" stroke-width="3.2" stroke-linejoin="round" paint-order="stroke" fill="#1e293b" data-metabolite-label="cur:Ec@DHQTi:Ec@h2o_c" dominant-baseline="auto">h2o_c_D</text><text class="emc-label emc-label-currency emc-label-draggable" x="1304" y="476.5" text-anchor="middle" stroke="#ffffff" stroke-width="3.2" stroke-linejoin="round" paint-order="stroke" fill="#1e293b" data-metabolite-label="cur:Ec@SHK3Dr:Ec@h_c" dominant-baseline="auto">h_c_D</text><text class="emc-label emc-label-currency emc-label-draggable" x="1304" y="549.5" text-anchor="middle" stroke="#ffffff" stroke-width="3.2" stroke-linejoin="round" paint-order="stroke" fill="#1e293b" data-metabolite-label="cur:Ec@SHK3Dr:Ec@nadp_c" dominant-baseline="auto">nadp_c_D</text><text class="emc-label emc-label-currency emc-label-draggable" x="1220.4" y="450.5" text-anchor="middle" stroke="#ffffff" stroke-width="3.2" stroke-linejoin="round" paint-order="stroke" fill="#1e293b" data-metabolite-label="cur:Ec@SHK3Dr:Ec@nadph_c" dominant-baseline="auto">nadph_c_D</text><text class="emc-label emc-label-currency emc-label-draggable" x="1416.4" y="577.9" text-anchor="middle" stroke="#ffffff" stroke-width="3.2" stroke-linejoin="round" paint-order="stroke" fill="#1e293b" data-metabolite-label="cur:Ec@SHKK:Ec@adp_c" dominant-baseline="auto">adp_c_D</text><text class="emc-label emc-label-currency emc-label-draggable" x="1307.6" y="577.9" text-anchor="middle" stroke="#ffffff" stroke-width="3.2" stroke-linejoin="round" paint-order="stroke" fill="#1e293b" data-metabolite-label="cur:Ec@SHKK:Ec@atp_c" dominant-baseline="auto">atp_c_D</text><text class="emc-label emc-label-currency emc-label-draggable" x="1416.4" y="661.1" text-anchor="middle" stroke="#ffffff" stroke-width="3.2" stroke-linejoin="round" paint-order="stroke" fill="#1e293b" data-metabolite-label="cur:Ec@SHKK:Ec@h_c" dominant-baseline="auto">h_c_D</text><text class="emc-label emc-label-currency emc-label-draggable" x="1626.4" y="577.9" text-anchor="middle" stroke="#ffffff" stroke-width="3.2" stroke-linejoin="round" paint-order="stroke" fill="#1e293b" data-metabolite-label="cur:Ec@PSCVT:Ec@pi_c" dominant-baseline="auto">pi_c_D</text><text class="emc-label emc-label-currency emc-label-draggable" x="1846.4" y="577.9" text-anchor="middle" stroke="#ffffff" stroke-width="3.2" stroke-linejoin="round" paint-order="stroke" fill="#1e293b" data-metabolite-label="cur:Ec@CHORS:Ec@pi_c" dominant-baseline="auto">pi_c_D</text><text class="emc-label emc-label-currency emc-label-draggable" x="1737.6" y="871.1" text-anchor="middle" stroke="#ffffff" stroke-width="3.2" stroke-linejoin="round" paint-order="stroke" fill="#1e293b" data-metabolite-label="cur:Ec@PPNDH:Ec@co2_c" dominant-baseline="auto">co2_c_D</text><text class="emc-label emc-label-currency emc-label-draggable" x="1846.4" y="871.1" text-anchor="middle" stroke="#ffffff" stroke-width="3.2" stroke-linejoin="round" paint-order="stroke" fill="#1e293b" data-metabolite-label="cur:Ec@PPNDH:Ec@h_c" dominant-baseline="auto">h_c_D</text><text class="emc-label emc-label-currency emc-label-draggable" x="1737.6" y="787.9" text-anchor="middle" stroke="#ffffff" stroke-width="3.2" stroke-linejoin="round" paint-order="stroke" fill="#1e293b" data-metabolite-label="cur:Ec@PPNDH:Ec@h2o_c" dominant-baseline="auto">h2o_c_D</text><text class="emc-label emc-label-currency emc-label-draggable" x="1517.6" y="787.9" text-anchor="middle" stroke="#ffffff" stroke-width="3.2" stroke-linejoin="round" paint-order="stroke" fill="#1e293b" data-metabolite-label="cur:Ec@PHETA1:Ec@akg_c" dominant-baseline="auto">akg_c_D</text><text class="emc-label emc-label-currency emc-label-draggable" x="1626.4" y="787.9" text-anchor="middle" stroke="#ffffff" stroke-width="3.2" stroke-linejoin="round" paint-order="stroke" fill="#1e293b" data-metabolite-label="cur:Ec@PHETA1:Ec@glu__L_c" dominant-baseline="auto">glu__L_c_D</text><text class="emc-label emc-label-currency emc-label-draggable" x="1234.59" y="890.35" text-anchor="middle" stroke="#ffffff" stroke-width="3.2" stroke-linejoin="round" paint-order="stroke" fill="#1e293b" data-metabolite-label="cur:Ec@PHEt2rpp:Ec@h_c" dominant-baseline="auto">h_c_D</text><text class="emc-label emc-label-currency emc-label-draggable" x="1182" y="901.5" text-anchor="middle" stroke="#ffffff" stroke-width="3.2" stroke-linejoin="round" paint-order="stroke" fill="#1e293b" data-metabolite-label="cur:Ec@PHEt2rpp:Ec@h_p" dominant-baseline="auto">h_p_D</text><text class="emc-label emc-label-medium emc-label-primary emc-label-draggable" x="1010" y="212" text-anchor="middle" stroke="#ffffff" stroke-width="3.2" stroke-linejoin="round" paint-order="stroke" fill="#1e293b" data-metabolite-label="met:M@photon690" dominant-baseline="auto">photon690_[smp]</text><text class="emc-label emc-label-met emc-label-primary emc-label-draggable" x="526" y="342" text-anchor="end" stroke="#ffffff" stroke-width="3.2" stroke-linejoin="round" paint-order="stroke" fill="#1e293b" data-metabolite-label="met:Se@chla_qy1*_c" dominant-baseline="middle">chla_qy1*_c_A</text><text class="emc-label emc-label-currency emc-label-draggable" x="820" y="251.5" text-anchor="middle" stroke="#ffffff" stroke-width="3.2" stroke-linejoin="round" paint-order="stroke" fill="#1e293b" data-metabolite-label="cur:Se@PHOA690um:Se@cholphya_c" dominant-baseline="auto">cholphya_c_A</text><text class="emc-label emc-label-currency emc-label-draggable" x="554" y="249.5" text-anchor="middle" stroke="#ffffff" stroke-width="3.2" stroke-linejoin="round" paint-order="stroke" fill="#1e293b" data-metabolite-label="cur:Se@PHOA690um:Se@chla_qy2*_c" dominant-baseline="auto">chla_qy2*_c_A</text><text class="emc-label emc-label-met emc-label-primary emc-label-draggable" x="636" y="435" text-anchor="start" stroke="#ffffff" stroke-width="3.2" stroke-linejoin="round" paint-order="stroke" fill="#1e293b" data-metabolite-label="met:Se@h_u" dominant-baseline="middle">h_u_A</text><text class="emc-label emc-label-met emc-label-primary emc-label-draggable" x="634" y="626" text-anchor="start" stroke="#ffffff" stroke-width="3.2" stroke-linejoin="round" paint-order="stroke" fill="#1e293b" data-metabolite-label="met:Se@atp_c" dominant-baseline="middle">atp_c_A</text><text class="emc-label emc-label-currency emc-label-draggable" x="556" y="510.5" text-anchor="middle" stroke="#ffffff" stroke-width="3.2" stroke-linejoin="round" paint-order="stroke" fill="#1e293b" data-metabolite-label="cur:Se@ATPSum:Se@pi_c" dominant-baseline="auto">pi_c_A</text><text class="emc-label emc-label-currency emc-label-draggable" x="511" y="510.5" text-anchor="middle" stroke="#ffffff" stroke-width="3.2" stroke-linejoin="round" paint-order="stroke" fill="#1e293b" data-metabolite-label="cur:Se@ATPSum:Se@adp_c" dominant-baseline="auto">adp_c_A</text><text class="emc-label emc-label-currency emc-label-draggable" x="696" y="515.5" text-anchor="middle" stroke="#ffffff" stroke-width="3.2" stroke-linejoin="round" paint-order="stroke" fill="#1e293b" data-metabolite-label="cur:Se@ATPSum:Se@h2o_c" dominant-baseline="auto">h2o_c_A</text><text class="emc-label emc-label-currency emc-label-draggable" x="696" y="570.5" text-anchor="middle" stroke="#ffffff" stroke-width="3.2" stroke-linejoin="round" paint-order="stroke" fill="#1e293b" data-metabolite-label="cur:Se@ATPSum:Se@h_c" dominant-baseline="auto">h_c_A</text><text class="emc-label emc-label-rxn emc-label-rxn-above" x="275" y="686" text-anchor="middle" stroke="#ffffff" stroke-width="3.2" stroke-linejoin="round" paint-order="stroke" fill="#1e293b" data-rxn="Se@DDPA">DDPA  0.028</text><text class="emc-label emc-label-rxn emc-label-rxn-above" x="495" y="686" text-anchor="middle" stroke="#ffffff" stroke-width="3.2" stroke-linejoin="round" paint-order="stroke" fill="#1e293b" data-rxn="Se@DHQS">DHQS  0.028</text><text class="emc-label emc-label-rxn emc-label-rxn-above" x="705" y="686" text-anchor="middle" stroke="#ffffff" stroke-width="3.2" stroke-linejoin="round" paint-order="stroke" fill="#1e293b" data-rxn="Se@DHQTi">DHQTi  0.028</text><text class="emc-label emc-label-rxn emc-label-rxn-adjacent" x="788" y="805" text-anchor="end" stroke="#ffffff" stroke-width="3.2" stroke-linejoin="round" paint-order="stroke" fill="#1e293b" data-rxn="Se@SHK3Dr">SHK3Dr  0.028</text><text class="emc-label emc-label-rxn emc-label-rxn-below" x="705" y="924" text-anchor="middle" stroke="#ffffff" stroke-width="3.2" stroke-linejoin="round" paint-order="stroke" fill="#1e293b" data-rxn="Se@SHKK">SHKK  0.028</text><text class="emc-label emc-label-rxn emc-label-rxn-below" x="495" y="924" text-anchor="middle" stroke="#ffffff" stroke-width="3.2" stroke-linejoin="round" paint-order="stroke" fill="#1e293b" data-rxn="Se@PSCVT">PSCVT  0.028</text><text class="emc-label emc-label-rxn emc-label-rxn-below" x="275" y="924" text-anchor="middle" stroke="#ffffff" stroke-width="3.2" stroke-linejoin="round" paint-order="stroke" fill="#1e293b" data-rxn="Se@CHORS">CHORS  0.028</text><text class="emc-label emc-label-rxn emc-label-rxn-adjacent" x="182" y="1015" text-anchor="start" stroke="#ffffff" stroke-width="3.2" stroke-linejoin="round" paint-order="stroke" fill="#1e293b" data-rxn="Se@CHORM">CHORM  0.026</text><text class="emc-label emc-label-rxn emc-label-rxn-above" x="275" y="1106" text-anchor="middle" stroke="#ffffff" stroke-width="3.2" stroke-linejoin="round" paint-order="stroke" fill="#1e293b" data-rxn="Se@PPNDH">PPNDH  0.021</text><text class="emc-label emc-label-rxn emc-label-rxn-below" x="495" y="1134" text-anchor="middle" stroke="#ffffff" stroke-width="3.2" stroke-linejoin="round" paint-order="stroke" fill="#1e293b" data-rxn="Se@PHETA1">PHETA1  -0.021</text><text class="emc-label emc-label-rxn emc-label-rxn-above" x="1792" y="406" text-anchor="middle" stroke="#ffffff" stroke-width="3.2" stroke-linejoin="round" paint-order="stroke" fill="#1e293b" data-rxn="Ec@DDPA">DDPA  -0.018</text><text class="emc-label emc-label-rxn emc-label-rxn-above" x="1572" y="406" text-anchor="middle" stroke="#ffffff" stroke-width="3.2" stroke-linejoin="round" paint-order="stroke" fill="#1e293b" data-rxn="Ec@DHQS">DHQS  -0.018</text><text class="emc-label emc-label-rxn emc-label-rxn-above" x="1362" y="406" text-anchor="middle" stroke="#ffffff" stroke-width="3.2" stroke-linejoin="round" paint-order="stroke" fill="#1e293b" data-rxn="Ec@DHQTi">DHQTi  -0.018</text><text class="emc-label emc-label-rxn emc-label-rxn-adjacent" x="1279" y="525" text-anchor="start" stroke="#ffffff" stroke-width="3.2" stroke-linejoin="round" paint-order="stroke" fill="#1e293b" data-rxn="Ec@SHK3Dr">SHK3Dr  -0.018</text><text class="emc-label emc-label-rxn emc-label-rxn-below" x="1362" y="644" text-anchor="middle" stroke="#ffffff" stroke-width="3.2" stroke-linejoin="round" paint-order="stroke" fill="#1e293b" data-rxn="Ec@SHKK">SHKK  -0.018</text><text class="emc-label emc-label-rxn emc-label-rxn-below" x="1572" y="644" text-anchor="middle" stroke="#ffffff" stroke-width="3.2" stroke-linejoin="round" paint-order="stroke" fill="#1e293b" data-rxn="Ec@PSCVT">PSCVT  -0.018</text><text class="emc-label emc-label-rxn emc-label-rxn-below" x="1792" y="644" text-anchor="middle" stroke="#ffffff" stroke-width="3.2" stroke-linejoin="round" paint-order="stroke" fill="#1e293b" data-rxn="Ec@CHORS">CHORS  -0.018</text><text class="emc-label emc-label-rxn is-disabled-reaction emc-label-rxn-above" x="1792" y="826" text-anchor="middle" stroke="#ffffff" stroke-width="3.2" stroke-linejoin="round" paint-order="stroke" fill="#1e293b" data-rxn="Ec@PPNDH">PPNDH [KO]  -0.016</text><text class="emc-label emc-label-rxn emc-label-rxn-below" x="943" y="1048" text-anchor="start" stroke="#ffffff" stroke-width="3.2" stroke-linejoin="round" paint-order="stroke" fill="#1e293b" data-rxn="Se@PHELtex">PHELtex  -0.014</text><text class="emc-label emc-label-rxn emc-label-rxn-above" x="1093" y="940" text-anchor="start" stroke="#ffffff" stroke-width="3.2" stroke-linejoin="round" paint-order="stroke" fill="#1e293b" data-rxn="Ec@PHEtex">PHEtex  0.014</text><text class="emc-label emc-label-rxn emc-label-rxn-below" x="1211" y="972" text-anchor="start" stroke="#ffffff" stroke-width="3.2" stroke-linejoin="round" paint-order="stroke" fill="#1e293b" data-rxn="Ec@PHEt2rpp">PHEt2rpp  0.014</text><text class="emc-label emc-label-rxn emc-label-rxn-below" x="943" y="304" text-anchor="start" stroke="#ffffff" stroke-width="3.2" stroke-linejoin="round" paint-order="stroke" fill="#1e293b" data-rxn="Se@PHOA690um">PHOA690um  1.00e+3</text><text class="emc-label emc-label-rxn emc-label-rxn-adjacent" x="646" y="485" text-anchor="start" stroke="#ffffff" stroke-width="3.2" stroke-linejoin="round" paint-order="stroke" fill="#1e293b" data-rxn="Se@ATPSum">ATPSum  314.462</text></g><g class="emc-layer emc-layer-map-text"><text class="emc-map-text" data-map-text="title"
+      x="65" y="55"
+      font-size="28"
+      text-anchor="start" dominant-baseline="alphabetic"
+      stroke="#ffffff" stroke-width="3.5" stroke-linejoin="round" paint-order="stroke"
+      fill="#111827">Zuñiga et al. (2020) · ΔpheA phenylalanine rescue</text><text class="emc-map-text" data-map-text="scope"
+      x="65" y="87"
+      font-size="17"
+      text-anchor="start" dominant-baseline="alphabetic"
+      stroke="#ffffff" stroke-width="3.5" stroke-linejoin="round" paint-order="stroke"
+      fill="#111827">Curated pathway map · the simulation uses the complete original models</text><text class="emc-map-text" data-map-text="Se-path"
+      x="139" y="590"
+      font-size="16"
+      text-anchor="start" dominant-baseline="alphabetic"
+      stroke="#ffffff" stroke-width="3.5" stroke-linejoin="round" paint-order="stroke"
+      fill="#111827">Phototroph · phenylalanine biosynthesis</text><text class="emc-map-text" data-map-text="Ec-path"
+      x="1215" y="350"
+      font-size="16"
+      text-anchor="start" dominant-baseline="alphabetic"
+      stroke="#ffffff" stroke-width="3.5" stroke-linejoin="round" paint-order="stroke"
+      fill="#111827">Heterotroph · phenylalanine biosynthesis</text><text class="emc-map-text" data-map-text="transfer"
+      x="950" y="1110"
+      font-size="17"
+      text-anchor="start" dominant-baseline="alphabetic"
+      stroke="#ffffff" stroke-width="3.5" stroke-linejoin="round" paint-order="stroke"
+      fill="#111827">Phenylalanine transfer</text><text class="emc-map-text" data-map-text="ko-gene"
+      x="1215" y="800"
+      font-size="16"
+      text-anchor="start" dominant-baseline="alphabetic"
+      stroke="#ffffff" stroke-width="3.5" stroke-linejoin="round" paint-order="stroke"
+      fill="#111827">pheA / b2599 → PPNDH</text></g><g class="emc-layer emc-layer-compartment-labels"><g class="emc-comp-label emc-env-label" data-compartment-label="s" transform="translate(1978 1277)">
+    <g class="emc-frame-label" style="--fit:4.030" transform="scale(1.746)">
+      <rect x="-258.8" y="-19" width="258.8" height="19" rx="9.5"
+        fill="#f8fafc" stroke="#cbd5e1" stroke-width="0" opacity="0.18"/>
+      <text x="-129.4" y="-5.5" text-anchor="middle" textLength="240.8"
+        lengthAdjust="spacingAndGlyphs" fill="#64748b" class="emc-comp-text">Shared medium (original smp)</text>
+    </g>
+  </g><g data-cell="Se"><g class="emc-comp-label" data-compartment-label="p" transform="translate(78 1242)">
+    <g class="emc-frame-label" style="--fit:2.632" transform="scale(1.746)">
+      <rect x="0" y="-19" width="129.8" height="19" rx="9.5"
+        fill="#fef3c7" stroke="#d97706" stroke-width="0" opacity="0.18"/>
+      <text x="64.9" y="-5.5" text-anchor="middle" textLength="111.8"
+        lengthAdjust="spacingAndGlyphs" fill="#92400e" class="emc-comp-text">Periplasm (p)</text>
+    </g>
+  </g><g class="emc-comp-label" data-compartment-label="c" transform="translate(659.05 1192)">
+    <g class="emc-frame-label" style="--fit:6.385" transform="scale(1.746)">
+      <rect x="-56.3" y="-9.5" width="112.6" height="19" rx="9.5"
+        fill="#e0f2fe" stroke="#0284c7" stroke-width="1.2" opacity="1"/>
+      <text x="0" y="4" text-anchor="middle" textLength="94.6"
+        lengthAdjust="spacingAndGlyphs" fill="#075985" class="emc-comp-text">Cytosol (c)</text>
+    </g>
+  </g><g class="emc-comp-label" data-compartment-label="k" transform="translate(280 384)">
+    <g class="emc-frame-label" style="--fit:1.684" transform="scale(1.684)">
+      <rect x="0" y="0" width="207.2" height="19" rx="9.5"
+        fill="#fefce8" stroke="#eab308" stroke-width="0" opacity="0.18"/>
+      <text x="103.6" y="13.5" text-anchor="middle" textLength="189.2"
+        lengthAdjust="spacingAndGlyphs" fill="#854d0e" class="emc-comp-text">Thylakoid membrane (k)</text>
+    </g>
+  </g><g class="emc-comp-label" data-compartment-label="u" transform="translate(412.25 476)">
+    <g class="emc-frame-label" style="--fit:1.074" transform="scale(1.074)">
+      <rect x="-90.7" y="-9.5" width="181.4" height="19" rx="9.5"
+        fill="#d1fae5" stroke="#059669" stroke-width="1.2" opacity="1"/>
+      <text x="0" y="4" text-anchor="middle" textLength="163.4"
+        lengthAdjust="spacingAndGlyphs" fill="#065f46" class="emc-comp-text">Thylakoid lumen (u)</text>
+    </g>
+  </g></g><g data-cell="Ec"><g class="emc-comp-label" data-compartment-label="p" transform="translate(1103 185)">
+    <g class="emc-frame-label" style="--fit:1.053" transform="scale(1.053)">
+      <rect x="0" y="0" width="129.8" height="19" rx="9.5"
+        fill="#fef3c7" stroke="#d97706" stroke-width="0" opacity="0.18"/>
+      <text x="64.9" y="13.5" text-anchor="middle" textLength="111.8"
+        lengthAdjust="spacingAndGlyphs" fill="#92400e" class="emc-comp-text">Periplasm (p)</text>
+    </g>
+  </g><g class="emc-comp-label" data-compartment-label="c" transform="translate(1213 220)">
+    <g class="emc-frame-label" style="--fit:6.297" transform="scale(1.746)">
+      <rect x="0" y="0" width="112.6" height="19" rx="9.5"
+        fill="#e0f2fe" stroke="#0284c7" stroke-width="0" opacity="0.18"/>
+      <text x="56.3" y="13.5" text-anchor="middle" textLength="94.6"
+        lengthAdjust="spacingAndGlyphs" fill="#075985" class="emc-comp-text">Cytosol (c)</text>
+    </g>
+  </g></g></g></svg>

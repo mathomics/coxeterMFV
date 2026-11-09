@@ -1,0 +1,297 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Running model editor ordering checks</title>
+<style>
+  body { margin: 16px; font: 14px system-ui; background: #0b1220; color: #e2e8f0; }
+  .pass { color: #4ade80; }
+  .fail { color: #fb7185; }
+  iframe { width: 1300px; height: 900px; border: 1px solid #334155; margin-top: 16px; }
+</style>
+</head>
+<body>
+<h1>Model creation ordering and unusual identifiers</h1>
+<div id="out"></div>
+<script type="module">
+/** Hold actual creation completions to check newer forms, file requests and typed drafts. */
+const out = document.getElementById('out');
+let failures = 0;
+
+function check(name, passed) {
+  if (!passed) {
+    failures += 1;
+  }
+  const line = document.createElement('div');
+  line.className = passed ? 'pass' : 'fail';
+  line.textContent = `${passed ? 'OK' : 'FAIL'} ${name}`;
+  out.appendChild(line);
+}
+
+async function tick() {
+  await new Promise(resolve => requestAnimationFrame(resolve));
+  await new Promise(resolve => setTimeout(resolve, 80));
+}
+
+async function waitFor(read, label) {
+  const deadline = Date.now() + 30000;
+  while (!read()) {
+    if (Date.now() > deadline) {
+      throw new Error(`Timed out: ${label}`);
+    }
+    await tick();
+  }
+}
+
+function holdNext(store, method, { after = true, fail = false } = {}) {
+  const original = store[method].bind(store);
+  let release;
+  let started;
+  let finished;
+  const held = new Promise(resolve => {
+    release = resolve;
+  });
+  const ready = new Promise(resolve => {
+    started = resolve;
+  });
+  const done = new Promise(resolve => {
+    finished = resolve;
+  });
+  let first = true;
+  store[method] = async (...args) => {
+    if (!first) {
+      return original(...args);
+    }
+    first = false;
+    try {
+      let result;
+      if (after) {
+        result = await original(...args);
+      }
+      started();
+      await held;
+      if (fail) {
+        throw new Error('The earlier creation failed after its delay.');
+      }
+      if (!after) {
+        result = await original(...args);
+      }
+      return result;
+    } finally {
+      finished();
+    }
+  };
+  return { ready, release, done };
+}
+
+try {
+  const frame = document.createElement('iframe');
+  frame.src = new URLSearchParams(location.search).has('standalone') ? '../coxeter_mfv.html' : '../index.html';
+  document.body.appendChild(frame);
+  await waitFor(() => frame.contentWindow?.escherMCMC?.store?.solution?.status === 'optimal', 'startup');
+  const app = frame.contentWindow;
+  const doc = app.document;
+  const store = app.escherMCMC.store;
+  const raw = await (await fetch('../models/ecoli_core_mc.json')).json();
+  const Model = store.models.get('ecoli_core_mc').constructor;
+  await store.useScenario('solo-levadura');
+  const yeastScenario = JSON.parse(store.stateJSON());
+
+  function click(action) {
+    const button = doc.querySelector(`.model-editor-card [data-action="${action}"]`);
+    if (!button) {
+      throw new Error(`Missing model editor control: ${action}`);
+    }
+    button.click();
+  }
+
+  function field(name, value) {
+    const input = doc.querySelector(`.model-editor-form [name="${name}"]`);
+    if (!input) {
+      throw new Error(`Missing field: ${name}`);
+    }
+    input.value = value;
+    input.dispatchEvent(new app.Event('input', { bubbles: true }));
+    input.dispatchEvent(new app.Event('change', { bubbles: true }));
+  }
+
+  async function openForm(kind) {
+    click(`new-${kind}`);
+    await tick();
+    field('id', kind === 'reaction' ? 'QA_PENDING' : 'qa_pending_c');
+    field('name', 'QA pending creation');
+    if (kind === 'reaction') {
+      field('stoichiometry', 'g6p_c:-1, f6p_c:1');
+    } else {
+      field('compartment', 'c');
+    }
+  }
+
+  async function reset() {
+    store.models.set('ecoli_core_mc', new Model(raw));
+    await store.useScenario('solo-ecoli');
+    await tick();
+    doc.querySelector('[data-action="left-tab"][data-tab="model"]').click();
+    await tick();
+    const workspace = doc.querySelector('[data-action="open-workspace"][data-workspace="model"]');
+    workspace.click();
+    await tick();
+  }
+
+  function scenarioFile() {
+    const input = doc.querySelector('#file-input');
+    const transfer = new app.DataTransfer();
+    transfer.items.add(new app.File([JSON.stringify(yeastScenario)], 'qa-yeast-scenario.json'));
+    input.files = transfer.files;
+    input.dispatchEvent(new app.Event('change', { bubbles: true }));
+  }
+
+  for (const kind of ['metabolite', 'reaction']) {
+    await reset();
+    await openForm(kind);
+    const held = holdNext(store, kind === 'reaction' ? 'createModelReaction' : 'createModelMetabolite');
+    click(`create-${kind}`);
+    await held.ready;
+    click('cancel-model-editor');
+    await tick();
+    await openForm(kind);
+    field('id', 'NEXT_DRAFT');
+    held.release();
+    await held.done;
+    await tick();
+    check(`an earlier ${kind} completion preserves a reopened form and its new draft`,
+      store.modelEditorMode === kind && doc.querySelector('.model-editor-form [name="id"]')?.value === 'NEXT_DRAFT');
+    check(`the accepted ${kind} still exists in the original model`, kind === 'reaction'
+      ? store.models.get('ecoli_core_mc').reactions.has('QA_PENDING')
+      : store.models.get('ecoli_core_mc').metabolites.has('qa_pending_c'));
+  }
+
+  await reset();
+  await openForm('reaction');
+  const typed = holdNext(store, 'createModelReaction');
+  click('create-reaction');
+  await typed.ready;
+  field('id', 'NEXT_TYPED_DRAFT');
+  typed.release();
+  await typed.done;
+  await tick();
+  check('typing a new draft during creation keeps the changed fields available',
+    store.modelEditorMode === 'reaction'
+    && doc.querySelector('.model-editor-form [name="id"]')?.value === 'NEXT_TYPED_DRAFT');
+
+  await reset();
+  await openForm('reaction');
+  const failed = holdNext(store, 'createModelReaction', { fail: true });
+  click('create-reaction');
+  await failed.ready;
+  click('cancel-model-editor');
+  await tick();
+  await openForm('metabolite');
+  field('name', 'Newer metabolite draft');
+  store.status = { ...store.status, state: 'ok', message: 'The newer form is active.' };
+  store.emit('status');
+  const message = store.status.message;
+  failed.release();
+  await failed.done;
+  await tick();
+  check('an old creation error cannot replace the notice of a newer form', store.status.message === message);
+  check('an old error cannot attach to a different creation form',
+    store.modelEditorMode === 'metabolite' && !doc.querySelector('.model-editor-error')
+    && doc.querySelector('.model-editor-form [name="name"]')?.value === 'Newer metabolite draft');
+
+  await reset();
+  await openForm('reaction');
+  const beforeImport = holdNext(store, 'createModelReaction');
+  click('create-reaction');
+  await beforeImport.ready;
+  scenarioFile();
+  await tick();
+  await tick();
+  check('a later Scenario file waits for an accepted creation', store.scenario.id === 'solo-ecoli');
+  beforeImport.release();
+  await beforeImport.done;
+  await waitFor(() => store.scenario.id === 'solo-levadura' && store.status.state !== 'busy', 'later Scenario file');
+  check('the later Scenario becomes the installed community after creation finishes',
+    store.species.length === 1 && store.species[0].id === 'sce' && store.solution?.status === 'optimal');
+
+  await reset();
+  await openForm('reaction');
+  const imported = holdNext(store, 'loadState', { after: false });
+  scenarioFile();
+  await imported.ready;
+  let calls = 0;
+  const create = store.createModelReaction.bind(store);
+  store.createModelReaction = async (...args) => {
+    calls += 1;
+    return create(...args);
+  };
+  click('create-reaction');
+  await tick();
+  imported.release();
+  await imported.done;
+  await waitFor(() => store.scenario.id === 'solo-levadura' && store.status.state !== 'busy', 'earlier Scenario file');
+  await tick();
+  check('a creation queued for the replaced context is retired before dispatch',
+    calls === 0 && !store.models.get('ecoli_core_mc').reactions.has('QA_PENDING'));
+
+  await reset();
+  await openForm('reaction');
+  const overlap = holdNext(store, 'createModelReaction');
+  click('create-reaction');
+  await overlap.ready;
+  field('id', 'QA_SECOND');
+  field('name', 'QA second creation');
+  click('create-reaction');
+  await tick();
+  check('another creation in the same context waits for the accepted first request',
+    !store.modelEditorModel().reactions.has('QA_SECOND'));
+  overlap.release();
+  await overlap.done;
+  await waitFor(() => store.modelEditorMode === null, 'overlapping valid creations');
+  check('both accepted creations remain in the model, LP and drawing',
+    ['QA_PENDING', 'QA_SECOND'].every(id => store.modelEditorModel().reactions.has(id)
+      && store.problem.rxnIndex.has(`eco@${id}`) && store.map.reactions.has(`eco@${id}`)));
+  check('the newest accepted creation remains selected', store.selectedReaction === 'eco@QA_SECOND');
+
+  await reset();
+  await openForm('reaction');
+  const rejected = holdNext(store, 'createModelReaction');
+  click('create-reaction');
+  await rejected.ready;
+  const acceptedBiology = JSON.stringify(store.modelEditorModel().toJSON());
+  const acceptedSolution = store.solution;
+  field('id', 'QA_REJECTED');
+  field('stoichiometry', '{"g6p_c":true,"f6p_c":1}');
+  click('create-reaction');
+  rejected.release();
+  await rejected.done;
+  await waitFor(() => /coefficient.*g6p_c/i.test(doc.querySelector('.model-editor-error')?.textContent ?? ''),
+    'rejected overlapping coefficient');
+  check('a rejected later edit preserves the accepted model and numerical result',
+    JSON.stringify(store.modelEditorModel().toJSON()) === acceptedBiology && store.solution === acceptedSolution
+    && store.problem.rxnIndex.has('eco@QA_PENDING') && !store.problem.rxnIndex.has('eco@QA_REJECTED'));
+  check('the rejected later edit keeps its own draft for correction',
+    store.modelEditorMode === 'reaction'
+    && doc.querySelector('.model-editor-form [name="id"]')?.value === 'QA_REJECTED');
+
+  await reset();
+  await openForm('metabolite');
+  field('id', '__proto__');
+  click('create-metabolite');
+  await waitFor(() => store.modelEditorMode === null, 'unusual metabolite');
+  await openForm('reaction');
+  field('id', 'QA_UNUSUAL');
+  field('stoichiometry', '__proto__:-1, f6p_c:1');
+  click('create-reaction');
+  await waitFor(() => store.modelEditorMode === null || doc.querySelector('.model-editor-error'), 'unusual reaction');
+  check('a metabolite ID matching an object property remains valid through the real creation controls',
+    store.modelEditorModel().reactions.get('QA_UNUSUAL')?.metabolites.__proto__ === -1
+    && store.problem.rxnIndex.has('eco@QA_UNUSUAL') && store.solution?.status === 'optimal');
+} catch (error) {
+  check(error.message, false);
+}
+
+document.title = failures ? `FAIL (${failures})` : 'PASS';
+</script>
+</body>
+</html>

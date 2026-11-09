@@ -1,0 +1,7483 @@
+/**
+ * Application state.
+ *
+ * Two kinds of change, with very different costs:
+ *   structural  species set, abundances, objective  ->  rebuild (+ relayout)
+ *   numeric     medium limits, reaction bounds      ->  re-solve only
+ *
+ * Keeping them apart is what makes dragging a bound slider feel live: only the
+ * LP is re-run, the map geometry is untouched.
+ *
+ * Three layers meet here and are kept apart:
+ *
+ *   model       CommunityModel — everything the biology makes available
+ *   map         EditableMap    — what is currently drawn
+ *   simulation  FluxProblem + solution — the LP and its answer
+ *
+ * The simulation reads the model, never the map, so what is on screen cannot
+ * change a flux. The map reads the model when it is built and then owns its own
+ * geometry.
+ *
+ * Medium values are stored as positive magnitudes (mmol/gDW/h available to the
+ * community) and converted to the negative lower bound an exchange reaction
+ * wants at the point of use.
+ */
+
+import { Model } from '../core/model.js';
+import { labelSourceName, objectLabel, objectLabelSources } from '../core/label-sources.js';
+import { OPERATION_DOMAIN, assertOperationDomain, operationDomain } from './operation-boundary.js';
+import { toSBML } from '../core/sbml-write.js';
+import { compareArchivedSolution, createReproducibilityBundle, methodsProvenanceReport, softwareIdentity, solverName, verifyReproducibilityBundle } from '../core/reproducibility.js';
+import { parseModelJSON, prepareImportedModels, prepareModelUploads } from '../core/model-import.js';
+import {
+  compareReactionScores, deserializeOmicsDataset, divergingOmicsColors, parseOmicsCSV,
+  reactionOmicsScores, sequentialOmicsColors, serializeOmicsDataset,
+} from '../omics/overlay.js';
+import { communityOmicsMappingReport, parseMetatranscriptomics } from '../omics/community-omics.js';
+import { runGIMME } from '../omics/gimme.js';
+import { addMetaboliteToModel, addReactionToModel } from '../core/model-edit.js';
+import { cellCompartmentName } from '../core/compartments.js';
+import { COMPARTMENT_SHAPES } from '../layout/geometry.js';
+import { localMetaboliteBase } from '../layout/place-reaction.js';
+import { CommunityModel, OBJECTIVES, communityExchange, namespaced, splitId } from '../core/community.js';
+import { FluxProblem, defaultObjective, DEFAULT_PFVA_FACTOR } from '../solver/fba.js';
+import { geneKnockoutReactions, geneRuleGenes } from '../core/gene-rules.js';
+import {
+  ConstraintHistory, REACTION_FILTERS, REACTION_GROUPINGS, REACTION_SORT_KEYS, buildReactionCatalog,
+  changedReactionIds, classifyReaction, filterReactionRows, formatBoundsCSV, groupReactionRows, isKnockedOut,
+  parseBoundsCSV, resolveBoundsReaction, sameBounds, sameConstraints, sortReactionRows, toggleReactionFilter,
+} from './reactions-explorer.js';
+import { runSteadyComTask } from '../communities/steadycom-client.js';
+import {
+  ZUNIGA_ID, ZUNIGA_SCENARIOS, loadZunigaStudy, createZunigaScenario, solveZunigaScenario,
+} from '../communities/zuniga.js';
+import {
+  parseMediaCSV, steadyComSpec, jointSteadyComSpec, jointCommunityProjection, communityBalances, toMergedFluxes,
+} from '../communities/steadycom-runtime.js';
+import { initGLPK, glpkAvailable } from '../solver/glpk.js';
+import { EditableMap } from '../map/editable-map.js';
+import { MapHistory } from '../map/history.js';
+import {
+  createMapDocument, parseMapDocument, validateMapContext, mapSpeciesIds, renameMapSpecies,
+} from '../map/map-document.js';
+import { reactionsInCompartment } from '../map/compartment-reactions.js';
+import {
+  pruneMapToModel, reconcileCompartments, describeReconciliation,
+} from '../map/reconcile-map.js';
+import { emptySelection, parseCompartmentKey, selectionSize, TURN_REFUSAL } from '../map/multi-selection.js';
+import { CIRCLE_REFUSAL } from '../map/circularize.js';
+import { normalizeHexColor } from '../core/colors.js';
+import { exportFileName } from './file-names.js';
+import { TEXT_SIZE, DEFAULT_TEXT_FONT, clampTextSize, normalizeTextFont } from '../core/text-style.js';
+import {
+  FluxScale, formatFlux, normalizeAbsoluteFluxColorStops, normalizeAbsoluteFluxColors, normalizeFluxColorStops,
+} from '../render/theme.js';
+import {
+  buildReactionColoring, categoryColor, isFluxColorMode, normalizeReactionColorMode, normalizePathwayRibbonMode,
+} from '../render/reaction-colors.js';
+import { buildCrossFeedingIndex, exchangedMetabolites, filterCrossFeedingIndex } from '../analysis/cross-feeding-explorer.js';
+import { CROSSFEED_WIDTH_RANGE, isDrawnCrossFeedingBase } from '../render/crossfeed-routes.js';
+import {
+  YEAST9_MODEL_KEY, YEAST9_SCENARIO_ID, YEAST9_SOURCE,
+  YEAST9_PREVIEW_COMPARTMENTS, yeast9PreviewSpecs,
+} from '../core/yeast9.js';
+import {
+  DEFAULT_LAYOUT_PRESET, layoutEngineOptions, layoutPreset, normalizeLayoutSettings,
+} from '../layout/layout-settings.js';
+import {
+  buildCoreMetabolismOverview, coreOverviewSupport,
+} from '../map/core-metabolism-overview.js';
+
+// Uploads with more reactions than this, over all species, are not solved on load.
+const AUTO_SOLVE_REACTION_LIMIT = 1500;
+
+// Log entries kept. The oldest go first.
+const LOG_LIMIT = 200;
+
+/*
+ * When an uploaded model is drawn in full without being asked.
+ *
+ * The automatic layout resolves overlaps inside each compartment, and that cost
+ * climbs steeply with how crowded one cell gets. Measured in Chromium on one
+ * cell: 95 reactions / 72 metabolites take 0.3 s, 300 / 453 take 1.4 s, 500 /
+ * 667 take 3.2 s, and iAF1260 (2383 / 1668) takes over a minute and is
+ * unreadable at the end of it. Metabolite count dominates, so both are capped.
+ * Below these limits the draw costs about what the bundled scenarios cost
+ * (0.9 s for the four-species consortium), so it happens on upload; above them
+ * the core-metabolism overview is drawn instead and the full map stays one
+ * explicit click away.
+ */
+const AUTO_DRAW_REACTION_LIMIT = 350;
+const AUTO_DRAW_METABOLITE_LIMIT = 500;
+
+// What the status line says when the map refuses to turn a selection (rotateSelection).
+const TURN_WARNINGS = Object.freeze({
+  [TURN_REFUSAL.transporter]: 'Transporters stay on their membranes; leave them out to turn the selection.',
+  [TURN_REFUSAL.compartment]: 'Compartments cannot be turned; leave them out.',
+  [TURN_REFUSAL.room]: 'No room to turn the selection here.',
+});
+
+// What the status line says when the map refuses to circularize a selection (circularizeSelection).
+const CIRCLE_WARNINGS = Object.freeze({
+  [CIRCLE_REFUSAL.cycle]: 'The selected reactions do not close a cycle.',
+  [CIRCLE_REFUSAL.room]: 'No room for the circle in its compartment.',
+});
+
+export class Store {
+  constructor(base = '.') {
+    this.base = base;
+    this.catalog = [];
+    this.scenarios = [];
+    // Benchmark communities from the literature. Metadata only: the papers these
+    // come from use genome-scale models, which are reproduced headlessly by
+    // tools/build-published-communities.mjs rather than drawn as a map.
+    this.publishedCommunities = [];
+    this.publishedCommunityId = null;
+    // Manifests of the generated assets, one fetch each. A community with no
+    // manifest has nothing downloadable and no map; the UI says so rather than
+    // offering buttons that lead nowhere.
+    this.publishedManifests = new Map();
+    // What SteadyCom has been asked so far for the open community: the top of the
+    // admissible range, where it came from, and the last growth rate solved at.
+    this.steadyComState = null;
+    this._steadyComSpec = null;
+    this._steadyComRevision = 0;
+    this._steadyComGeneration = 0;
+    this._steadyComController = null;
+    this.steadyComConfig = { fiber: null, parsimonious: false };
+    this.runSteadyComTask = runSteadyComTask;
+    // The solve a SteadyCom community starts when it opens (solveSteadyComOnOpen),
+    // and the view it changed, given back when the community is left.
+    this.steadyComOnOpen = null;
+    this._caseView = null;
+    this.zunigaStudy = null;
+    this.zunigaPrepared = null;
+    this.zunigaScenarioId = null;
+    this.zunigaComparison = 'absolute';
+    this.zunigaSolutions = new Map();
+    this._zunigaGeneration = 0;
+    this._yeast9Generation = 0;
+    this._zunigaPreviousView = null;
+    this.loadZunigaStudy = loadZunigaStudy;
+    this.models = new Map();      // file stem -> Model
+    this.uploadedModelKeys = new Set();
+
+    this.scenario = null;
+    this.species = [];            // { id, file, abundance, enabled }
+    this.objective = OBJECTIVES.EQUAL_GROWTH;
+    this.productTarget = null;
+    // An objective edited on top of the preset: { coefficients: {rid: number},
+    // sense: 'max'|'min' }. Null means the preset's own objective.
+    this.customObjective = null;
+    this.parsimonious = false;    // false = FBA, true = pFBA
+    this.pfbaBiomassPercent = 100; // percentage of the primary optimum fixed in pFBA
+    this.loopless = false;         // exact loopless FBA (MILP)
+    this.cycleFree = false;        // CycleFreeFlux: the FBA optimum without its cycles (one LP)
+    this.fvaEnabled = false;
+    this.pfvaEnabled = false;
+    this.fvaRanges = new Map();
+    this.fvaProgress = { running: false, done: 0, total: 0, ms: 0 };
+    this._fvaGeneration = 0;
+    this._fvaTimer = null;
+    this.medium = {};             // base metabolite -> uptake limit (positive)
+    // The medium as it was opened: what "original" means for an exchange's bounds.
+    this.baseMedium = {};
+
+    this.community = null;
+    this.problem = null;
+    this.map = null;              // EditableMap: what is drawn
+    this.mapHistory = new MapHistory(100);
+    this.modelEdits = new WeakMap();      // Model -> biological edits made to it
+    this.modelEditsSaved = new WeakMap(); // Model -> edits written to a file
+    this.savedWork = null;        // { context, scenario }: see unsavedWork()
+    this._workGeneration = 0;
+    this.solution = null;
+    this.solutionProvenance = null;
+    // Set by clearSolution: inputs no longer re-solve until an analysis is run.
+    this.solutionCleared = false;
+    this.scale = null;
+    this.crossFeeding = { links: [], perMetabolite: [] };
+    this.crossFeedingExplorer = { enabled:false, index:null, query:'', metabolite:'', producer:'', consumer:'', minFlux:0, selectedId:null, selectedAt:null };
+    this.growth = new Map();
+    this.overrides = new Map();   // merged reaction id -> { lower, upper }
+    // Genes knocked out, as `species@gene` (see geneIndex): every reaction
+    // whose rule they make false is held at 0 on top of the overrides.
+    this.geneKnockouts = new Set();
+    // Undo/redo of bounds, medium and objective, apart from the map's history.
+    this.constraintHistory = new ConstraintHistory(100);
+    // { ids:Set, label, status } once a change left the LP without an optimum.
+    this.constraintCulprits = null;
+    this._culpritCheck = null;
+    // The Reactions page: search, quick filters, sorting, grouping and the rows ticked for bulk actions.
+    this.reactionTable = {
+      query: '', filters: [], groupBy: 'type', sort: { key: 'reaction', dir: 1 },
+      collapsed: new Set(), selection: new Set(), geneQuery: '',
+    };
+    this.manualPathways = new Map(); // id -> { id, name, color, visible, reactionIds:Set }
+    this.pathwaySettings = new Map(); // model pathway name -> { color?, visible? }
+    this.omicsDataset = null;
+    this.omicsSettings = {
+      enabled: false,
+      dataType: 'gene',
+      mode: 'single',
+      conditionA: null,
+      conditionB: null,
+      metric: 'log2fc',
+      pseudocount: 1,
+    };
+
+    this.selectedReaction = null;
+    this.selectedGeometry = null;
+    this.selectedEntity = null;
+    this.multiSelection = emptySelection();
+    this.reactionSearchQuery = '';
+    this.modelEditorSpeciesId = null;
+    this.modelEditorMode = null;
+    this.cellPlacementSpeciesId = null;
+    this.compartmentPlacementKey = null;
+    // The shape a newly drawn compartment gets: 'auto' is the one its kind has.
+    this.compartmentShapePreset = 'auto';
+    this.variability = null;
+    this.layoutSettings = layoutPreset(DEFAULT_LAYOUT_PRESET);
+    this.mapMode = 'full';
+    this.view = {
+      labels: 'auto',
+      // How the next new text is set: the last size and font chosen.
+      textStyle: { fontSize: TEXT_SIZE.default, fontFamily: DEFAULT_TEXT_FONT },
+      scrollInput: 'auto',
+      fluxColorStops: null,
+      // The Absolute flux palette: its points (null: white at 0 to red at the
+      // largest |flux|) and whether colours follow log10 |flux|.
+      absoluteFluxColorStops: null,
+      absoluteFluxLog: false,
+      reactionColorMode: 'flux',
+      // How reaction lines are drawn, each its own switch: width by flux,
+      // grey dashes for what carries none, a gap where one passes under another.
+      widthByFlux: false,
+      dashNoFlux: true,
+      lineHops: true,
+      // What lines are coloured by when not by flux: 'pathway' or 'subsystem'.
+      lineColorGroup: 'pathway',
+      pathwayRibbonMode: 'off',
+      pathwayRibbonWidth: 56,
+      pathwayRibbonOpacity: 0.18,
+      showCurrency: true,
+      currencyLabels: true,
+      showCrossFeeding: false,
+      // Exchanged metabolites drawn as cross-feeding lines: the `crossFeedingTop`
+      // most important (0 = all), unless a list was picked by hand.
+      crossFeedingTop: 5,
+      crossFeedingShown: null,
+      // Width of the cross-feeding lines, as a multiple of the default.
+      crossFeedingWidth: CROSSFEED_WIDTH_RANGE.default,
+      dark: false,
+      geometryEdit: false,
+      multiSelect: false,
+      textTool: false,
+    };
+    this.omics = { dataset:null, enabled:false, mode:'single', conditionA:null, conditionB:null, metric:'log2fc', pseudocount:1, scores:new Map(), colors:new Map(), scale:null, report:null, gimmeEnabled:false, gimmeThreshold:null, gimmeObjectiveFraction:0.9, gimmeResult:null };
+    this.log = [];                // what the Logs tab lists: see addLog()
+    this.status = { state: 'idle', message: '', solveMs: 0, layoutMs: 0 };
+    this.reproducibilityReplay = null;
+    // What the last map load had to do to make the file fit, for the status line.
+    this.mapLoadNote = '';
+    // A map opened before its model was loaded: see loadMapDocument().
+    this.waitingMap = null;
+    // The scenario's curated map file while it is the drawing: see drawScenarioMap().
+    this.scenarioMapFile = null;
+    this.listeners = new Set();
+  }
+
+  /**
+   * The drawn map under the name `layout`, which the renderer, the drag helpers
+   * and the saved scenarios use. An EditableMap exposes the same shape, so the
+   * alias costs nothing.
+   */
+  get layout() { return this.map; }
+  set layout(value) { this.map = value; }
+
+  get isZunigaStudy() { return this.scenario?.published === ZUNIGA_ID && Boolean(this.zunigaStudy); }
+
+  /**
+   * Leave the Zuñiga case: forget its models and solutions and give back the
+   * view it changed. Every switch of context calls this, so it also gives back
+   * the view a SteadyCom community changed when it opened solved.
+   */
+  resetZunigaStudy() {
+    this._zunigaGeneration++;
+    if (this._zunigaPreviousView) this.view.showCrossFeeding = this._zunigaPreviousView.showCrossFeeding;
+    this._zunigaPreviousView = null;
+    if (this._caseView) Object.assign(this.view, this._caseView);
+    this._caseView = null;
+    this.zunigaStudy = null;
+    this.zunigaPrepared = null;
+    this.zunigaScenarioId = null;
+    this.zunigaComparison = 'absolute';
+    this.zunigaSolutions = new Map();
+  }
+
+  /** Throw when the Zuñiga case is open, whose objective, medium and bounds are the authors' and stay fixed. */
+  assertPublishedStudyConstraints() {
+    if (this.isZunigaStudy) throw new Error('The Zuñiga case keeps the authors’ objective, medium, bounds and population coefficients.');
+  }
+
+  /** Listen to store changes: `fn(store, reason)`. Returns the function that unsubscribes. */
+  subscribe(fn) { this.listeners.add(fn); return () => this.listeners.delete(fn); }
+  emit(reason = 'change') {
+    this.trackWorkContext();
+    for (const fn of this.listeners) fn(this, reason);
+  }
+
+  /*
+   * The status line holds one message at a time, and the one before it is gone
+   * the moment anything else happens. Every message that is set also goes to
+   * the log, which is what the Logs tab lists, so an import note, a warning or
+   * an error can still be read after the next solve has replaced it.
+   */
+  get status() { return this._status; }
+  set status(value) {
+    this._status = value;
+    if (value?.message && ['ok', 'warn', 'error'].includes(value.state)) this.addLog(value.state, value.message);
+  }
+
+  /**
+   * Add one line to the log, newest last. The same line twice in a row is one
+   * entry with a count; so are back-to-back solves (`kind: 'solve'`), which a
+   * slider drag produces by the dozen and which would push everything else out.
+   */
+  addLog(level, message, { kind = 'message' } = {}) {
+    this.log ??= [];
+    const last = this.log.at(-1);
+    if (last && last.level === level && (last.message === message || (kind === 'solve' && last.kind === 'solve'))) {
+      last.message = message;
+      last.time = Date.now();
+      last.count += 1;
+      return last;
+    }
+    const entry = { time: Date.now(), level, message, kind, count: 1 };
+    this.log.push(entry);
+    if (this.log.length > LOG_LIMIT) this.log.splice(0, this.log.length - LOG_LIMIT);
+    return entry;
+  }
+
+  clearLog() {
+    this.log = [];
+    this.emit('status');
+  }
+
+  /** Public contract used by UI code/tests to keep BUILD and MODEL edits separate. */
+  editingOperationDomain(name) { return operationDomain(name); }
+  assertMapOperation(name) { return assertOperationDomain(name, OPERATION_DOMAIN.MAP); }
+  assertModelOperation(name) { return assertOperationDomain(name, OPERATION_DOMAIN.MODEL); }
+
+  /** Load the solver, the model catalogue and the scenario registry, and every catalogued model. Resolves to the store. */
+  async init() {
+    // GLPK is optional: when it fails to load the bundled simplex takes over,
+    // which is enough for every core-scale model shipped with the project.
+    this.solverReady = await initGLPK().catch(() => false);
+    const [index, scenarios] = await Promise.all([
+      fetchJSON(`${this.base}/models/index.json`),
+      fetchJSON(`${this.base}/models/scenarios.json`),
+    ]);
+    this.catalog = index.models;
+    this.scenarios = scenarios.scenarios;
+    this.publishedCommunities = scenarios.publishedCommunities ?? [];
+    // Open on one that actually reproduces its paper. The list stays in the
+    // registry's order, which follows the papers, but landing on a blocked entry
+    // would show an empty result where there is a real one to show.
+    this.publishedCommunityId = (
+      this.publishedCommunities.find((c) => c.reproduction?.status === 'reproduced')
+      ?? this.publishedCommunities[0]
+    )?.id ?? null;
+    await Promise.all(this.catalog.map((m) => this.loadModel(m.file.replace(/\.json$/, ''))));
+    return this;
+  }
+
+  /** The model stored as `models/<name>.json`, fetched once and kept by name. */
+  async loadModel(name) {
+    if (this.models.has(name)) return this.models.get(name);
+    const doc = await fetchJSON(`${this.base}/models/${name}.json`);
+    const model = new Model(doc);
+    this.models.set(name, model);
+    return model;
+  }
+
+  /**
+   * Load the registered Yeast9 scenario. The same path is used by the Scenario
+   * dropdown and by the convenience button in Species & abundance.
+   */
+  async importYeast9() {
+    const scenario = this.scenarios.find((item) => item.id === YEAST9_SCENARIO_ID) ?? {
+      id: YEAST9_SCENARIO_ID,
+      name: `Yeast9 ${YEAST9_SOURCE.version} — S. cerevisiae genome-scale`,
+      description: `Official yeast-GEM ${YEAST9_SOURCE.version}.`,
+      loader: 'yeast9',
+      objective: OBJECTIVES.SUM_BIOMASS,
+      species: [{ id: 'sce', model: YEAST9_MODEL_KEY, abundance: 1 }],
+    };
+    return this.useYeast9Scenario(scenario);
+  }
+
+  /** Download the official yeast-GEM release, build it and draw the scenario's curated map, or the representative preview, without solving. */
+  async useYeast9Scenario(scenario) {
+    this.trackWorkContext();
+    this._yeast9Generation += 1;
+    const generation = this._yeast9Generation;
+    const context = this._workGeneration;
+    let installedSpecies = null;
+    const assertCurrent = () => {
+      let current = generation === this._yeast9Generation;
+      if (installedSpecies) {
+        current = current && this.scenario === scenario && this.species === installedSpecies;
+      } else {
+        current = current && context === this._workGeneration;
+      }
+      if (!current) {
+        const error = new Error('The model download was superseded by another context.');
+        error.name = 'AbortError';
+        throw error;
+      }
+    };
+    this.status = {
+      ...this.status,
+      state: 'busy',
+      message: `Downloading official Yeast9 ${YEAST9_SOURCE.version}…`,
+    };
+    this.emit('status');
+
+    const response = await fetch(YEAST9_SOURCE.url).catch(error => {
+      assertCurrent();
+      throw error;
+    });
+    assertCurrent();
+    if (!response.ok) {
+      throw new Error(`Yeast9 ${YEAST9_SOURCE.version} download failed (HTTP ${response.status}). You can still download yeast-GEM.xml manually and use Load model(s).`);
+    }
+
+    const text = await response.text().catch(error => {
+      assertCurrent();
+      throw error;
+    });
+    assertCurrent();
+    const prepared = prepareImportedModels([{ name: YEAST9_SOURCE.filename, text }]);
+    const entry = prepared.entries[0];
+    if (!entry) throw new Error('Yeast9 import produced no model.');
+
+    this.resetZunigaStudy();
+    this.resetCommunityGIMME();
+    this.solutionCleared = false;
+    this.steadyComConfig = { fiber: null, parsimonious: false };
+    this.publishedCommunityId = null;
+    for (const key of this.uploadedModelKeys) this.models.delete(key);
+    this.uploadedModelKeys.clear();
+    this.models.set(YEAST9_MODEL_KEY, entry.model);
+    this.uploadedModelKeys.add(YEAST9_MODEL_KEY);
+
+    this.scenario = scenario;
+    this.objective = scenario.objective || OBJECTIVES.SUM_BIOMASS;
+    this.productTarget = scenario.productTarget || null;
+    this.customObjective = null;
+    this.parsimonious = Boolean(scenario.parsimonious ?? false);
+    this.pfbaBiomassPercent = normalizePfbaPercent(scenario.pfbaBiomassPercent ?? 100);
+    this.loopless = false;
+    this.cycleFree = false;
+    this.fvaEnabled = false;
+    this.pfvaEnabled = false;
+    this.fvaRanges = new Map();
+    this.fvaProgress = { running: false, done: 0, total: 0, ms: 0 };
+    this.medium = { ...prepared.medium };
+    this.overrides.clear();
+    this.geneKnockouts.clear();
+    this.manualPathways.clear();
+    this.pathwaySettings.clear();
+    this.clearOmics({ emit: false });
+    this.selectedReaction = null;
+    this.selectedGeometry = null;
+    this.selectedEntity = null;
+    this.multiSelection = emptySelection();
+    this.variability = null;
+
+    const speciesId = scenario.species?.[0]?.id || 'sce';
+    this.species = [{
+      id: speciesId,
+      file: YEAST9_MODEL_KEY,
+      abundance: 1,
+      enabled: true,
+    }];
+    installedSpecies = this.species;
+    this.modelEditorSpeciesId = speciesId;
+    this.modelEditorMode = null;
+    this.cellPlacementSpeciesId = speciesId;
+    this.compartmentPlacementKey = null;
+
+    // Build the biological model and its 14-compartment shell, but do not solve
+    // the 4,000-reaction LP automatically. The preview below is map-only.
+    await this.rebuild({ relayout: true, contents: 'none', solve: false });
+    assertCurrent();
+    const loaded = `Loaded Yeast9 ${YEAST9_SOURCE.version}: ${entry.summary.reactions} reactions, ${entry.summary.metabolites} metabolites, ${entry.summary.compartments} compartments`;
+    // The scenario's curated map, when it ships one, replaces the preview.
+    const curated = await this.scenarioMapDocument(scenario);
+    assertCurrent();
+    let preview = null;
+    if (curated && this.drawScenarioMap(curated)) {
+      this.status = {
+        ...this.status,
+        state: 'ok',
+        message: `${loaded} · curated map of ${this.map.reactions.size} reactions.${this.mapLoadNote}`,
+      };
+    } else {
+      // The generic automatic canvas is sized for all 4,105 reactions. The
+      // curated scenario draws only a representative subset, so use a compact
+      // publication-like canvas where the 14 compartments remain legible.
+      this.map = EditableMap.emptyFromCommunity(this.community, {
+        width: 2100,
+        height: 1550,
+        ...layoutEngineOptions(this.layoutSettings),
+      });
+      this.mapHistory.clear();
+      preview = this.populateYeast9Preview(entry.model, speciesId);
+      this.status = {
+        ...this.status,
+        state: 'ok',
+        message: `${loaded} · ${preview.placed} representative reactions drawn across ${preview.coveredCompartments}/${YEAST9_PREVIEW_COMPARTMENTS.length} compartments.`,
+      };
+    }
+    this.settleOpenedWork();
+    this.drawWaitingMap();
+    this.emit('rebuild');
+    return { ...prepared, preview };
+  }
+
+  /**
+   * Draw a curated, readable Yeast9 map rather than a genome-scale hairball.
+   * Reactions are spread through the free area of their biological compartment,
+   * avoiding child organelles whenever possible.
+   */
+  populateYeast9Preview(model, speciesId = 'sce') {
+    if (!this.map || !this.community || !model) {
+      return { placed: 0, coveredCompartments: 0, missing: [] };
+    }
+
+    const specs = yeast9PreviewSpecs(model);
+    const byCompartment = new Map();
+    for (const spec of specs) {
+      if (!byCompartment.has(spec.compartment)) byCompartment.set(spec.compartment, []);
+      byCompartment.get(spec.compartment).push(spec);
+    }
+
+    let placed = 0;
+    const covered = new Set();
+    const missing = [];
+
+    for (const [compartmentId, group] of byCompartment) {
+      const anchors = yeastPreviewAnchors(this.map, speciesId, compartmentId, group.length);
+      group.forEach((spec, index) => {
+        const mergedId = namespaced(speciesId, spec.reactionId);
+        const result = this.map.addReaction(this.community, mergedId, {
+          anchor: anchors[index] ?? null,
+        });
+        if (result) {
+          placed += 1;
+          covered.add(compartmentId);
+        } else {
+          missing.push(spec.reactionId);
+        }
+      });
+    }
+
+    this.mapHistory.clear();
+    return { placed, coveredCompartments: covered.size, missing };
+  }
+
+  /**
+   * Replace the current community with one built from user-supplied model
+   * files ({name, text} or {name, bytes}: COBRA JSON, SBML, COBRA Toolbox .mat
+   * or .xlsx). Multiple files become multiple species/cells.
+   */
+  async importModelFiles(files) {
+    const prepared = await prepareModelUploads(files);
+    this.resetZunigaStudy();
+    this.resetCommunityGIMME();
+    this.solutionCleared = false;
+    this.steadyComConfig = { fiber: null, parsimonious: false };
+    this.publishedCommunityId = null;
+
+    for (const key of this.uploadedModelKeys) this.models.delete(key);
+    this.uploadedModelKeys.clear();
+
+    for (const entry of prepared.entries) {
+      this.models.set(entry.modelKey, entry.model);
+      this.uploadedModelKeys.add(entry.modelKey);
+    }
+
+    const scenario = {
+      id: 'uploaded-models',
+      name: prepared.entries.length === 1
+        ? prepared.entries[0].model.name
+        : 'Imported community',
+      description: prepared.entries.length === 1
+        ? `Model loaded from ${prepared.entries[0].filename}`
+        : `${prepared.entries.length} models loaded from files`,
+      objective: OBJECTIVES.EQUAL_GROWTH,
+      parsimonious: false,
+      pfbaBiomassPercent: 100,
+      loopless: false,
+      fvaEnabled: false,
+      medium: prepared.medium,
+      species: prepared.entries.map((entry) => ({
+        id: entry.speciesId,
+        model: entry.modelKey,
+        abundance: entry.abundance,
+        enabled: true,
+      })),
+      uploaded: true,
+    };
+
+    this.scenarios = this.scenarios.filter((s) => !['uploaded-json', scenario.id].includes(s.id));
+    this.scenarios.push(scenario);
+    this.scenario = scenario;
+    this.objective = OBJECTIVES.EQUAL_GROWTH;
+    this.productTarget = null;
+    this.customObjective = null;
+    this.parsimonious = false;
+    this.pfbaBiomassPercent = 100;
+    this.loopless = false;
+    this.cycleFree = false;
+    this.fvaEnabled = false;
+    this.pfvaEnabled = false;
+    this.fvaRanges = new Map();
+    this.fvaProgress = { running: false, done: 0, total: 0, ms: 0 };
+    this.medium = { ...prepared.medium };
+    this.overrides.clear();
+    this.geneKnockouts.clear();
+    this.manualPathways.clear();
+    this.pathwaySettings.clear();
+    this.clearOmics({ emit: false });
+    this.selectedReaction = null;
+    this.selectedGeometry = null;
+    this.selectedEntity = null;
+    this.multiSelection = emptySelection();
+    this.variability = null;
+    this.species = scenario.species.map((s) => ({
+      id: s.id,
+      file: s.model,
+      abundance: s.abundance,
+      enabled: true,
+    }));
+    this.modelEditorSpeciesId = this.species[0]?.id ?? null;
+    this.modelEditorMode = null;
+    this.cellPlacementSpeciesId = this.species.find((sp) => sp.enabled !== false)?.id ?? null;
+    this.compartmentPlacementKey = null;
+
+    const totalReactions = prepared.entries.reduce((n, x) => n + x.summary.reactions, 0);
+    const totalMetabolites = prepared.entries.reduce((n, x) => n + x.summary.metabolites, 0);
+    const autoSolve = totalReactions <= AUTO_SOLVE_REACTION_LIMIT;
+    // Crowding is per cell, so it is the largest member that decides, not the sum.
+    const drawable = prepared.entries.every((x) =>
+      x.summary.reactions <= AUTO_DRAW_REACTION_LIMIT
+      && x.summary.metabolites <= AUTO_DRAW_METABOLITE_LIMIT);
+
+    await this.rebuild({ relayout: true, contents: drawable ? 'all' : 'none', solve: autoSolve });
+
+    // Bare cells and compartments with nothing inside them read as a failed
+    // import. So draw what can be drawn quickly, and where that is the whole
+    // model say so, so nobody goes looking for the rest.
+    let drawn;
+    if (drawable) {
+      this.mapMode = 'full';
+      drawn = ` Drawn in full: ${this.map?.reactions?.size ?? 0} reactions.`;
+    } else if (this.showCoreMetabolismOverview({ recordHistory: false })) {
+      drawn = ' Central carbon metabolism only: the model is too large to lay out in full. Map options ▸ Full map draws everything.';
+    } else {
+      this.mapMode = 'empty';
+      drawn = ' The drawing was left empty: this model is too large to lay out automatically. Build it from Map structure or Map options ▸ Full map.';
+    }
+
+    this.status = {
+      ...this.status,
+      state: 'ok',
+      message: `Imported ${prepared.entries.length} model(s): ${totalReactions} reactions, ${totalMetabolites} metabolites.${autoSolve ? '' : ' Analysis deferred (genome-scale model).'}${drawn}`,
+    };
+    this.settleOpenedWork();
+    this.drawWaitingMap();
+    this.emit('rebuild');
+
+    return prepared;
+  }
+
+  refreshCrossFeedingExplorer() {
+    if(!this.community||this.solution?.status!=='optimal'){this.crossFeedingExplorer.index=null;return;}
+    this.crossFeedingExplorer.index=buildCrossFeedingIndex(this.community,this.solution.fluxes,{threshold:1e-6, raw:this.solution.steadyCom || this._jointProjectionSpec ? this.crossFeeding : null});
+    const visible=this.crossFeedingExplorerEvents();
+    if(this.crossFeedingExplorer.selectedId&&!visible.some(x=>x.id===this.crossFeedingExplorer.selectedId))this.crossFeedingExplorer.selectedId=null;
+  }
+
+  crossFeedingExplorerEvents() { return filterCrossFeedingIndex(this.crossFeedingExplorer.index,this.crossFeedingExplorer); }
+
+  setCrossFeedingExplorer(options={}) {
+    Object.assign(this.crossFeedingExplorer,options);
+    if(options.enabled===true||!this.crossFeedingExplorer.index)this.refreshCrossFeedingExplorer();
+    this.view.showCrossFeeding=true; this.emit('cross-feeding-explorer');
+  }
+
+  /**
+   * Pick the event a cross-feeding line on the map stands for, named by its
+   * producer, metabolite and consumer, with the map point that was clicked (the
+   * name tag is pinned there). Picking the picked line again unpicks it.
+   */
+  toggleCrossFeedingLink({ from, base, to }, at = null) {
+    if (!this.crossFeedingExplorer.index) this.refreshCrossFeedingExplorer();
+    const event = this.crossFeedingExplorer.index?.events.find((e) => e.from === from && e.base === base && e.to === to);
+    if (!event) return null;
+    if (this.crossFeedingExplorer.selectedId === event.id) {
+      this.clearCrossFeedingPick();
+      return null;
+    }
+    this.crossFeedingExplorer.selectedAt = at;
+    return this.selectCrossFeedingEvent(event.id);
+  }
+
+  /**
+   * Whether the map is drawn with its cross-feeding highlighted: asked for in
+   * the view, there are cells to feed one another, and the solution has them
+   * pass something. The highlight dims all but the transfers between cells, so
+   * without one it would only dim the map (on a map of one cell with no
+   * control in sight to undo it); the view setting is kept for when there is.
+   */
+  crossFeedingHighlighted() {
+    return Boolean(this.view.showCrossFeeding) && (this.community?.activeSpecies?.length ?? 0) > 1
+      && this.crossFeedingMetabolites().length > 0;
+  }
+
+  /** The metabolites species pass to each other, most important first (protons and water left out). */
+  crossFeedingMetabolites() {
+    return exchangedMetabolites(this.crossFeeding?.links, (base) => !isDrawnCrossFeedingBase(base));
+  }
+
+  /** The bases whose cross-feeding lines are drawn. */
+  crossFeedingVisibleBases() {
+    if (Array.isArray(this.view.crossFeedingShown)) return new Set(this.view.crossFeedingShown);
+    const all = this.crossFeedingMetabolites();
+    const top = this.view.crossFeedingTop;
+    return new Set((top > 0 ? all.slice(0, top) : all).map((entry) => entry.base));
+  }
+
+  /** Draw the `n` most important exchanged metabolites (0: all of them). */
+  setCrossFeedingTop(n) {
+    const top = Math.max(0, Math.round(Number(n) || 0));
+    this.setView({ crossFeedingTop: top, crossFeedingShown: null });
+  }
+
+  /** Tick or untick one metabolite; from then on the list is the user's own. */
+  toggleCrossFeedingMetabolite(base, on) {
+    const shown = this.crossFeedingVisibleBases();
+    if (on) shown.add(base);
+    else shown.delete(base);
+    this.setView({ crossFeedingShown: [...shown] });
+  }
+
+  /** Unpick the picked cross-feeding event, leaving the explorer as it is. */
+  clearCrossFeedingPick() {
+    if (!this.crossFeedingExplorer.selectedId) return;
+    this.crossFeedingExplorer.selectedId = null;
+    this.crossFeedingExplorer.selectedAt = null;
+    this.emit('cross-feeding-explorer');
+  }
+
+  selectCrossFeedingEvent(id) {
+    this.crossFeedingExplorer.enabled=true;this.crossFeedingExplorer.selectedId=id;
+    const e=this.crossFeedingExplorer.index?.events.find(x=>x.id===id);
+    if(e?.producerTransfer)this.selectedReaction=e.producerTransfer;
+    this.emit('cross-feeding-explorer'); return e;
+  }
+
+  /** Backwards-compatible alias for callers from pre-SBML releases. */
+  async importModelJSONFiles(files) { return this.importModelFiles(files); }
+
+  // Community omics / metatranscriptomics
+
+  /** Read a metatranscriptomics CSV, map it onto the community's GPR rules and show it. Returns the parsed data with its mapping report. */
+  importMetatranscriptomics(text, filename = 'metatranscriptomics.csv') {
+    const parsed = parseMetatranscriptomics(text, { source: filename });
+    if (!this.community) {
+      throw new Error('Open a community before importing metatranscriptomics.');
+    }
+    const active = this.omics.gimmeEnabled;
+    const next = {
+      ...this.omics, dataset: parsed.dataset, enabled: true,
+      conditionA: parsed.dataset.conditions[0] ?? null,
+      conditionB: parsed.dataset.conditions[1] ?? parsed.dataset.conditions[0] ?? null,
+    };
+    if (active) {
+      communityGIMMEInputs(this.community, this.species, this.models, next);
+    }
+    this.reproducibilityReplay = null;
+    this.omics = next;
+    this.recomputeCommunityOmics();
+    if (active && !this.solutionCleared) {
+      this.runCommunityGIMME();
+    }
+    this.status = { ...this.status, state:'ok', message:`Metatranscriptomics: ${parsed.dataset.rowCount} genes/MAG, ${Math.round(this.omics.report.reactionCoverage*100)}% of GPR reactions mapped.` };
+    this.emit('omics');
+    return { ...parsed, report:this.omics.report };
+  }
+
+  /**
+   * Fit the fluxes to condition A of the loaded metatranscriptomics with GIMME.
+   * `options` patches the omics settings first (threshold, objective fraction).
+   * Installs the GIMME solution and returns the solver result.
+   */
+  runCommunityGIMME(options = {}) {
+    this.assertPublishedStudyConstraints();
+    const next = { ...this.omics, ...options };
+    const expression = communityGIMMEInputs(this.community, this.species, this.models, next);
+    this.reproducibilityReplay = null;
+    this.omics = next;
+    this.cancelSteadyCom({ silent: true });
+    if (this.solution?.steadyCom) this.refreshCompositionProblem();
+    const condition=this.omics.conditionA;
+    const result=runGIMME(this.problem,expression,{threshold:this.omics.gimmeThreshold,objectiveFraction:this.omics.gimmeObjectiveFraction});
+    if (this.objectiveSense() === 'min') {
+      // GIMME still minimizes its expression penalty, so its contextual duals keep their signs.
+      result.objectiveValue = -result.objectiveValue;
+      if (Number.isFinite(result.requiredObjective)) {
+        result.requiredObjective = -result.requiredObjective;
+      }
+      result.sense = 'min';
+    }
+    this.lastRun = null;
+    this.parsimonious = false;
+    this.loopless = false;
+    this.cycleFree = false;
+    this.setFVA(false);
+    this.omics.gimmeResult = result;
+    this.omics.gimmeEnabled = true;
+    this.applySolution(result, { allowFVA:false });
+    if(result.status==='optimal'){
+      this.status={...this.status,state:'ok',message:`GIMME ${condition}: objective ${(100*result.objectiveFraction).toFixed(0)}%, threshold ${Number(result.threshold).toPrecision(4)}, inconsistency ${Number(result.inconsistencyScore).toPrecision(4)}. Duals: contextual GIMME LP.`};
+    } else this.status={...this.status,state:'error',message:`GIMME found no solution: ${result.message||result.status}`};
+    this.emit('solution'); return result;
+  }
+
+  resetCommunityGIMME() {
+    this.omics.gimmeEnabled = false;
+    this.omics.gimmeResult = null;
+  }
+
+  disableGIMME() {
+    this.resetCommunityGIMME();
+    this.solutionCleared = false;
+    this.parsimonious = false;
+    this.loopless = false;
+    this.cycleFree = false;
+    this.setFVA(false);
+    return this.solve();
+  }
+
+  setCommunityOmics(options = {}) {
+    const next = { ...this.omics, ...options };
+    validateCommunityGIMMESettings(next);
+    const changed = next.conditionA !== this.omics.conditionA
+      || next.gimmeThreshold !== this.omics.gimmeThreshold
+      || next.gimmeObjectiveFraction !== this.omics.gimmeObjectiveFraction;
+    const rerun = this.omics.gimmeEnabled && changed;
+    if (rerun) {
+      communityGIMMEInputs(this.community, this.species, this.models, next);
+    }
+    if (changed) {
+      this.reproducibilityReplay = null;
+    }
+    this.omics = next;
+    this.recomputeCommunityOmics();
+    if (rerun && !this.solutionCleared) {
+      this.runCommunityGIMME();
+    }
+    this.emit('omics');
+  }
+
+  /** Reaction scores and colours from the omics data: condition A alone, or A against B in compare mode. */
+  recomputeCommunityOmics() {
+    const o=this.omics, d=o.dataset;
+    if(!d || !o.enabled){o.scores=new Map();o.colors=new Map();o.scale=null;return;}
+    const a=reactionOmicsScores(this.community,this.species,this.models,d,o.conditionA);
+    if(o.mode==='compare' && o.conditionB){
+      const b=reactionOmicsScores(this.community,this.species,this.models,d,o.conditionB);
+      o.scores=compareReactionScores(a,b,{metric:o.metric,pseudocount:o.pseudocount});
+      o.scale=divergingOmicsColors(o.scores,{dark:this.view.dark});
+    }else{
+      o.scores=a; o.scale=sequentialOmicsColors(a,{dark:this.view.dark});
+    }
+    o.colors=o.scale.colors;
+    o.report=communityOmicsMappingReport(this.community,this.species,this.models,d);
+  }
+
+  // Biological model editor
+
+  modelEditorSpecies() {
+    const preferred = this.species.find((sp) => sp.id === this.modelEditorSpeciesId);
+    return preferred ?? this.species[0] ?? null;
+  }
+
+  modelEditorModel() {
+    const sp = this.modelEditorSpecies();
+    return sp ? this.models.get(sp.file) ?? null : null;
+  }
+
+  setModelEditorSpecies(id) {
+    if (!this.species.some((sp) => sp.id === id)) return null;
+    this.modelEditorSpeciesId = id;
+    this.emit('model-editor');
+    return this.modelEditorSpecies();
+  }
+
+  setModelEditorMode(mode) {
+    if (mode) this.assertPublishedStudyConstraints();
+    this.modelEditorMode = ['metabolite', 'reaction'].includes(mode) ? mode : null;
+    this.emit('model-editor');
+    return this.modelEditorMode;
+  }
+
+  /**
+   * Add a metabolite to the model of the model editor's species and rebuild the
+   * community. A MODEL operation. Returns the new metabolite.
+   */
+  async createModelMetabolite(spec) {
+    this.assertPublishedStudyConstraints();
+    this.assertModelOperation('createModelMetabolite');
+    const sp = this.modelEditorSpecies();
+    const model = this.modelEditorModel();
+    if (!sp || !model) throw new Error('Select a species/model.');
+
+    const metabolite = addMetaboliteToModel(model, spec);
+    this.modelEdits.set(model, (this.modelEdits.get(model) ?? 0) + 1);
+    const species = this.species;
+    const generation = this._workGeneration;
+    const isCurrent = () => this.species === species && this._workGeneration === generation
+      && this.models.get(sp.file) === model;
+    await this.rebuild({ relayout: false, isCurrent });
+    if (!isCurrent()) return metabolite;
+    this.status = {
+      ...this.status,
+      state: 'ok',
+      message: `Metabolite ${metabolite.id} created in ${sp.id}.`,
+    };
+    this.emit('model-edit');
+    return metabolite;
+  }
+
+  /**
+   * Add a reaction to the model of the model editor's species and rebuild the
+   * community, drawing and selecting it too with `addToMap`. A MODEL operation.
+   * Returns { reaction, mergedId, mapResult }.
+   */
+  async createModelReaction(spec, { addToMap = false } = {}) {
+    this.assertPublishedStudyConstraints();
+    this.assertModelOperation('createModelReaction');
+    const sp = this.modelEditorSpecies();
+    const model = this.modelEditorModel();
+    if (!sp || !model) throw new Error('Select a species/model.');
+
+    const reaction = addReactionToModel(model, spec);
+    this.modelEdits.set(model, (this.modelEdits.get(model) ?? 0) + 1);
+    const mergedId = `${sp.id}@${reaction.id}`;
+    const species = this.species;
+    const generation = this._workGeneration;
+    const isCurrent = () => this.species === species && this._workGeneration === generation
+      && this.models.get(sp.file) === model;
+    await this.rebuild({ relayout: false, isCurrent });
+    if (!isCurrent()) return { reaction, mergedId, mapResult: null };
+
+    let mapResult = null;
+    if (addToMap && this.map && this.community?.merged.reactions.has(mergedId)) {
+      mapResult = this.addMapReaction(mergedId);
+      if (mapResult) this.select(mergedId);
+    }
+
+    let state = 'ok';
+    let message = `Reaction ${reaction.id} created in ${sp.id}${mapResult ? ' and added to the map' : ''}.`;
+    if (addToMap && !mapResult) {
+      state = 'warn';
+      message = `Reaction ${reaction.id} created in ${sp.id}, but not drawn. Add its compartments or free some map space.`;
+    }
+    this.status = {
+      ...this.status,
+      state,
+      message,
+    };
+    this.emit('model-edit');
+    return { reaction, mergedId, mapResult };
+  }
+
+  /** A species' model as COBRA JSON text, by default the model editor's species. */
+  modelJSON(speciesId = this.modelEditorSpeciesId) {
+    const sp = this.species.find((item) => item.id === speciesId) ?? this.modelEditorSpecies();
+    if (!sp) throw new Error('Select a species to export.');
+    const model = this.models.get(sp.file);
+    if (!model) throw new Error(`The model for ${sp.id} was not found.`);
+    return JSON.stringify(model.toJSON(), null, 2);
+  }
+
+  /**
+   * The selected species as SBML L3V1 + fbc-v2, the format cobrapy and the
+   * COBRA Toolbox read. Built from the model in memory, so it covers whatever
+   * the user has edited or imported, not just what shipped.
+   */
+  modelSBML(speciesId = this.modelEditorSpeciesId) {
+    const sp = this.species.find((item) => item.id === speciesId) ?? this.modelEditorSpecies();
+    if (!sp) throw new Error('Select a species to export.');
+    const model = this.models.get(sp.file);
+    if (!model) throw new Error(`The model for ${sp.id} was not found.`);
+    return toSBML(model);
+  }
+
+  /**
+   * A published member's full model, converted to SBML on demand.
+   *
+   * The XML runs to roughly three times its JSON, and is derived from it
+   * mechanically, so the repository carries the JSON and this makes the SBML
+   * when somebody asks for it. Over file:// the browser refuses the fetch (the
+   * single-file build cannot read the files beside it), and the caller says
+   * what to do about it rather than failing silently.
+   */
+  async publishedMemberSBML(communityId, memberId) {
+    if (communityId === ZUNIGA_ID) {
+      const model = this.models.get(`published/${ZUNIGA_ID}/model-${memberId}`);
+      if (!model) throw new Error('Open the Zuñiga case to privately load and verify this model first.');
+      return { xml: toSBML(model), name: `${communityId}-${memberId}` };
+    }
+    const manifest = await this.publishedManifest(communityId);
+    const member = manifest?.members?.find((m) => m.id === memberId);
+    if (!member) throw new Error(`${memberId} has no model file in this build.`);
+    const doc = await fetchJSON(`${this.base}/models/published/${communityId}/${member.model}`);
+    return { xml: toSBML(new Model(doc)), name: `${communityId}-${memberId}` };
+  }
+
+  /** The reproducibility bundle of the current FBA-family analysis. Throws for a fixed-µ SteadyCom solution. */
+  async reproducibilityBundle() {
+    if (this.status.state === 'busy' || this.lastRun?.phase === 'running' || this.fvaProgress.running
+      || this._steadyComController) {
+      throw new Error('Wait for the current analysis to finish before exporting a reproducibility bundle.');
+    }
+    if (this.solution?.steadyCom) throw new Error('Reproducibility bundles cover ordinary FBA only; save a SteadyCom solution as Scenario JSON.');
+    return createReproducibilityBundle(this);
+  }
+
+  async methodsProvenanceReport() { const bundle=await this.reproducibilityBundle(); return { bundle, text:methodsProvenanceReport(bundle) }; }
+
+  async verifyReproducibilityBundle(bundle) { return verifyReproducibilityBundle(bundle); }
+
+  /** The saved drawing settings and map overlay, separate from biological inputs. */
+  reproducibilityPresentationState() {
+    return {
+      ...this.mapPresentationState(),
+      layoutSettings: { ...this.layoutSettings },
+      widthByFlux: this.view.widthByFlux,
+      dashNoFlux: this.view.dashNoFlux,
+      lineHops: this.view.lineHops,
+      crossFeedingWidth: this.view.crossFeedingWidth,
+      pathwayRibbonWidth: this.view.pathwayRibbonWidth,
+      pathwayRibbonOpacity: this.view.pathwayRibbonOpacity,
+      mapOmics: this.omicsState(),
+    };
+  }
+
+  restoreReproducibilityPresentationState(state) {
+    this.manualPathways.clear();
+    this.pathwaySettings.clear();
+    this.clearOmics({ emit: false });
+    if (!state) return;
+    this.restoreMapPresentationState(state);
+    if (state.layoutSettings) {
+      this.layoutSettings = state.layoutSettings;
+    }
+    for (const key of ['widthByFlux', 'dashNoFlux', 'lineHops', 'crossFeedingWidth',
+      'pathwayRibbonWidth', 'pathwayRibbonOpacity']) {
+      if (Object.hasOwn(state, key)) {
+        this.view[key] = state[key];
+      }
+    }
+    this.restoreOmicsState(state.mapOmics);
+  }
+
+  /**
+   * Open a reproducibility bundle: check its SHA-256 integrity, install its
+   * models, constraints, map and omics, solve again with the archived method
+   * and compare the result with the archived solution. Resolves to the
+   * integrity check with the replay comparison added as `replay`.
+   */
+  async importReproducibilityBundle(bundle) {
+    const check=await verifyReproducibilityBundle(bundle);
+    if(!check.valid) throw new Error('The bundle fails SHA-256 verification; it may have been modified or be corrupt.');
+    const presentation = normalizeBundlePresentation(bundle.presentation);
+    validateBundleAnalysis(bundle);
+    if (bundle.study?.id === ZUNIGA_ID) return this.importZunigaBundle(bundle, check, presentation);
+    const prepared = prepareBundleModels(bundle);
+    this.solutionCleared = false;
+    this.resetZunigaStudy();
+    this.resetCommunityGIMME();
+    for (const key of this.uploadedModelKeys) {
+      this.models.delete(key);
+    }
+    this.uploadedModelKeys.clear();
+    for (const [key, model] of prepared.models) {
+      this.models.set(key, model);
+      this.uploadedModelKeys.add(key);
+    }
+    const species = prepared.species;
+
+    this.scenario={id:'reproducibility-bundle',name:bundle.community?.name??'Reproduced analysis',objective:bundle.community?.objective,species};
+    this.species=species;this.objective=bundle.community?.objective??OBJECTIVES.EQUAL_GROWTH;this.productTarget=bundle.community?.productTarget??null;this.customObjective=null;
+    this.medium={...(bundle.constraints?.medium??{})};this.overrides=new Map(Object.entries(bundle.constraints?.reactionOverrides??{}));
+    this.parsimonious=Boolean(bundle.analysis?.parsimonious);this.pfbaBiomassPercent=bundle.analysis?.pfbaBiomassPercent??100;
+    this.loopless=Boolean(bundle.analysis?.loopless);
+    this.cycleFree=!this.loopless&&Boolean(bundle.analysis?.cycleFree);
+    this.pfvaEnabled = Boolean(bundle.analysis?.pfvaEnabled);
+    // FVA is replayed only after the primary numerical solution has been
+    // compared; its asynchronous ranges are restored from the archive below.
+    this.fvaEnabled=false;
+
+    await this.rebuild({ relayout: true, contents: prepared.map ? 'none' : 'all', solve: false });
+    this.geneKnockouts=this.geneKnockoutsFrom(bundle.constraints?.geneKnockouts);
+    this.customObjective=this.customObjectiveFrom(bundle.community?.customObjective);
+    this.applyOverrides();
+
+    // Restore the exact archived drawing after the biological model exists.
+    if (prepared.map) {
+      this.map = prepared.map;
+      this.mapHistory.clear();
+    }
+    this.restoreReproducibilityPresentationState(presentation);
+
+    // Rehydrate omics Map structures and settings before replaying GIMME.
+    const archivedOmics=bundle.omics;
+    if(archivedOmics){
+      const values=new Map(Object.entries(archivedOmics.values??{}));
+      this.omics.dataset={
+        source:archivedOmics.source??'reproducibility-bundle',
+        dataType:archivedOmics.dataType??'omics',
+        conditions:[...(archivedOmics.conditions??[])],
+        values,
+        rowCount:values.size,
+      };
+      for (const key of ['enabled', 'mode', 'conditionA', 'conditionB', 'metric', 'pseudocount',
+        'gimmeEnabled', 'gimmeThreshold', 'gimmeObjectiveFraction']) {
+        if (Object.hasOwn(archivedOmics.settings ?? {}, key)) {
+          this.omics[key] = archivedOmics.settings[key];
+        }
+      }
+      this.omics.gimmeResult=null;
+      this.recomputeCommunityOmics();
+    }else{
+      this.omics={...this.omics,dataset:null,enabled:false,scores:new Map(),colors:new Map(),scale:null,report:null,gimmeEnabled:false,gimmeResult:null};
+    }
+
+    const method=bundle.analysis?.method??'FBA';
+    if(method==='GIMME'){
+      if(!this.omics.dataset)throw new Error('The bundle declares GIMME but lacks the omics dataset needed to reproduce it.');
+      this.omics.gimmeEnabled=false;
+      if (!Object.hasOwn(archivedOmics.settings ?? {}, 'gimmeThreshold')) {
+        this.omics.gimmeThreshold = bundle.analysis?.gimme?.threshold ?? null;
+      }
+      this.omics.gimmeObjectiveFraction=bundle.analysis?.gimme?.objectiveFraction??this.omics.gimmeObjectiveFraction??0.9;
+      this.omics.conditionA=bundle.analysis?.gimme?.condition??this.omics.conditionA;
+      this.runCommunityGIMME();
+    }else{
+      this.omics.gimmeEnabled=false;
+      this.pfvaEnabled = method === 'pFVA' || (method === 'pFBA' && bundle.analysis?.pfbaExactObjective === false);
+      this.solve({ parsimonious: method === 'pFBA' || method === 'pFVA', silent: true });
+    }
+
+    const tolerances=bundle.replay?.tolerances??{absolute:1e-7,relative:1e-6};
+    const replay=compareArchivedSolution(bundle.solution,this.solution,tolerances);
+    check.replay=replay;
+
+    // Restore archived FVA ranges immediately. A user can explicitly recompute
+    // them later; this avoids racing asynchronous FVA against replay validation.
+    if(bundle.analysis?.fvaEnabled && bundle.solution?.fva){
+      this.fvaEnabled=true;
+      this.fvaRanges=new Map(Object.entries(bundle.solution.fva));
+      this.fvaProgress={running:false,done:this.fvaRanges.size,total:this.fvaRanges.size,ms:0};
+    } else if (!bundle.solution && bundle.analysis?.fvaEnabled) {
+      this.pfvaEnabled = Boolean(bundle.analysis.pfvaEnabled);
+      this.setFVA(true);
+    } else {
+      this.pfvaEnabled = false;
+      this.fvaEnabled=false;this.fvaRanges=new Map();this.fvaProgress={running:false,done:0,total:0,ms:0};
+    }
+
+    this.reproducibilityReplay={integrity:check,replay,archivedAt:bundle.metadata?.createdAt??null,restored:{map:Boolean(bundle.map&&this.map),omicsExpected:Boolean(bundle.omics),omics:Boolean(bundle.omics&&this.omics.dataset)}};
+    let verdict = 'no archived numerical result to compare';
+    let state = 'ok';
+    let detail = '';
+    if (replay) {
+      if (!replay.pass) {
+        verdict = 'WARNING: numerical differences';
+        state = 'error';
+      } else if (this.solution?.status !== 'optimal') {
+        verdict = `analysis status reproduced: ${this.solution?.status}`;
+        state = 'warn';
+      } else {
+        verdict = 'numerical replay OK';
+      }
+      if (replay.fluxes.count > 0) {
+        detail = ` · max Δflux ${replay.fluxes.maxAbsError.toExponential(2)}`;
+      }
+    } else if (this.solution?.status !== 'optimal') {
+      verdict += ` · new analysis: ${this.solution?.status ?? 'not run'}`;
+      state = 'error';
+    }
+    this.settleOpenedWork();
+    this.status={...this.status,state,message:`Bundle restored · ${verdict}${detail} · SHA-256 ${bundle.integrity.payloadHash.slice(0,12)}…`};
+    this.drawWaitingMap();
+    this.emit('rebuild'); return check;
+  }
+
+  /** Load a named scenario and rebuild everything. */
+  async useScenario(id) {
+    const scenario = this.scenarios.find((s) => s.id === id) || this.scenarios[0];
+    if (!scenario) {
+      throw new Error(`Unknown scenario "${id}".`);
+    }
+    if (scenario.loader === 'yeast9') {
+      return this.useYeast9Scenario(scenario);
+    }
+    this.resetZunigaStudy();
+    this.resetCommunityGIMME();
+    this.solutionCleared = false;
+    this.invalidateSteadyCom();
+    this.steadyComConfig = { fiber: null, parsimonious: false };
+    this.publishedCommunityId = null;
+    this.scenario = scenario;
+    this.objective = scenario.objective || OBJECTIVES.EQUAL_GROWTH;
+    this.productTarget = scenario.productTarget || null;
+    this.customObjective = null;
+    this.parsimonious = Boolean(scenario.parsimonious ?? scenario.pfba ?? false);
+    this.pfbaBiomassPercent = normalizePfbaPercent(
+      scenario.pfbaBiomassPercent
+      ?? (scenario.pfbaFraction !== undefined ? Number(scenario.pfbaFraction) * 100 : 100)
+    );
+    this.loopless = Boolean(scenario.loopless ?? scenario.looplessFba ?? false);
+    this.cycleFree = !this.loopless && Boolean(scenario.cycleFree ?? false);
+    if (this.loopless || this.cycleFree) this.parsimonious = false;
+    this.fvaEnabled = this.loopless || this.cycleFree
+      ? false
+      : Boolean(scenario.fvaEnabled ?? scenario.fva ?? false);
+    this.pfvaEnabled = this.fvaEnabled && Boolean(scenario.pfvaEnabled);
+    this.fvaRanges = new Map();
+    this.fvaProgress = { running: false, done: 0, total: 0, ms: 0 };
+    this.medium = { ...scenario.medium };
+    this.overrides.clear();
+    this.geneKnockouts.clear();
+    this.manualPathways.clear();
+    this.pathwaySettings.clear();
+    this.clearOmics({ emit: false });
+    this.selectedReaction = null;
+    this.selectedEntity = null;
+    this.variability = null;
+    this.species = scenario.species.map((s) => ({
+      id: s.id,
+      file: s.model,
+      abundance: s.abundance ?? 1 / scenario.species.length,
+      enabled: s.enabled !== false,
+    }));
+    this.modelEditorSpeciesId = this.species[0]?.id ?? null;
+    this.modelEditorMode = null;
+    await this.rebuild({ relayout: true });
+    this.settleOpenedWork();
+    this.drawWaitingMap();
+    return this;
+  }
+
+  /**
+   * The generated assets for a published community: the per-member models, the
+   * medium, the bounds and the map excerpts. Fetched once and remembered, with
+   * null meaning "this community has none", which is the normal case for the
+   * ones whose sources could not be retrieved.
+   */
+  async publishedManifest(id) {
+    if (this.publishedManifests.has(id)) return this.publishedManifests.get(id);
+    let manifest = null;
+    try {
+      manifest = await fetchJSON(`${this.base}/models/published/${id}/manifest.json`);
+    } catch {
+      manifest = null;
+    }
+    this.publishedManifests.set(id, manifest);
+    return manifest;
+  }
+
+  /**
+   * The reactions the open published community's own member models close: its
+   * strains' knockouts, as its manifest lists them (`knockouts`). They are the
+   * models' bounds, not changes to them, so the Changes list leaves them out;
+   * the map draws them in the knockout style.
+   */
+  publishedKnockoutIds() {
+    const id = this.scenario?.published;
+    const listed = id ? this.publishedManifests.get(id)?.knockouts : null;
+    if (!listed) return [];
+    return Object.entries(listed).flatMap(([speciesId, ids]) => ids.map((rid) => `${speciesId}@${rid}`));
+  }
+
+  /** Author models are fetched privately; the drawing never becomes the LP. */
+  async useZunigaStudy({ study = null, scenarioId = 'mutant-coculture' } = {}) {
+    this.invalidateSteadyCom();
+    this.resetZunigaStudy();
+    this.resetCommunityGIMME();
+    this.solutionCleared = false;
+    const generation = this._zunigaGeneration;
+    const assertCurrent = () => { if (generation !== this._zunigaGeneration) { const error = new Error('The Zuñiga load was superseded by another scenario.'); error.name = 'AbortError'; throw error; } };
+    this.publishedCommunityId = ZUNIGA_ID;
+    const record = this.publishedCommunities.find(c => c.id === ZUNIGA_ID);
+    this.scenario = { id: `published:${ZUNIGA_ID}`, name: record?.name ?? 'Zuñiga et al. (2020) — pheA rescue', published: ZUNIGA_ID };
+    this.status = { ...this.status, state: 'busy', message: 'Loading the authors’ complete models and verifying their SHA-256 hashes…' };
+    this.emit('status');
+    try {
+      const manifest = study?.manifest ?? await this.publishedManifest(ZUNIGA_ID);
+      if (!manifest) throw new Error('The Zuñiga case manifest is unavailable.');
+      if (!glpkAvailable() && !await initGLPK()) throw new Error('GLPK is required to calculate the complete Zuñiga source models.');
+      const loaded = study ?? await this.loadZunigaStudy(manifest, {
+        onProgress: message => {
+          if (generation !== this._zunigaGeneration) return;
+          this.status = { ...this.status, state: 'busy', message: typeof message === 'string' ? message : (message?.message ?? 'Loading the Zuñiga models…') };
+          this.emit('status');
+        },
+      });
+      assertCurrent();
+      this.zunigaStudy = loaded;
+      this.publishedManifests.set(ZUNIGA_ID, manifest);
+      this.species = ['Ec', 'Se'].map(id => {
+        const file = `published/${ZUNIGA_ID}/model-${id}`;
+        this.models.set(file, this.zunigaStudy.models[id]);
+        return { id, file, abundance: 1, enabled: true };
+      });
+      this.modelEditorSpeciesId = 'Ec';
+      this.modelEditorMode = null;
+      this.objective = 'published-original';
+      this.customObjective = null;
+      this._zunigaPreviousView = { showCrossFeeding: this.view.showCrossFeeding };
+      this.view.showCrossFeeding = false;
+      this.view.reactionColorMode = 'flux';
+      this.view.pathwayRibbonMode = 'off';
+      this.productTarget = null;
+      this.parsimonious = false;
+      this.loopless = false;
+      this.cycleFree = false;
+      this.fvaEnabled = false;
+      this.pfvaEnabled = false;
+      this.cancelFVA({ clear: true, emit: false });
+      this.medium = {};
+      this.overrides.clear();
+      this.geneKnockouts.clear();
+      this.manualPathways.clear();
+      this.pathwaySettings.clear();
+      this.clearOmics({ emit: false });
+      this._jointProjectionSpec = null;
+      this.steadyComConfig = { fiber: null, parsimonious: false };
+      this.selectedReaction = null;
+      this.selectedGeometry = null;
+      this.selectedEntity = null;
+      this.multiSelection = emptySelection();
+      this.variability = null;
+      for (const scenario of ZUNIGA_SCENARIOS) {
+        this.status = { ...this.status, state: 'busy', message: `Calculating ${scenario.name} on the complete model…` };
+        this.emit('status');
+        await frame();
+        assertCurrent();
+        const prepared = createZunigaScenario(this.zunigaStudy, scenario.id);
+        const result = solveZunigaScenario(prepared);
+        if (result.status !== 'optimal') {
+          let reason = result.status;
+          if (result.message) {
+            reason += `: ${result.message}`;
+          }
+          throw new Error(`${scenario.name}: ${reason}`);
+        }
+        result.zuniga.growth = Object.fromEntries(prepared.community.growthRates(result.fluxes));
+        result.zuniga.crossFeeding = prepared.community.crossFeeding(result.fluxes);
+        this.zunigaSolutions.set(scenario.id, result);
+      }
+      const drawing = await fetchJSON(`${this.base}/models/published/${ZUNIGA_ID}/${manifest.map ?? 'map.json'}`);
+      assertCurrent();
+      this.map = EditableMap.fromJSON(drawing.map ?? drawing);
+      this.mapMode = 'published-case';
+      this.mapHistory.clear();
+      this.useZunigaScenario(scenarioId, { emit: false });
+      this.settleOpenedWork();
+      this.emit('rebuild');
+      return this;
+    } catch (error) {
+      if (generation !== this._zunigaGeneration) throw error;
+      this.resetZunigaStudy();
+      this.community = null;
+      this.problem = null;
+      this.map = null;
+      this.solution = null;
+      this.scale = null;
+      this.growth = new Map();
+      this.crossFeeding = { links: [], perMetabolite: [] };
+      this.crossFeedingExplorer.index = null;
+      this.mapHistory.clear();
+      this.selectedReaction = null;
+      this.selectedEntity = null;
+      this.status = { ...this.status, state: 'error', message: error.message };
+      this.emit('rebuild');
+      throw error;
+    }
+  }
+
+  /** Switch the open Zuñiga case to one of its scenarios and show that scenario's solution. */
+  useZunigaScenario(id, { emit = true } = {}) {
+    if (!this.isZunigaStudy) throw new Error('Open the Zuñiga published case first.');
+    const scenario = ZUNIGA_SCENARIOS.find(item => item.id === id);
+    if (!scenario) throw new Error(`Unknown Zuñiga case scenario: ${id}`);
+    this.zunigaPrepared = createZunigaScenario(this.zunigaStudy, id);
+    this.zunigaScenarioId = id;
+    this.community = this.zunigaPrepared.community;
+    this.problem = this.zunigaPrepared.problem;
+    this.defaultBounds = this.problem.snapshotBounds();
+    this.overrides.clear();
+    this.geneKnockouts.clear();
+    this.scenario = { ...this.scenario, caseScenario: id };
+    this.scenario.name = `${this.publishedCommunities.find(c => c.id === ZUNIGA_ID)?.name ?? 'Zuñiga et al. (2020)'} — ${scenario.name}`;
+    this.selectedReaction = null;
+    this.selectedEntity = null;
+    const result = this.zunigaSolutions.get(id) ?? solveZunigaScenario(this.zunigaPrepared);
+    result.zuniga.growth = Object.fromEntries(this.community.growthRates(result.fluxes));
+    result.zuniga.crossFeeding = this.community.crossFeeding(result.fluxes);
+    this.zunigaSolutions.set(id, result);
+    this.applySolution(result, { allowFVA: false });
+    this.status = { ...this.status, state: result.status === 'optimal' ? 'ok' : 'error', message: `${scenario.name} · exact source constraints · stationary FBA.` };
+    if (emit) this.emit('solution');
+    return result;
+  }
+
+  /** Show the Zuñiga fluxes as they are ('absolute') or minus the WT monoculture ('difference'). */
+  setZunigaComparison(mode) {
+    if (!this.isZunigaStudy) return;
+    if (!['absolute', 'difference'].includes(mode)) throw new Error('The comparison must be absolute or difference.');
+    this.zunigaComparison = mode;
+    if (mode === 'difference') this.view.reactionColorMode = 'flux';
+    this.refreshFluxScale();
+    this.emit('view');
+  }
+
+  /** The fluxes the map shows: the solution's, or their difference from the baseline in the Zuñiga difference view. */
+  displayFluxes() {
+    const actual = this.solution?.status === 'optimal' ? this.solution.fluxes : new Map();
+    if (!this.isZunigaStudy || this.zunigaComparison !== 'difference') return actual;
+    const baseline = this.zunigaSolutions.get('wt-monoculture')?.fluxes ?? new Map();
+    return new Map([...new Set([...actual.keys(), ...baseline.keys()])].map(id => [id, (actual.get(id) ?? 0) - (baseline.get(id) ?? 0)]));
+  }
+
+  zunigaState() {
+    return this.isZunigaStudy ? { id: ZUNIGA_ID, scenarioId: this.zunigaScenarioId, comparison: this.zunigaComparison, fluxReference: this.zunigaStudy.manifest.fluxReference ?? 0.1, sourceHashes: this.zunigaStudy.sourceHashes } : null;
+  }
+
+  /** Throw unless a saved Zuñiga state matches the open case: scenario, comparison, flux scale and source hashes. */
+  validateZunigaState(state, expected = this.zunigaState()) {
+    if (!ZUNIGA_SCENARIOS.some(scenario => scenario.id === state?.scenarioId)) {
+      throw new Error('The saved Zuñiga scenario is invalid.');
+    }
+    if (!['absolute', 'difference'].includes(state.comparison ?? 'absolute')) {
+      throw new Error('The saved Zuñiga comparison is invalid.');
+    }
+    if (state.fluxReference !== undefined && state.fluxReference !== expected?.fluxReference) {
+      throw new Error('The saved Zuñiga document uses a different flux scale reference.');
+    }
+    if (state.sourceHashes && Object.entries(expected?.sourceHashes ?? {}).some(([file, hash]) => state.sourceHashes[file] !== hash)) {
+      throw new Error('The saved Zuñiga document refers to different source model hashes.');
+    }
+  }
+
+  /** Check saved case settings before starting a private model download. */
+  async validateZunigaDocument(state) {
+    if (this.isZunigaStudy) {
+      this.validateZunigaState(state);
+      return;
+    }
+    const manifest = await this.publishedManifest(ZUNIGA_ID);
+    if (!manifest) {
+      throw new Error('The Zuñiga case manifest is unavailable.');
+    }
+    const sourceHashes = {};
+    for (const source of manifest.sources ?? []) {
+      sourceHashes[source.file] = source.sha256;
+    }
+    this.validateZunigaState(state, { fluxReference: manifest.fluxReference ?? 0.1, sourceHashes });
+  }
+
+  async importZunigaBundle(bundle, check, presentation = null) {
+    const archived = bundle.study;
+    if (!archived.sourceModels?.mono || !archived.sourceModels?.joint) throw new Error('The private Zuñiga bundle lacks its complete source models.');
+    if (!ZUNIGA_SCENARIOS.some(scenario => scenario.id === archived.scenarioId)) {
+      throw new Error('The saved Zuñiga scenario is invalid.');
+    }
+    if (!['absolute', 'difference'].includes(archived.comparison ?? 'absolute')) {
+      throw new Error('The saved Zuñiga comparison is invalid.');
+    }
+    const study = {
+      manifest: archived.manifest,
+      sourceHashes: archived.sourceHashes,
+      sourceModels: archived.sourceModels,
+      models: Object.fromEntries(['Ec', 'Se'].map(id => [id,
+        parseModelJSON(JSON.stringify(bundle.models[id]), `Bundle model "${id}"`)])),
+    };
+    for (const source of ['mono', 'joint']) {
+      parseModelJSON(JSON.stringify(archived.sourceModels[source]), `Private source model "${source}"`);
+    }
+    for (const scenario of ZUNIGA_SCENARIOS) {
+      const prepared = createZunigaScenario(study, scenario.id);
+      const result = solveZunigaScenario(prepared);
+      if (result.status !== 'optimal') {
+        let reason = result.status;
+        if (result.message) {
+          reason += `: ${result.message}`;
+        }
+        throw new Error(`${scenario.name}: ${reason}`);
+      }
+    }
+    let map = null;
+    if (bundle.map) {
+      const context = createZunigaScenario(study, 'mutant-coculture').community;
+      validateMapDocument(bundle.map, context, [{ id: 'Ec' }, { id: 'Se' }]);
+      map = EditableMap.fromJSON(JSON.parse(JSON.stringify(bundle.map)));
+    }
+    await this.useZunigaStudy({ study, scenarioId: archived.scenarioId });
+    this.setZunigaComparison(archived.comparison ?? 'absolute');
+    if (map) {
+      this.map = map;
+      this.mapHistory.clear();
+    }
+    this.restoreReproducibilityPresentationState(presentation);
+    const replay = compareArchivedSolution(bundle.solution, this.solution, bundle.replay?.tolerances ?? { absolute: 1e-7, relative: 1e-6 });
+    check.replay = replay;
+    this.reproducibilityReplay = { integrity: check, replay, archivedAt: bundle.metadata?.createdAt ?? null, restored: { map: Boolean(bundle.map), omicsExpected: false, omics: false } };
+    this.settleOpenedWork();
+    let verdict = 'no archived numerical result to compare';
+    let state = 'ok';
+    if (replay && !replay.pass) {
+      verdict = 'numerical differences';
+      state = 'warn';
+    } else if (replay && this.solution?.status !== 'optimal') {
+      verdict = `analysis status reproduced: ${this.solution?.status}`;
+      state = 'warn';
+    } else if (replay) {
+      verdict = 'numerical replay OK';
+    } else if (this.solution?.status !== 'optimal') {
+      verdict += ` · new analysis: ${this.solution?.status ?? 'not run'}`;
+      state = 'error';
+    }
+    this.status = { ...this.status, state, message: `Private Zuñiga bundle restored · ${verdict} · SHA-256 ${bundle.integrity.payloadHash.slice(0, 12)}…` };
+    this.emit('rebuild');
+    return check;
+  }
+
+  /**
+   * Load a published community as the active one.
+   *
+   * The biological model and the initial map are deliberately separate.
+   * Published communities that bundle full member models use those models for
+   * editing, reaction discovery and simulation. A curated preview may still be
+   * used to decide what is drawn initially; it must never truncate Edit Model.
+   */
+  async usePublishedCommunity(id) {
+    if (id === ZUNIGA_ID) return this.useZunigaStudy();
+    this.resetZunigaStudy();
+    this.resetCommunityGIMME();
+    this.solutionCleared = false;
+    this.invalidateSteadyCom();
+    this.steadyComConfig = { fiber: null, parsimonious: false };
+    const community = this.publishedCommunities.find((c) => c.id === id);
+    if (!community) return this;
+
+    this.publishedCommunityId = id;
+    this.steadyComState = null;
+    this._steadyComSpec = null;
+    // Selecting a community is first of all a request to read about it, so the
+    // selection lands before anything is fetched. One whose sources could not be
+    // retrieved has no models to draw, and that must not stop its paper, its
+    // provenance and what it would still need from being shown.
+    this.scenario = {
+      id: `published:${id}`,
+      name: community.name,
+      description: community.description,
+      published: id,
+    };
+
+    const manifest = await this.publishedManifest(id);
+    if (!manifest?.members?.length) {
+      // Do not leave the previous community/map on screen under the newly
+      // selected scenario name. A published entry without bundled models has no
+      // biological map to show, so clear the old active model explicitly.
+      this.community = null;
+      this.problem = null;
+      this.map = null;
+      this.solution = null;
+      this.scale = null;
+      this.crossFeeding = { links: [], perMetabolite: [] };
+      this.growth = new Map();
+      this.mapHistory.clear();
+      this.selectedReaction = null;
+      this.selectedGeometry = null;
+      this.selectedEntity = null;
+      this.multiSelection = emptySelection();
+      this.variability = null;
+      this.status = {
+        ...this.status,
+        state: 'warn',
+        message: `${community.name}: no model files are bundled, so there is no map to draw.`,
+      };
+      this.settleOpenedWork();
+      this.emit('rebuild');
+      return this;
+    }
+    this.objective = OBJECTIVES.EQUAL_GROWTH;
+    this.productTarget = null;
+    this.customObjective = null;
+    this.parsimonious = false;
+    this.pfbaBiomassPercent = 100;
+    this.loopless = false;
+    this.cycleFree = false;
+    this.fvaEnabled = false;
+    this.pfvaEnabled = false;
+    this.fvaRanges = new Map();
+    this.fvaProgress = { running: false, done: 0, total: 0, ms: 0 };
+    this.medium = { ...(manifest.medium ?? {}) };
+    this.overrides.clear();
+    this.geneKnockouts.clear();
+    this.manualPathways.clear();
+    this.pathwaySettings.clear();
+    this.clearOmics({ emit: false });
+    this.selectedReaction = null;
+    this.selectedEntity = null;
+    this.variability = null;
+    this.species = manifest.members.map((m) => {
+      const biologicalFile = publishedMemberFileForRuntime(id, m);
+      return {
+        id: m.id,
+        file: `published/${id}/${biologicalFile.replace(/\.json$/, '')}`,
+        abundance: 1 / manifest.members.length,
+        enabled: true,
+      };
+    });
+    this.modelEditorSpeciesId = this.species[0]?.id ?? null;
+    this.modelEditorMode = null;
+    if (id === 'steadycom-ecoli-auxotrophs') {
+      const members = [];
+      for (const sp of this.species) members.push({ id: sp.id, model: await this.loadModel(sp.file) });
+      this.medium = parseMediaCSV(await fetchText(`${this.base}/models/published/${id}/media.csv`), members);
+    } else if (id === 'steadycom-gut-nine') {
+      const members = [];
+      for (const sp of this.species) members.push({ id: sp.id, model: await this.loadModel(sp.file) });
+      const joint = jointSteadyComSpec(members, await fetchText(`${this.base}/models/published/${id}/bounds.csv`));
+      this.medium = Object.fromEntries([...joint.metadata.communityUptake].map(([mid, rid]) =>
+        [joint.metadata.bases.get(mid), joint.reactions.get(rid).upperBound]).filter(([, value]) => value > 0));
+    }
+    // A community whose manifest names a curated map (the four E. coli
+    // strains, the Stolyar pair) starts from an empty drawing shell and draws
+    // that map; the active biological models stay the full member models. The
+    // four-E. coli benchmark without its map file falls back to the generated
+    // glycolysis overview.
+    const curatedCoreMap = usesCuratedCoreMap(id);
+    const jointMap = id === 'steadycom-gut-nine';
+    const ownMap = Boolean(manifest.map) && !jointMap;
+    // A SteadyCom community opens on its own solution, not on an FBA of the
+    // merged models that the SteadyCom one would replace a moment later.
+    const solvedOnOpen = STEADYCOM_OPEN_MU.has(id);
+    await this.rebuild({ relayout: true, contents: curatedCoreMap || jointMap || ownMap ? 'none' : 'all', solve: !jointMap && !solvedOnOpen });
+    if (ownMap) {
+      await this.drawPublishedPreview(id);
+    } else if (curatedCoreMap) {
+      this.showCoreMetabolismOverview({ recordHistory: false });
+    }
+    this.settleOpenedWork();
+    this.drawWaitingMap();
+    if (solvedOnOpen) {
+      // Not awaited: the map is on screen now and the worker paints the
+      // solution on it when it is ready.
+      if (this.steadyComSupport().supported) this.steadyComOnOpen = this.solveSteadyComOnOpen();
+      else if (!jointMap) this.solve();
+    }
+    return this;
+  }
+
+  /** Draw a small excerpt while keeping full models available for analysis. */
+  async drawPublishedPreview(id) {
+    const manifest = await this.publishedManifest(id);
+    // A curated map, when the community ships one, replaces the excerpt. It is
+    // read the way a loaded map file is, so it is checked against the full models.
+    if (manifest?.map) {
+      const drawing = await fetchJSON(`${this.base}/models/published/${id}/${manifest.map}`);
+      this.mapLoadNote = '';
+      this.applyMapDocument(parseMapDocument(drawing));
+      this.mapHistory.clear();
+      // A curated map is neither the overview nor the automatic full layout,
+      // so neither is laid out again over it, and switching a member off keeps
+      // it (see keepsDrawingOnSpeciesToggle).
+      this.mapMode = 'published-case';
+      this.scenarioMapFile = `published/${id}/${manifest.map}`;
+      const members = manifest.members?.length ?? 0;
+      this.status = { ...this.status, state: 'ok', message: `Full ${members}-member model loaded with its curated map.${this.mapLoadNote}` };
+      this.emit('map');
+      return;
+    }
+    const entries = [];
+    for (const member of manifest?.members ?? []) {
+      const sp = this.species.find((entry) => entry.id === member.id);
+      if (!sp || sp.enabled === false) continue;
+      entries.push({ id: member.id, model: await this.loadModel(`published/${id}/${member.preview.replace(/\.json$/, '')}`), abundance: sp.abundance, enabled: true });
+    }
+    const drawing = new CommunityModel({ name: this.scenario.name, objective: this.objective, species: entries, medium: this.mediumSpec() });
+    this.map = EditableMap.fromCommunity(drawing, layoutEngineOptions(this.layoutSettings));
+    this.mapHistory.clear();
+    this.status = { ...this.status, state: 'ok', message: 'Full nine-species model loaded; the map shows an excerpt.' };
+    this.emit('map');
+  }
+
+  /** Rebuild the merged model and the LP; optionally redo the geometry. */
+  async rebuild({ relayout = true, contents = 'all', solve = true, isCurrent = null } = {}) {
+    this.reproducibilityReplay = null;
+    this.lastRun = null;
+    if (this.isZunigaStudy) {
+      if (solve) this.solve();
+      return this;
+    }
+    this.invalidateSteadyCom();
+    this.status = { ...this.status, state: 'busy', message: 'Building model…' };
+    this.emit('status');
+    await frame();
+    if (isCurrent && !isCurrent()) return;
+
+    const entries = [];
+    for (const sp of this.species) {
+      const model = await this.loadModel(sp.file);
+      if (isCurrent && !isCurrent()) return;
+      entries.push({ id: sp.id, model, abundance: sp.abundance, enabled: sp.enabled });
+    }
+
+    if (!entries.some((e) => e.enabled)) {
+      this.status = { state: 'error', message: 'Enable at least one species.', solveMs: 0, layoutMs: 0 };
+      this.community = null;
+      this.problem = null;
+      this.map = null;
+      this.solution = null;
+      this.emit('rebuild');
+      return;
+    }
+
+    this.community = new CommunityModel({
+      name: this.scenario?.name ?? 'Community',
+      objective: this.objective,
+      productTarget: this.productTarget,
+      species: entries,
+      medium: this.mediumSpec(),
+    });
+
+    this._jointProjectionSpec = null;
+    if (this.scenario?.published === 'steadycom-gut-nine') {
+      const spec = jointSteadyComSpec(entries.map(({ id, model }) => ({ id, model })),
+        await fetchText(`${this.base}/models/published/steadycom-gut-nine/bounds.csv`));
+      if (isCurrent && !isCurrent()) return;
+      this._jointProjectionSpec = spec;
+      this.installJointProjection();
+    }
+    this.problem = new FluxProblem(this.community.merged);
+    this.defaultBounds = this.problem.snapshotBounds();
+    this.applyOverrides();
+
+    // A scenario that ships a curated map draws it in place of the automatic
+    // layout, whenever the map is laid out afresh.
+    const curated = (relayout || !this.map) && contents !== 'none' ? await this.scenarioMapDocument() : null;
+    if (isCurrent && !isCurrent()) return;
+    if (relayout || !this.map) {
+      const t = performance.now();
+      // The automatic layout still produces the geometry; the map adopts it and
+      // owns it from here on, which is what makes it editable.
+      const layoutOptions = layoutEngineOptions(this.layoutSettings);
+      this.map = contents === 'none' || curated || this.scenario?.published === 'steadycom-gut-nine'
+        ? EditableMap.emptyFromCommunity(this.community, layoutOptions)
+        : EditableMap.fromCommunity(this.community, layoutOptions);
+      this.mapMode = 'full';
+      this.selectedReaction = null;
+      this.selectedGeometry = null;
+      this.selectedEntity = null;
+      this.multiSelection = emptySelection();
+      this.variability = null;
+      this.mapHistory.clear();
+      this.scenarioMapFile = null;
+      this.status.layoutMs = Math.round(performance.now() - t);
+    }
+
+    if (solve) {
+      this.solve({ silent: true });
+    } else {
+      this.solution = null;
+      this.refreshFluxScale();
+      this.crossFeeding = { links: [], perMetabolite: [] };
+      this.crossFeedingExplorer.index = null;
+      this.crossFeedingExplorer.selectedId = null;
+      this.growth = new Map();
+      this.status = {
+        ...this.status,
+        state: 'ok',
+        message: 'Model loaded. Analysis is ready to run on demand.',
+        solveMs: 0,
+      };
+    }
+    if (relayout && this.scenario?.published === 'steadycom-gut-nine') await this.drawPublishedPreview(this.scenario.published);
+    if (curated && !this.drawScenarioMap(curated)) {
+      this.map = EditableMap.fromCommunity(this.community, layoutEngineOptions(this.layoutSettings));
+      this.mapHistory.clear();
+    }
+    this.emit('rebuild');
+  }
+
+  /**
+   * The curated map a scenario ships (`map`, a path under models/), parsed, or
+   * null when it names none or the file is not there; then the automatic
+   * layout draws the scenario, as it always has.
+   */
+  async scenarioMapDocument(scenario = this.scenario) {
+    if (!scenario?.map || scenario.published) return null;
+    try {
+      const parsed = parseMapDocument(await fetchJSON(`${this.base}/models/${scenario.map}`));
+      return { file: scenario.map, parsed };
+    } catch {
+      return null;
+    }
+  }
+
+  /**
+   * Make a scenario's curated map the drawing. It is read the way a loaded map
+   * file is, so it is checked against the active models; one that does not fit
+   * is reported and left out. The map counts as unedited, so switching a
+   * species on or off keeps it (see keepsDrawingOnSpeciesToggle).
+   *
+   * @returns {boolean} whether it was drawn
+   */
+  drawScenarioMap(curated) {
+    try {
+      this.mapLoadNote = '';
+      this.applyMapDocument(curated.parsed);
+    } catch (error) {
+      this.addLog('warn', `The curated map ${curated.file} does not fit ${this.scenario?.name ?? 'this scenario'}: ${error.message}`);
+      return false;
+    }
+    this.mapHistory.clear();
+    this.scenarioMapFile = curated.file;
+    if (this.mapLoadNote) this.addLog('warn', `Curated map ${curated.file}:${this.mapLoadNote}`);
+    return true;
+  }
+
+  /** Medium limits in the shape CommunityModel expects. */
+  mediumSpec() {
+    const out = {};
+    for (const [base, limit] of Object.entries(this.medium)) {
+      out[base] = { lower: -Math.abs(Number(limit) || 0), upper: 1000 };
+    }
+    return out;
+  }
+
+  /** Reset the LP to its default bounds, then apply the medium and the per-reaction overrides. */
+  applyOverrides() {
+    if (!this.problem) return;
+    this.problem.restoreBounds(this.defaultBounds);
+    if (this.isZunigaStudy) return;
+    for (const [base, limit] of Object.entries(this.medium)) {
+      const uptakeId = this.community?.communityExchangeIds?.get(base)?.uptake;
+      if (uptakeId && this.problem.rxnIndex.has(uptakeId)) {
+        const index = this.problem.rxnIndex.get(uptakeId);
+        this.problem.setBounds(uptakeId, this.defaultBounds.lb[index], Math.abs(Number(limit) || 0));
+        continue;
+      }
+      const exId = communityExchange(base);
+      if (this.problem.rxnIndex.has(exId)) {
+        this.problem.setBounds(exId, -Math.abs(Number(limit) || 0), 1000);
+      }
+    }
+    // Per-reaction overrides win over the medium, so a knockout stays a knockout.
+    // A held-out species keeps its edited bounds for when it returns, but they
+    // must not reopen what holding it out closed: in a joint community its
+    // reactions stay in the problem, held at zero.
+    const off = new Set(this.species.filter((sp) => this.speciesHeldOut(sp.id)).map((sp) => sp.id));
+    for (const [rid, b] of this.effectiveOverrides()) {
+      if (!this.problem.rxnIndex.has(rid)) continue;
+      if (off.size && off.has(this.community?.reactionOwner?.get(rid)?.speciesId)) continue;
+      this.problem.setBounds(rid, b.lower, b.upper);
+    }
+    this.applyObjective();
+  }
+
+  /**
+   * Whether a species is out of the simulation: switched off, or, in a joint
+   * community, given zero abundance, which closes its reactions the same way.
+   * Its bounds can be neither applied nor edited until it is back.
+   */
+  speciesHeldOut(id) {
+    const sp = this.species.find((item) => item.id === id);
+    if (!sp) return false;
+    if (sp.enabled === false) return true;
+    return Boolean(this._jointProjectionSpec) && !((this.community?.abundances?.get(id) ?? 0) > 1e-9);
+  }
+
+  /** Replace the merged model with the joint SteadyCom projection at the current abundances. */
+  installJointProjection() {
+    const amounts = new Map(this._jointProjectionSpec.members.map(member =>
+      [member.id, this.community.abundances.get(member.id) ?? 0]));
+    const projection = jointCommunityProjection(this._jointProjectionSpec, amounts, { objective: this.objective, productTarget: this.productTarget });
+    this.community.merged = projection.model;
+    for (const name of ['biomassIds', 'reactionOwner', 'metaboliteOwner', 'transfersByBase', 'speciesCompartments', 'communityExchangeIds', 'abundances']) {
+      this.community[name] = projection[name];
+    }
+  }
+
+  /** Rebuild the LP for the current abundances and switched-off species, keeping the map. */
+  refreshCompositionProblem() {
+    for (const member of this.community.species) {
+      const species = this.species.find(sp => sp.id === member.id);
+      member.abundance = species?.abundance ?? 0;
+      member.enabled = species?.enabled !== false && member.abundance > 1e-9;
+    }
+    this.community.abundances = new Map(this.species.map(sp => [sp.id, sp.enabled === false ? 0 : sp.abundance]));
+    if (this._jointProjectionSpec) this.installJointProjection();
+    else this.community.build();
+    this.problem = new FluxProblem(this.community.merged);
+    this.defaultBounds = this.problem.snapshotBounds();
+    this.applyOverrides();
+  }
+
+  /** Install a solver result and refresh every state derived from it. */
+  applySolution(res, { allowFVA = true } = {}) {
+    this.reproducibilityReplay = null;
+    this.solution = res;
+    this.solutionProvenance = null;
+    if (res) {
+      this.solutionCleared = false;
+      let method = res.method ?? 'FBA';
+      if (res.steadyCom) {
+        method = 'SteadyCom fixed µ';
+      } else if (res.zuniga) {
+        method = 'Stationary source-model FBA';
+      } else if (res.gimme) {
+        method = 'GIMME';
+      } else if (!res.method) {
+        if (this.loopless) {
+          method = 'loopless FBA';
+        } else if (this.cycleFree) {
+          method = 'CycleFreeFlux';
+        } else if (this.parsimonious) {
+          method = 'pFBA';
+        }
+      }
+      this.solutionProvenance = {
+        method, solver: solverName(res.solver), objective: this.objective,
+        pfbaExactObjective: !this.pfvaEnabled,
+        pfbaBiomassPercent: this.pfbaBiomassPercent,
+        objectiveSense: this.objectiveSense(),
+        customObjective: this.customObjective ? JSON.parse(JSON.stringify(this.customObjective)) : null,
+        productTarget: this.productTarget ?? null,
+        scenario: { id: this.scenario?.id ?? null, name: this.scenario?.name ?? null },
+        species: this.species.filter(sp => sp.enabled !== false).map(sp => ({
+          id: sp.id, model: this.models.get(sp.file)?.id ?? sp.file ?? null, abundance: sp.abundance ?? null,
+        })),
+      };
+    }
+    this.refreshFluxScale();
+    if (res?.status === 'optimal') {
+      this.crossFeeding = res.steadyCom ? steadyComCrossFeeding(res.steadyCom.spec, res.steadyCom.originalFluxes)
+        : this._jointProjectionSpec ? steadyComCrossFeeding(this._jointProjectionSpec, new Map([...res.fluxes].map(([id, value]) => {
+          const { species, id: original } = splitId(id);
+          return [original, value * (species ? this.community.abundances.get(species) ?? 0 : 1)];
+        }))) : this.community.crossFeeding(res.fluxes, 1e-5);
+      this.growth = this.community.growthRates(res.fluxes);
+      this.refreshCrossFeedingExplorer();
+      if (allowFVA && this.fvaEnabled) this.scheduleFVA();
+      else if (!allowFVA && this.fvaEnabled) {
+        this.fvaEnabled = false;
+        this.pfvaEnabled = false;
+        this.cancelFVA({ clear:true, emit:false });
+      }
+    } else {
+      this.crossFeeding = { links:[], perMetabolite:[] };
+      this.growth = new Map();
+      this.crossFeedingExplorer.index = null;
+      this.crossFeedingExplorer.selectedId = null;
+      this.cancelFVA({ clear:true, emit:false });
+    }
+    return res;
+  }
+
+  /**
+   * Take the solution off the map and hold the automatic re-solve that input
+   * changes trigger, until an analysis is run again (runAnalysis, SteadyCom,
+   * GIMME) or another case is opened. Map, model and the chosen method are left
+   * as they are, so the next run is the one that was selected. Returns whether
+   * there was a solution to clear.
+   */
+  clearSolution() {
+    if (!this.solution) return false;
+    const steadyCom = Boolean(this.solution.steadyCom);
+    this.cancelSteadyCom({ silent: true });
+    this.applySolution(null);
+    // solve() rebuilds the community's own LP after a fixed-µ solution by
+    // looking at that solution, which is about to be gone.
+    if (steadyCom) this.refreshCompositionProblem();
+    this.solutionCleared = true;
+    this.lastRun = null;
+    this.status = { ...this.status, state: 'ok', message: 'Solution cleared. Run an analysis to solve again.' };
+    this.addLog('ok', 'Solution cleared', { kind: 'solve' });
+    this.emit('solution');
+    return true;
+  }
+
+  /** Solve and refresh everything derived from the solution. */
+  solve({ parsimonious = null, silent = false } = {}) {
+    if (!this.problem) return null;
+    if (this.solutionCleared) return null;
+    this.reproducibilityReplay = null;
+    if (this.lastRun?.phase !== 'running') {
+      this.lastRun = null;
+    }
+    if (this.isZunigaStudy) {
+      const t = performance.now();
+      const result = solveZunigaScenario(this.zunigaPrepared);
+      result.zuniga.growth = Object.fromEntries(this.community.growthRates(result.fluxes));
+      result.zuniga.crossFeeding = this.community.crossFeeding(result.fluxes);
+      this.zunigaSolutions.set(this.zunigaScenarioId, result);
+      this.applySolution(result, { allowFVA: false });
+      // Like an ordinary solve, a success leaves the header to its summary and
+      // goes to the log. Shown as a notice it would hide the objective for six
+      // seconds after every re-solve.
+      const caseName = `${ZUNIGA_SCENARIOS.find(s => s.id === this.zunigaScenarioId)?.name} · exact source constraints`;
+      const optimal = result.status === 'optimal';
+      this.status = { ...this.status, state: optimal ? 'ok' : 'error', message: optimal ? '' : caseName, solveMs: Math.round(performance.now() - t) };
+      if (optimal) this.addLog('ok', `${caseName} solved: optimal, ${this.status.solveMs} ms`, { kind: 'solve' });
+      if (!silent) this.emit('solution');
+      return result;
+    }
+    if (this.omics.gimmeEnabled) {
+      return this.runCommunityGIMME();
+    }
+    this.cancelSteadyCom({ silent: true });
+    if (this.solution?.steadyCom) this.refreshCompositionProblem();
+    const useParsimonious = parsimonious === null ? this.parsimonious : Boolean(parsimonious);
+    // A minimised objective is posed as the maximum of its negative (see
+    // applyObjective), so every analysis keeps its one maximising path.
+    const minimise = this.objectiveSense() === 'min';
+    const fraction = this.pfbaBiomassPercent / 100;
+    const t = performance.now();
+    let res = this.loopless
+      ? this.problem.loopless()
+      : useParsimonious
+        ? this.problem.parsimonious({ fraction, exactObjective: !this.pfvaEnabled })
+        : this.cycleFree
+          ? this.problem.cycleFree()
+          : this.problem.optimize();
+    if (minimise) res = minimisedResult(res);
+    this.applySolution(res, { allowFVA:true });
+    this.noteConstraintOutcome(res);
+    let state = 'error';
+    let message = res.message;
+    if (res.status === 'optimal') {
+      state = 'ok';
+      if (message) {
+        state = 'warn';
+      }
+    } else if (!message) {
+      message = describeStatus(res.status);
+    }
+    this.status = {
+      state,
+      message: message || '',
+      solveMs: Math.round(performance.now() - t),
+      layoutMs: this.status.layoutMs ?? 0,
+    };
+    if (res.status === 'optimal' && !res.message) {
+      const method = this.loopless ? 'Loopless FBA' : (useParsimonious ? 'pFBA' : (this.cycleFree ? 'CycleFreeFlux' : 'FBA'));
+      const objective = Number.isFinite(this.solution?.objectiveValue) ? this.solution.objectiveValue.toFixed(5) : '—';
+      this.addLog('ok', `${method} solved: optimal, objective ${objective}, ${this.status.solveMs} ms`, { kind: 'solve' });
+    }
+    if (!silent) this.emit('solution');
+    return res;
+  }
+
+  /**
+   * Run one of the analyses of the Simulate panel, as its buttons do, and say
+   * when it has finished.
+   *
+   * The solves are synchronous. On a genome-scale community a pFBA or loopless
+   * solve holds the page for seconds and may change nothing anyone can see, so
+   * without a word there is no telling whether it has finished, or started. The
+   * run is announced first, with a paint in between, and its end is kept in
+   * `lastRun` for the results bar, and goes to the status line and the log.
+   * FVA has finished when its ranges are in, not when it is started.
+   *
+   * @param {'fba'|'pfba'|'fva'|'pfva'|'loopless'|'cyclefree'} method
+   */
+  async runAnalysis(method) {
+    const label = ANALYSIS_LABELS[method];
+    if (!label) throw new Error(`Unknown analysis "${method}".`);
+    if (this.isZunigaStudy && method !== 'fba') return this.solution;
+    if ((method === 'fva' || method === 'pfva') && this.solution?.steadyCom) return this.solution;
+    this.reproducibilityReplay = null;
+    if (method === 'fva' || method === 'pfva') {
+      this.setFVA(false);
+    }
+    this.solutionCleared = false;
+    this.lastRun = { method, label, phase: 'running', startedAt: Date.now(), t0: performance.now() };
+    this.status = { ...this.status, state: 'busy', message: `Running ${label}…` };
+    this.emit('status');
+    await paintFrame();
+    if (this.lastRun?.method !== method || this.lastRun.phase !== 'running') return this.solution;
+    this.resetCommunityGIMME();
+
+    if (this.isZunigaStudy) {
+      this.solve();
+    } else if (method === 'fba') {
+      this.parsimonious = false;
+      this.loopless = false;
+      this.cycleFree = false;
+      this.setFVA(false);
+      this.solve();
+    } else if (method === 'pfba') {
+      this.loopless = false;
+      this.cycleFree = false;
+      this.setFVA(false);
+      this.setParsimonious(true);
+    } else if (method === 'loopless') {
+      this.setLoopless(true);
+    } else if (method === 'cyclefree') {
+      this.setCycleFree(true);
+    } else {
+      this.loopless = false;
+      this.parsimonious = method === 'pfva';
+      this.pfvaEnabled = method === 'pfva';
+      this.cycleFree = false;
+      this.solve();
+      this.setFVA(true);
+      // Its ranges come in later; runFVA() finishes the run then.
+      if (this.solution?.status === 'optimal' && this.fvaProgress?.running) {
+        this.status = { ...this.status, state: 'busy', message: `Running ${label}…` };
+        this.emit('status');
+        return this.solution;
+      }
+    }
+    this.finishRun(this.problem ? (this.solution?.status ?? 'not run') : 'no model loaded');
+    return this.solution;
+  }
+
+  /** Close the run `runAnalysis` started, with the outcome it ended in. */
+  finishRun(outcome) {
+    const run = this.lastRun;
+    if (!run || run.phase !== 'running') return;
+    if (outcome === 'optimal' && this.solution?.message
+      && ['pfba', 'pfva', 'cyclefree'].includes(run.method)) {
+      outcome = 'secondary optimization failed';
+    }
+    const ms = Math.round(performance.now() - run.t0);
+    const ok = outcome === 'optimal';
+    const objective = this.solution?.objectiveValue;
+    Object.assign(run, {
+      phase: ok ? 'done' : outcome === 'cancelled' ? 'cancelled' : 'failed',
+      outcome, ms, took: formatDuration(ms), finishedAt: Date.now(), objective,
+    });
+    const took = formatDuration(ms);
+    if (ok) {
+      const detail = run.method === 'fva' || run.method === 'pfva'
+        ? `${this.fvaRanges.size} flux ranges`
+        : `objective ${Number.isFinite(objective) ? objective.toFixed(5) : '—'}`;
+      this.status = { ...this.status, state: 'ok', message: `${run.label} completed · ${detail} · ${took}` };
+    } else if (outcome === 'cancelled') {
+      this.status = { ...this.status, state: 'ok', message: `${run.label} cancelled after ${took}` };
+    } else {
+      const why = !this.problem ? 'no model is loaded yet.'
+        : this.solution?.message
+          || (['error', 'warn'].includes(this.status?.state) && this.status.message) || describeStatus(outcome);
+      this.status = { ...this.status, state: 'error', message: `${run.label} did not finish: ${why}` };
+    }
+    this.emit('status');
+  }
+
+  // Mutations
+
+  setParsimonious(enabled) {
+    this.assertPublishedStudyConstraints();
+    const next = Boolean(enabled);
+    if (next) {
+      this.resetCommunityGIMME();
+    }
+    if (next && this.loopless) this.loopless = false;
+    if (next && this.cycleFree) this.cycleFree = false;
+    if (this.parsimonious === next && this.solution) return this.solution;
+    this.parsimonious = next;
+    return this.solve();
+  }
+
+  setPFBABiomassPercent(value) {
+    this.assertPublishedStudyConstraints();
+    if (String(value ?? '').trim() === '') return this.solution;
+    const next = normalizePfbaPercent(value);
+    if (Math.abs(next - this.pfbaBiomassPercent) < 1e-12) return this.solution;
+    this.reproducibilityReplay = null;
+    this.pfbaBiomassPercent = next;
+    if (this.parsimonious && !this.loopless) return this.solve();
+    this.emit('pfba-fraction');
+    return this.solution;
+  }
+
+  setLoopless(enabled) {
+    this.assertPublishedStudyConstraints();
+    const next = Boolean(enabled);
+    if (next) {
+      this.resetCommunityGIMME();
+    }
+    if (this.loopless === next && this.solution) return this.solution;
+    this.loopless = next;
+
+    if (next) {
+      this.parsimonious = false;
+      this.cycleFree = false;
+      if (this.fvaEnabled) this.setFVA(false);
+    }
+
+    return this.solve();
+  }
+
+  /**
+   * Switch CycleFreeFlux on or off: the FBA optimum with its internal cycles
+   * removed. It replaces pFBA and Loopless, and FVA, as Loopless does.
+   */
+  setCycleFree(enabled) {
+    this.assertPublishedStudyConstraints();
+    const next = Boolean(enabled);
+    if (next) {
+      this.resetCommunityGIMME();
+    }
+    if (this.cycleFree === next && this.solution) return this.solution;
+    this.cycleFree = next;
+    if (next) {
+      this.parsimonious = false;
+      this.loopless = false;
+      if (this.fvaEnabled) this.setFVA(false);
+    }
+    return this.solve();
+  }
+
+  /** Switch FVA on (ranges computed in the background after each solve) or off. */
+  setFVA(enabled) {
+    this.assertPublishedStudyConstraints();
+    if (enabled && this.solution?.steadyCom) {
+      this.status = { ...this.status, state: 'warn', message: 'FVA does not apply to a fixed-μ SteadyCom solution.' };
+      this.emit('status');
+      return this.fvaRanges;
+    }
+    const next = Boolean(enabled);
+    if (next && this.omics.gimmeEnabled) {
+      this.resetCommunityGIMME();
+      this.solve();
+    }
+    if (next && (this.loopless || this.cycleFree)) {
+      this.loopless = false;
+      this.cycleFree = false;
+      this.solve();
+    }
+    if (this.fvaEnabled === next) return this.fvaRanges;
+    this.reproducibilityReplay = null;
+    this.fvaEnabled = next;
+    if (!next) {
+      this.pfvaEnabled = false;
+    }
+
+    if (!next) {
+      this.cancelFVA({ clear: true, emit: false });
+      this.variability = null;
+      this.emit('fva');
+      if (this.lastRun?.method === 'fva' || this.lastRun?.method === 'pfva') this.finishRun('cancelled');
+      return this.fvaRanges;
+    }
+
+    this.scheduleFVA(0);
+    this.emit('fva');
+    return this.fvaRanges;
+  }
+
+  cancelFVA({ clear = false, emit = true } = {}) {
+    this._fvaGeneration += 1;
+    if (this._fvaTimer !== null) {
+      clearTimeout(this._fvaTimer);
+      this._fvaTimer = null;
+    }
+    this.fvaProgress = { running: false, done: 0, total: 0, ms: 0 };
+    if (clear) {
+      this.fvaRanges = new Map();
+      this.variability = null;
+    }
+    if (emit) {
+      this.emit('fva');
+      if (this.lastRun?.method === 'fva' || this.lastRun?.method === 'pfva') {
+        this.finishRun('cancelled');
+      }
+    }
+  }
+
+  /** Whether the installed solution has finite ranges for every reaction. */
+  hasCompleteFVARanges() {
+    if (!this.fvaEnabled || !this.problem || this.solution?.status !== 'optimal'
+      || this.fvaProgress.running || this.fvaProgress.total !== this.problem.rxnIds.length
+      || this.fvaProgress.done !== this.fvaProgress.total || this.fvaRanges.size !== this.problem.rxnIds.length) {
+      return false;
+    }
+    for (const id of this.problem.rxnIds) {
+      const range = this.fvaRanges.get(id);
+      if (!Number.isFinite(range?.min) || !Number.isFinite(range?.max)) {
+        return false;
+      }
+    }
+    return true;
+  }
+
+  /** Start a fresh FVA run after `delay` ms, cancelling any run in progress. */
+  scheduleFVA(delay = 40) {
+    if (!this.fvaEnabled || !this.problem || this.solution?.status !== 'optimal') return;
+    const generation = ++this._fvaGeneration;
+    if (this._fvaTimer !== null) clearTimeout(this._fvaTimer);
+
+    const total = this.problem.rxnIds.length;
+    this.fvaRanges = new Map();
+    this.variability = null;
+    this.fvaProgress = { running: true, done: 0, total, ms: 0 };
+
+    this._fvaTimer = setTimeout(() => {
+      this._fvaTimer = null;
+      this.runFVA(generation);
+    }, Math.max(0, Number(delay) || 0));
+  }
+
+  /** Compute every reaction's flux range in chunks, publishing partial ranges, until a newer run supersedes it. */
+  async runFVA(generation = this._fvaGeneration) {
+    if (!this.fvaEnabled || !this.problem || generation !== this._fvaGeneration) return new Map();
+
+    const problem = this.problem;
+    const ids = [...problem.rxnIds];
+    const t = performance.now();
+
+    const ranges = await problem.variabilityAsync(ids, {
+      fraction: this.pfvaEnabled ? this.pfbaBiomassPercent / 100 : 1.0,
+      pfbaFactor: this.pfvaEnabled ? DEFAULT_PFVA_FACTOR : null,
+      chunkSize: 20,
+      shouldContinue: () =>
+        this.fvaEnabled
+        && generation === this._fvaGeneration
+        && this.problem === problem,
+      onProgress: (partial, done, total) => {
+        if (generation !== this._fvaGeneration || this.problem !== problem) return;
+        this.fvaRanges = new Map(partial);
+        this.variability = this.selectedReaction
+          ? this.fvaRanges.get(this.selectedReaction) ?? null
+          : null;
+        this.fvaProgress = {
+          running: done < total,
+          done,
+          total,
+          ms: Math.round(performance.now() - t),
+        };
+        this.emit('fva-progress');
+      },
+    });
+
+    if (!this.fvaEnabled || generation !== this._fvaGeneration || this.problem !== problem) return ranges;
+
+    this.fvaRanges = new Map(ranges);
+    this.variability = this.selectedReaction
+      ? this.fvaRanges.get(this.selectedReaction) ?? null
+      : null;
+    this.fvaProgress = {
+      running: false,
+      done: this.fvaRanges.size,
+      total: ids.length,
+      ms: Math.round(performance.now() - t),
+    };
+    this.emit('fva');
+    if (this.lastRun?.method === 'fva' || this.lastRun?.method === 'pfva') {
+      const complete = this.hasCompleteFVARanges();
+      this.finishRun(complete ? 'optimal' : 'incomplete flux ranges');
+    }
+    return this.fvaRanges;
+  }
+
+  // SteadyCom
+
+  /*
+   * SteadyCom asks a different question from the one the map answers by default.
+   *
+   * The map runs joint FBA with one growth rate shared by every member, picked by
+   * the LP. SteadyCom instead treats the growth rate as the thing being searched
+   * for: fix mu and the problem becomes an ordinary LP in the fluxes and the
+   * abundances, and the community can hold together at any mu up to the largest
+   * one that still supports the required biomass. So there is a whole range of
+   * admissible growth rates, each with its own flux distribution and its own
+   * population composition, and only the top of that range is a single number.
+   *
+   * This exposes both: the range, and the solve at a growth rate the user picks
+   * inside it.
+   */
+
+  /**
+   * Whether a community can be posed as a SteadyCom problem here.
+   *
+   * Takes an id because the card in the Scenario workspace shows whichever
+   * community is *selected* in the list, which is not always the one that is
+   * open. Asked about the selected one, the answer is about that one.
+   */
+  steadyComSupport(communityId = this.scenario?.published ?? this.scenario?.id) {
+    const active = this.scenario?.published ?? this.scenario?.id;
+    if (!communityId || communityId !== active) {
+      return { supported: false, reason: 'Open this community first to load its models.' };
+    }
+    if (this.scenario?.published && !STEADYCOM_COMMUNITIES.has(communityId)) {
+      return { supported: false, reason: 'No validated SteadyCom formulation for this example.' };
+    }
+    if (!this.community || !this.species.some((sp) => sp.enabled !== false)) {
+      return { supported: false, reason: 'No active member models are available.' };
+    }
+    const embedded = globalThis.__ESCHER_MCMC_DATA__;
+    const manifest = this.publishedManifests.get(communityId);
+    if (embedded && this.scenario?.published && !(manifest?.members ?? []).every((member) =>
+      `models/published/${communityId}/${member.model}` in embedded)) {
+      return { supported: false, reason: 'This older standalone has only map excerpts; growth rates need the updated one.' };
+    }
+    return { supported: true, communityId, kind: communityId === 'steadycom-gut-nine' ? 'joint' : 'separate', reason: '' };
+  }
+
+  /** What a computed SteadyCom range depends on, as a string: a range under another key is stale. */
+  steadyComKey() {
+    return JSON.stringify({
+      community: this.scenario?.published ?? this.scenario?.id,
+      revision: this._steadyComRevision,
+      members: this.species.map((sp) => [sp.id, sp.file, sp.enabled !== false]),
+      medium: Object.entries(this.medium).sort(([a], [b]) => a.localeCompare(b)),
+      overrides: [...this.effectiveOverrides()].sort(([a], [b]) => a.localeCompare(b)),
+      fiber: this.steadyComConfig.fiber,
+    });
+  }
+
+  cancelSteadyCom({ silent = false } = {}) {
+    const running = Boolean(this._steadyComController);
+    this._steadyComGeneration += 1;
+    this._steadyComController?.abort();
+    this._steadyComController = null;
+    if (this.steadyComState) this.steadyComState.phase = null;
+    if (running && !silent) {
+      this.status = { ...this.status, state: 'ok', message: 'SteadyCom calculation cancelled.' };
+      this.emit('steadycom');
+    }
+  }
+
+  /** Forget the SteadyCom range and problem, and any fixed-µ solution on screen. */
+  invalidateSteadyCom() {
+    this.cancelSteadyCom({ silent: true });
+    this._steadyComRevision += 1;
+    this.steadyComState = null;
+    this._steadyComSpec = null;
+    if (this.solution?.steadyCom) {
+      this.solution = null;
+      this.refreshFluxScale();
+      this.crossFeeding = { links: [], perMetabolite: [] };
+      this.growth = new Map();
+      this.crossFeedingExplorer.index = null;
+    }
+  }
+
+  /** The B. thetaiotaomicron fiber limit of the nine-species example (C-mmol gDW⁻¹ h⁻¹, 1 to 30), or null for the default. */
+  setSteadyComFiber(value) {
+    if (this.scenario?.published !== 'steadycom-gut-nine') throw new Error('Fiber conditions apply to the nine-species example.');
+    const rate = value === null ? null : Number(value);
+    if (rate !== null && (!Number.isFinite(rate) || rate < 1 || rate > 30)) {
+      throw new Error('Choose a B. thetaiotaomicron fiber limit between 1 and 30 C-mmol gDW⁻¹ h⁻¹.');
+    }
+    this.invalidateSteadyCom();
+    this.steadyComConfig.fiber = rate === null ? null : { bacteroides: rate, faecalibacterium: 5 };
+    this.status = { ...this.status, state: 'ok', message: 'Condition changed; recalculate the growth-rate range.' };
+    this.emit('steadycom');
+  }
+
+  /**
+   * Whether a fixed-µ solve returns the cheapest flux distribution (least total
+   * member flux) or the first feasible one. It does not change the µ range, so
+   * the range stays valid; only the next solve reads it.
+   */
+  setSteadyComParsimonious(on) {
+    this.steadyComConfig.parsimonious = Boolean(on);
+    if (this.solution?.steadyCom && Boolean(this.solution.steadyCom.parsimonious) !== this.steadyComConfig.parsimonious) {
+      this.status = { ...this.status, state: 'ok', message: 'Solve at this µ again to apply the change.' };
+    }
+    this.emit('steadycom');
+  }
+
+  /** The SteadyCom problem for the open community with the current medium and overrides, cached under steadyComKey. */
+  async steadyComProblem({ recompute = false } = {}) {
+    const support = this.steadyComSupport();
+    if (!support.supported) throw new Error(support.reason);
+    const key = this.steadyComKey();
+    if (!recompute && this._steadyComSpec?.key === key) return this._steadyComSpec.spec;
+    const members = [];
+    for (const sp of this.species) {
+      if (sp.enabled === false && support.kind !== 'joint') continue;
+      const model = await this.loadModel(sp.file);
+      members.push({ id: sp.id, model: new Model(model.toJSON()) });
+    }
+    let spec;
+    if (support.kind === 'joint') {
+      const bounds = await fetchText(`${this.base}/models/published/${support.communityId}/bounds.csv`);
+      spec = jointSteadyComSpec(members, bounds, { fiber: this.steadyComConfig.fiber });
+      for (const sp of this.species.filter(sp => sp.enabled === false)) {
+        spec.constraints ??= [];
+        spec.constraints.push({ name: `disabled|${sp.id}`, biomass: [{ species: sp.id, coef: 1 }], lo: 0, hi: 0 });
+      }
+      for (const [mid, rid] of spec.metadata.communityUptake) {
+        const base = spec.metadata.bases.get(mid);
+        if (base in this.medium) spec.reactions.get(rid).upperBound = this.medium[base];
+      }
+      for (const [id, bounds] of this.effectiveOverrides()) {
+        const { id: rid, species } = splitId(id);
+        const reaction = spec.reactions.get(rid);
+        if (reaction && ((!species && reaction.species === 'comm') || reaction.species === species)) {
+          reaction.lowerBound = bounds.lower; reaction.upperBound = bounds.upper;
+        }
+      }
+    } else {
+      spec = steadyComSpec(members, this.medium, 1);
+      for (const [id, bounds] of this.effectiveOverrides()) {
+        const { id: rid, species } = splitId(id);
+        if (species) {
+          const reaction = members.find((member) => member.id === species)?.model.reactions.get(rid);
+          if (reaction) { reaction.lowerBound = bounds.lower; reaction.upperBound = bounds.upper; }
+        } else {
+          const bases = new Set(spec.members.flatMap(member => Object.keys(member.exchangeFor)));
+          for (const base of bases) {
+            if (communityExchange(base) !== id) continue;
+            spec.communityExchangeBounds ??= {};
+            spec.communityExchangeBounds[base] = { lower: bounds.lower, upper: bounds.upper };
+            spec.communityUptake[base] = Math.max(0, -bounds.lower);
+          }
+        }
+      }
+    }
+    if (this.steadyComKey() !== key) throw staleSteadyComError();
+    this._steadyComSpec = { key, communityId: support.communityId, spec };
+    return spec;
+  }
+
+  /** Search the range of admissible community growth rates (h⁻¹). Resolves to the SteadyCom state with `min` and `max`. */
+  async steadyComRange({ recompute = false } = {}) {
+    const key = this.steadyComKey();
+    if (!recompute && this.steadyComState?.key === key && Number.isFinite(this.steadyComState.max)) return this.steadyComState;
+    this.cancelSteadyCom({ silent: true });
+    const generation = this._steadyComGeneration;
+    const controller = new AbortController();
+    this._steadyComController = controller;
+    const id = this.scenario?.published ?? this.scenario?.id;
+    const state = { communityId: id, key, min: null, max: null, source: 'computed', phase: 'range', progress: null, mu: null, feasible: null, abundances: new Map() };
+    this.steadyComState = state;
+    this.status = { ...this.status, state: 'busy', message: 'Calculating permitted community growth rates…' };
+    this.emit('steadycom');
+    const started = performance.now();
+    try {
+      const spec = await this.steadyComProblem({ recompute });
+      if (generation !== this._steadyComGeneration || this.steadyComKey() !== key) {
+        throw staleSteadyComError();
+      }
+      // Near the top of the range the nine-species LPs get slow: with the Figure 4
+      // fiber limit (Bt 4) the step at 0.0575 h⁻¹ takes more than 30 s, which
+      // would fail the whole search. Those steps get more time, and the task as a
+      // whole too.
+      const nine = id === 'steadycom-gut-nine';
+      const result = await this.runSteadyComTask(spec, {
+        type: 'range', options: { upperGuess: nine ? 0.1 : 1, tolerance: 1e-5,
+          biomassCap: steadyComCapIsSafe(spec) ? 2 * (spec.totalBiomass ?? 1) : null, timeLimitSeconds: nine ? 180 : 30 },
+      }, { signal: controller.signal, ...(nine ? { timeoutMs: 1800000 } : {}), onProgress: (progress) => {
+        if (generation !== this._steadyComGeneration || this.steadyComKey() !== key) return;
+        state.progress = progress;
+        this.status.message = `Calculating μ range: ${progress.iterations} LP evaluations…`;
+        this.emit('steadycom');
+      } });
+      if (generation !== this._steadyComGeneration || this.steadyComKey() !== key) throw staleSteadyComError();
+      if (result.status !== 'optimal' || !result.zeroFeasible || !Number.isFinite(result.rangeUpper)) {
+        throw new Error(result.message || 'The solver did not establish a permitted growth-rate interval.');
+      }
+      Object.assign(state, { min: result.rangeLower, max: result.rangeUpper, upperBound: result.upperBound,
+        resolution: result.resolution, iterations: result.iterations, seconds: Math.round((performance.now() - started) / 100) / 10,
+        phase: null, progress: null, error: null });
+      this.status = { ...this.status, state: 'ok', message: `Permitted μ: ${state.min}–${state.max.toFixed(6)} h⁻¹ for the current constraints.` };
+      this.emit('steadycom');
+      return state;
+    } catch (error) {
+      if (generation !== this._steadyComGeneration || this.steadyComKey() !== key) {
+        throw staleSteadyComError();
+      }
+      state.phase = null;
+      state.error = error.message;
+      this.status = { ...this.status, state: error.name === 'AbortError' ? 'ok' : 'error', message: error.message };
+      this.emit('steadycom');
+      throw error;
+    } finally {
+      if (this._steadyComController === controller) this._steadyComController = null;
+    }
+  }
+
+  /**
+   * Solve SteadyCom at a fixed growth rate `mu` (h⁻¹) inside the computed range,
+   * and install the resulting abundances and fluxes as the solution. Fluxes are
+   * per unit biomass of each member.
+   */
+  async solveSteadyComAt(mu) {
+    if (typeof mu !== 'number' || !Number.isFinite(mu) || mu < 0) throw new Error('Enter a finite growth rate of zero or more.');
+    const key = this.steadyComKey();
+    let state = this.steadyComState;
+    if (state?.key !== key || !Number.isFinite(state?.max)) {
+      this.retireOrdinaryAnalysis();
+      state = await this.steadyComRange();
+    }
+    // The µ field reads a bound back to 15 significant digits, which can land
+    // a hair outside it (0.7886886596679688 comes back as 0.788688659667969):
+    // that much is the bound itself.
+    const slack = 1e-9 * Math.max(1, Math.abs(state.max));
+    if (mu < state.min - slack || mu > state.max + slack) {
+      throw new Error(`Choose μ inside the computed range ${+state.min.toFixed(6)}–${+state.max.toFixed(6)} h⁻¹.`);
+    }
+    return this.solveSteadyComFixed(Math.min(state.max, Math.max(state.min, mu)), state, key);
+  }
+
+  /**
+   * Open a SteadyCom community solved: one fixed-µ solve at the growth rate it
+   * opens at (STEADYCOM_OPEN_MU), in the worker, while its map is already on
+   * screen, with its cross-feeding lines switched on. The range is not searched
+   * first: that runs tens of LPs, and the panel computes it when asked, as it
+   * always has. Resolves to the SteadyCom state, or null when the solve failed
+   * (the status line says why) or was overtaken by a change or another case.
+   */
+  async solveSteadyComOnOpen() {
+    const id = this.scenario?.published;
+    const mu = STEADYCOM_OPEN_MU.get(id);
+    if (mu === undefined) return null;
+    const key = this.steadyComKey();
+    const context = this.workContextKey();
+    const settled = this.savedWork?.context === context && this.savedWork.scenario === this.scenarioSignature();
+    const state = { communityId: id, key, min: null, max: null, source: 'computed', phase: null, progress: null, mu: null, feasible: null, abundances: new Map() };
+    this.steadyComState = state;
+    try {
+      await this.solveSteadyComFixed(mu, state, key);
+    } catch {
+      return null;
+    }
+    // The composition it sets is part of what was opened, not an edit.
+    if (settled) {
+      this.settleOpenedSteadyCom(context);
+    }
+    this._caseView ??= { showCrossFeeding: this.view.showCrossFeeding };
+    this.setView({ showCrossFeeding: true });
+    return state;
+  }
+
+  /** Retire pending ordinary analyses while retaining the installed numerical result. */
+  retireOrdinaryAnalysis() {
+    this.lastRun = null;
+    if (this.fvaProgress.running || this._fvaTimer !== null) {
+      this.cancelFVA({ clear: false, emit: false });
+    }
+  }
+
+  /** The fixed-µ solve of solveSteadyComAt, into `state`, for the constraints under `key`. */
+  async solveSteadyComFixed(mu, state, key) {
+    this.retireOrdinaryAnalysis();
+    this.cancelSteadyCom({ silent: true });
+    const generation = this._steadyComGeneration;
+    const controller = new AbortController();
+    this._steadyComController = controller;
+    const parsimonious = Boolean(this.steadyComConfig?.parsimonious);
+    state.phase = 'fixed'; state.parsimonious = parsimonious; state.error = null;
+    this.status = { ...this.status, state: 'busy', message: `Calculating ${parsimonious ? 'the least total flux' : 'fluxes'} at fixed μ = ${+mu.toFixed(6)} h⁻¹…` };
+    this.emit('steadycom');
+    const started = performance.now();
+    try {
+      const spec = await this.steadyComProblem();
+      if (generation !== this._steadyComGeneration || this.steadyComKey() !== key) {
+        throw staleSteadyComError();
+      }
+      // The parsimonious LP carries an extra column and two rows per reversible
+      // reaction and is an optimisation rather than a feasibility question, so
+      // it gets more time than the plain solve.
+      const at = parsimonious
+        ? await this.runSteadyComTask(spec, { type: 'parsimonious', mu, options: { timeLimitSeconds: 600 } }, { signal: controller.signal, timeoutMs: 900000 })
+        : await this.runSteadyComTask(spec, { type: 'fixed', mu, options: { timeLimitSeconds: 60 } }, { signal: controller.signal });
+      if (generation !== this._steadyComGeneration || this.steadyComKey() !== key) throw staleSteadyComError();
+      if (at.status !== 'optimal' || !at.feasible) {
+        throw new Error(at.status === 'infeasible' ? `No feasible flux distribution was found at μ = ${mu} h⁻¹.`
+          : `The solver did not finish the fixed-μ calculation (${at.status}).${this.solution ? ' The previous solution is kept.' : ''}`);
+      }
+      const owners = spec.metadata?.reactionOwners ?? null;
+      // An absent member's abundance is an LP column at its zero bound, which
+      // can come back a hair below zero; anything further off is left to fail.
+      const cleanAbundance = (x) => (x === undefined || x === null ? 0 : (x < 0 && x > -1e-9 ? 0 : x));
+      const fluxes = new Map();
+      for (const [id, value] of toMergedFluxes(at.fluxes, '@', owners)) {
+        const { species } = splitId(id);
+        const abundance = species ? cleanAbundance(at.abundances.get(species)) : 1;
+        fluxes.set(id, abundance > 1e-9 ? value / abundance : 0);
+      }
+      for (const sp of this.species) sp.abundance = cleanAbundance(at.abundances.get(sp.id));
+      this.community.abundances = new Map([...at.abundances].map(([id, x]) => [id, cleanAbundance(x)]));
+      this.refreshCompositionProblem();
+      this.parsimonious = false; this.loopless = false; this.cycleFree = false;
+      this.omics.gimmeEnabled = false; this.omics.gimmeResult = null;
+      this.setFVA(false);
+      Object.assign(state, { phase: null, mu, feasible: true, abundances: at.abundances, totalBiomass: at.total,
+        originalFluxes: at.fluxes, parsimonious, totalFlux: parsimonious ? at.totalFlux : null,
+        solveMs: Math.round(performance.now() - started) });
+      this.applySolution({ status: 'optimal', objectiveValue: mu, fluxes, solver: 'glpk',
+        steadyCom: { mu, key, abundances: at.abundances, totalBiomass: at.total, spec, originalFluxes: at.fluxes,
+          parsimonious, totalFlux: state.totalFlux } }, { allowFVA: false });
+      this.status = { ...this.status, state: 'ok', message: parsimonious
+        ? `SteadyCom at fixed μ = ${+mu.toFixed(6)} h⁻¹, least total member flux (${at.totalFlux.toFixed(3)} mmol h⁻¹).`
+        : `SteadyCom at fixed μ = ${+mu.toFixed(6)} h⁻¹: one feasible composition.`, solveMs: state.solveMs };
+      this.emit('steadycom');
+      return state;
+    } catch (error) {
+      if (generation !== this._steadyComGeneration || this.steadyComKey() !== key) {
+        throw staleSteadyComError();
+      }
+      state.phase = null;
+      state.error = error.message;
+      this.status = { ...this.status, state: error.name === 'AbortError' ? 'ok' : 'error', message: error.message };
+      this.emit('steadycom');
+      throw error;
+    } finally {
+      if (this._steadyComController === controller) this._steadyComController = null;
+    }
+  }
+
+  /** Switch a species on or off and rebuild, keeping a hand-made drawing (see keepsDrawingOnSpeciesToggle). */
+  async setSpeciesEnabled(id, enabled) {
+    this.assertPublishedStudyConstraints();
+    const sp = this.species.find((s) => s.id === id);
+    if (!sp || sp.enabled === enabled) return;
+    // With no species left there is no community, and the map would go with it.
+    if (!enabled && !this.species.some((other) => other !== sp && other.enabled)) {
+      this.status = { ...this.status, state: 'warn', message: 'At least one species has to stay enabled.' };
+      this.emit('species');
+      return;
+    }
+    const keepDrawing = this.keepsDrawingOnSpeciesToggle();
+    sp.enabled = enabled;
+    // Bounds edited on any species are kept. Those of a species that has left
+    // are skipped while it is out (applyOverrides sets only what the problem
+    // has) and apply again when it is back. Clearing them all would throw away
+    // the edits on every species that stays.
+    this.selectedReaction = null;
+    this.selectedEntity = null;
+    await this.rebuild({ relayout: !keepDrawing });
+    if (keepDrawing && enabled && this.map && !this.map.cells.some((cell) => cell.id === id)) {
+      this.status = {
+        ...this.status,
+        state: 'warn',
+        message: `${id} is simulated again but is not drawn on this hand-built map; the Cell tool draws it.`,
+      };
+      this.emit('status');
+    }
+  }
+
+  /**
+   * Whether switching a species on or off keeps the map as drawn.
+   *
+   * A drawing made by hand is kept, with its undo history: a species that
+   * leaves stays on it, dimmed and not simulated, and comes back as it was.
+   * Only a map nobody has touched is laid out again. A genome-scale model never
+   * is, since that would take minutes.
+   */
+  keepsDrawingOnSpeciesToggle() {
+    // Edits waiting in Redo are hand-made too: laying the map out again would
+    // clear the history and lose them. So is a scenario's curated map.
+    const handMade = this.mapHistory.canUndo || this.mapHistory.canRedo || Boolean(this.scenarioMapFile);
+    return Boolean(this.map) && (handMade || this.anySpeciesTooLargeToAutoDraw());
+  }
+
+  /**
+   * Like tooLargeToAutoDraw, but over every species of the community, switched
+   * off ones included: switching a genome-scale species back on must not lay
+   * the map out again either.
+   */
+  anySpeciesTooLargeToAutoDraw() {
+    return this.species.some((sp) => {
+      const model = this.models.get(sp.file);
+      return Boolean(model) && (model.reactions.size > AUTO_DRAW_REACTION_LIMIT
+        || model.metabolites.size > AUTO_DRAW_METABOLITE_LIMIT);
+    });
+  }
+
+  /** Species that are switched off but still drawn on the map, dimmed. */
+  disabledDrawnSpeciesIds() {
+    const drawn = new Set((this.map?.cells ?? []).map((cell) => cell.id));
+    return this.species.filter((sp) => !sp.enabled && drawn.has(sp.id)).map((sp) => sp.id);
+  }
+
+  async setAbundance(id, value) {
+    this.assertPublishedStudyConstraints();
+    const sp = this.species.find((s) => s.id === id);
+    const abundance = finiteInput(value);
+    if (!sp || abundance === null) return;
+    sp.abundance = Math.max(0, abundance);
+    // Abundance lives in the stoichiometry of the transfer reactions, so this is
+    // structural; the geometry, however, does not depend on it.
+    await this.rebuild({ relayout: false });
+  }
+
+  /** Use a preset objective (equal growth, biomass sum, product), dropping any edited one. Structural: rebuilds and solves. */
+  async setObjective(type, target = null) {
+    this.assertPublishedStudyConstraints();
+    this._changeConstraints('Objective preset', 'objective-preset', () => {
+      this.objective = type;
+      this.productTarget = target;
+      this.customObjective = null;
+    });
+    await this.rebuild({ relayout: false });
+  }
+
+  /** Set the uptake limit of a medium metabolite (positive, mmol/gDW/h) and solve. */
+  setMediumLimit(base, value) {
+    this.assertPublishedStudyConstraints();
+    // A cleared or half-typed field is not a limit of 0.
+    const limit = finiteInput(value);
+    if (limit === null) return null;
+    const changed = this._changeConstraints(`Medium supply of ${base}`, `medium:${base}`, () => {
+      if (this.scenario?.published === 'steadycom-gut-nine') this.overrides.delete(`UT_${base}(u)`);
+      this.medium[base] = Math.abs(limit);
+      // Per-reaction overrides are applied after the medium, so an override left
+      // on this exchange would swallow the slider and make it look broken. The
+      // slider is the more direct expression of intent, so it wins.
+      this.overrides.delete(communityExchange(base));
+    });
+    if (!changed) return this.solution;
+    this.invalidateSteadyCom();
+    this.applyOverrides();
+    this.solve();
+  }
+
+  /**
+   * Change a reaction's bounds without solving; caller decides when to solve.
+   *
+   * A side given as null, undefined, an empty string or anything that is not a
+   * finite number is left as it is: a field the user has just cleared is not a
+   * bound of 0. The lower bound never ends above the upper one. An exchange the
+   * medium controls is written to the medium (see _writeReactionBounds), so
+   * this and the Medium card never disagree.
+   */
+  setReactionBounds(rid, lower, upper) {
+    this.assertPublishedStudyConstraints();
+    const current = this.currentReactionBounds(rid);
+    if (!this.community?.merged.reactions.has(rid) || this.reactionHeldOut(rid)
+      || this.geneClosedReactions().has(rid)) return { ...current };
+    const lowerValue = finiteInput(lower);
+    const upperValue = finiteInput(upper);
+    if (lowerValue === null && upperValue === null) return { ...current };
+    const next = {
+      lower: lowerValue ?? current.lower,
+      upper: upperValue ?? current.upper,
+    };
+    if (next.lower > next.upper) {
+      if (lowerValue === null) next.upper = next.lower;
+      else next.lower = next.upper;
+    }
+    if (next.lower === current.lower && next.upper === current.upper) return { ...current };
+    this._changeConstraints(`Bounds of ${this.reactionTitle(rid)}`, `bounds:${rid}`, () => this._writeReactionBounds(rid, next));
+    this.invalidateSteadyCom();
+    this.applyOverrides();
+    return next;
+  }
+
+  /** The bounds the LP was built with: the model's, with the medium of the last rebuild. */
+  defaultReactionBounds(rid) {
+    const j = this.problem?.rxnIndex.get(rid);
+    if (j === undefined) return { lower: 0, upper: 0 };
+    return { lower: this.defaultBounds.lb[j], upper: this.defaultBounds.ub[j] };
+  }
+
+  /** The bounds in force: 0 when a gene knockout closes it, else an override, else what the medium gives an exchange, else the model's. */
+  currentReactionBounds(rid) {
+    if (this.geneClosedReactions().has(rid)) return { lower: 0, upper: 0 };
+    return this.overrides.get(rid) ?? this.mediumReactionBounds(rid) ?? this.defaultReactionBounds(rid);
+  }
+
+  /** The bounds a reaction had when the scenario was opened: the model's, with the medium it was opened with. */
+  originalReactionBounds(rid) {
+    return this.mediumReactionBounds(rid, this.baseMedium, { absentClosed: true }) ?? this.defaultReactionBounds(rid);
+  }
+
+  /** Whether the user closed a reaction (both bounds 0) that was open as opened. */
+  reactionKnockedOut(rid) {
+    return isKnockedOut(this.currentReactionBounds(rid), this.originalReactionBounds(rid));
+  }
+
+  /** Put one reaction back as opened, an exchange's medium supply included, and solve. */
+  resetReaction(rid) {
+    this.assertPublishedStudyConstraints();
+    if (!this.community?.merged.reactions.has(rid) || this.reactionHeldOut(rid)) return this.solution;
+    const changed = this._changeConstraints(`Reset ${this.reactionTitle(rid)}`, null, () => this._resetReactionBounds(rid));
+    if (!changed) return this.solution;
+    this.invalidateSteadyCom();
+    this.applyOverrides();
+    this.solve();
+  }
+
+  /** Put every reaction back as opened, the medium and gene knockouts included, and solve. The objective is left as it is. */
+  resetAllReactions() {
+    this.assertPublishedStudyConstraints();
+    const changed = this._changeConstraints('Reset all reactions', null, () => {
+      this.overrides.clear();
+      this.geneKnockouts.clear();
+      const medium = { ...this.baseMedium };
+      // A metabolite added to the medium since is closed rather than dropped:
+      // dropped, its exchange would keep whatever the last rebuild gave it.
+      for (const base of Object.keys(this.medium)) {
+        if (!(base in medium)) {
+          medium[base] = 0;
+        }
+      }
+      this.medium = medium;
+    });
+    if (!changed) return this.solution;
+    this.invalidateSteadyCom();
+    this.applyOverrides();
+    this.solve();
+  }
+
+  /** Close a reaction (bounds 0, 0) and solve. */
+  knockout(rid) {
+    this.assertPublishedStudyConstraints();
+    if (!this.community?.merged.reactions.has(rid) || this.reactionHeldOut(rid)
+      || this.geneClosedReactions().has(rid)) return this.solution;
+    const current = this.currentReactionBounds(rid);
+    if (current.lower === 0 && current.upper === 0) return this.solution;
+    this.invalidateSteadyCom();
+    this._changeConstraints(`Knock out ${this.reactionTitle(rid)}`, null, () => this._writeReactionBounds(rid, { lower: 0, upper: 0 }));
+    this.applyOverrides();
+    return this.solve();
+  }
+
+  // Gene knockouts
+
+  /**
+   * Every gene the community's reaction rules name, keyed `species@gene`
+   * (merged reactions keep their species' own rules, so two strains that
+   * share a gene id are told apart): `{genes: Map<key, {key, gene, speciesId,
+   * name, reactions}>, rules: Map<rid, rule>}`. Cached per built model.
+   */
+  geneIndex() {
+    const community = this.community;
+    const merged = community?.merged;
+    if (!merged || this.isZunigaStudy) return { genes: new Map(), rules: new Map() };
+    const cached = geneIndexCache.get(merged);
+    if (cached?.community === community) return cached.value;
+    const value = { genes: new Map(), rules: new Map() };
+    const names = new Map();
+    for (const sp of this.species) {
+      for (const gene of this.models.get(sp.file)?.genes ?? []) names.set(namespaced(sp.id, String(gene.id)), gene.name);
+    }
+    for (const [rid, reaction] of merged.reactions) {
+      const rule = reaction.geneReactionRule ?? '';
+      if (!rule.trim()) continue;
+      const speciesId = community.reactionOwner?.get(rid)?.speciesId ?? null;
+      value.rules.set(rid, rule);
+      for (const gene of geneRuleGenes(rule)) {
+        const key = speciesId ? namespaced(speciesId, gene) : gene;
+        if (!value.genes.has(key)) value.genes.set(key, { key, gene, speciesId, name: names.get(key) ?? gene, reactions: [] });
+        value.genes.get(key).reactions.push(rid);
+      }
+    }
+    geneIndexCache.set(merged, { community, value });
+    return value;
+  }
+
+  /** The reactions the genes `keys` close, each with the knocked-out genes its rule names: Map<rid, key[]>. */
+  geneClosedReactionsFor(keys) {
+    const index = this.geneIndex();
+    const bySpecies = new Map();
+    for (const key of keys) {
+      const gene = index.genes.get(key);
+      if (!gene) continue;
+      if (!bySpecies.has(gene.speciesId)) bySpecies.set(gene.speciesId, { deleted: new Set(), reactions: new Set() });
+      const entry = bySpecies.get(gene.speciesId);
+      entry.deleted.add(gene.gene);
+      for (const rid of gene.reactions) entry.reactions.add(rid);
+    }
+    const closed = new Map();
+    for (const [speciesId, { deleted, reactions }] of bySpecies) {
+      const rules = [...reactions].map((rid) => [rid, index.rules.get(rid)]);
+      for (const [rid, genes] of geneKnockoutReactions(rules, deleted).closed) {
+        closed.set(rid, genes.map((gene) => (speciesId ? namespaced(speciesId, gene) : gene)));
+      }
+    }
+    return closed;
+  }
+
+  /** The reactions the gene knockouts in force close, as geneClosedReactionsFor. Cached until they or the model change. */
+  geneClosedReactions() {
+    if (!this.geneKnockouts.size) return EMPTY_MAP;
+    const signature = [...this.geneKnockouts].sort().join('\n');
+    const cached = this._geneClosed;
+    if (cached?.community === this.community && cached.signature === signature) return cached.value;
+    const value = this.geneClosedReactionsFor(this.geneKnockouts);
+    this._geneClosed = { community: this.community, signature, value };
+    return value;
+  }
+
+  /** The per-reaction bounds applied over the medium: the overrides, with every reaction a gene knockout closes held at 0. */
+  effectiveOverrides() {
+    const closed = this.geneClosedReactions();
+    if (!closed.size) return this.overrides;
+    const out = new Map(this.overrides);
+    for (const rid of closed.keys()) out.set(rid, { lower: 0, upper: 0 });
+    return out;
+  }
+
+  /** A gene as history entries and messages name it: its id, and its species when there are several. */
+  geneTitle(key) {
+    const gene = this.geneIndex().genes.get(key);
+    if (!gene) return String(key);
+    return gene.speciesId && this.species.length > 1 ? `${gene.gene} (${gene.speciesId})` : gene.gene;
+  }
+
+  /**
+   * What knocking out `key` does on top of the knockouts in force: the
+   * reactions it would close or, when it is out already, the ones it closes.
+   */
+  geneKnockoutEffect(key) {
+    const now = this.geneClosedReactions();
+    if (this.geneKnockouts.has(key)) return [...now].filter(([, keys]) => keys.includes(key)).map(([rid]) => rid);
+    return [...this.geneClosedReactionsFor([...this.geneKnockouts, key]).keys()].filter((rid) => !now.has(rid));
+  }
+
+  /**
+   * Genes matching a search (every word in the id, name or species), the
+   * knocked-out ones first: `{key, gene, speciesId, name, reactions,
+   * knockedOut, closes}`, `closes` as geneKnockoutEffect. An empty query
+   * lists the knocked-out genes.
+   */
+  geneSearch(query = '', { limit = 8 } = {}) {
+    const words = normalizeSearch(query).split(/\s+/).filter(Boolean);
+    const genes = [...this.geneIndex().genes.values()].filter((gene) => (words.length
+      ? words.every((word) => normalizeSearch(`${gene.gene} ${gene.name} ${gene.speciesId ?? ''}`).includes(word))
+      : this.geneKnockouts.has(gene.key)));
+    genes.sort((a, b) => Number(this.geneKnockouts.has(b.key)) - Number(this.geneKnockouts.has(a.key))
+      || a.gene.localeCompare(b.gene) || String(a.speciesId ?? '').localeCompare(String(b.speciesId ?? '')));
+    return genes.slice(0, limit).map((gene) => ({
+      ...gene, reactions: [...gene.reactions], knockedOut: this.geneKnockouts.has(gene.key), closes: this.geneKnockoutEffect(gene.key),
+    }));
+  }
+
+  /**
+   * Knock genes out (`on`) or restore them, as one undoable edit, and solve.
+   * Every reaction whose rule the knocked-out genes make false is held at 0;
+   * an isozyme left keeps it open.
+   */
+  setGeneKnockouts(keys, on = true) {
+    this.assertPublishedStudyConstraints();
+    const index = this.geneIndex();
+    const targets = [...new Set(keys)].filter((key) => index.genes.has(key) && this.geneKnockouts.has(key) !== on);
+    if (!targets.length) return this.solution;
+    this.invalidateSteadyCom();
+    const names = targets.map((key) => this.geneTitle(key));
+    const label = `${on ? 'Knock out' : 'Restore'} gene${targets.length === 1 ? '' : 's'} ${names.slice(0, 3).join(', ')}${names.length > 3 ? ', …' : ''}`;
+    this._changeConstraints(label, null, () => {
+      for (const key of targets) {
+        if (on) this.geneKnockouts.add(key);
+        else this.geneKnockouts.delete(key);
+      }
+    });
+    this.applyOverrides();
+    return this.solve();
+  }
+
+  /** Knock a gene out, or restore it when it is out, and solve. */
+  toggleGeneKnockout(key) {
+    return this.setGeneKnockouts([key], !this.geneKnockouts.has(key));
+  }
+
+  /**
+   * The gene knockouts as the Changes list shows them: `{key, gene, speciesId,
+   * title, reactions}`, `reactions` being the ones closed through that gene.
+   */
+  geneKnockoutChanges() {
+    const closed = this.geneClosedReactions();
+    const index = this.geneIndex();
+    return [...this.geneKnockouts].filter((key) => index.genes.has(key)).sort().map((key) => {
+      const gene = index.genes.get(key);
+      return {
+        key, gene: gene.gene, speciesId: gene.speciesId, title: this.geneTitle(key),
+        reactions: [...closed].filter(([, keys]) => keys.includes(key)).map(([rid]) => rid),
+      };
+    });
+  }
+
+  /** Gene keys read from a file: the ones this community has; the others are reported and left out. */
+  geneKnockoutsFrom(raw) {
+    const index = this.geneIndex();
+    const keys = Array.isArray(raw) ? raw.map(String) : [];
+    const known = keys.filter((key) => index.genes.has(key));
+    if (known.length < keys.length) this.addLog('warn', `${keys.length - known.length} knocked-out gene(s) in the file are not in this model; they were left out.`);
+    return new Set(known);
+  }
+
+  // Reactions and bounds
+
+  /**
+   * The reactions whose bounds the medium sets: per reaction id its medium
+   * metabolite and the side the medium owns. That is the community exchange of
+   * each medium metabolite (the lower bound is the supply) or, in a joint
+   * community, its uptake reaction (the upper bound is the supply). `byBase`
+   * goes the other way, and `transferBase` gives the metabolite each species'
+   * exchange moves.
+   */
+  mediumReactions() {
+    const community = this.community;
+    const merged = community?.merged;
+    const none = { byReaction: new Map(), byBase: new Map(), transferBase: new Map() };
+    if (!merged || this.isZunigaStudy) return none;
+    const cached = mediumReactionCache.get(merged);
+    if (cached?.community === community) return cached.value;
+    const value = none;
+    for (const [base, ids] of community.communityExchangeIds ?? []) {
+      if (!ids?.uptake || !merged.reactions.has(ids.uptake)) continue;
+      value.byReaction.set(ids.uptake, { base, side: 'upper' });
+      value.byBase.set(base, ids.uptake);
+    }
+    for (const [base, transfers] of community.transfersByBase ?? []) {
+      const id = communityExchange(base);
+      if (!value.byBase.has(base) && merged.reactions.has(id)) {
+        value.byReaction.set(id, { base, side: 'lower' });
+        value.byBase.set(base, id);
+      }
+      for (const transfer of transfers) value.transferBase.set(transfer.reactionId, base);
+    }
+    mediumReactionCache.set(merged, { community, value });
+    return value;
+  }
+
+  /**
+   * The bounds `medium` gives a reaction the medium controls, as applyOverrides
+   * sets them, or null for any other reaction. A metabolite the medium does not
+   * list keeps the bounds of the last rebuild, or, with `absentClosed`, is
+   * closed to uptake as a freshly built community has it.
+   */
+  mediumReactionBounds(rid, medium = this.medium, { absentClosed = false } = {}) {
+    const entry = this.mediumReactions().byReaction.get(rid);
+    if (!entry) return null;
+    const defaults = this.defaultReactionBounds(rid);
+    const listed = Object.prototype.hasOwnProperty.call(medium ?? {}, entry.base);
+    const limit = Math.abs(Number(medium?.[entry.base]) || 0);
+    if (entry.side === 'upper') return { lower: defaults.lower, upper: listed ? limit : defaults.upper };
+    if (listed) return { lower: -limit, upper: 1000 };
+    return absentClosed ? { lower: 0, upper: 1000 } : defaults;
+  }
+
+  /**
+   * Store a reaction's new bounds where they belong. An exchange the medium
+   * controls takes its supply from the medium, so the supply goes there; what
+   * the medium cannot say (a cap on secretion, a forced flux) stays an override
+   * on top of it. Everything else is an override. No history, no solve.
+   */
+  _writeReactionBounds(rid, next) {
+    const bounds = { lower: next.lower, upper: next.upper };
+    const entry = this.mediumReactions().byReaction.get(rid);
+    if (!entry) {
+      this.overrides.set(rid, bounds);
+      return;
+    }
+    const { base, side } = entry;
+    const listed = Object.prototype.hasOwnProperty.call(this.medium, base);
+    const defaults = this.defaultReactionBounds(rid);
+    if (side === 'upper') {
+      if (listed || Math.abs(bounds.upper - defaults.upper) > 1e-9) this.medium[base] = Math.max(0, bounds.upper);
+      if (Math.abs(bounds.lower - defaults.lower) <= 1e-9) this.overrides.delete(rid);
+      else this.overrides.set(rid, bounds);
+      return;
+    }
+    const supply = Math.max(0, -bounds.lower);
+    if (listed || supply > 0) this.medium[base] = supply;
+    if (Math.abs(bounds.upper - 1000) <= 1e-9 && bounds.lower <= 0) this.overrides.delete(rid);
+    else this.overrides.set(rid, bounds);
+  }
+
+  /** Put one reaction's bounds back as opened, its medium supply included. No history, no solve. */
+  _resetReactionBounds(rid) {
+    this.overrides.delete(rid);
+    const entry = this.mediumReactions().byReaction.get(rid);
+    if (!entry) return;
+    if (Object.prototype.hasOwnProperty.call(this.baseMedium, entry.base)) this.medium[entry.base] = this.baseMedium[entry.base];
+    else if (Object.prototype.hasOwnProperty.call(this.medium, entry.base)) this.medium[entry.base] = 0;
+  }
+
+  /** A reaction as history entries and messages name it: its model id, and its species when there are several. */
+  reactionTitle(rid) {
+    const owner = this.community?.reactionOwner?.get(rid);
+    const id = owner?.originalId ?? rid;
+    return owner?.speciesId && this.species.length > 1 ? `${id} (${owner.speciesId})` : id;
+  }
+
+  /** Whether a reaction belongs to a species held out of the simulation, whose bounds cannot be edited now. */
+  reactionHeldOut(rid) {
+    const speciesId = this.community?.reactionOwner?.get(rid)?.speciesId;
+    return Boolean(speciesId) && this.speciesHeldOut(speciesId);
+  }
+
+  /**
+   * Every reaction whose bounds differ from the ones it was opened with, by
+   * label: `{id, label, speciesId, current, original, knockedOut, medium,
+   * genes}`, `medium` naming the medium metabolite when the change is to its
+   * supply and `genes` the knocked-out genes that close it.
+   */
+  constraintChanges() {
+    const merged = this.community?.merged;
+    if (!merged) return [];
+    const media = this.mediumReactions();
+    const genesClosing = this.geneClosedReactions();
+    const ids = new Set([...this.overrides.keys(), ...genesClosing.keys()]);
+    for (const [rid, entry] of media.byReaction) {
+      if (Object.prototype.hasOwnProperty.call(this.medium, entry.base)
+        || Object.prototype.hasOwnProperty.call(this.baseMedium, entry.base)) ids.add(rid);
+    }
+    const changes = [];
+    for (const id of ids) {
+      if (!merged.reactions.has(id)) continue;
+      const current = this.currentReactionBounds(id);
+      const original = this.originalReactionBounds(id);
+      if (sameBounds(current, original)) continue;
+      changes.push({
+        id, label: this.entityLabel('reaction', id).label,
+        speciesId: this.community.reactionOwner?.get(id)?.speciesId ?? null,
+        current: { ...current }, original: { ...original },
+        knockedOut: isKnockedOut(current, original),
+        medium: media.byReaction.get(id)?.base ?? null,
+        genes: genesClosing.get(id) ?? [],
+      });
+    }
+    return changes.sort((a, b) => a.label.localeCompare(b.label) || a.id.localeCompare(b.id));
+  }
+
+  // Constraint history
+
+  /** What the LP is asked, as plain data in a fixed order: overrides, gene knockouts, medium and objective. */
+  constraintSnapshot() {
+    const ordered = (entries) => entries.sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0));
+    const custom = this.customObjective;
+    return {
+      overrides: ordered([...this.overrides].map(([id, b]) => [id, { lower: b.lower, upper: b.upper }])),
+      geneKnockouts: [...this.geneKnockouts].sort(),
+      medium: Object.fromEntries(ordered(Object.entries(this.medium ?? {}).map(([base, value]) => [base, Number(value)]))),
+      objective: {
+        type: this.objective ?? null,
+        productTarget: this.productTarget ?? null,
+        custom: custom ? { sense: custom.sense, coefficients: Object.fromEntries(ordered(Object.entries(custom.coefficients))) } : null,
+      },
+    };
+  }
+
+  /**
+   * Run `mutate` as one constraint edit: if it changed anything, the state
+   * before it goes on the undo stack under `label`. Edits with the same `key`
+   * in quick succession (a slider drag) are one entry. Returns whether the
+   * constraints changed.
+   */
+  _changeConstraints(label, key, mutate) {
+    const before = this.constraintSnapshot();
+    mutate();
+    if (!sameConstraints(before, this.constraintSnapshot())) {
+      this.reproducibilityReplay = null;
+      const entry = this.constraintHistory.record(before, { label, key });
+      this._culpritCheck = { before: this._culpritCheck?.before ?? entry.snapshot, label };
+      return true;
+    }
+    return false;
+  }
+
+  get canUndoConstraints() { return this.constraintHistory.canUndo; }
+  get canRedoConstraints() { return this.constraintHistory.canRedo; }
+
+  /** Take back the last constraint edit and solve. Resolves to `{label}` of what was undone, or null. */
+  async undoConstraints() {
+    this.assertPublishedStudyConstraints();
+    const entry = this.constraintHistory.undo(this.constraintSnapshot());
+    if (!entry) return null;
+    await this.restoreConstraintSnapshot(entry.snapshot);
+    this.reportConstraintStep(`Undone: ${entry.label}`);
+    return entry;
+  }
+
+  /** Apply again the last constraint edit undone, and solve. Resolves to `{label}`, or null. */
+  async redoConstraints() {
+    this.assertPublishedStudyConstraints();
+    const entry = this.constraintHistory.redo(this.constraintSnapshot());
+    if (!entry) return null;
+    await this.restoreConstraintSnapshot(entry.snapshot);
+    this.reportConstraintStep(`Redone: ${entry.label}`);
+    return entry;
+  }
+
+  reportConstraintStep(message) {
+    this.addLog('ok', message);
+    if (this.solution?.status === 'optimal') this.status = { ...this.status, state: 'ok', message };
+    this.emit('constraints');
+  }
+
+  /**
+   * Make a snapshot the constraints in force and solve. A different preset
+   * objective changes the community's structure, so that rebuilds.
+   */
+  async restoreConstraintSnapshot(snapshot) {
+    this.invalidateSteadyCom();
+    const objective = snapshot?.objective ?? {};
+    const structural = (objective.type ?? null) !== (this.objective ?? null)
+      || (objective.productTarget ?? null) !== (this.productTarget ?? null);
+    this.overrides = new Map((snapshot?.overrides ?? []).map(([id, b]) => [id, { lower: b.lower, upper: b.upper }]));
+    this.geneKnockouts = new Set(snapshot?.geneKnockouts ?? []);
+    this.medium = { ...(snapshot?.medium ?? {}) };
+    if (objective.type) this.objective = objective.type;
+    this.productTarget = objective.productTarget ?? null;
+    this.customObjective = objective.custom
+      ? { sense: objective.custom.sense === 'min' ? 'min' : 'max', coefficients: { ...objective.custom.coefficients } }
+      : null;
+    // What is flagged belonged to the state being left.
+    this.constraintCulprits = null;
+    this._culpritCheck = null;
+    if (structural) {
+      await this.rebuild({ relayout: false });
+      return;
+    }
+    this.applyOverrides();
+    this.solve({ silent: true });
+  }
+
+  /**
+   * After a solve: an optimum clears the flagged culprits; no optimum right
+   * after a constraint edit flags the reactions that edit touched, which is
+   * what "Revert last change" offers to undo. Edits made while the LP already
+   * had no optimum join the flagged ones, and the message keeps naming the
+   * edit that lost it.
+   */
+  noteConstraintOutcome(res) {
+    const check = this._culpritCheck;
+    this._culpritCheck = null;
+    if (res?.status === 'optimal') {
+      this.constraintCulprits = null;
+      return;
+    }
+    if (!check) return;
+    const byBase = this.mediumReactions().byBase;
+    const ids = changedReactionIds(check.before, this.constraintSnapshot(), (base) => byBase.get(base) ?? null);
+    const earlier = this.constraintCulprits;
+    this.constraintCulprits = {
+      ids: new Set([...(earlier?.ids ?? []), ...ids]),
+      label: earlier?.label ?? check.label,
+      status: res?.status ?? 'infeasible',
+    };
+  }
+
+  // Objective
+
+  /** The coefficients of the preset objective, as the LP was built with them. */
+  presetObjectiveCoefficients() {
+    if (this.isZunigaStudy) return { ...(this.problem?.objective ?? {}) };
+    const merged = this.community?.merged;
+    return merged ? defaultObjective(merged) : {};
+  }
+
+  /** The objective in force, {reaction id: coefficient}: the edited one, or the preset's. */
+  objectiveCoefficients() {
+    return this.customObjective ? { ...this.customObjective.coefficients } : this.presetObjectiveCoefficients();
+  }
+
+  /** 'max' or 'min'. Presets maximise. */
+  objectiveSense() {
+    return this.customObjective?.sense === 'min' ? 'min' : 'max';
+  }
+
+  /**
+   * Give the LP the objective in force. A minimised objective goes in negated,
+   * so every analysis (FBA, pFBA, FVA, loopless) keeps maximising; solve()
+   * turns the signs of its result back.
+   */
+  applyObjective() {
+    if (!this.problem || this.isZunigaStudy) return;
+    const sign = this.objectiveSense() === 'min' ? -1 : 1;
+    const coefficients = this.objectiveCoefficients();
+    this.problem.setObjective(Object.fromEntries(Object.entries(coefficients).map(([id, c]) => [id, sign * c])));
+  }
+
+  /** Install an edited objective; one equal to the preset, maximised, is the preset again. */
+  _setCustomObjective(sense, coefficients) {
+    const preset = this.presetObjectiveCoefficients();
+    const keys = new Set([...Object.keys(preset), ...Object.keys(coefficients)]);
+    const same = sense === 'max' && [...keys].every((id) => (preset[id] ?? 0) === (coefficients[id] ?? 0));
+    this.customObjective = same ? null : { sense, coefficients };
+  }
+
+  /** Set one reaction's objective coefficient (0 takes it out) and solve. Any reaction, any number of them. */
+  setObjectiveCoefficient(rid, value) {
+    this.assertPublishedStudyConstraints();
+    const coefficient = finiteInput(value);
+    if (coefficient === null || !this.community?.merged?.reactions?.has(rid)) return null;
+    const coefficients = this.objectiveCoefficients();
+    if ((coefficients[rid] ?? 0) === coefficient) return this.solution;
+    this.invalidateSteadyCom();
+    this._changeConstraints(`Objective coefficient of ${this.reactionTitle(rid)}`, `objective:${rid}`, () => {
+      if (coefficient === 0) delete coefficients[rid];
+      else coefficients[rid] = coefficient;
+      this._setCustomObjective(this.objectiveSense(), coefficients);
+    });
+    this.applyOverrides();
+    return this.solve();
+  }
+
+  /** Maximise ('max') or minimise ('min') the objective in force, and solve. */
+  setObjectiveSense(sense) {
+    this.assertPublishedStudyConstraints();
+    if (!['max', 'min'].includes(sense)) return null;
+    if (sense === this.objectiveSense()) return this.solution;
+    this.invalidateSteadyCom();
+    this._changeConstraints(sense === 'min' ? 'Minimise the objective' : 'Maximise the objective', null, () => {
+      this._setCustomObjective(sense, this.objectiveCoefficients());
+    });
+    this.applyOverrides();
+    return this.solve();
+  }
+
+  /** Go back to the preset's own objective, maximised, and solve. */
+  resetObjective() {
+    this.assertPublishedStudyConstraints();
+    if (!this.customObjective) return this.solution;
+    this.invalidateSteadyCom();
+    this._changeConstraints('Objective back to the preset', null, () => { this.customObjective = null; });
+    this.applyOverrides();
+    return this.solve();
+  }
+
+  /**
+   * An edited objective read from a file: finite, non-zero coefficients of
+   * reactions this community has, and a sense. Null when the file has none, or
+   * when every reaction it names is missing here (the preset then stands).
+   */
+  customObjectiveFrom(raw) {
+    if (!raw || typeof raw !== 'object') return null;
+    const reactions = this.community?.merged?.reactions;
+    const coefficients = {};
+    let dropped = 0;
+    for (const [id, value] of Object.entries(raw.coefficients ?? {})) {
+      const coefficient = Number(value);
+      if (!reactions?.has(id) || !Number.isFinite(coefficient)) { dropped += 1; continue; }
+      if (coefficient !== 0) coefficients[id] = coefficient;
+    }
+    if (dropped) this.addLog('warn', `${dropped} objective coefficient(s) in the file name reactions this model does not have; they were left out.`);
+    if (dropped && !Object.keys(coefficients).length) return null;
+    return { sense: raw.sense === 'min' ? 'min' : 'max', coefficients };
+  }
+
+  /** The objective in words: `max 1 COMMUNITY_GROWTH`, `min 1 EX_glc__D_s + 0.5 ...`. */
+  objectiveDescription() {
+    const terms = Object.entries(this.objectiveCoefficients())
+      .map(([id, coefficient]) => `${Number(coefficient.toPrecision(6))} ${this.reactionTitle(id)}`);
+    return `${this.objectiveSense()} ${terms.join(' + ') || '0'}`;
+  }
+
+  // Bulk actions
+
+  /**
+   * One action on many reactions, as one undoable edit, then a solve.
+   *
+   *   set-bounds            params {lower, upper}; an empty side is left as it is
+   *   scale                 params {factor}; finite bounds are multiplied, ±1000
+   *                         (unbounded by convention) stays
+   *   knockout              both bounds 0
+   *   reset                 back to the bounds as opened
+   *   close-uptakes-except  every exchange's uptake closed except those given
+   *                         (an uptake/secretion row keeps its metabolite open)
+   *
+   * @param {string} action
+   * @param {object} [params]
+   * @param {string[]} [ids] reactions to act on, by default the ticked rows
+   * @returns {{changed:number, skipped:number}}
+   */
+  bulkReactionAction(action, params = {}, ids = [...this.reactionTable.selection]) {
+    this.assertPublishedStudyConstraints();
+    const merged = this.community?.merged;
+    if (!merged) return { changed: 0, skipped: 0 };
+    // A reaction a gene knockout closes stays closed whatever its bounds say.
+    const geneClosed = this.geneClosedReactions();
+    const targets = ids.filter((id) => merged.reactions.has(id) && !this.reactionHeldOut(id) && !geneClosed.has(id));
+    let changed = 0;
+    let skipped = 0;
+    const write = (id, next) => {
+      if (next.lower > next.upper) { skipped += 1; return; }
+      if (sameBounds(next, this.currentReactionBounds(id))) return;
+      this._writeReactionBounds(id, next);
+      changed += 1;
+    };
+    let label;
+    let edit;
+    if (action === 'set-bounds') {
+      const lower = finiteInput(params.lower);
+      const upper = finiteInput(params.upper);
+      if (lower === null && upper === null) return { changed, skipped };
+      label = `Set bounds of ${targets.length} reactions`;
+      edit = () => targets.forEach((id) => {
+        const current = this.currentReactionBounds(id);
+        write(id, { lower: lower ?? current.lower, upper: upper ?? current.upper });
+      });
+    } else if (action === 'scale') {
+      const factor = finiteInput(params.factor);
+      if (factor === null) return { changed, skipped };
+      // 1000 is "unbounded" in COBRA models: scaling it would invent a limit.
+      const scale = (value) => (Math.abs(value) >= 1000 ? value : value * factor);
+      label = `Scale bounds of ${targets.length} reactions by ${factor}`;
+      edit = () => targets.forEach((id) => {
+        const current = this.currentReactionBounds(id);
+        const a = scale(current.lower);
+        const b = scale(current.upper);
+        write(id, { lower: Math.min(a, b), upper: Math.max(a, b) });
+      });
+    } else if (action === 'knockout') {
+      label = `Knock out ${targets.length} reactions`;
+      edit = () => targets.forEach((id) => write(id, { lower: 0, upper: 0 }));
+    } else if (action === 'reset') {
+      label = `Reset ${targets.length} reactions`;
+      edit = () => targets.forEach((id) => {
+        if (sameBounds(this.currentReactionBounds(id), this.originalReactionBounds(id))) return;
+        this._resetReactionBounds(id);
+        changed += 1;
+      });
+    } else if (action === 'close-uptakes-except') {
+      const media = this.mediumReactions();
+      const keep = new Set(targets);
+      const keepBases = new Set(targets.map((id) => media.byReaction.get(id)?.base ?? media.transferBase.get(id)).filter(Boolean));
+      label = `Close all uptakes except ${targets.length} selected`;
+      edit = () => {
+        for (const id of merged.reactions.keys()) {
+          if (keep.has(id) || this.reactionHeldOut(id) || geneClosed.has(id)) continue;
+          const entry = media.byReaction.get(id);
+          const current = this.currentReactionBounds(id);
+          if (entry) {
+            if (keepBases.has(entry.base)) continue;
+            write(id, entry.side === 'upper'
+              ? { lower: Math.min(current.lower, 0), upper: 0 }
+              : { lower: 0, upper: Math.max(current.upper, 0) });
+          } else if (current.lower < 0 && classifyReaction(this.community, id) === 'exchange') {
+            write(id, { lower: 0, upper: Math.max(current.upper, 0) });
+          }
+        }
+      };
+    } else {
+      throw new Error(`Unknown bulk action "${action}".`);
+    }
+    this.invalidateSteadyCom();
+    this._changeConstraints(label, null, edit);
+    if (changed) {
+      this.applyOverrides();
+      this.solve({ silent: true });
+    }
+    const lost = changed && this.solution && this.solution.status !== 'optimal';
+    this.status = {
+      ...this.status,
+      ...(lost ? {} : { state: skipped ? 'warn' : 'ok' }),
+      message: `${label}: ${changed} changed${skipped ? `, ${skipped} skipped (the lower bound would pass the upper)` : ''}.`
+        + (lost ? ` The LP has no optimum now (${this.solution.status}); Revert last change takes it back.` : ''),
+    };
+    this.emit('constraints');
+    return { changed, skipped };
+  }
+
+  // Bounds CSV
+
+  /** Every reaction's bounds in force as CSV (see formatBoundsCSV), or only `ids`. */
+  boundsCSV(ids = null) {
+    const merged = this.community?.merged;
+    if (!merged) return formatBoundsCSV([]);
+    return formatBoundsCSV((ids ?? [...merged.reactions.keys()]).filter((id) => merged.reactions.has(id)).map((id) => {
+      const owner = this.community.reactionOwner?.get(id) ?? {};
+      const bounds = this.currentReactionBounds(id);
+      return {
+        id, lower: bounds.lower, upper: bounds.upper,
+        species: owner.speciesId ?? '', originalId: owner.originalId ?? id, name: merged.reactions.get(id).name ?? '',
+      };
+    }));
+  }
+
+  /**
+   * Apply a bounds CSV as one undoable edit and solve. Lines are matched by
+   * merged id, or by original id with species, or by an original id only one
+   * species has. Unknown and ambiguous ids and unreadable lines are reported,
+   * never dropped silently; a line giving the bounds as opened resets them.
+   *
+   * @returns {{applied:number, unchanged:number, unknown:string[], ambiguous:string[], errors:{line:number,message:string}[], rows:number}}
+   */
+  importBoundsCSV(text, { name = 'the CSV' } = {}) {
+    this.assertPublishedStudyConstraints();
+    if (!this.community) throw new Error('Load a model before importing bounds.');
+    const parsed = parseBoundsCSV(text);
+    const unknown = [];
+    const ambiguous = [];
+    const errors = [...parsed.errors];
+    const changes = [];
+    for (const row of parsed.rows) {
+      const found = resolveBoundsReaction(row, this.community);
+      const asWritten = row.species ? `${row.species}@${row.originalId || row.id}` : (row.id || row.originalId);
+      if (found.error === 'ambiguous') { ambiguous.push(asWritten); continue; }
+      if (found.error) { unknown.push(asWritten); continue; }
+      if (this.reactionHeldOut(found.id)) {
+        errors.push({ line: row.line, message: `${found.id}: its species is held out of the simulation.` });
+        continue;
+      }
+      const current = this.currentReactionBounds(found.id);
+      const next = { lower: row.lower ?? current.lower, upper: row.upper ?? current.upper };
+      if (next.lower > next.upper) {
+        errors.push({ line: row.line, message: `${found.id}: the lower bound would pass the upper one.` });
+        continue;
+      }
+      changes.push({ id: found.id, next, current });
+    }
+    let applied = 0;
+    const unchanged = changes.filter((change) => sameBounds(change.next, change.current)).length;
+    if (changes.length > unchanged) {
+      this.invalidateSteadyCom();
+      this._changeConstraints(`Import bounds from ${name}`, null, () => {
+        for (const { id, next, current } of changes) {
+          if (sameBounds(next, current)) continue;
+          if (sameBounds(next, this.originalReactionBounds(id))) this._resetReactionBounds(id);
+          else this._writeReactionBounds(id, next);
+          applied += 1;
+        }
+      });
+      this.applyOverrides();
+      this.solve({ silent: true });
+    }
+    const list = (ids) => `${ids.slice(0, 5).join(', ')}${ids.length > 5 ? ', …' : ''}`;
+    const parts = [`${applied} reaction${applied === 1 ? '' : 's'} changed`, `${unchanged} already as given`];
+    if (unknown.length) parts.push(`${unknown.length} unknown id${unknown.length === 1 ? '' : 's'} (${list(unknown)})`);
+    if (ambiguous.length) parts.push(`${ambiguous.length} ambiguous, give the species (${list(ambiguous)})`);
+    if (errors.length) parts.push(`${errors.length} line${errors.length === 1 ? '' : 's'} not read (line ${errors[0].line}: ${errors[0].message})`);
+    if (unknown.length > 5) this.addLog('warn', `Bounds import from ${name}: unknown reaction ids ${unknown.join(', ')}`);
+    if (ambiguous.length > 5) this.addLog('warn', `Bounds import from ${name}: ambiguous reaction ids ${ambiguous.join(', ')}`);
+    const failed = applied > 0 && Boolean(this.solution) && this.solution.status !== 'optimal';
+    this.status = {
+      ...this.status,
+      state: failed ? 'error' : (unknown.length || ambiguous.length || errors.length ? 'warn' : 'ok'),
+      message: `Bounds from ${name}: ${parts.join(' · ')}.${failed ? ` The LP has no optimum now (${this.solution?.status}); Revert last change takes it back.` : ''}`,
+    };
+    this.emit('constraints');
+    return { applied, unchanged, unknown, ambiguous, errors, rows: parsed.rows.length };
+  }
+
+  // Reactions table
+
+  /** What does not change between solves for every reaction, cached per built model and reaction label setting. */
+  reactionCatalog() {
+    const merged = this.community?.merged;
+    if (!merged) return [];
+    const labelSource = this.mapLabelSource('reaction');
+    const cached = reactionCatalogCache.get(merged);
+    if (cached && cached.community === this.community && cached.labelSource === labelSource) return cached.rows;
+    const compartmentNames = new Map(this.species.map((sp) => [sp.id, this.models.get(sp.file)?.compartmentNames ?? {}]));
+    const speciesNames = new Map(this.species.map((sp) => [sp.id, this.models.get(sp.file)?.cell?.name ?? sp.id]));
+    const rows = buildReactionCatalog(this.community, {
+      label: (rid) => this.entityLabel('reaction', rid).label,
+      species: (id) => (id ? speciesNames.get(id) ?? id : 'Community (shared medium)'),
+      compartment: (speciesId, cid) => cellCompartmentName(cid, compartmentNames.get(speciesId) ?? {}),
+    });
+    reactionCatalogCache.set(merged, { community: this.community, labelSource, rows });
+    return rows;
+  }
+
+  /**
+   * Every reaction as a table row: the catalogue entry with its bounds in force
+   * and as opened, flux, FVA range, reduced cost, objective coefficient,
+   * whether it is drawn, the knocked-out genes that close it, and its status
+   * ('culprit', 'knocked-out', 'modified', 'blocked' or 'original', in that
+   * order of precedence).
+   */
+  reactionTableRows() {
+    const catalog = this.reactionCatalog();
+    if (!catalog.length) return [];
+    const solved = this.solution?.status === 'optimal';
+    const fluxes = solved ? this.solution.fluxes : null;
+    const ranges = this.fvaRanges?.size ? this.fvaRanges : null;
+    const costs = this.reducedCostsAvailable() ? this.solution.reducedCosts : null;
+    const objective = this.objectiveCoefficients();
+    const culprits = this.constraintCulprits?.ids ?? null;
+    const heldOut = new Set(this.species.filter((sp) => this.speciesHeldOut(sp.id)).map((sp) => sp.id));
+    const genesClosing = this.geneClosedReactions();
+    return catalog.map((entry) => {
+      const current = this.currentReactionBounds(entry.id);
+      const original = this.originalReactionBounds(entry.id);
+      const range = ranges?.get(entry.id) ?? null;
+      const modified = !sameBounds(current, original);
+      const knockedOut = isKnockedOut(current, original);
+      const blocked = Boolean(range) && Math.abs(range.min) <= 1e-9 && Math.abs(range.max) <= 1e-9;
+      const culprit = Boolean(culprits?.has(entry.id));
+      return {
+        ...entry,
+        lower: current.lower, upper: current.upper,
+        originalLower: original.lower, originalUpper: original.upper,
+        modified, knockedOut, blocked, culprit,
+        flux: fluxes ? fluxes.get(entry.id) ?? 0 : NaN,
+        fvaMin: range ? range.min : NaN, fvaMax: range ? range.max : NaN,
+        reducedCost: costs?.get(entry.id) ?? NaN,
+        objective: objective[entry.id] ?? 0,
+        onMap: Boolean(this.map?.hasReaction?.(entry.id)),
+        heldOut: Boolean(entry.speciesId) && heldOut.has(entry.speciesId),
+        geneKnockouts: genesClosing.get(entry.id) ?? [],
+        status: culprit ? 'culprit' : knockedOut ? 'knocked-out' : modified ? 'modified' : blocked ? 'blocked' : 'original',
+      };
+    });
+  }
+
+  /** Whether the solution in force reports reduced costs worth a column. */
+  reducedCostsAvailable() {
+    const solution = this.solution;
+    return solution?.status === 'optimal' && !this.loopless
+      && solution.dualAnalysis?.available !== false && (solution.reducedCosts?.size ?? 0) > 0;
+  }
+
+  /**
+   * The table as the Reactions page lists it, for the current search, filters,
+   * sort and grouping: `{rows, visible, items, total, shown, modified,
+   * selected, columns}`. `items` are groupReactionRows' items; `columns` says
+   * whether the FVA and reduced-cost columns have anything to show.
+   */
+  reactionTableModel() {
+    const rows = this.reactionTableRows();
+    const table = this.reactionTable;
+    const visible = sortReactionRows(filterReactionRows(rows, table), table.sort);
+    let pathwayOf = null;
+    if (table.groupBy === 'pathway') {
+      const groups = this.managedPathwayColoring().groups;
+      pathwayOf = (rid) => {
+        const name = groups.get(rid);
+        return name && !/^Sin pathway$/i.test(name) ? name : null;
+      };
+    }
+    const items = groupReactionRows(visible, table.groupBy, { collapsed: table.collapsed, selection: table.selection, pathwayOf });
+    return {
+      rows, visible, items,
+      total: rows.length, shown: visible.length,
+      modified: rows.filter((row) => row.modified).length,
+      selected: table.selection.size,
+      columns: { fva: Boolean(this.fvaRanges?.size) || Boolean(this.fvaEnabled), rc: this.reducedCostsAvailable() },
+    };
+  }
+
+  /**
+   * Change how the Reactions page lists rows: `query`, `groupBy`, `filters`,
+   * `toggleFilter` (one quick filter on or off), `sortBy` (a column; again
+   * reverses it), `toggleGroup` (fold or unfold a group) or `geneQuery` (the
+   * Genes control's search). Emits
+   * 'reaction-table', which repaints the tables only.
+   */
+  setReactionTable(patch = {}) {
+    const table = this.reactionTable;
+    if ('query' in patch) table.query = String(patch.query ?? '');
+    if ('geneQuery' in patch) table.geneQuery = String(patch.geneQuery ?? '');
+    if ('groupBy' in patch && REACTION_GROUPINGS.some((group) => group.id === patch.groupBy)) {
+      table.groupBy = patch.groupBy;
+      table.collapsed = new Set();
+    }
+    if ('filters' in patch) table.filters = REACTION_FILTERS.map((f) => f.id).filter((id) => (patch.filters ?? []).includes(id));
+    if ('toggleFilter' in patch) table.filters = toggleReactionFilter(table.filters, patch.toggleFilter);
+    if ('sortBy' in patch && REACTION_SORT_KEYS[patch.sortBy]) {
+      const numeric = Boolean(REACTION_SORT_KEYS[patch.sortBy].number) && !['type', 'status'].includes(patch.sortBy);
+      table.sort = table.sort.key === patch.sortBy
+        ? { key: patch.sortBy, dir: -table.sort.dir }
+        : { key: patch.sortBy, dir: numeric ? -1 : 1 };
+    }
+    if ('toggleGroup' in patch) {
+      const key = String(patch.toggleGroup);
+      if (table.collapsed.has(key)) table.collapsed.delete(key);
+      else table.collapsed.add(key);
+    }
+    this.emit('reaction-table');
+    return table;
+  }
+
+  /** Tick (`on`) or untick reactions for bulk actions. */
+  selectReactionRows(ids, on = true) {
+    const selection = this.reactionTable.selection;
+    for (const id of ids) {
+      if (on && this.community?.merged?.reactions?.has(id)) selection.add(id);
+      else selection.delete(id);
+    }
+    this.emit('reaction-table');
+    return selection;
+  }
+
+  clearReactionRowSelection() {
+    if (!this.reactionTable.selection.size) return;
+    this.reactionTable.selection.clear();
+    this.emit('reaction-table');
+  }
+
+  /**
+   * Capture the current drawing before a multi-step edit such as dragging.
+   * The edit belongs to this drawing at this point of its history, so it
+   * commits at most once and only while no other step has been recorded,
+   * undone or redone and the drawing has not been replaced.
+   */
+  beginMapEdit(label = 'Edit map') {
+    if (!this.map) return null;
+    return {
+      label,
+      before: this.map.toJSON(),
+      map: this.map,
+      generation: this.mapHistory.generation,
+      version: this.mapHistory.version,
+      finished: false,
+    };
+  }
+
+  /** Whether an edit begun with beginMapEdit still belongs to the drawing on screen. */
+  isMapEditCurrent(transaction) {
+    return Boolean(transaction) && !transaction.finished && transaction.map === this.map
+      && transaction.generation === this.mapHistory.generation
+      && transaction.version === this.mapHistory.version;
+  }
+
+  /** Commit a previously captured edit if it actually changed the map. */
+  commitMapEdit(transaction) {
+    if (!this.map || !this.isMapEditCurrent(transaction)) {
+      if (transaction) {
+        transaction.finished = true;
+      }
+      return false;
+    }
+    transaction.finished = true;
+    const changed = this.mapHistory.record(
+      transaction.before,
+      this.map.toJSON(),
+      transaction.label,
+    );
+    if (changed) this.emit('history');
+    return changed;
+  }
+
+  get canUndoMap() { return this.mapHistory.canUndo; }
+  get canRedoMap() { return this.mapHistory.canRedo; }
+
+  // Saved / unsaved
+
+  /** What was opened: switching it starts over with nothing to save. */
+  workContextKey() {
+    return JSON.stringify([
+      this.scenario?.id ?? null,
+      this.publishedCommunityId ?? null,
+      this.isZunigaStudy ? this.zunigaScenarioId ?? null : null,
+      this.species.map((sp) => [sp.id, sp.file]),
+    ]);
+  }
+
+  /** What only the Scenario file holds and the user can change. */
+  scenarioSignature() {
+    return JSON.stringify({
+      medium: this.medium,
+      species: this.species.map((sp) => [sp.id, sp.enabled, sp.abundance]),
+      overrides: [...this.overrides],
+      geneKnockouts: [...this.geneKnockouts].sort(),
+      objective: this.objective,
+      productTarget: this.productTarget,
+      customObjective: this.customObjective,
+      parsimonious: this.parsimonious,
+      pfbaBiomassPercent: this.pfbaBiomassPercent,
+      loopless: this.loopless,
+      cycleFree: this.cycleFree,
+      fvaEnabled: this.fvaEnabled,
+      pfvaEnabled: this.pfvaEnabled,
+      steadyComConfig: this.steadyComConfig ?? null,
+      steadyCom: this.solution?.steadyCom ? { mu: this.solution.steadyCom.mu } : null,
+      layoutSettings: this.layoutSettings,
+      reactionColorMode: this.view.reactionColorMode,
+      lines: [this.view.widthByFlux, this.view.dashNoFlux, this.view.lineHops, this.view.crossFeedingWidth],
+      ribbons: [this.view.pathwayRibbonMode, this.view.pathwayRibbonWidth, this.view.pathwayRibbonOpacity],
+      omics: { settings: this.omicsSettings, dataset: objectRevision(this.omicsDataset) },
+    });
+  }
+
+  /**
+   * What Map JSON holds besides the drawing: pathways, flux colours and the
+   * Zuñiga case. The Scenario file carries them too, so either export saves them.
+   */
+  sharedSignature() {
+    return JSON.stringify({
+      pathwayManager: this.pathwayManagerState(),
+      fluxColorStops: this.view.fluxColorStops,
+      absoluteFluxColors: this.absoluteFluxColors(),
+      study: this.zunigaState(),
+    });
+  }
+
+  /**
+   * An open has finished: what is on screen now is what was opened, so it is
+   * all "saved". Every way of opening something calls this as its last step, so
+   * defaults a loader sets late (the core-overview pathways, the colour mode of
+   * a published case) are part of what was opened, not unsaved edits.
+   */
+  settleOpenedWork() {
+    this.savedWork = null;
+    // Bounds edits start over too: what was opened is "original", with its medium.
+    this.baseMedium = { ...(this.medium ?? {}) };
+    this.constraintHistory.clear();
+    this.constraintCulprits = null;
+    this._culpritCheck = null;
+    this.reactionTable.selection.clear();
+    this.trackWorkContext();
+  }
+
+  /**
+   * The fallback for anything that changes the context without being one of
+   * those opens: the starting point is taken when the store announces its
+   * first change in the new context (see emit), not when the header is painted.
+   */
+  trackWorkContext() {
+    const context = this.workContextKey();
+    if (this.savedWork?.context === context) return;
+    this._workGeneration += 1;
+    this.savedWork = {
+      context,
+      scenario: this.scenarioSignature(),
+      shared: this.sharedSignature(),
+    };
+  }
+
+  /**
+   * Which parts of the work differ from what was last saved or opened.
+   *
+   * The map part follows the undo history, so undoing back to the saved map is
+   * saved again, plus the pathways and colours the map file holds. The scenario
+   * part compares the scenario settings with those of the last Scenario export
+   * or import, or with what was opened. The model part asks whether a model in
+   * use has edits not yet written out; that belongs to the model itself, so
+   * opening another scenario that uses the same edited model does not hide it.
+   * Nothing here changes any state.
+   */
+  unsavedWork() {
+    const saved = this.savedWork;
+    const known = saved?.context === this.workContextKey();
+    return {
+      map: Boolean(this.map) && (this.mapHistory.dirty || (known && this.sharedSignature() !== saved.shared)),
+      scenario: known && this.scenarioSignature() !== saved.scenario,
+      model: this.species.some((sp) => this.modelHasUnsavedEdits(this.models.get(sp.file))),
+    };
+  }
+
+  /** Capture the versions a file will contain before its asynchronous write starts. */
+  workSnapshot() {
+    this.trackWorkContext();
+    return {
+      context: this.workContextKey(),
+      generation: this._workGeneration,
+      scenario: this.scenarioSignature(),
+      shared: this.sharedSignature(),
+      mapGeneration: this.mapHistory.generation,
+      mapVersion: this.mapHistory.version,
+    };
+  }
+
+  /** Record the drawing and shared settings actually written to a Map file. */
+  markMapSaved(snapshot = this.workSnapshot()) {
+    if (snapshot.generation !== this._workGeneration || snapshot.context !== this.workContextKey()
+      || snapshot.mapGeneration !== this.mapHistory.generation) {
+      return;
+    }
+    this.mapHistory.markSaved(snapshot.mapVersion, snapshot.mapGeneration);
+    this.savedWork.shared = snapshot.shared;
+  }
+
+  /** The scenario settings, and what they share with the map file, are now in a file. */
+  markScenarioSaved(snapshot = this.workSnapshot()) {
+    if (snapshot.generation !== this._workGeneration || snapshot.context !== this.workContextKey()) {
+      return;
+    }
+    this.savedWork.scenario = snapshot.scenario;
+    this.savedWork.shared = snapshot.shared;
+  }
+
+  /** Record calculated composition without saving edits made while the opening solve was pending. */
+  settleOpenedSteadyCom(context) {
+    if (!this.solution?.steadyCom || this.workContextKey() !== context || this.savedWork?.context !== context) return;
+    const saved = JSON.parse(this.savedWork.scenario);
+    for (const entry of saved.species) {
+      const species = this.species.find(item => item.id === entry[0]);
+      if (species) {
+        entry[2] = species.abundance;
+      }
+    }
+    saved.steadyCom = { mu: this.solution.steadyCom.mu };
+    this.savedWork.scenario = JSON.stringify(saved);
+  }
+
+  /**
+   * One model has been written out (the model editor exports the selected
+   * species): its edits are saved, those of any other model are not.
+   */
+  markModelSaved(model = this.modelEditorModel(), revision = this.modelEdits.get(model) ?? 0) {
+    if (model) {
+      this.modelEditsSaved.set(model, revision);
+    }
+  }
+
+  /** Capture the identity and edits of the model that will be serialized. */
+  modelSaveSnapshot(model = this.modelEditorModel()) {
+    if (!model) {
+      return null;
+    }
+    return { model, revision: this.modelEdits.get(model) ?? 0 };
+  }
+
+  modelHasUnsavedEdits(model) {
+    return Boolean(model) && (this.modelEdits.get(model) ?? 0) !== (this.modelEditsSaved.get(model) ?? 0);
+  }
+
+  /** The drawing presentation that map imports and pathway edits restore with Undo. */
+  mapPresentationState() {
+    return {
+      mapMode: this.mapMode,
+      pathwayManager: this.pathwayManagerState(),
+      fluxColorStops: this.view.fluxColorStops,
+      absoluteFluxColors: this.absoluteFluxColors(),
+      pathwayRibbonMode: this.view.pathwayRibbonMode,
+      reactionColorMode: this.view.reactionColorMode,
+      showCrossFeeding: this.view.showCrossFeeding,
+      showCurrency: this.view.showCurrency,
+    };
+  }
+
+  restoreMapPresentationState(state) {
+    if (Object.hasOwn(state, 'mapMode')) {
+      this.mapMode = state.mapMode;
+    }
+    if (Object.hasOwn(state, 'pathwayManager')) {
+      this.restorePathwayManagerState(state.pathwayManager);
+    }
+    if (Object.hasOwn(state, 'fluxColorStops')) {
+      this.view.fluxColorStops = normalizeFluxColorStops(state.fluxColorStops);
+    }
+    if (Object.hasOwn(state, 'absoluteFluxColors')) {
+      this.restoreAbsoluteFluxColors(state.absoluteFluxColors);
+    }
+    if (Object.hasOwn(state, 'pathwayRibbonMode')) {
+      this.view.pathwayRibbonMode = normalizePathwayRibbonMode(state.pathwayRibbonMode);
+    }
+    if (Object.hasOwn(state, 'reactionColorMode')) {
+      this.view.reactionColorMode = normalizeReactionColorMode(state.reactionColorMode);
+    }
+    if (Object.hasOwn(state, 'showCrossFeeding')) {
+      this.view.showCrossFeeding = state.showCrossFeeding;
+    }
+    if (Object.hasOwn(state, 'showCurrency')) {
+      this.view.showCurrency = state.showCurrency;
+    }
+    this.refreshFluxScale();
+  }
+
+  recordMapPresentation(before, label, beforeDrawing = null) {
+    const drawing = this.map?.toJSON?.();
+    if (!drawing) {
+      return false;
+    }
+    const after = this.mapPresentationState();
+    const beforeChanges = {};
+    const afterChanges = {};
+    for (const key of Object.keys(before)) {
+      if (JSON.stringify(before[key]) !== JSON.stringify(after[key])) {
+        beforeChanges[key] = before[key];
+        afterChanges[key] = after[key];
+      }
+    }
+    const changed = Object.keys(beforeChanges).length > 0;
+    return this.mapHistory.recordWithContext(
+      beforeDrawing ?? drawing, drawing, label,
+      changed ? beforeChanges : null, changed ? afterChanges : null,
+    );
+  }
+
+  undoMap() {
+    if (!this.map) return null;
+    const entry = this.mapHistory.undoWithContext(this.map.toJSON(), this.mapPresentationState());
+    if (!entry) return null;
+    this.map = EditableMap.fromJSON(entry.doc);
+    if (entry.context) {
+      this.restoreMapPresentationState(entry.context);
+    }
+    this.selectedReaction = null;
+    this.selectedGeometry = null;
+    this.selectedEntity = null;
+    this.pruneMultiSelection();
+    this.variability = null;
+    this.emit('map');
+    return entry;
+  }
+
+  redoMap() {
+    if (!this.map) return null;
+    const entry = this.mapHistory.redoWithContext(this.map.toJSON(), this.mapPresentationState());
+    if (!entry) return null;
+    this.map = EditableMap.fromJSON(entry.doc);
+    if (entry.context) {
+      this.restoreMapPresentationState(entry.context);
+    }
+    this.selectedReaction = null;
+    this.selectedGeometry = null;
+    this.selectedEntity = null;
+    this.pruneMultiSelection();
+    this.variability = null;
+    this.emit('map');
+    return entry;
+  }
+
+  /** Keep selected objects that still exist after restoring a drawing. */
+  pruneMultiSelection() {
+    for (const kind of ['nodes', 'reactions', 'texts']) {
+      for (const id of this.multiSelection[kind]) {
+        if (!this.map?.[kind]?.has(id)) {
+          this.multiSelection[kind].delete(id);
+        }
+      }
+    }
+    for (const key of this.multiSelection.compartments) {
+      const target = parseCompartmentKey(key);
+      if (!target || !this.map?.geometryTarget(target.cellId, target.compartmentId)) {
+        this.multiSelection.compartments.delete(key);
+      }
+    }
+  }
+
+  /** How many objects the multi-selection holds. */
+  get multiSelectionSize() {
+    return selectionSize(this.multiSelection);
+  }
+
+  multiSelectionBucket(kind) {
+    if (kind === 'reaction') return this.multiSelection.reactions;
+    if (kind === 'text') return this.multiSelection.texts;
+    return this.multiSelection.nodes;
+  }
+
+  isMultiSelected(kind, id) {
+    return this.multiSelectionBucket(kind).has(id);
+  }
+
+  clearMultiSelection({ emit = true } = {}) {
+    if (!this.multiSelectionSize) return false;
+    this.multiSelection = emptySelection();
+    if (emit) this.emit('multi-selection');
+    return true;
+  }
+
+  /** Add an object to the multi-selection or take it out. `kind` is 'node', 'reaction' or 'text'. */
+  toggleMultiSelection(kind, id) {
+    if (!id || !['node', 'reaction', 'text'].includes(kind)) return this.multiSelection;
+    const bucket = this.multiSelectionBucket(kind);
+    if (bucket.has(id)) bucket.delete(id);
+    else bucket.add(id);
+    this.emit('multi-selection');
+    return this.multiSelection;
+  }
+
+  /**
+   * Ctrl-, Cmd- or Shift-click: add an object to the multi-selection or take
+   * it out. The first one also takes what was picked on its own before it, so
+   * a click and then a Ctrl-click select both. With two or more, the inspector
+   * turns to the selection.
+   */
+  extendMultiSelection(kind, id) {
+    const picked = this.selectedEntity;
+    if (!this.multiSelectionSize && picked && this.map) {
+      const pickedKind = { reaction: 'reaction', metabolite: 'node', text: 'text' }[picked.type];
+      let drawn = false;
+      if (pickedKind === 'reaction') {
+        drawn = this.map.reactions.has(picked.id);
+      } else if (pickedKind === 'node') {
+        drawn = this.canMoveNode(picked.id);
+      } else if (pickedKind === 'text') {
+        drawn = Boolean(this.map.texts?.has(picked.id));
+      }
+      if (drawn && !(pickedKind === kind && picked.id === id)) {
+        this.multiSelectionBucket(pickedKind).add(picked.id);
+      }
+    }
+    this.toggleMultiSelection(kind, id);
+    if (this.multiSelectionSize >= 2 && (this.selectedReaction || this.selectedEntity)) {
+      this.select(null);
+    }
+    return this.multiSelection;
+  }
+
+  /** Select what lies in a map rectangle (nodes, reactions, texts, whole compartments), adding to the selection unless `replace`. */
+  selectInRect(rect, { replace = true } = {}) {
+    if (!this.map) return this.multiSelection;
+    const found = this.map.selectableInRect(rect, { includeSecondary: this.view.showCurrency !== false });
+    if (replace) this.multiSelection = emptySelection();
+    for (const id of found.nodes) this.multiSelection.nodes.add(id);
+    for (const id of found.reactions) this.multiSelection.reactions.add(id);
+    for (const id of found.texts ?? []) this.multiSelection.texts.add(id);
+    this.multiSelection.compartments ??= new Set();
+    for (const key of found.compartments ?? []) this.multiSelection.compartments.add(key);
+    this.emit('multi-selection');
+    return this.multiSelection;
+  }
+
+  // Part of a drag: the selection moves together and carries the compartments
+  // in it (dragSelection), so an organelle can be moved with what is round it.
+  moveMultiSelection(dx, dy) {
+    return this.map?.dragSelection(this.multiSelection, dx, dy) ?? null;
+  }
+
+  moveCompartmentLabel(cellId, compartmentId, x, y) {
+    this.assertMapOperation('moveCompartmentLabel');
+    return this.map?.setCompartmentLabelPosition(cellId, compartmentId, x, y) ?? null;
+  }
+
+  /** The map-wide label source for 'metabolite' or 'reaction' labels ('base', 'id', 'name', ...). */
+  mapLabelSource(kind) {
+    return this.map?.labelSettings?.[kind] ?? (kind === 'metabolite' ? 'base' : 'id');
+  }
+
+  mapLabelObject(kind, id) {
+    if (kind === 'metabolite') {
+      return this.map?.nodes.get(id);
+    }
+    return this.map?.reactions.get(id);
+  }
+
+  mapLabelEntity(kind, object) {
+    if (kind === 'metabolite') {
+      return this.community?.merged.metabolites.get(object?.mergedId);
+    }
+    return this.community?.merged.reactions.get(object?.id);
+  }
+
+  /** The label a drawn node or reaction shows: by `source`, else its own source, else the map's. */
+  mapLabelText(kind, id, source = null) {
+    const object = this.mapLabelObject(kind, id);
+    if (!object) {
+      return '';
+    }
+    const entity = this.mapLabelEntity(kind, object);
+    const selectedSource = source ?? object.labelSource ?? this.mapLabelSource(kind);
+    return objectLabel(object, entity, kind, selectedSource);
+  }
+
+  /**
+   * A metabolite or reaction of the model named as the map names it, drawn or
+   * not: by the label source the map is set to (Map options ▸ Labels). A menu
+   * that offers things to add reads the way the map does, so a yeast drawn
+   * with names is not offered as `s_0034`.
+   *
+   * @returns {{label:string, id:string, name:string}} the label, the model's
+   *   own id and its name, for menus that show one beside the other
+   */
+  entityLabel(kind, mergedId) {
+    const metabolite = kind === 'metabolite';
+    const entity = metabolite
+      ? this.community?.merged.metabolites.get(mergedId)
+      : this.community?.merged.reactions.get(mergedId);
+    const owner = (metabolite ? this.community?.metaboliteOwner : this.community?.reactionOwner)?.get(mergedId);
+    // The fields a drawn node or reaction carries, so both are labelled alike.
+    const object = {
+      id: mergedId,
+      localId: owner?.originalId ?? entity?.id ?? mergedId,
+      cellId: owner?.speciesId ?? null,
+      name: entity?.name,
+      ...(metabolite ? { base: localMetaboliteBase(this.community, mergedId, entity) } : {}),
+    };
+    const sources = objectLabelSources(object, entity, kind);
+    return {
+      label: objectLabel(object, entity, kind, this.mapLabelSource(kind)),
+      id: sources.id,
+      name: entity?.name ?? '',
+    };
+  }
+
+  /** The label sources on offer, as {value, label}: for one drawn object, or for the whole map without `id`. */
+  mapLabelOptions(kind, id = null) {
+    const keys = new Set(kind === 'metabolite' ? ['base', 'id', 'name'] : ['id', 'name']);
+    if (id) {
+      const object = this.mapLabelObject(kind, id);
+      if (object) {
+        const entity = this.mapLabelEntity(kind, object);
+        for (const key of Object.keys(objectLabelSources(object, entity, kind))) {
+          keys.add(key);
+        }
+      }
+    } else {
+      const entities = kind === 'metabolite'
+        ? this.community?.merged.metabolites
+        : this.community?.merged.reactions;
+      for (const entity of entities?.values() ?? []) {
+        for (const key of Object.keys(entity.labelSources ?? {})) {
+          keys.add(key);
+        }
+      }
+    }
+    const options = [];
+    for (const key of keys) {
+      options.push({ value: key, label: labelSourceName(key) });
+    }
+    return options;
+  }
+
+  /** Label one drawn object, or the whole map without `id`, by `source` ('inherit' clears an object's own). One undoable edit. */
+  setMapLabelSource(kind, source, id = null) {
+    this.assertMapOperation('setMapLabelSource');
+    if (!this.map || !['metabolite', 'reaction'].includes(kind)) {
+      return false;
+    }
+    const options = this.mapLabelOptions(kind, id);
+    if (source !== 'inherit' && !options.some(option => option.value === source)) {
+      return false;
+    }
+    const history = this.beginMapEdit('Change map labels');
+    if (id) {
+      const object = this.mapLabelObject(kind, id);
+      if (!object) {
+        return false;
+      }
+      if (source === 'inherit') {
+        delete object.labelSource;
+      } else {
+        object.labelSource = source;
+      }
+    } else {
+      if (source === 'inherit') {
+        return false;
+      }
+      this.map.labelSettings ??= {};
+      this.map.labelSettings[kind] = source;
+    }
+    const changed = this.commitMapEdit(history);
+    this.emit('map-labels');
+    return changed;
+  }
+
+  /** Every drawn node's or reaction's label, by id. */
+  mapLabels(kind) {
+    const objects = kind === 'metabolite' ? this.map?.nodes : this.map?.reactions;
+    const labels = new Map();
+    for (const id of objects?.keys() ?? []) {
+      labels.set(id, this.mapLabelText(kind, id));
+    }
+    return labels;
+  }
+
+
+  /** Remove the current multi-selection from the drawing only, as one undoable edit. */
+  removeMultiSelection() {
+    this.assertMapOperation('removeMultiSelection');
+    if (!this.map || !this.multiSelectionSize) return null;
+
+    const before = this.map.toJSON();
+    const reactionIds = [...this.multiSelection.reactions];
+    const nodeIds = [...this.multiSelection.nodes];
+    const textIds = [...this.multiSelection.texts];
+    const removed = { reactions: [], nodes: [], texts: [], compartments: [] };
+
+    // Whole compartments first, with what is drawn in them: what is left of
+    // the selection after that is what lies outside them.
+    for (const key of this.multiSelection.compartments ?? []) {
+      const where = parseCompartmentKey(key);
+      if (!where?.cellId) continue;
+      const result = this.map.removeCompartment(where.cellId, where.compartmentId);
+      if (!result) continue;
+      removed.compartments.push(...result.compartmentIds);
+      removed.reactions.push(...result.reactions);
+      removed.texts.push(...result.texts);
+    }
+    // Reactions next: their reaction-local visual nodes may disappear with
+    // them. Then remove only still-existing, explicitly selected node instances.
+    for (const reactionId of reactionIds) {
+      const result = this.map.removeReaction(reactionId);
+      if (result) removed.reactions.push(reactionId);
+    }
+    for (const nodeId of nodeIds) {
+      if (!this.map.nodes.has(nodeId) || !this.map.canRemoveNode(nodeId)) continue;
+      if (this.map.removeNode(nodeId)) removed.nodes.push(nodeId);
+    }
+    // Annotations go with the rest, so deleting a pathway does not leave its
+    // metabolite names behind, labelling reactions that are no longer there.
+    for (const textId of textIds) {
+      if (this.map.removeText(textId)) removed.texts.push(textId);
+    }
+
+    if (!removed.reactions.length && !removed.nodes.length && !removed.texts.length
+      && !removed.compartments.length) return null;
+    this.mapHistory.record(before, this.map.toJSON(), 'Remove selection');
+    this.multiSelection = emptySelection();
+    if (removed.compartments.length && this.selectedGeometry
+      && !this.map.geometryTarget(this.selectedGeometry.cellId, this.selectedGeometry.compartmentId)) {
+      this.selectedGeometry = null;
+    }
+    if (this.selectedReaction && removed.reactions.includes(this.selectedReaction)) {
+      this.selectedReaction = null;
+      this.variability = null;
+    }
+    if (this.selectedEntity) {
+      const selectedRemoved = (this.selectedEntity.type === 'reaction'
+        && removed.reactions.includes(this.selectedEntity.id))
+        || (this.selectedEntity.type === 'metabolite'
+          && !this.map.nodes.has(this.selectedEntity.id))
+        || (this.selectedEntity.type === 'text'
+          && removed.texts.includes(this.selectedEntity.id))
+        || (this.selectedEntity.type === 'compartment' && !this.selectedGeometry)
+        || (this.selectedEntity.type === 'cell'
+          && !this.map.cells.some((cell) => cell.id === this.selectedEntity.id));
+      if (selectedRemoved) this.selectedEntity = null;
+    }
+    this.emit('multi-selection');
+    this.emit('map');
+    return removed;
+  }
+
+  /** Whether the selection can be arranged: two objects, or one reaction (Escher-style line). */
+  canArrangeSelection(action = 'align-vertical') {
+    if (!this.map) return false;
+    if (this.multiSelectionSize >= 2) return true;
+    return (action === 'align-horizontal' || action === 'align-vertical')
+      && this.map.selectionHasLineReactions(this.multiSelection);
+  }
+
+  /** Align or distribute the selection ('align-left', 'distribute-vertical', ...) as one undoable edit. */
+  arrangeMultiSelection(action) {
+    if (!this.canArrangeSelection(action)) return null;
+
+    const labels = {
+      'align-horizontal': 'Align horizontally',
+      'align-vertical': 'Align vertically',
+      'align-left': 'Align left',
+      'align-right': 'Align right',
+      'align-top': 'Align top',
+      'align-bottom': 'Align bottom',
+      'distribute-horizontal': 'Distribute horizontally',
+      'distribute-vertical': 'Distribute vertically',
+    };
+    const label = labels[action];
+    if (!label) return null;
+
+    const before = this.map.toJSON();
+    const mode = action.slice(action.indexOf('-') + 1);
+    // With reactions selected, Horizontal and Vertical work as in Escher: each
+    // reaction comes with its metabolites and they all end on one line.
+    // Transporters stay on their membranes, so a selection with no other
+    // reaction is aligned as plain objects.
+    const asLine = (mode === 'horizontal' || mode === 'vertical') && action.startsWith('align-')
+      && this.map.selectionHasLineReactions(this.multiSelection);
+    const result = asLine
+      ? this.map.alignSelectionInLine(this.multiSelection, mode)
+      : action.startsWith('align-')
+        ? this.map.alignSelection(this.multiSelection, mode)
+        : this.map.distributeSelection(this.multiSelection, mode);
+    if (result?.held?.length) {
+      this.status = {
+        ...this.status,
+        state: 'warn',
+        message: `${result.held.length} metabolite${result.held.length === 1 ? '' : 's'} could not reach the line: a metabolite stays inside its compartment.`,
+      };
+    }
+
+    const changed = this.mapHistory.record(before, this.map.toJSON(), label);
+    if (changed) this.emit('map');
+    else if (result?.held?.length) this.emit('status');
+    return { ...result, changed };
+  }
+
+  /** Space the selection evenly along its own line, in any direction, as one undoable edit. */
+  spaceMultiSelectionEvenly() {
+    this.assertMapOperation('spaceMultiSelectionEvenly');
+    if (!this.map) return null;
+    const before = this.map.toJSON();
+    const result = this.map.spaceSelectionEvenly(this.multiSelection);
+    if (!result || result.count < 3) return null;
+    const changed = this.mapHistory.record(before, this.map.toJSON(), 'Space evenly');
+    if (changed) this.emit('map');
+    return { ...result, changed };
+  }
+
+  /**
+   * Tidy curves on every selected reaction, as one undoable edit: each one's
+   * cofactors and curves back in their base shape, as Tidy curves does for a
+   * single reaction.
+   */
+  tidyMultiSelection() {
+    this.assertMapOperation('tidyMultiSelection');
+    if (!this.map) return null;
+    const before = this.map.toJSON();
+    let count = 0;
+    for (const rid of this.multiSelection?.reactions ?? []) if (this.map.tidyReaction(rid)) count += 1;
+    if (!count) return null;
+    const changed = this.mapHistory.record(before, this.map.toJSON(), 'Tidy curves');
+    if (changed) this.emit('map');
+    return { count, changed };
+  }
+
+  /** Whether the selected reactions close a cycle that Circularize can lay out. */
+  canCircularizeSelection() {
+    return Boolean(this.map?.selectionCycle(this.multiSelection));
+  }
+
+  /**
+   * Lay the cycle the selected reactions close out as a circle, as one
+   * undoable edit. A refusal has changed nothing, and the status line says why.
+   */
+  circularizeMultiSelection() {
+    this.assertMapOperation('circularizeMultiSelection');
+    if (!this.map) return null;
+    const before = this.map.toJSON();
+    const result = this.map.circularizeSelection(this.multiSelection);
+    if (!result) return null;
+    if (!result.circled) {
+      this.status = { ...this.status, state: 'warn', message: CIRCLE_WARNINGS[result.reason] ?? CIRCLE_WARNINGS.room };
+      this.emit('status');
+      return result;
+    }
+    // Copies joined into the circle are gone from the map, and from the selection.
+    for (const id of [...this.multiSelection.nodes]) {
+      if (!this.map.nodes.has(id)) {
+        this.multiSelection.nodes.delete(id);
+      }
+    }
+    const changed = this.mapHistory.record(before, this.map.toJSON(), 'Circularize');
+    if (changed) this.emit('map');
+    return { ...result, changed };
+  }
+
+  /** Turn the selection as one rigid piece by `angle` radians (clockwise on screen), as one undoable edit. */
+  rotateMultiSelection(angle) {
+    this.assertMapOperation('rotateMultiSelection');
+    return this.turnMultiSelection('Rotate selection', (map) => map.rotateSelection(this.multiSelection, angle));
+  }
+
+  /** Turn the selection so that its main line points `direction` ('N', 'NE', ... 'NW'), the way it runs. */
+  pointMultiSelection(direction) {
+    this.assertMapOperation('pointMultiSelection');
+    return this.turnMultiSelection(`Point selection ${direction}`, (map) =>
+      map.pointSelection(this.multiSelection, direction));
+  }
+
+  /*
+   * One turn of the selection: recorded when it moved anything. A turn the
+   * map refuses has moved nothing, and the status line says why.
+   */
+  turnMultiSelection(label, turn) {
+    if (!this.map) return null;
+    const before = this.map.toJSON();
+    const result = turn(this.map);
+    if (!result) return null;
+    if (!result.turned) {
+      this.status = { ...this.status, state: 'warn', message: TURN_WARNINGS[result.reason] ?? TURN_WARNINGS.room };
+      this.emit('status');
+      return result;
+    }
+    const changed = this.mapHistory.record(before, this.map.toJSON(), label);
+    if (changed) this.emit('map');
+    return { ...result, changed };
+  }
+
+  /**
+   * Replace what is drawn, without touching the model or the solution.
+   *
+   * This is the seam a map editor plugs into: the community, the LP and the
+   * current fluxes are all untouched, so swapping in a different subset of the
+   * same reactions redraws the screen and changes no number.
+   */
+  setMap(map) {
+    this.map = map;
+    this.multiSelection = emptySelection();
+    if (this.selectedReaction && !this.map?.hasReaction(this.selectedReaction)) {
+      this.selectedReaction = null;
+      this.selectedEntity = null;
+      this.variability = null;
+    }
+    this.emit('map');
+    return this.map;
+  }
+
+  /**
+   * Add one reaction to the current EditableMap. Graphical only: no rebuild,
+   * solve or relayout of existing geometry.
+   */
+  addMapReaction(reactionId, opts = {}) {
+    this.assertMapOperation('addMapReaction');
+    if (!this.map || !this.community) return null;
+    const before = this.map.toJSON();
+    const result = this.map.addReaction(this.community, reactionId, opts);
+    if (!result) {
+      if (this.community.merged.reactions.has(reactionId) && !this.map.hasReaction(reactionId)) {
+        const id = this.community.reactionOwner?.get(reactionId)?.originalId ?? reactionId;
+        this.status = {
+          ...this.status, state: 'warn',
+          message: `Reaction ${id} was not drawn; add its compartments or free some map space.`,
+        };
+        this.emit('status');
+      }
+      return null;
+    }
+    this.mapHistory.record(before, this.map.toJSON(), 'Add reaction');
+    this.emit('map');
+    return result;
+  }
+
+  /** Remove one reaction from the drawing, never from the model or LP. */
+  removeMapReaction(reactionId) {
+    this.assertMapOperation('removeMapReaction');
+    if (!this.map) return null;
+    const before = this.map.toJSON();
+    const result = this.map.removeReaction(reactionId);
+    if (!result) return null;
+    this.mapHistory.record(before, this.map.toJSON(), 'Remove reaction');
+    if (this.selectedReaction === reactionId) {
+      this.selectedReaction = null;
+      this.selectedEntity = null;
+      this.variability = null;
+    }
+    this.multiSelection.reactions.delete(reactionId);
+    for (const id of result.nodes ?? []) this.multiSelection.nodes.delete(id);
+    this.emit('map');
+    return result;
+  }
+
+  /**
+   * Delete a compartment from the drawing, with the compartments nested in it
+   * and everything drawn in them (a cell's outermost one takes the cell). One
+   * undoable step; the model is unchanged, and the compartment can be drawn
+   * again from Add Compartment.
+   */
+  removeMapCompartment(cellId, compartmentId) {
+    this.assertMapOperation('removeMapCompartment');
+    if (!this.map) return null;
+    const before = this.map.toJSON();
+    const result = this.map.removeCompartment(cellId, compartmentId);
+    if (!result) return null;
+    this.mapHistory.record(before, this.map.toJSON(), result.cellRemoved ? 'Remove cell' : 'Remove compartment');
+
+    this.selectedGeometry = null;
+    if (['compartment', 'cell'].includes(this.selectedEntity?.type)
+      || (this.selectedEntity?.type === 'reaction' && result.reactions.includes(this.selectedEntity.id))
+      || (this.selectedEntity?.type === 'metabolite' && !this.map.nodes.has(this.selectedEntity.id))) {
+      this.selectedEntity = null;
+    }
+    if (this.selectedReaction && !this.map.reactions.has(this.selectedReaction)) {
+      this.selectedReaction = null;
+      this.variability = null;
+    }
+    this.multiSelection = emptySelection();
+
+    const what = [
+      result.compartmentIds.length > 1 && `${result.compartmentIds.length - 1} nested compartment${result.compartmentIds.length > 2 ? 's' : ''}`,
+      result.reactions.length && `${result.reactions.length} reaction${result.reactions.length === 1 ? '' : 's'}`,
+      result.nodes.length && `${result.nodes.length} metabolite${result.nodes.length === 1 ? '' : 's'}`,
+      result.texts?.length && `${result.texts.length} text${result.texts.length === 1 ? '' : 's'}`,
+    ].filter(Boolean);
+    this.status = {
+      ...this.status,
+      state: 'ok',
+      message: `Removed ${result.cellRemoved ? 'the cell ' : ''}${result.label} from the map`
+        + `${what.length ? `, with ${what.join(', ')}` : ''}. Ctrl+Z undoes.`,
+    };
+    this.emit('map');
+    return result;
+  }
+
+  /** Replace the drawing with a truly blank white canvas. */
+  showEmptyMap() {
+    this.assertMapOperation('showEmptyMap');
+    if (!this.community) return null;
+    const before = this.map?.toJSON() ?? null;
+    const beforePresentation = this.mapPresentationState();
+    const width = this.map?.width ?? 1200;
+    const height = this.map?.height ?? 800;
+    const next = EditableMap.blank({ width, height });
+    this.map = next;
+    this.mapMode = 'empty';
+    if (before) {
+      this.recordMapPresentation(beforePresentation, 'Empty map', before);
+    }
+    this.selectedReaction = null;
+    this.selectedGeometry = null;
+    this.selectedEntity = null;
+    this.multiSelection = emptySelection();
+    this.variability = null;
+    this.emit('map');
+    return this.map;
+  }
+
+  /** Restore the complete automatic map for the current biological model. */
+  showFullMap() {
+    this.assertMapOperation('showFullMap');
+    if (!this.community) return null;
+    const before = this.map?.toJSON() ?? null;
+    const beforePresentation = this.mapPresentationState();
+    const next = EditableMap.fromCommunity(this.community, layoutEngineOptions(this.layoutSettings));
+    this.map = next;
+    this.mapMode = 'full';
+    this.removeCoreOverviewPathways();
+    if (before) {
+      this.recordMapPresentation(beforePresentation, 'Full map', before);
+    }
+    this.selectedReaction = null;
+    this.selectedGeometry = null;
+    this.selectedEntity = null;
+    this.multiSelection = emptySelection();
+    this.variability = null;
+    this.emit('map');
+    return this.map;
+  }
+
+  coreMetabolismOverviewSupport() {
+    return coreOverviewSupport(this.community);
+  }
+
+  /** Replace the drawing with the central carbon metabolism overview, with its pathways as manual ones. Returns the build, or null when unsupported. */
+  showCoreMetabolismOverview({ recordHistory = true } = {}) {
+    this.assertMapOperation('showCoreMetabolismOverview');
+    if (!this.community) return null;
+    const support = coreOverviewSupport(this.community);
+    if (!support.supported) {
+      this.status = {
+        ...this.status,
+        state: 'warn',
+        message: 'Too few annotated central-carbon reactions for the core overview.',
+      };
+      this.emit('status');
+      return null;
+    }
+
+    const built = buildCoreMetabolismOverview(this.community, this.layoutSettings);
+    if (!built?.map) return null;
+
+    const before = this.map?.toJSON() ?? null;
+    const beforePresentation = this.mapPresentationState();
+    this.map = built.map;
+    this.mapMode = 'core-overview';
+    this.installCoreOverviewPathways(built.pathwayGroups);
+    // Keep the glycolysis view visually clean: no pathway ribbons, no
+    // cross-feeding arcs and no helper/cofactor nodes at overview scale.
+    this.view.pathwayRibbonMode = 'off';
+    this.view.showCrossFeeding = false;
+    this.view.showCurrency = true;
+    if (recordHistory && before) {
+      this.recordMapPresentation(beforePresentation, 'Core metabolism overview', before);
+    } else {
+      this.mapHistory.clear();
+    }
+    this.selectedReaction = null;
+    this.selectedGeometry = null;
+    this.selectedEntity = null;
+    this.multiSelection = emptySelection();
+    this.variability = null;
+    this.status = {
+      ...this.status,
+      state: 'ok',
+      message: `Glycolysis overview: ${built.placed} reactions arranged vertically from G6P to pyruvate.`,
+    };
+    this.emit('map');
+    return built;
+  }
+
+  /** The overview's pathway groups as manual pathways with a `core-` id, replacing earlier ones. */
+  installCoreOverviewPathways(groups = []) {
+    this.removeCoreOverviewPathways();
+    const aggregated = new Map();
+    for (const group of groups) {
+      const current = aggregated.get(group.groupId) ?? {
+        id: `core-${group.groupId}`,
+        name: group.name,
+        reactionIds: [],
+      };
+      current.reactionIds.push(...group.reactionIds);
+      aggregated.set(group.groupId, current);
+    }
+    for (const group of aggregated.values()) {
+      this.manualPathways.set(group.id, {
+        id: group.id,
+        name: group.name,
+        color: categoryColor(group.name, this.view.dark),
+        visible: true,
+        reactionIds: new Set(group.reactionIds),
+      });
+    }
+  }
+
+  removeCoreOverviewPathways() {
+    for (const id of [...this.manualPathways.keys()]) {
+      if (id.startsWith('core-')) this.manualPathways.delete(id);
+    }
+  }
+
+  /** A truly blank drawing surface for the active biological community. */
+  emptyMap() {
+    if (!this.community) return null;
+    return EditableMap.blank({
+      width: this.map?.width ?? 1200,
+      height: this.map?.height ?? 800,
+    });
+  }
+
+  /** Species/cells that are not yet drawn on the current map. */
+  availableMapCells() {
+    if (!this.map) return [];
+    const drawn = new Set(this.map.cells.map((cell) => cell.id));
+    const out = [];
+
+    for (const sp of this.species.filter((item) => item.enabled !== false && !drawn.has(item.id))) {
+      const model = this.models.get(sp.file);
+      if (!model) continue;
+      const { roots, byId } = model.compartmentTree();
+      const outer = byId.get('e')?.parent === null
+        ? byId.get('e')
+        : roots[0];
+      if (!outer) continue;
+
+      out.push({
+        speciesId: sp.id,
+        speciesName: model.cell?.name ?? sp.id,
+        organism: model.cell?.organism ?? '',
+        outerCompartmentId: outer.id,
+        outerCompartmentName: cellCompartmentName(outer.id, model.compartmentNames),
+      });
+    }
+
+    return out.sort((a, b) => a.speciesName.localeCompare(b.speciesName));
+  }
+
+  setCellPlacementSpecies(speciesId) {
+    const available = this.availableMapCells();
+    const next = available.find((item) => item.speciesId === speciesId)?.speciesId
+      ?? available[0]?.speciesId
+      ?? null;
+    this.cellPlacementSpeciesId = next;
+    this.emit('cell-placement');
+    return next;
+  }
+
+  /** Draw a species' cell (its outermost compartment) in `rect`, as one undoable edit, and select it. */
+  addMapCell(speciesId, rect) {
+    if (!this.map) return null;
+    const available = this.availableMapCells();
+    const spec = available.find((item) => item.speciesId === speciesId)
+      ?? available.find((item) => item.speciesId === this.cellPlacementSpeciesId)
+      ?? available[0];
+    if (!spec) return null;
+
+    const sp = this.species.find((item) => item.id === spec.speciesId);
+    const model = this.models.get(sp?.file);
+    if (!sp || !model) return null;
+
+    const before = this.map.toJSON();
+    const result = this.map.addCell({
+      speciesId: sp.id,
+      outerCompartmentId: spec.outerCompartmentId,
+      outerLabel: spec.outerCompartmentName,
+      cellName: model.cell?.name ?? sp.id,
+      organism: model.cell?.organism ?? '',
+      note: model.cell?.note ?? '',
+      color: model.cell?.color ?? '#64748b',
+      abundance: sp.abundance,
+      rect,
+    });
+    if (!result) return null;
+
+    this.mapHistory.record(before, this.map.toJSON(), 'Create cell');
+    this.cellPlacementSpeciesId = this.availableMapCells()[0]?.speciesId ?? null;
+    this.selectedReaction = null;
+    this.selectedGeometry = {
+      cellId: result.cell.id,
+      compartmentId: result.cell.outerCompartment,
+    };
+    this.selectedEntity = { type: 'cell', id: result.cell.id };
+    this.emit('map');
+    return result;
+  }
+
+  selectCellGeometry(cellId) {
+    const cell = this.map?.cells.find((item) => item.id === cellId);
+    const outer = cell?.compartments.find((item) => item.id === cell.outerCompartment)
+      ?? cell?.compartments.find((item) => item.parentId === null);
+    if (!cell || !outer) return null;
+
+    this.selectedReaction = null;
+    this.selectedGeometry = { cellId: cell.id, compartmentId: outer.id };
+    this.selectedEntity = { type: 'cell', id: cell.id };
+    this.variability = null;
+    this.emit('geometry-selection');
+    return this.selectedGeometry;
+  }
+
+  /**
+   * Compartments that may be added next without violating the source model's
+   * containment tree. A child becomes available after its parent is drawn.
+   */
+  availableMapCompartments() {
+    if (!this.map) return [];
+    const out = [];
+    for (const sp of this.species.filter((item) => item.enabled !== false)) {
+      const model = this.models.get(sp.file);
+      if (!model) continue;
+      const cell = this.map.cells.find((c) => c.id === sp.id);
+      if (!cell) continue;
+      const drawn = new Set(cell.compartments?.map((c) => c.id) ?? []);
+      const { byId } = model.compartmentTree();
+
+      for (const node of byId.values()) {
+        if (drawn.has(node.id)) continue;
+        // Root/extracellular geometry is created by the Cell tool. Manual
+        // compartment creation starts below that cell boundary.
+        if (!node.parent) continue;
+        if (!drawn.has(node.parent)) continue;
+        out.push({
+          speciesId: sp.id,
+          speciesName: model.cell?.name ?? sp.id,
+          compartmentId: node.id,
+          compartmentName: cellCompartmentName(node.id, model.compartmentNames),
+          parentId: node.parent ?? null,
+          depth: node.depth,
+        });
+      }
+    }
+    return out.sort((a, b) =>
+      a.speciesName.localeCompare(b.speciesName)
+      || a.depth - b.depth
+      || a.compartmentId.localeCompare(b.compartmentId)
+    );
+  }
+
+  /**
+   * Every compartment of every active species, drawn or not, and whether it
+   * can be drawn now. `status` is 'ready' (its parent is on the map), 'waiting'
+   * (its parent is not, yet), 'drawn', or 'cell' (it is a cell's outermost
+   * compartment, which the Cell tool draws); `reason` says so in words.
+   */
+  mapCompartmentChoices() {
+    if (!this.map) return [];
+    const out = [];
+    for (const sp of this.species.filter((item) => item.enabled !== false)) {
+      const model = this.models.get(sp.file);
+      if (!model) continue;
+      const cell = this.map.cells.find((c) => c.id === sp.id);
+      const drawn = new Set(cell?.compartments?.map((c) => c.id) ?? []);
+      const { byId } = model.compartmentTree();
+      const name = (id) => cellCompartmentName(id, model.compartmentNames);
+
+      for (const node of byId.values()) {
+        let status;
+        let reason;
+        if (drawn.has(node.id)) {
+          status = 'drawn';
+          reason = 'already on the map';
+        } else if (!node.parent) {
+          status = 'cell';
+          reason = 'draw the cell with Add Cell';
+        } else if (!cell) {
+          status = 'waiting';
+          reason = 'draw the cell first';
+        } else if (drawn.has(node.parent)) {
+          status = 'ready';
+          reason = `goes inside ${name(node.parent)}`;
+        } else {
+          status = 'waiting';
+          reason = `goes inside ${name(node.parent)}: draw that first`;
+        }
+        out.push({
+          speciesId: sp.id,
+          speciesName: model.cell?.name ?? sp.id,
+          compartmentId: node.id,
+          compartmentName: name(node.id),
+          parentId: node.parent ?? null,
+          parentName: node.parent ? name(node.parent) : null,
+          depth: node.depth,
+          status,
+          reason,
+        });
+      }
+    }
+    return out.sort((a, b) =>
+      a.speciesName.localeCompare(b.speciesName)
+      || a.depth - b.depth
+      || a.compartmentId.localeCompare(b.compartmentId)
+    );
+  }
+
+  setCompartmentShapePreset(name) {
+    const next = name === 'auto' || COMPARTMENT_SHAPES[name] ? name : 'auto';
+    if (next === this.compartmentShapePreset) return;
+    this.compartmentShapePreset = next;
+    this.emit('compartment-placement');
+  }
+
+  setCompartmentPlacement(key) {
+    const available = this.availableMapCompartments();
+    const next = available.find((item) => `${item.speciesId}|${item.compartmentId}` === key)
+      ?? available[0]
+      ?? null;
+    const nextKey = next ? `${next.speciesId}|${next.compartmentId}` : null;
+    const changed = this.compartmentPlacementKey !== nextKey;
+    this.compartmentPlacementKey = nextKey;
+    if (changed) this.emit('compartment-placement');
+    return next;
+  }
+
+  currentCompartmentPlacement() {
+    const available = this.availableMapCompartments();
+    const selected = available.find((item) =>
+      `${item.speciesId}|${item.compartmentId}` === this.compartmentPlacementKey
+    ) ?? available[0] ?? null;
+    if (selected && !this.compartmentPlacementKey) {
+      this.compartmentPlacementKey = `${selected.speciesId}|${selected.compartmentId}`;
+    }
+    return selected;
+  }
+
+  compartmentParentRect(speciesId, compartmentId) {
+    const available = this.availableMapCompartments();
+    const spec = available.find((item) =>
+      item.speciesId === speciesId && item.compartmentId === compartmentId
+    );
+    if (!spec?.parentId) return null;
+    const cell = this.map?.cells.find((item) => item.id === speciesId);
+    const parent = cell?.compartments.find((item) => item.id === spec.parentId);
+    return parent ? { ...parent.rect } : null;
+  }
+
+  /** Draw one compartment inside its drawn parent, with the current shape preset, as one undoable edit. */
+  addMapCompartment(speciesId, compartmentId, rect = null) {
+    if (!this.map) return null;
+    const sp = this.species.find((item) => item.id === speciesId && item.enabled !== false);
+    const model = this.models.get(sp?.file);
+    if (!sp || !model) return null;
+
+    const treeNode = model.compartmentTree().byId.get(compartmentId);
+    const cell = this.map.cells.find((item) => item.id === speciesId);
+    if (!treeNode || !cell || !treeNode.parent) return null;
+
+    const before = this.map.toJSON();
+    const result = this.map.addCompartment({
+      speciesId,
+      compartmentId,
+      parentId: treeNode.parent ?? null,
+      label: cellCompartmentName(compartmentId, model.compartmentNames),
+      cellName: model.cell?.name ?? speciesId,
+      organism: model.cell?.organism ?? '',
+      note: model.cell?.note ?? '',
+      color: model.cell?.color ?? '#64748b',
+      abundance: sp.abundance,
+      rect,
+    });
+    if (!result) return null;
+    const shape = COMPARTMENT_SHAPES[this.compartmentShapePreset];
+    if (shape) this.map.editCompartmentShape(speciesId, compartmentId, shape);
+
+    this.mapHistory.record(before, this.map.toJSON(), 'Agregar compartimento');
+    this.selectedReaction = null;
+    this.selectedGeometry = { cellId: speciesId, compartmentId };
+    this.selectedEntity = { type: 'compartment', id: compartmentId, cellId: speciesId };
+    const next = this.availableMapCompartments()[0] ?? null;
+    this.compartmentPlacementKey = next
+      ? `${next.speciesId}|${next.compartmentId}`
+      : null;
+    this.emit('map');
+    return result;
+  }
+
+  /** What setMapCanvasSize would settle on, without changing anything. */
+  previewCanvasSize(width, height) {
+    if (!this.map) return null;
+    const min = this.map.minimumCanvasSize();
+    return {
+      width: Math.max(min.width, Number(width) || this.map.canvas.width),
+      height: Math.max(min.height, Number(height) || this.map.canvas.height),
+    };
+  }
+
+  setMapCanvasSize(width, height, move) {
+    if (!this.map) return null;
+    return this.map.setCanvasSize(width, height, move);
+  }
+
+  /** Apply a layout preset by laying the map out again, or rebuilding the overview when that is what is drawn. */
+  setLayoutPreset(name) {
+    this.layoutSettings = layoutPreset(name);
+    if (this.mapMode === 'core-overview') {
+      return this.showCoreMetabolismOverview({ recordHistory: true });
+    }
+    return this.relayoutMap(`Layout preset: ${this.layoutSettings.preset}`);
+  }
+
+  /** Change some automatic layout settings and lay the map out again. */
+  setLayoutSettings(patch = {}) {
+    this.layoutSettings = normalizeLayoutSettings({
+      ...this.layoutSettings,
+      ...patch,
+      preset: patch.preset ?? this.layoutSettings.preset,
+    });
+    if (this.mapMode === 'core-overview') {
+      return this.showCoreMetabolismOverview({ recordHistory: true });
+    }
+    return this.relayoutMap('Adjust automatic layout');
+  }
+
+  /**
+   * Why the automatic layout must not be re-run over the current drawing, or
+   * null when it may.
+   *
+   * A layout preset means "lay the map out again". For a model too large to be
+   * drawn automatically the map on screen was built by hand, reaction by
+   * reaction. Laying it out again first places every reaction of the model,
+   * which takes minutes with the page frozen, and then throws the hand-placed
+   * positions away. Nobody pressing "Compact" in the toolbar is asking for that.
+   */
+  relayoutBlocked() {
+    if (!this.community || !this.map) return null;
+    const drawn = this.map.reactions.size;
+    if (!drawn || drawn >= this.community.merged.reactions.size) return null;
+    return this.tooLargeToAutoDraw()
+      ? 'Layout presets re-run the automatic layout, which would replace this hand-built drawing and take minutes on a model this size. The drawing was kept.'
+      : null;
+  }
+
+  /** A species too large for the automatic layout to place in reasonable time. */
+  tooLargeToAutoDraw() {
+    return Boolean(this.community?.activeSpecies.some((sp) =>
+      sp.model.reactions.size > AUTO_DRAW_REACTION_LIMIT
+      || sp.model.metabolites.size > AUTO_DRAW_METABOLITE_LIMIT));
+  }
+
+  /**
+   * What to ask before drawing the full model, or null when it is cheap.
+   *
+   * Drawing everything is a legitimate request, so it is not refused like a
+   * layout preset; but on a genome-scale model it freezes the page for minutes
+   * and replaces the drawing, and the user should hear that before, not after.
+   */
+  fullMapWarning() {
+    if (!this.community || !this.tooLargeToAutoDraw()) return null;
+    const total = this.community.merged.reactions.size;
+    const drawn = this.map?.reactions.size ?? 0;
+    return `Drawing all ${total} reactions runs the automatic layout on a genome-scale model; `
+      + 'the page may stop responding for several minutes.'
+      + (drawn ? ` It replaces the current drawing of ${drawn} reactions (Undo restores it).` : '')
+      + '\n\nDraw the full model?';
+  }
+
+  /**
+   * Re-run only the graphical automatic layout. The model and current solution
+   * are untouched. If the map is a reaction subset, keep that same subset.
+   */
+  relayoutMap(label = 'Relayout map') {
+    if (!this.community || !this.map) return null;
+    const drawnReactionIds = this.map.reactionIds();
+    const wasBlank = this.map.cells.length === 0 && drawnReactionIds.length === 0;
+
+    if (wasBlank) {
+      this.emit('layout-settings');
+      return this.map;
+    }
+
+    const blocked = this.relayoutBlocked();
+    if (blocked) {
+      this.status = { ...this.status, state: 'ok', message: blocked };
+      this.emit('layout-settings');
+      return this.map;
+    }
+    const before = this.map.toJSON();
+
+    let next;
+    if (!drawnReactionIds.length) {
+      // Only the shell is drawn, so only the shell is laid out. Going through
+      // the full layout and throwing every reaction away again would give the
+      // same cells and compartments, after freezing the page for as long as a
+      // genome-scale model takes to place.
+      next = EditableMap.emptyFromCommunity(this.community, layoutEngineOptions(this.layoutSettings));
+    } else {
+      next = EditableMap.fromCommunity(
+        this.community,
+        layoutEngineOptions(this.layoutSettings),
+      );
+      if (drawnReactionIds.length < next.reactions.size) {
+        const keep = drawnReactionIds.filter((id) => next.reactions.has(id));
+        next = next.subsetByReactions(keep);
+      }
+    }
+
+    this.mapHistory.record(before, next.toJSON(), label);
+    this.map = next;
+    this.selectedReaction = null;
+    this.selectedGeometry = null;
+    this.selectedEntity = null;
+    this.multiSelection = emptySelection();
+    this.variability = null;
+    this.emit('layout-settings');
+    return this.map;
+  }
+
+  /**
+   * Move a metabolite node by hand.
+   *
+   * Purely graphical: the geometry of one node and the segments attached to it
+   * change, and nothing else does. It deliberately neither solves nor rebuilds
+   * nor relayouts, and it does not emit. Dragging repaints at its own pace, and
+   * a store event here would drag the whole sidebar through every pointermove.
+   *
+   * @returns {object|null} the node that moved, or null if it is not movable
+   */
+  moveNode(nodeId, x, y) {
+    return this.map ? this.map.moveNode(nodeId, x, y) : null;
+  }
+
+  /**
+   * Complete an explicit drag-and-merge gesture. This intentionally does not
+   * record history by itself: the surrounding node-drag transaction records
+   * the move and merge as one undoable edit.
+   */
+  mergeOverlappingMetabolite(nodeId) {
+    this.assertMapOperation('mergeOverlappingMetabolite');
+    const result = this.map?.mergeOverlappingMetabolite(nodeId) ?? null;
+    if (!result) return null;
+    if (this.multiSelection.nodes.delete(nodeId)) {
+      this.multiSelection.nodes.add(result.target.id);
+    }
+    if (this.selectedEntity?.type === 'metabolite' && this.selectedEntity.id === nodeId) {
+      this.selectedEntity = { ...this.selectedEntity, id: result.target.id };
+    }
+    return result;
+  }
+
+  /** Is this node one the user is allowed to move? */
+  canMoveNode(nodeId) {
+    return Boolean(this.map?.canMoveNode(nodeId));
+  }
+
+  canMoveReaction(reactionId) {
+    return Boolean(this.map?.canMoveReaction(reactionId));
+  }
+
+  moveReaction(reactionId, x, y) {
+    return this.map?.moveReaction(reactionId, x, y) ?? null;
+  }
+
+  moveBranchControl(reactionId, nodeId, handle, x, y) {
+    return this.map?.moveBranchControl(reactionId, nodeId, handle, x, y) ?? null;
+  }
+
+  // Arranging one reaction
+
+  canRotateReaction(reactionId) {
+    return Boolean(this.map?.canRotateReaction(reactionId));
+  }
+
+  /**
+   * Turn a reaction's backbone while it is being dragged round. Like moveNode,
+   * this neither records history nor emits: the gesture that calls it does both
+   * once, when it ends.
+   */
+  setReactionAngle(reactionId, angle) {
+    return this.map?.setReactionAngle(reactionId, angle) ?? null;
+  }
+
+  /** One undoable change to how a single reaction is drawn. */
+  editMapReaction(label, edit) {
+    if (!this.map) return null;
+    const before = this.map.toJSON();
+    const result = edit(this.map);
+    if (!result) return null;
+    this.mapHistory.record(before, this.map.toJSON(), label);
+    this.emit('map');
+    return result;
+  }
+
+  /**
+   * Write a reaction's name somewhere else while it is dragged. Like
+   * setMetaboliteLabelAngle, no history and no emit: the drag gesture owns
+   * the repaint and its single history transaction.
+   */
+  setReactionLabelOffset(reactionId, offset) {
+    this.assertMapOperation('setReactionLabelOffset');
+    return this.map?.setReactionLabelOffset(reactionId, offset) ?? null;
+  }
+
+  /** Put a moved reaction name back in its default place, as one undoable edit. */
+  resetReactionLabel(reactionId) {
+    this.assertMapOperation('resetReactionLabel');
+    return this.editMapReaction('Reset reaction label', (map) => map.resetReactionLabel(reactionId));
+  }
+
+  /** Turn a reaction's backbone by a fixed step, as one undoable edit. */
+  rotateMapReaction(reactionId, angle) {
+    this.assertMapOperation('rotateMapReaction');
+    return this.editMapReaction('Rotate reaction', (map) => map.rotateReaction(reactionId, angle));
+  }
+
+  /**
+   * Keep a reaction straight between two of its metabolites, or release it.
+   * Drawing only: the stoichiometry and the fluxes are untouched.
+   */
+  setMapReactionLinear(reactionId, linear) {
+    this.assertMapOperation('setMapReactionLinear');
+    const ends = linear ? this.selectedLineEnds(reactionId) : {};
+    return this.editMapReaction(
+      linear ? 'Make reaction straight' : 'Release straight reaction',
+      (map) => map.setReactionLinear(reactionId, linear, ends),
+    );
+  }
+
+  /**
+   * The metabolites of this reaction that are selected on the map, as the two
+   * its line should run through: one substrate, one product.
+   *
+   * Shift-click two metabolites of a reaction and the next Linear or compass
+   * press uses those two. A side with none selected, or with more than one, is
+   * left for the reaction to decide.
+   */
+  selectedLineEnds(reactionId) {
+    const picked = this.multiSelection?.nodes;
+    if (!this.map || !picked?.size) return {};
+    const sides = this.map.reactionSides(reactionId);
+    const one = (entries) => {
+      const chosen = entries.filter((entry) => picked.has(entry.nodeId));
+      return chosen.length === 1 ? chosen[0].nodeId : undefined;
+    };
+    const ends = {};
+    const from = one(sides.substrates);
+    const to = one(sides.products);
+    if (from) ends.from = from;
+    if (to) ends.to = to;
+    return ends;
+  }
+
+  /** Choose one of the two metabolites a reaction's line runs through. */
+  setMapReactionLineEnd(reactionId, nodeId) {
+    this.assertMapOperation('setMapReactionLineEnd');
+    return this.editMapReaction('Choose line metabolite', (map) =>
+      map.setReactionLineEnd(reactionId, nodeId));
+  }
+
+  /**
+   * Lay a reaction out along a compass direction, substrate to product, with
+   * its two line metabolites on either side of the marker.
+   */
+  alignMapReaction(reactionId, direction) {
+    this.assertMapOperation('alignMapReaction');
+    const ends = this.selectedLineEnds(reactionId);
+    return this.editMapReaction(`Align reaction ${direction}`, (map) =>
+      map.alignReaction(reactionId, direction, ends));
+  }
+
+  /**
+   * Escher's Align vertical / Align horizontal for one reaction: lay it and its
+   * two line metabolites on a vertical or horizontal line through its marker,
+   * keeping the way it runs now (a product below its substrate stays below).
+   */
+  alignMapReactionAxis(reactionId, axis) {
+    if (!this.map || (axis !== 'vertical' && axis !== 'horizontal')) return null;
+    const ends = { ...this.map.reactionLineEnds(reactionId), ...this.selectedLineEnds(reactionId) };
+    const from = this.map.nodes.get(ends.from);
+    const to = this.map.nodes.get(ends.to);
+    if (!from || !to) return null;
+    const direction = axis === 'vertical'
+      ? (to.y >= from.y ? 'S' : 'N')
+      : (to.x >= from.x ? 'E' : 'W');
+    return this.alignMapReaction(reactionId, direction);
+  }
+
+  /** Put a reaction's cofactors and curves back in their base shape. */
+  tidyMapReaction(reactionId) {
+    this.assertMapOperation('tidyMapReaction');
+    return this.editMapReaction('Tidy reaction', (map) => map.tidyReaction(reactionId));
+  }
+
+  /** Exchange the places of two metabolites on one side of a reaction. */
+  swapMapReactionMetabolites(reactionId, nodeIdA, nodeIdB) {
+    this.assertMapOperation('swapMapReactionMetabolites');
+    return this.editMapReaction('Swap metabolites', (map) =>
+      map.swapReactionMetabolites(reactionId, nodeIdA, nodeIdB));
+  }
+
+  /** Exchange the substrate side and the product side of a reaction's drawing. */
+  flipMapReaction(reactionId) {
+    this.assertMapOperation('flipMapReaction');
+    return this.editMapReaction('Swap substrates and products', (map) => map.flipReaction(reactionId));
+  }
+
+  /** Mirror a reaction's drawing in its own backbone. */
+  mirrorMapReaction(reactionId) {
+    this.assertMapOperation('mirrorMapReaction');
+    return this.editMapReaction('Mirror reaction', (map) => map.mirrorReaction(reactionId));
+  }
+
+  /** New text is set in `style`, by default the last size and font chosen. */
+  addMapText(text, x, y, style = this.view.textStyle) {
+    if (!this.map) return null;
+    const before = this.map.toJSON();
+    const annotation = this.map.addText(text, x, y, { fontSize: style?.fontSize, fontFamily: style?.fontFamily });
+    if (!annotation) return null;
+    this.mapHistory.record(before, this.map.toJSON(), 'Add text');
+    this.emit('map');
+    return annotation;
+  }
+
+  /** Change a text's words and, when given, its size and font: one undo step. */
+  updateMapText(id, text, style = null) {
+    if (!this.map) return null;
+    const before = this.map.toJSON();
+    const annotation = this.map.updateText(id, text);
+    if (!annotation) return null;
+    if (style) this.map.styleText(id, style);
+    this.mapHistory.record(before, this.map.toJSON(), 'Edit text');
+    this.emit('map');
+    return annotation;
+  }
+
+  /**
+   * Set a text's size and/or font. The choice also becomes the style of the
+   * next new text, as in any editor.
+   */
+  styleMapText(id, style = {}) {
+    if (!this.map) return null;
+    const before = this.map.toJSON();
+    const annotation = this.map.styleText(id, style);
+    if (!annotation) return null;
+    this.setTextStyle({ fontSize: annotation.fontSize, fontFamily: annotation.fontFamily });
+    this.mapHistory.record(before, this.map.toJSON(), 'Text style');
+    this.emit('map');
+    return annotation;
+  }
+
+  /** The size and font new texts are set in. */
+  setTextStyle({ fontSize, fontFamily } = {}) {
+    const current = this.view.textStyle ?? { fontSize: TEXT_SIZE.default, fontFamily: DEFAULT_TEXT_FONT };
+    this.view.textStyle = {
+      fontSize: fontSize === undefined || fontSize === null || fontSize === '' ? current.fontSize : clampTextSize(fontSize),
+      fontFamily: fontFamily === undefined || fontFamily === null ? current.fontFamily : normalizeTextFont(fontFamily),
+    };
+    return this.view.textStyle;
+  }
+
+  moveMapText(id, x, y) {
+    return this.map?.moveText(id, x, y) ?? null;
+  }
+
+  removeMapText(id) {
+    this.assertMapOperation('removeMapText');
+    if (!this.map) return null;
+    const before = this.map.toJSON();
+    const annotation = this.map.removeText(id);
+    if (!annotation) return null;
+    this.mapHistory.record(before, this.map.toJSON(), 'Remove text');
+    this.multiSelection.texts.delete(id);
+    if (this.selectedEntity?.type === 'text' && this.selectedEntity.id === id) this.selectedEntity = null;
+    this.emit('map');
+    return annotation;
+  }
+
+  /** Draw another instance of a metabolite node, as one undoable edit. */
+  duplicateMapMetabolite(nodeId, opts = {}) {
+    this.assertMapOperation('duplicateMapMetabolite');
+    if (!this.map) return null;
+    const before = this.map.toJSON();
+    const node = this.map.duplicateMetaboliteNode(nodeId, opts);
+    if (!node) return null;
+    this.mapHistory.record(before, this.map.toJSON(), 'Duplicate metabolite');
+    this.emit('map');
+    return node;
+  }
+
+  metaboliteCopies(nodeId) {
+    const node = this.map?.nodes.get(nodeId);
+    if (!node?.mergedId) return [];
+    return this.map.nodesForMetabolite(node.mergedId);
+  }
+
+  /**
+   * Turn a metabolite's label while it is dragged. No history and no emit: the
+   * drag gesture owns the repaint and its single history transaction.
+   */
+  setMetaboliteLabelAngle(nodeId, angle) {
+    this.assertMapOperation('setMetaboliteLabelAngle');
+    return this.map?.setMetaboliteLabelAngle(nodeId, angle) ?? null;
+  }
+
+  /** Mark a metabolite node as primary or secondary (cofactor-like), as one undoable edit. */
+  setMapNodePrimary(nodeId, primary, opts = {}) {
+    if (!this.map) return null;
+    const before = this.map.toJSON();
+    const node = this.map.setNodePrimary(nodeId, primary, opts);
+    if (!node) return null;
+    this.mapHistory.record(
+      before,
+      this.map.toJSON(),
+      node.primary ? 'Mark metabolite as primary' : 'Mark metabolite as secondary',
+    );
+    this.emit('map');
+    return node;
+  }
+
+  /**
+   * Colour a cell or one of its compartments on the map: map-only, undoable and
+   * saved with the map. `colors` holds `fill` and/or `stroke`; null restores the
+   * theme colour.
+   */
+  setMapGeometryColors(cellId, compartmentId, colors) {
+    if (!this.map) return null;
+    const before = this.map.toJSON();
+    const target = compartmentId
+      ? this.map.setCompartmentColors(cellId, compartmentId, colors)
+      : this.map.setCellColors(cellId, colors);
+    if (!target) return null;
+    this.mapHistory.record(before, this.map.toJSON(), compartmentId ? 'Compartment colours' : 'Cell colours');
+    this.emit('map');
+    return target;
+  }
+
+  setMapNodeRadius(nodeId, radius) {
+    if (!this.map) return null;
+    const before = this.map.toJSON();
+    const node = this.map.setNodeRadius(nodeId, radius);
+    if (!node) return null;
+    this.mapHistory.record(before, this.map.toJSON(), 'Resize metabolite');
+    this.emit('map');
+    return node;
+  }
+
+  setMapNodeHidden(nodeId, hidden = true) {
+    if (!this.map) return null;
+    const before = this.map.toJSON();
+    const node = this.map.setNodeHidden(nodeId, hidden);
+    if (!node) return null;
+    this.mapHistory.record(before, this.map.toJSON(), hidden ? 'Hide metabolite' : 'Show metabolite');
+    this.emit('map');
+    return node;
+  }
+
+  /** The colours of every metabolite circle without its own: `{ fill, stroke }`, null for the theme's. */
+  setMapNodeStyle(colors) {
+    if (!this.map) return null;
+    const before = this.map.toJSON();
+    const style = this.map.setNodeStyle(colors);
+    if (!this.mapHistory.record(before, this.map.toJSON(), 'Metabolite colours')) return style;
+    this.emit('map');
+    return style;
+  }
+
+  /**
+   * How this map draws its secondary metabolites: 'quiet' (smaller and
+   * lighter) or null (full size). It belongs to the map, so it is saved with it
+   * and undone like any map edit.
+   */
+  setMapCofactorStyle(style) {
+    if (!this.map) return null;
+    const before = this.map.toJSON();
+    const kept = this.map.setCofactorStyle(style);
+    if (!this.mapHistory.record(before, this.map.toJSON(), kept ? 'Quiet cofactors' : 'Full-size cofactors')) return kept;
+    this.emit('map');
+    return kept;
+  }
+
+  /** Colour some metabolite circles (a selection, or one): `{ fill, stroke }`, null for the map's. */
+  setMapNodeColors(nodeIds, colors) {
+    if (!this.map) return [];
+    const before = this.map.toJSON();
+    const changed = this.map.setNodeColors([...nodeIds], colors);
+    if (!changed.length || !this.mapHistory.record(before, this.map.toJSON(), 'Metabolite colour')) return changed;
+    this.emit('map');
+    return changed;
+  }
+
+  /** The colour some reactions are drawn in when lines are not coloured by flux; null for their pathway's. */
+  setMapReactionColor(reactionIds, color) {
+    if (!this.map) return [];
+    const before = this.map.toJSON();
+    const changed = this.map.setReactionColor([...reactionIds], color);
+    if (!changed.length || !this.mapHistory.record(before, this.map.toJSON(), 'Reaction colour')) return changed;
+    this.emit('map');
+    return changed;
+  }
+
+  get hiddenMetaboliteCount() {
+    return this.map?.hiddenNodeCount?.() ?? 0;
+  }
+
+  showAllHiddenMetabolites() {
+    if (!this.map) return [];
+    const before = this.map.toJSON();
+    const changed = this.map.showAllHiddenNodes();
+    if (!changed.length) return changed;
+    this.mapHistory.record(before, this.map.toJSON(), 'Show hidden metabolites');
+    this.emit('map');
+    return changed;
+  }
+
+  /**
+   * Search the complete biological reaction set, including reactions not drawn.
+   * Results are ranked by ID first (the model's, or the label the map shows),
+   * then name and subsystem.
+   */
+  searchReactions(query, { limit = 30 } = {}) {
+    if (!this.community) return [];
+    const q = normalizeSearch(query);
+    if (!q) return [];
+
+    const results = [];
+    for (const [reactionId, reaction] of this.community.merged.reactions) {
+      const owner = this.community.reactionOwner?.get(reactionId) ?? {};
+      const localId = owner.originalId ?? reaction.id ?? reactionId;
+      const name = reaction.name ?? '';
+      const subsystem = reaction.subsystem ?? '';
+      const speciesId = owner.speciesId ?? '';
+      const { label } = this.entityLabel('reaction', reactionId);
+
+      const fields = {
+        fullId: normalizeSearch(reactionId),
+        localId: normalizeSearch(localId),
+        label: normalizeSearch(label),
+        name: normalizeSearch(name),
+        subsystem: normalizeSearch(subsystem),
+      };
+
+      let score = Infinity;
+      if (fields.localId === q || fields.fullId === q || fields.label === q) score = 0;
+      else if (fields.localId.startsWith(q) || fields.label.startsWith(q)) score = 1;
+      else if (fields.fullId.startsWith(q)) score = 2;
+      else if (fields.name.startsWith(q)) score = 3;
+      else if (fields.localId.includes(q) || fields.label.includes(q)) score = 4;
+      else if (fields.fullId.includes(q)) score = 5;
+      else if (fields.name.includes(q)) score = 6;
+      else if (fields.subsystem.includes(q)) score = 7;
+      if (!Number.isFinite(score)) continue;
+
+      results.push({
+        reactionId,
+        localId,
+        label,
+        // Beside the label, whichever of the name and the model id it is not.
+        detail: label === name ? (localId === label ? '' : localId) : name,
+        name,
+        subsystem,
+        speciesId,
+        drawn: Boolean(this.map?.hasReaction(reactionId)),
+        score,
+      });
+    }
+
+    results.sort((a, b) =>
+      a.score - b.score
+      || String(a.label).localeCompare(String(b.label))
+      || String(a.speciesId).localeCompare(String(b.speciesId))
+    );
+    return results.slice(0, Math.max(1, Number(limit) || 30));
+  }
+
+  /** Reactions in the biological model that touch a drawn metabolite but are not drawn yet. */
+  reactionsAvailableFromMetabolite(nodeId) {
+    const node = this.map?.nodes.get(nodeId);
+    if (!node?.mergedId || !this.community) return [];
+    const out = [];
+    for (const [reactionId, reaction] of this.community.merged.reactions) {
+      if (this.map.hasReaction(reactionId)) continue;
+      if (Object.prototype.hasOwnProperty.call(reaction.metabolites, node.mergedId)) out.push(reactionId);
+    }
+    return this.orderByFlux(out);
+  }
+
+  /**
+   * Reaction ids with those that carry flux in the current optimal solution
+   * first, largest |flux| first. The others keep their order behind them, and
+   * without a solution the list is returned as it is.
+   */
+  orderByFlux(reactionIds) {
+    const fluxes = this.solution?.status === 'optimal' ? this.solution.fluxes : null;
+    if (!fluxes) return reactionIds;
+    const size = (id) => {
+      const value = Math.abs(Number(fluxes.get(id)) || 0);
+      return value > 1e-9 ? value : 0;
+    };
+    // Array#sort is stable, so equal sizes, zero among them, keep their order.
+    return [...reactionIds].sort((a, b) => size(b) - size(a));
+  }
+
+  /** The model's metabolites in one compartment of a species, labelled as the map labels them, with how often each is drawn. */
+  metabolitesAvailableInCompartment(cellId, compartmentId) {
+    if (!this.community || !this.map) return [];
+    const cell = this.map.cells.find(item => item.id === cellId);
+    if (!cell?.compartments.some(compartment => compartment.id === compartmentId)) {
+      return [];
+    }
+    const out=[];
+    for (const [id,metabolite] of this.community.merged.metabolites) {
+      const owner=this.community.metaboliteOwner?.get(id);
+      if(owner?.speciesId!==cellId || owner?.compartment!==compartmentId) continue;
+      const named=this.entityLabel('metabolite',id);
+      // Beside the map's label, whichever of the name and the model id it is not.
+      const detail=named.label===named.name?named.id:named.name;
+      out.push({id,label:named.label,name:detail,modelId:named.id,count:this.map.nodesForMetabolite(id).length});
+    }
+    return out.sort((a,b)=>a.label.localeCompare(b.label));
+  }
+  /** Draw a new instance of a merged metabolite (at `opts.x`, `opts.y`), as one undoable edit. */
+  addMapMetabolite(mergedId, opts = {}) {
+    this.assertMapOperation('addMapMetabolite');
+    if (!this.map || !this.community) {
+      return null;
+    }
+    const before = this.map.toJSON();
+    const node = this.map.addMetabolite(this.community, mergedId, opts);
+    if (!node) {
+      const owner = this.community.metaboliteOwner?.get(mergedId);
+      if (owner?.speciesId) {
+        this.status = {
+          ...this.status, state: 'warn',
+          message: `Metabolite ${owner.originalId} was not drawn; add its compartment or choose a point inside it.`,
+        };
+        this.emit('status');
+      }
+      return null;
+    }
+    this.mapHistory.record(before, this.map.toJSON(), 'Add metabolite');
+    this.emit('map');
+    return node;
+  }
+
+  /** Internal reactions available in one visible cellular compartment. */
+  reactionsAvailableInCompartment(cellId, compartmentId) {
+    if (!this.community || !this.map) return [];
+    return reactionsInCompartment(this.community, cellId, compartmentId)
+      .filter((reactionId) => !this.map.hasReaction(reactionId));
+  }
+
+  canRemoveMapNode(nodeId) {
+    return Boolean(this.map?.canRemoveNode(nodeId));
+  }
+
+  /** Remove one metabolite node from the drawing, never from the model, as one undoable edit. */
+  removeMapNode(nodeId) {
+    this.assertMapOperation('removeMapNode');
+    if (!this.map) return null;
+    const before = this.map.toJSON();
+    const node = this.map.removeNode(nodeId);
+    if (!node) return null;
+    this.mapHistory.record(before, this.map.toJSON(), 'Remove metabolite');
+    this.multiSelection.nodes.delete(nodeId);
+    if (this.selectedEntity?.type === 'metabolite' && this.selectedEntity.id === nodeId) this.selectedEntity = null;
+    this.emit('map');
+    return node;
+  }
+
+  /**
+   * Select a compartment's geometry, which is what puts its five handles on
+   * screen.
+   *
+   * It does not depend on the geometry-editing view: Select edits geometry too
+   * (moving a compartment, resizing it, dragging the shared medium), so the
+   * only question is whether the thing being selected exists.
+   */
+  selectGeometry(cellId, compartmentId) {
+    if (!this.map?.geometryTarget(cellId, compartmentId)) {
+      this.selectedGeometry = null;
+      this.selectedEntity = null;
+      this.emit('geometry-selection');
+      return null;
+    }
+    this.multiSelection = emptySelection();
+    this.selectedGeometry = { cellId, compartmentId };
+    this.selectedReaction = null;
+    this.selectedEntity = { type: 'compartment', id: compartmentId, cellId };
+    this.variability = null;
+    this.emit('geometry-selection');
+    return this.selectedGeometry;
+  }
+
+  clearGeometrySelection() {
+    if (!this.selectedGeometry) return;
+    this.selectedGeometry = null;
+    if (this.selectedEntity?.type === 'compartment') this.selectedEntity = null;
+    this.emit('geometry-selection');
+  }
+
+  editGeometryRect(cellId, compartmentId, rect) {
+    return this.map?.editGeometryRect(cellId, compartmentId, rect) ?? null;
+  }
+
+  /** Reshape while a shape handle is dragged; the drag records the history. */
+  editCompartmentShape(cellId, compartmentId, shape) {
+    return this.map?.editCompartmentShape(cellId, compartmentId, shape) ?? null;
+  }
+
+  /** A compartment's shape in one undoable step, as the inspector's presets set it. */
+  setCompartmentShape(cellId, compartmentId, shape) {
+    if (!this.map) return null;
+    const before = this.map.toJSON();
+    const result = this.map.editCompartmentShape(cellId, compartmentId, shape);
+    if (!result) return null;
+    this.mapHistory.record(before, this.map.toJSON(), 'Compartment shape');
+    this.emit('map');
+    return result;
+  }
+
+  /** Select a reaction by merged id (null clears), with its FVA range when FVA is on. */
+  select(rid) {
+    // Picking one thing lets go of a multi-selection, as a plain click does.
+    if (rid && this.multiSelectionSize) {
+      this.multiSelection = emptySelection();
+    }
+    this.selectedGeometry = null;
+    this.selectedReaction = rid;
+    this.selectedEntity = rid ? { type: 'reaction', id: rid } : null;
+    this.variability = this.fvaEnabled && rid
+      ? this.fvaRanges.get(rid) ?? null
+      : null;
+    this.emit('selection');
+  }
+
+  // Omics overlay
+
+  /** Read a gene or protein omics CSV for the overlay. Two or more conditions start in compare mode. */
+  importOmicsCSV(text, { filename = 'omics.csv', dataType = 'gene' } = {}) {
+    const dataset = parseOmicsCSV(text, { source: filename, dataType });
+    this.omicsDataset = dataset;
+    this.omicsSettings = {
+      ...this.omicsSettings,
+      enabled: true,
+      dataType,
+      mode: dataset.conditions.length >= 2 ? 'compare' : 'single',
+      conditionA: dataset.conditions[0] ?? null,
+      conditionB: dataset.conditions[1] ?? dataset.conditions[0] ?? null,
+    };
+    this.emit('omics');
+    return dataset;
+  }
+
+  clearOmics({ emit = true } = {}) {
+    this.omicsDataset = null;
+    this.omicsSettings = {
+      enabled: false,
+      dataType: this.omicsSettings?.dataType ?? 'gene',
+      mode: 'single',
+      conditionA: null,
+      conditionB: null,
+      metric: 'log2fc',
+      pseudocount: 1,
+    };
+    if (emit) this.emit('omics');
+  }
+
+  setOmicsSettings(patch = {}) {
+    const next = { ...this.omicsSettings, ...patch };
+    if (!['gene', 'protein'].includes(next.dataType)) next.dataType = 'gene';
+    if (!['single', 'compare'].includes(next.mode)) next.mode = 'single';
+    if (!['log2fc', 'difference'].includes(next.metric)) next.metric = 'log2fc';
+    next.pseudocount = Math.max(0, Number(next.pseudocount) || 0);
+    const conditions = this.omicsDataset?.conditions ?? [];
+    if (!conditions.includes(next.conditionA)) next.conditionA = conditions[0] ?? null;
+    if (!conditions.includes(next.conditionB)) next.conditionB = conditions[1] ?? conditions[0] ?? null;
+    next.enabled = Boolean(next.enabled && this.omicsDataset);
+    this.omicsSettings = next;
+    this.emit('omics');
+    return next;
+  }
+
+  omicsState() {
+    return {
+      dataset: serializeOmicsDataset(this.omicsDataset),
+      settings: { ...this.omicsSettings },
+    };
+  }
+
+  restoreOmicsState(raw = null) {
+    this.omicsDataset = deserializeOmicsDataset(raw?.dataset);
+    const conditions = this.omicsDataset?.conditions ?? [];
+    this.omicsSettings = {
+      enabled: Boolean(raw?.settings?.enabled && this.omicsDataset),
+      dataType: ['gene', 'protein'].includes(raw?.settings?.dataType) ? raw.settings.dataType : 'gene',
+      mode: ['single', 'compare'].includes(raw?.settings?.mode) ? raw.settings.mode : 'single',
+      conditionA: conditions.includes(raw?.settings?.conditionA) ? raw.settings.conditionA : (conditions[0] ?? null),
+      conditionB: conditions.includes(raw?.settings?.conditionB) ? raw.settings.conditionB : (conditions[1] ?? conditions[0] ?? null),
+      metric: ['log2fc', 'difference'].includes(raw?.settings?.metric) ? raw.settings.metric : 'log2fc',
+      pseudocount: Math.max(0, Number(raw?.settings?.pseudocount) || 0),
+    };
+  }
+
+  /** Reaction colours and values for the omics overlay: condition A, or A against B, with how many drawn reactions match. */
+  omicsOverlay() {
+    const dataset = this.omicsDataset;
+    const settings = this.omicsSettings;
+    const fallbackColor = this.view.dark ? '#475569' : '#cbd5e1';
+    const totalDrawn = this.map?.reactionIds?.().length ?? 0;
+    const empty = {
+      enabled: false, colors: new Map(), values: new Map(),
+      scoresA: new Map(), scoresB: new Map(), matchedReactions: 0,
+      totalDrawn, scale: null, conditionA: settings.conditionA,
+      conditionB: settings.conditionB, mode: settings.mode,
+      metric: settings.metric, fallbackColor,
+    };
+    if (!dataset || !settings.enabled || !settings.conditionA || !this.community) return empty;
+
+    const scoresA = reactionOmicsScores(
+      this.community, this.species, this.models, dataset, settings.conditionA,
+    );
+    let scoresB = new Map();
+    let values = scoresA;
+    let scale;
+
+    if (settings.mode === 'compare' && settings.conditionB) {
+      scoresB = reactionOmicsScores(
+        this.community, this.species, this.models, dataset, settings.conditionB,
+      );
+      values = compareReactionScores(scoresA, scoresB, {
+        metric: settings.metric,
+        pseudocount: settings.pseudocount,
+      });
+      scale = divergingOmicsColors(values, { dark: this.view.dark });
+    } else {
+      scale = sequentialOmicsColors(values, { dark: this.view.dark });
+    }
+
+    const drawn = new Set(this.map?.reactionIds?.() ?? []);
+    const matchedReactions = [...values.keys()].filter((rid) => drawn.has(rid)).length;
+    return {
+      enabled: true, colors: scale.colors, values, scoresA, scoresB,
+      matchedReactions, totalDrawn: drawn.size, scale,
+      conditionA: settings.conditionA, conditionB: settings.conditionB,
+      mode: settings.mode, metric: settings.metric, fallbackColor,
+    };
+  }
+
+  // Pathway manager
+
+  pathwayManagerState() {
+    return {
+      manual: [...this.manualPathways.values()].map((pathway) => ({
+        id: pathway.id,
+        name: pathway.name,
+        color: pathway.color,
+        visible: pathway.visible !== false,
+        reactionIds: [...pathway.reactionIds],
+      })),
+      settings: [...this.pathwaySettings].map(([name, value]) => ({ name, ...value })),
+    };
+  }
+
+  /** Restore manual pathways and model pathway settings from a saved state, dropping reactions the model does not have. */
+  restorePathwayManagerState(state = null) {
+    this.manualPathways = new Map();
+    this.pathwaySettings = new Map();
+    if (!state || typeof state !== 'object') return;
+
+    for (const raw of state.manual ?? []) {
+      const id = String(raw?.id ?? '').trim();
+      const name = String(raw?.name ?? '').trim();
+      if (!id || !name) continue;
+      const reactionIds = new Set(
+        (raw.reactionIds ?? []).filter((rid) => this.community?.merged?.reactions?.has(rid)),
+      );
+      if (!reactionIds.size) continue;
+      this.manualPathways.set(id, {
+        id,
+        name,
+        color: normalizeHexColor(raw.color) ?? categoryColor(name, this.view.dark),
+        visible: raw.visible !== false,
+        reactionIds,
+      });
+    }
+
+    for (const raw of state.settings ?? []) {
+      const name = String(raw?.name ?? '').trim();
+      if (!name) continue;
+      this.pathwaySettings.set(name, {
+        visible: raw.visible !== false,
+        ...(normalizeHexColor(raw.color) ? { color: normalizeHexColor(raw.color) } : {}),
+      });
+    }
+  }
+
+  /** A manual pathway of `reactionIds`, by default the selected reactions. Returns the new pathway. */
+  createManualPathway({ name, color, reactionIds = null } = {}) {
+    this.assertMapOperation('createManualPathway');
+    const label = String(name ?? '').trim();
+    if (!label) throw new Error('Enter a pathway name.');
+
+    const selected = reactionIds == null
+      ? [...this.multiSelection.reactions]
+      : [...reactionIds];
+    const valid = [...new Set(selected)]
+      .filter((rid) => this.community?.merged?.reactions?.has(rid));
+    if (!valid.length) throw new Error('Select at least one reaction.');
+    const before = this.mapPresentationState();
+
+    // A manual annotation is exclusive: assigning a reaction to a new manual
+    // pathway removes it from the previous manual pathway, while the original
+    // model pathway metadata remains untouched underneath.
+    for (const [id, pathway] of this.manualPathways) {
+      for (const rid of valid) pathway.reactionIds.delete(rid);
+      if (!pathway.reactionIds.size) this.manualPathways.delete(id);
+    }
+
+    const id = uniquePathwayId(label, this.manualPathways);
+    const pathway = {
+      id,
+      name: label,
+      color: normalizeHexColor(color) ?? categoryColor(label, this.view.dark),
+      visible: true,
+      reactionIds: new Set(valid),
+    };
+    this.manualPathways.set(id, pathway);
+    this.view.pathwayRibbonMode = 'pathway';
+    if (!isFluxColorMode(this.view.reactionColorMode)) this.view.reactionColorMode = 'flux';
+    this.recordMapPresentation(before, 'Create pathway');
+    this.emit('pathways');
+    return pathway;
+  }
+
+  updateManualPathway(id, patch = {}) {
+    this.assertMapOperation('updateManualPathway');
+    const pathway = this.manualPathways.get(id);
+    if (!pathway) return null;
+    const name = patch.name === undefined ? pathway.name : String(patch.name).trim();
+    if (!name) throw new Error('The pathway name cannot be empty.');
+    const before = this.mapPresentationState();
+    pathway.name = name;
+    if (patch.color !== undefined) pathway.color = normalizeHexColor(patch.color) ?? pathway.color;
+    if (patch.visible !== undefined) pathway.visible = Boolean(patch.visible);
+    this.recordMapPresentation(before, 'Edit pathway');
+    this.emit('pathways');
+    return pathway;
+  }
+
+  deleteManualPathway(id) {
+    this.assertMapOperation('deleteManualPathway');
+    const before = this.mapPresentationState();
+    if (!this.manualPathways.delete(id)) return false;
+    this.recordMapPresentation(before, 'Delete pathway');
+    this.emit('pathways');
+    return true;
+  }
+
+  /** The drawn reactions of a pathway key, `manual:<id>` or `model:<name>`. */
+  pathwayReactionIds(key) {
+    const raw = String(key ?? '');
+    if (raw.startsWith('manual:')) {
+      const pathway = this.manualPathways.get(raw.slice(7));
+      return pathway ? [...pathway.reactionIds].filter((rid) => this.map?.hasReaction(rid)) : [];
+    }
+    if (raw.startsWith('model:')) {
+      const name = raw.slice(6);
+      const base = buildReactionColoring(this.community?.merged, 'pathway', { dark: this.view.dark });
+      return [...base.groups]
+        .filter(([rid, group]) => group === name && this.map?.hasReaction(rid))
+        .map(([rid]) => rid);
+    }
+    return [];
+  }
+
+  selectPathway(key) {
+    const reactions = this.pathwayReactionIds(key);
+    this.multiSelection = emptySelection();
+    for (const rid of reactions) this.multiSelection.reactions.add(rid);
+    this.selectedReaction = null;
+    this.variability = null;
+    this.view.multiSelect = true;
+    this.emit('multi-selection');
+    return reactions;
+  }
+
+  setPathwayVisible(key, visible) {
+    this.assertMapOperation('setPathwayVisible');
+    const raw = String(key ?? '');
+    if (raw.startsWith('manual:')) {
+      return this.updateManualPathway(raw.slice(7), { visible });
+    }
+    if (raw.startsWith('model:')) {
+      const before = this.mapPresentationState();
+      const name = raw.slice(6);
+      const current = this.pathwaySettings.get(name) ?? {};
+      this.pathwaySettings.set(name, { ...current, visible: Boolean(visible) });
+      this.recordMapPresentation(before, 'Show or hide pathway');
+      this.emit('pathways');
+      return this.pathwaySettings.get(name);
+    }
+    return null;
+  }
+
+  setPathwayColor(key, color) {
+    this.assertMapOperation('setPathwayColor');
+    const next = normalizeHexColor(color);
+    if (!next) return null;
+    const raw = String(key ?? '');
+    if (raw.startsWith('manual:')) {
+      return this.updateManualPathway(raw.slice(7), { color: next });
+    }
+    if (raw.startsWith('model:')) {
+      const before = this.mapPresentationState();
+      const name = raw.slice(6);
+      const current = this.pathwaySettings.get(name) ?? { visible: true };
+      this.pathwaySettings.set(name, { ...current, color: next });
+      this.recordMapPresentation(before, 'Change pathway color');
+      this.emit('pathways');
+      return this.pathwaySettings.get(name);
+    }
+    return null;
+  }
+
+  /** The pathways listed in the pathway manager, manual first, each with its drawn reactions. */
+  pathwayManagerEntries() {
+    if (!this.community?.merged || !this.map) return [];
+    const drawn = new Set(this.map.reactionIds());
+    const base = buildReactionColoring(
+      this.community.merged,
+      'pathway',
+      { dark: this.view.dark, reactionIds: drawn },
+    );
+
+    const entries = [];
+    for (const item of base.legend) {
+      if (/^Sin pathway$/i.test(item.label)) continue;
+      const reactionIds = [...base.groups]
+        .filter(([rid, group]) => drawn.has(rid) && group === item.label)
+        .map(([rid]) => rid);
+      if (!reactionIds.length) continue;
+      const settings = this.pathwaySettings.get(item.label) ?? {};
+      entries.push({
+        key: `model:${item.label}`,
+        id: item.label,
+        name: item.label,
+        source: 'model',
+        color: settings.color ?? item.color,
+        visible: settings.visible !== false,
+        reactionIds,
+        count: reactionIds.length,
+      });
+    }
+
+    for (const pathway of this.manualPathways.values()) {
+      const reactionIds = [...pathway.reactionIds].filter((rid) => drawn.has(rid));
+      entries.push({
+        key: `manual:${pathway.id}`,
+        id: pathway.id,
+        name: pathway.name,
+        source: 'manual',
+        color: pathway.color,
+        visible: pathway.visible !== false,
+        reactionIds,
+        count: reactionIds.length,
+      });
+    }
+
+    return entries.sort((a, b) => {
+      if (a.source !== b.source) return a.source === 'manual' ? -1 : 1;
+      return a.name.localeCompare(b.name);
+    });
+  }
+
+  /** Pathway colours with the manager's colours, hidden pathways and manual pathways applied: { mode, colors, groups, legend }. */
+  managedPathwayColoring({ drawnOnly = false } = {}) {
+    const reactionIds = drawnOnly ? (this.map?.reactionIds?.() ?? []) : null;
+    const base = buildReactionColoring(
+      this.community?.merged,
+      'pathway',
+      { dark: this.view.dark, reactionIds },
+    );
+    const colors = new Map(base.colors);
+    const groups = new Map(base.groups);
+
+    for (const [rid, group] of [...groups]) {
+      const settings = this.pathwaySettings.get(group);
+      if (settings?.visible === false) {
+        groups.delete(rid);
+        colors.delete(rid);
+      } else if (settings?.color) {
+        colors.set(rid, settings.color);
+      }
+    }
+
+    for (const pathway of this.manualPathways.values()) {
+      for (const rid of pathway.reactionIds) {
+        if (!this.community?.merged?.reactions?.has(rid)) continue;
+        if (pathway.visible === false) {
+          groups.delete(rid);
+          colors.delete(rid);
+        } else {
+          groups.set(rid, pathway.name);
+          colors.set(rid, pathway.color);
+        }
+      }
+    }
+
+    const legend = legendFromManagedGroups(groups, colors, reactionIds);
+    return { mode: 'pathway', colors, groups, legend };
+  }
+
+  /** How reaction lines are coloured when not by flux, by the view's colour mode. */
+  reactionColoring({ drawnOnly = false } = {}) {
+    if (this.view.reactionColorMode === 'pathway') {
+      return this.managedPathwayColoring({ drawnOnly });
+    }
+    const reactionIds = drawnOnly ? (this.map?.reactionIds?.() ?? []) : null;
+    return buildReactionColoring(
+      this.community?.merged,
+      this.view.reactionColorMode,
+      { dark: this.view.dark, reactionIds },
+    );
+  }
+
+  /** The colouring of the pathway ribbons behind reactions, by the view's ribbon mode. */
+  pathwayRibbonColoring({ drawnOnly = false } = {}) {
+    const mode = normalizePathwayRibbonMode(this.view.pathwayRibbonMode);
+    if (mode === 'off') return { mode, colors: new Map(), groups: new Map(), legend: [] };
+    if (mode === 'pathway') return this.managedPathwayColoring({ drawnOnly });
+    const reactionIds = drawnOnly ? (this.map?.reactionIds?.() ?? []) : null;
+    return buildReactionColoring(
+      this.community?.merged,
+      mode,
+      { dark: this.view.dark, reactionIds },
+    );
+  }
+
+  /** Select any map object for the inspector: a reaction, metabolite, text, cell or compartment. */
+  selectEntity(type, id, details = {}) {
+    if (!type || !id) {
+      this.select(null);
+      return null;
+    }
+    if (this.multiSelectionSize) {
+      this.multiSelection = emptySelection();
+    }
+    this.selectedReaction = type === 'reaction' ? id : null;
+    this.selectedGeometry = null;
+    this.variability = this.fvaEnabled && type === 'reaction'
+      ? this.fvaRanges.get(id) ?? null
+      : null;
+    this.selectedEntity = { type, id, ...details };
+    this.emit('selection');
+    return this.selectedEntity;
+  }
+
+  /** Refresh presentation only; this never changes the model or solves an LP. */
+  refreshFluxScale() {
+    const fluxes = this.displayFluxes().values();
+    const reference = this.zunigaState()?.fluxReference;
+    const differenceStops = this.isZunigaStudy && this.zunigaComparison === 'difference'
+      ? [{ value: -reference, color: '#2166ac' }, { value: 0, color: '#bdbdbd' }, { value: reference, color: '#b2182b' }] : null;
+    this.scale = new FluxScale(fluxes, {
+      dark: this.view.dark,
+      colorStops: differenceStops ?? this.view.fluxColorStops,
+      absoluteStops: this.view.absoluteFluxColorStops,
+      absoluteLog: this.view.absoluteFluxLog,
+    });
+    if (this.isZunigaStudy) this.scale.reference = reference;
+    return this.scale;
+  }
+
+  setFluxColorStops(stops) {
+    this.setView({ fluxColorStops: stops });
+    return this.view.fluxColorStops;
+  }
+
+  /** The Absolute flux palette as files keep it. */
+  absoluteFluxColors() {
+    return { stops: this.view.absoluteFluxColorStops, log: this.view.absoluteFluxLog };
+  }
+
+  /** Restore the Absolute flux palette from a file; one without it gets the default. */
+  restoreAbsoluteFluxColors(value) {
+    const { stops, log } = normalizeAbsoluteFluxColors(value);
+    this.view.absoluteFluxColorStops = stops;
+    this.view.absoluteFluxLog = log;
+  }
+
+  /** Change display settings, normalising the values that need it, and emit 'view'. */
+  setView(patch) {
+    if ('scrollInput' in patch) {
+      patch = { ...patch, scrollInput: ['auto', 'mouse', 'touchpad'].includes(patch.scrollInput) ? patch.scrollInput : 'auto' };
+    }
+    if ('fluxColorStops' in patch) {
+      patch = { ...patch, fluxColorStops: normalizeFluxColorStops(patch.fluxColorStops) };
+    }
+    if ('absoluteFluxColorStops' in patch) {
+      patch = { ...patch, absoluteFluxColorStops: normalizeAbsoluteFluxColorStops(patch.absoluteFluxColorStops) };
+    }
+    if ('reactionColorMode' in patch) {
+      patch = { ...patch, reactionColorMode: normalizeReactionColorMode(patch.reactionColorMode) };
+    }
+    if ('pathwayRibbonMode' in patch) {
+      patch = { ...patch, pathwayRibbonMode: normalizePathwayRibbonMode(patch.pathwayRibbonMode) };
+    }
+    for (const key of ['widthByFlux', 'dashNoFlux', 'lineHops', 'absoluteFluxLog']) {
+      if (key in patch) patch = { ...patch, [key]: Boolean(patch[key]) };
+    }
+    if ('pathwayRibbonWidth' in patch) {
+      patch = { ...patch, pathwayRibbonWidth: clampNumber(patch.pathwayRibbonWidth, 20, 120, 56) };
+    }
+    if ('pathwayRibbonOpacity' in patch) {
+      patch = { ...patch, pathwayRibbonOpacity: clampNumber(patch.pathwayRibbonOpacity, 0.04, 0.45, 0.18) };
+    }
+    if ('crossFeedingWidth' in patch) {
+      patch = { ...patch, crossFeedingWidth: crossFeedingWidthValue(patch.crossFeedingWidth, this.view.crossFeedingWidth) };
+    }
+    Object.assign(this.view, patch);
+    if ('geometryEdit' in patch && !patch.geometryEdit) this.selectedGeometry = null;
+    if ('geometryEdit' in patch && patch.geometryEdit) {
+      this.selectedReaction = null;
+      this.selectedEntity = null;
+      this.variability = null;
+    }
+    if (['dark', 'fluxColorStops', 'absoluteFluxColorStops', 'absoluteFluxLog'].some((key) => key in patch)) {
+      this.refreshFluxScale();
+    }
+    this.emit('view');
+  }
+
+  // Map I/O
+
+  /**
+   * What exported files are named after. A single-species model goes by its
+   * own id (`yeastGEM_v9.1.1`), which is what the person loaded; a community by
+   * its scenario or published-community id (`consorcio-anaerobio`); several
+   * uploaded models by their ids together.
+   */
+  exportBaseName() {
+    const modelId = (sp) => this.models.get(sp.file)?.id || sp.id;
+    if (this.species.length === 1) return modelId(this.species[0]);
+    const scenarioId = String(this.scenario?.id ?? '').replace(/^published:/, '');
+    if (scenarioId && scenarioId !== 'uploaded-models') return scenarioId;
+    if (this.species.length) {
+      const ids = this.species.slice(0, 3).map(modelId);
+      return ids.join('+') + (this.species.length > 3 ? `+${this.species.length - 3}` : '');
+    }
+    return this.community?.name || 'coxeter';
+  }
+
+  /** `<exportBaseName>_<suffix>.<extension>`, e.g. `yeastGEM_v9.1.1_map.json`. */
+  fileNameFor(suffix, extension) {
+    return exportFileName(this.exportBaseName(), suffix, extension);
+  }
+
+  /**
+   * Hover text for an exported SVG: what a reaction or a metabolite is, named
+   * as the map names it, with its model id, and what the solution puts
+   * through a reaction.
+   *
+   * @returns {{reaction:(id:string)=>string, node:(id:string)=>string}}
+   */
+  exportTooltips() {
+    const solved = this.solution?.status === 'optimal';
+    const fluxes = this.displayFluxes?.() ?? this.solution?.fluxes ?? new Map();
+    const named = (kind, id) => {
+      const { label, id: modelId, name } = this.entityLabel(kind, id);
+      const lines = [label];
+      if (name && name !== label) lines.push(name);
+      if (modelId && modelId !== label) lines.push(`ID: ${modelId}`);
+      return lines;
+    };
+    return {
+      reaction: (rid) => {
+        const lines = named('reaction', rid);
+        const reaction = this.community?.merged.reactions.get(rid);
+        if (reaction?.subsystem) lines.push(`Subsystem: ${reaction.subsystem}`);
+        const bounds = this.currentReactionBounds(rid);
+        // Bounds as written in the model: 1000, not 1.00e+3.
+        const bound = (v) => (Number.isFinite(v) ? String(Number(v.toPrecision(6))) : String(v));
+        if (bounds) lines.push(`Bounds: [${bound(bounds.lower)}, ${bound(bounds.upper)}]`);
+        lines.push(solved ? `Flux: ${formatFlux(fluxes.get(rid) ?? 0, 4)}` : 'Flux: not solved');
+        return lines.join('\n');
+      },
+      node: (nodeId) => {
+        const node = this.map?.nodes.get(nodeId);
+        if (!node?.mergedId) return node?.base ?? nodeId;
+        const lines = named('metabolite', node.mergedId);
+        const metabolite = this.community?.merged.metabolites.get(node.mergedId);
+        if (metabolite?.formula) lines.push(`Formula: ${metabolite.formula}`);
+        if (node.compartment) lines.push(`Compartment: ${cellCompartmentName(node.compartment, this.models.get(this.species.find((sp) => sp.id === node.cellId)?.file)?.compartmentNames ?? {})}`);
+        return lines.join('\n');
+      },
+    };
+  }
+
+  /**
+   * What an exported SVG says about itself in its <metadata>: the program that
+   * drew it, the model and analysis behind it, and how the map was drawn.
+   */
+  exportMetadata() {
+    const solved = this.currentSolutionProvenance();
+    return {
+      generator: 'Coxeter Multicell Flux Visualizer',
+      software: softwareIdentity(),
+      exportedAt: new Date().toISOString(),
+      scenario: solved?.scenario ?? { id: this.scenario?.id ?? null, name: this.scenario?.name ?? null },
+      species: solved?.species ?? this.species.filter((sp) => sp.enabled !== false).map((sp) => ({
+        id: sp.id,
+        model: this.models.get(sp.file)?.id ?? sp.file ?? null,
+        abundance: sp.abundance ?? null,
+      })),
+      analysis: {
+        method: solved?.method ?? null,
+        solver: solved?.solver ?? null,
+        status: this.solution?.status ?? null,
+        objective: solved?.objective ?? this.objective,
+        productTarget: solved ? solved.productTarget : this.productTarget,
+        objectiveSense: solved?.objectiveSense ?? this.objectiveSense(),
+        customObjective: solved ? solved.customObjective : this.customObjective,
+        objectiveValue: Number.isFinite(this.solution?.objectiveValue) ? this.solution.objectiveValue : null,
+      },
+      map: {
+        reactions: this.map?.reactions.size ?? 0,
+        metabolites: this.map?.nodes.size ?? 0,
+        labels: { metabolite: this.mapLabelSource('metabolite'), reaction: this.mapLabelSource('reaction') },
+        lineColor: this.view.reactionColorMode,
+        lineWidthByFlux: Boolean(this.view.widthByFlux),
+        dashedWithoutFlux: this.view.dashNoFlux !== false,
+        lineHops: this.view.lineHops !== false,
+      },
+      note: 'Exported map. Hover a reaction or metabolite for its identifiers and flux.',
+    };
+  }
+
+  /** Provenance of the installed result, independent of a replacement calculation's settings. */
+  currentSolutionProvenance() {
+    if (!this.solution || !this.solutionProvenance) {
+      return null;
+    }
+    const state = JSON.parse(JSON.stringify(this.solutionProvenance));
+    if (state.method === 'pFBA' && this.pfvaEnabled && this.hasCompleteFVARanges()) {
+      state.method = 'pFVA';
+    }
+    return state;
+  }
+
+  /** The Map JSON document: the drawing with its context, pathways, flux colours and Zuñiga state. */
+  mapDocument() {
+    if (!this.map) throw new Error('There is no active map to save.');
+    return createMapDocument(this.map, {
+      scenario: this.scenario?.id ?? null,
+      species: this.species,
+      pathwayManager: this.pathwayManagerState(),
+      fluxColorStops: this.view.fluxColorStops,
+      absoluteFluxColors: this.absoluteFluxColors(),
+      study: this.zunigaState(),
+    });
+  }
+
+  mapJSON() {
+    return JSON.stringify(this.mapDocument(), null, 2);
+  }
+
+  loadMapJSON(text) {
+    this.mapLoadNote = '';
+    return this.applyMapDocument(parseMapDocument(text));
+  }
+
+  /**
+   * Open a saved map, switching to the context it was drawn over if need be.
+   *
+   * A map only means something over the model it was drawn on, so the file
+   * records which scenario or published community that was. Someone who saves a
+   * map, closes the page and opens the file again lands on the default scenario,
+   * where the drawing does not belong, and refusing it there would turn the
+   * most ordinary thing anyone does with a saved map into a dead end. Try the
+   * active context first, so nothing moves when the file already fits, and
+   * only then go to the one the file names.
+   *
+   * A map whose model is not here at all (one drawn over an imported model,
+   * opened after the page was reloaded) is kept rather than refused, and
+   * drawn as soon as that model is loaded (see drawWaitingMap). Resolves to
+   * the map, or null when it is waiting.
+   */
+  async loadMapDocument(text, { name = null } = {}) {
+    const parsed = parseMapDocument(text);
+    if (parsed.study?.id === ZUNIGA_ID) {
+      await this.validateZunigaDocument(parsed.study);
+    }
+    this.mapLoadNote = '';
+    // The map opened now replaces one that was still waiting for its model.
+    this.waitingMap = null;
+    if (parsed.study?.id === ZUNIGA_ID && !this.isZunigaStudy) await this.useZunigaStudy({ scenarioId: parsed.study.scenarioId });
+    try {
+      return await this.openMapDocument(parsed);
+    } catch (error) {
+      // A broken file, or the Zuñiga case with its own context, is not waiting
+      // for anything.
+      if (parsed.study || !hasMapStructure(parsed.map)) throw error;
+      this.waitingMap = { parsed, name, needs: mapModelLabel(parsed), reason: error.message };
+      this.addLog('warn', `Map ${name ?? ''} kept until its model is loaded: ${error.message}`.replace(/\s+/g, ' '));
+      this.emit('waiting-map');
+      return null;
+    }
+  }
+
+  /**
+   * Draw the map that was opened before its model was loaded, now that a
+   * model has been. Called after each context is opened; only an import of
+   * models, or the very scenario the map names, counts as loading its model.
+   * A teaching scenario that happens to share reaction ids does not.
+   *
+   * @returns {boolean} whether the waiting map was drawn
+   */
+  drawWaitingMap() {
+    const waiting = this.waitingMap;
+    if (!waiting || !this.map || !this.community) return false;
+    const here = this.scenario?.id ?? null;
+    const imported = Boolean(this.scenario?.uploaded) || here === 'reproducibility-bundle';
+    if (!imported && here !== (waiting.parsed.metadata?.scenario ?? null)) return false;
+
+    // An import has just said what it loaded; say what was drawn after it.
+    const opened = imported && this.status?.message ? `${this.status.message} ` : '';
+    const file = waiting.name ? `“${waiting.name}”` : 'the map';
+    this.mapLoadNote = '';
+    try {
+      try {
+        this.applyMapDocument(waiting.parsed);
+      } catch (error) {
+        if (!this.adoptMapSpecies(waiting.parsed)) throw error;
+      }
+    } catch (error) {
+      this.status = { ...this.status, state: 'warn', message: `${opened}${file} is still waiting: it does not fit this model (${error.message})` };
+      this.emit('status');
+      return false;
+    }
+    this.waitingMap = null;
+    this.status = {
+      ...this.status,
+      state: this.mapLoadNote ? 'warn' : this.status?.state,
+      message: `${opened}Drew ${file}, which was waiting for this model.${this.mapLoadNote}`,
+    };
+    this.addLog('ok', `Drew the waiting map ${waiting.name ?? ''} over ${here}`.replace(/\s+/g, ' '));
+    this.emit('status');
+    return true;
+  }
+
+  /** Forget a map that is waiting for its model. */
+  discardWaitingMap() {
+    if (!this.waitingMap) return;
+    this.waitingMap = null;
+    this.emit('waiting-map');
+  }
+
+  /** The body of loadMapDocument: fit the map to the active context or the one it names. */
+  async openMapDocument(parsed) {
+    try {
+      return this.applyMapDocument(parsed);
+    } catch (error) {
+      const wanted = parsed.metadata?.scenario ?? null;
+      if (wanted && wanted !== (this.scenario?.id ?? null)) {
+        await this.restoreMapContext(wanted);
+        return this.applyMapDocument(parsed);
+      }
+      // The right scenario is already open and the map still does not fit it:
+      // the one thing left that is not a real mismatch is the same model under
+      // another id.
+      const adopted = this.adoptMapSpecies(parsed);
+      if (adopted) return adopted;
+      throw error;
+    }
+  }
+
+  /**
+   * Open a map that was drawn over the same model under another id.
+   *
+   * An uploaded model's species id is the model id its file declares, and that
+   * changes from one export of a model to the next (`iDemo_stage15` one day,
+   * `sbml_model` the next). A map saved in between names every reaction by the
+   * old one, so on its own it looks like "a different set of species". With
+   * one species in the file and one in the session there is no doubt which is
+   * meant, so the map is read against the active one. If its reactions are not
+   * there the load fails, and says which.
+   *
+   * @returns {EditableMap|null} the map, or null when this is not that case
+   */
+  adoptMapSpecies(parsed) {
+    const saved = mapSpeciesIds(parsed);
+    const active = (this.species ?? []).filter((sp) => sp.enabled !== false);
+    if (saved.length !== 1 || active.length !== 1 || saved[0] === active[0].id) return null;
+
+    const renamed = renameMapSpecies(parsed, saved[0], active[0].id, {
+      model: active[0].file ?? active[0].model ?? null,
+    });
+    // The cell is drawn with the name of the model it belongs to now.
+    const cellName = this.models.get(active[0].file)?.cell?.name;
+    if (cellName) for (const cell of renamed.map.cells ?? []) cell.name = cellName;
+
+    let map;
+    try {
+      map = this.applyMapDocument(renamed);
+    } catch (error) {
+      throw new Error(`${error.message} (The map was saved for "${saved[0]}" and was read against "${active[0].id}", the model now open.)`);
+    }
+    this.mapLoadNote = ` It was saved for "${saved[0]}" and has been read against "${active[0].id}".${this.mapLoadNote ?? ''}`;
+    return map;
+  }
+
+  /** Switch to the scenario or published community a saved map names. */
+  async restoreMapContext(wanted) {
+    const published = /^published:(.+)$/.exec(String(wanted ?? ''));
+    if (published) {
+      const id = published[1];
+      const community = this.publishedCommunities?.find((c) => c.id === id);
+      if (!community) {
+        throw new Error(`This map belongs to the published community "${id}", which is not available here.`);
+      }
+      await this.usePublishedCommunity(id);
+      if (!this.map) {
+        throw new Error(`${community.name} bundles no models in this build, so there is nothing for the map to sit on.`);
+      }
+      return this.scenario;
+    }
+
+    const scenario = this.scenarios?.find((s) => s.id === wanted);
+    if (!scenario) {
+      throw new Error(`This map belongs to the scenario "${wanted}", which is not loaded.`);
+    }
+    await this.useScenario(wanted);
+    return this.scenario;
+  }
+
+  /** Check a parsed map against the active model, fit it to the model and make it the drawing, as one undoable edit. */
+  applyMapDocument(parsed) {
+    const fluxColorStops = normalizeFluxColorStops(parsed.fluxColorStops ?? null);
+    const absoluteFluxColors = normalizeAbsoluteFluxColors(parsed.absoluteFluxColors);
+    if (!this.community || !this.map) throw new Error('There is no active model to receive the map.');
+
+    if (parsed.study?.id === ZUNIGA_ID) {
+      if (!this.isZunigaStudy) throw new Error('Open the Zuñiga case before importing this map, or use the File menu to restore its context.');
+      this.validateZunigaState(parsed.study);
+    }
+
+    validateMapContext(parsed, { species: this.species });
+    const mapCommunity = this.isZunigaStudy ? createZunigaScenario(this.zunigaStudy, 'mutant-coculture').community : this.community;
+    validateMapDocument(parsed.map, mapCommunity, this.species);
+    if (parsed.study?.id === ZUNIGA_ID) {
+      this.useZunigaScenario(parsed.study.scenarioId, { emit: false });
+      this.zunigaComparison = parsed.study.comparison ?? 'absolute';
+    }
+
+    const before = this.map.toJSON();
+    const next = EditableMap.fromJSON(parsed.map);
+    const beforePresentation = this.mapPresentationState();
+    // A map from an earlier export of the model, or from an earlier build of
+    // this program, is brought up to date rather than refused: see
+    // reconcile-map.js. A map that needs nothing comes through untouched.
+    if (!this.isZunigaStudy) {
+      // What a switched-off species has drawn is kept, not taken as lost.
+      const keepSpecies = new Set(this.species.filter((sp) => !sp.enabled).map((sp) => sp.id));
+      const contents = pruneMapToModel(next, this.community, { keepSpecies });
+      const shell = reconcileCompartments(next, this.community);
+      this.mapLoadNote = `${this.mapLoadNote ?? ''}${describeReconciliation(contents, shell)}`;
+    }
+    this.map = next;
+    if (!this.isZunigaStudy) {
+      this.mapMode = 'full';
+    }
+    this.view.fluxColorStops = fluxColorStops;
+    this.restoreAbsoluteFluxColors(absoluteFluxColors);
+    this.refreshFluxScale();
+    this.restorePathwayManagerState(parsed.pathwayManager);
+    this.recordMapPresentation(beforePresentation, 'Load map JSON', before);
+    // What was just opened is what is in the file, pathways and colours
+    // included. Undo still goes back to the previous drawing, which then
+    // counts as unsaved.
+    this.markMapSaved();
+    this.selectedReaction = null;
+    this.selectedGeometry = null;
+    this.selectedEntity = null;
+    this.multiSelection = emptySelection();
+    this.variability = null;
+    this.emit('map');
+    return this.map;
+  }
+
+  // Exports
+
+  /** The solution as CSV, one row per reaction with its flux and bounds. Only the header when there is no optimal solution. */
+  fluxCSV() {
+    const rows = ['reaction,species,local_id,name,subsystem,flux,lower_bound,upper_bound'];
+    if (!this.solution || this.solution.status !== 'optimal') return rows.join('\n');
+    for (const [rid, v] of this.solution.fluxes) {
+      const owner = this.community.reactionOwner.get(rid) || {};
+      const rxn = this.community.merged.reactions.get(rid);
+      const fixed = this.solution.steadyCom;
+      const rawId = owner.originalId ?? rid;
+      const specific = fixed?.spec?.reactions?.get(rawId) ?? fixed?.spec?.members?.find((m) => m.id === owner.speciesId)?.model?.reactions.get(rawId);
+      const b = specific ? { lower: specific.lowerBound, upper: specific.upperBound } : this.problem.getBounds(rid) || { lower: '', upper: '' };
+      rows.push([
+        csv(rid), csv(owner.speciesId ?? ''), csv(owner.originalId ?? ''),
+        csv(rxn?.name ?? ''), csv(rxn?.subsystem ?? ''),
+        v.toFixed(6), b.lower, b.upper,
+      ].join(','));
+    }
+    return rows.join('\n');
+  }
+
+  /** The Scenario file: species, medium, overrides, gene knockouts, analysis settings, display settings, pathways and omics. */
+  stateJSON() {
+    return JSON.stringify({
+      scenario: this.scenario?.id ?? null,
+      study: this.zunigaState(),
+      steadyComConfig: this.steadyComConfig,
+      steadyCom: this.solution?.steadyCom ? { mu: this.solution.steadyCom.mu } : null,
+      objective: this.objective,
+      productTarget: this.productTarget,
+      customObjective: this.customObjective,
+      parsimonious: this.parsimonious,
+      pfbaBiomassPercent: this.pfbaBiomassPercent,
+      loopless: this.loopless,
+      cycleFree: this.cycleFree,
+      fvaEnabled: this.fvaEnabled,
+      pfvaEnabled: this.pfvaEnabled,
+      layoutSettings: { ...this.layoutSettings },
+      reactionColorMode: this.view.reactionColorMode,
+      widthByFlux: this.view.widthByFlux,
+      dashNoFlux: this.view.dashNoFlux,
+      lineHops: this.view.lineHops,
+      crossFeedingWidth: this.view.crossFeedingWidth,
+      fluxColorStops: this.view.fluxColorStops,
+      absoluteFluxColors: this.absoluteFluxColors(),
+      pathwayRibbonMode: this.view.pathwayRibbonMode,
+      pathwayRibbonWidth: this.view.pathwayRibbonWidth,
+      pathwayRibbonOpacity: this.view.pathwayRibbonOpacity,
+      pathwayManager: this.pathwayManagerState(),
+      omics: this.omicsState(),
+      medium: this.medium,
+      species: this.species,
+      overrides: [...this.overrides].map(([id, b]) => ({ id, ...b })),
+      ...(this.geneKnockouts.size ? { geneKnockouts: [...this.geneKnockouts].sort() } : {}),
+    }, null, 2);
+  }
+
+  /** Open a Scenario file: restore its context and settings, rebuild and solve again. */
+  async loadState(text) {
+    const doc = JSON.parse(text);
+    validateScenarioState(doc);
+    const fluxColorStops = normalizeFluxColorStops(doc.fluxColorStops ?? null);
+    const absoluteFluxColors = normalizeAbsoluteFluxColors(doc.absoluteFluxColors);
+    if (doc.study?.id === ZUNIGA_ID || doc.scenario === `published:${ZUNIGA_ID}`) {
+      if (doc.study) {
+        await this.validateZunigaDocument(doc.study);
+      }
+      if (!this.isZunigaStudy) await this.useZunigaStudy({ scenarioId: doc.study?.scenarioId ?? 'mutant-coculture' });
+      if (doc.study) this.validateZunigaState(doc.study);
+      this._workGeneration += 1;
+      this.solutionCleared = false;
+      this.useZunigaScenario(doc.study?.scenarioId ?? 'mutant-coculture', { emit: false });
+      this.view.fluxColorStops = fluxColorStops;
+      this.restoreAbsoluteFluxColors(absoluteFluxColors);
+      this.layoutSettings = normalizeLayoutSettings(doc.layoutSettings ?? this.layoutSettings);
+      this.view.reactionColorMode = normalizeReactionColorMode(doc.reactionColorMode ?? 'flux');
+      this.setZunigaComparison(doc.study?.comparison ?? 'absolute');
+      this.restorePathwayManagerState(doc.pathwayManager);
+      this.markScenarioSaved();
+      this.emit('solution');
+      return this;
+    }
+    if (doc.steadyCom && (!Number.isFinite(doc.steadyCom.mu) || doc.steadyCom.mu < 0)) throw new Error('The saved SteadyCom growth rate is invalid.');
+    const fiber = doc.steadyComConfig?.fiber ?? null;
+    if (fiber && (!Number.isFinite(fiber.bacteroides) || fiber.bacteroides < 1 || fiber.bacteroides > 30 || fiber.faecalibacterium !== 5)) {
+      throw new Error('The saved SteadyCom fiber condition is invalid.');
+    }
+    for (const species of doc.species) {
+      await this.loadModel(species.file);
+    }
+    this._workGeneration += 1;
+    this.resetZunigaStudy();
+    this.resetCommunityGIMME();
+    this.solutionCleared = false;
+    this.invalidateSteadyCom();
+    let scenarioId = 'imported-scenario';
+    if (typeof doc.scenario === 'string' && doc.scenario.trim()) {
+      scenarioId = doc.scenario;
+    }
+    if (scenarioId.startsWith('published:')) {
+      await this.usePublishedCommunity(scenarioId.slice('published:'.length));
+    } else {
+      this.publishedCommunityId = null;
+      this.scenario = this.scenarios.find(scenario => scenario.id === scenarioId) ?? {
+        id: scenarioId,
+        name: 'Imported scenario',
+        medium: { ...doc.medium },
+      };
+    }
+    this.steadyComConfig = { fiber, parsimonious: Boolean(doc.steadyComConfig?.parsimonious) };
+    // "Original" bounds are the scenario's own; what the file changes is a change.
+    this.baseMedium = { ...(this.scenario?.medium ?? this.baseMedium ?? {}) };
+    this.constraintHistory.clear();
+    this.constraintCulprits = null;
+    this._culpritCheck = null;
+    this.objective = doc.objective ?? OBJECTIVES.EQUAL_GROWTH;
+    this.productTarget = doc.productTarget ?? null;
+    this.customObjective = null;
+    this.parsimonious = Boolean(doc.parsimonious ?? doc.pfba ?? false);
+    this.pfbaBiomassPercent = normalizePfbaPercent(
+      doc.pfbaBiomassPercent
+      ?? (doc.pfbaFraction !== undefined ? Number(doc.pfbaFraction) * 100 : 100)
+    );
+    this.loopless = Boolean(doc.loopless ?? doc.looplessFba ?? false);
+    this.cycleFree = !this.loopless && Boolean(doc.cycleFree ?? false);
+    if (this.loopless || this.cycleFree) this.parsimonious = false;
+    this.fvaEnabled = this.loopless || this.cycleFree
+      ? false
+      : Boolean(doc.fvaEnabled ?? doc.fva ?? false);
+    this.pfvaEnabled = this.fvaEnabled && Boolean(doc.pfvaEnabled);
+    this.fvaRanges = new Map();
+    this.fvaProgress = { running: false, done: 0, total: 0, ms: 0 };
+    this.layoutSettings = normalizeLayoutSettings(doc.layoutSettings ?? this.layoutSettings);
+    this.view.reactionColorMode = normalizeReactionColorMode(doc.reactionColorMode ?? this.view.reactionColorMode);
+    // Older scenario files say nothing about these: they keep what is set.
+    for (const key of ['widthByFlux', 'dashNoFlux', 'lineHops']) {
+      if (typeof doc[key] === 'boolean') this.view[key] = doc[key];
+    }
+    if (doc.crossFeedingWidth !== undefined) this.view.crossFeedingWidth = crossFeedingWidthValue(doc.crossFeedingWidth, this.view.crossFeedingWidth);
+    this.view.pathwayRibbonMode = normalizePathwayRibbonMode(doc.pathwayRibbonMode ?? this.view.pathwayRibbonMode);
+    this.view.pathwayRibbonWidth = clampNumber(doc.pathwayRibbonWidth ?? this.view.pathwayRibbonWidth, 20, 120, 56);
+    this.view.pathwayRibbonOpacity = clampNumber(doc.pathwayRibbonOpacity ?? this.view.pathwayRibbonOpacity, 0.04, 0.45, 0.18);
+    this.medium = doc.medium ?? {};
+    this.species = doc.species ?? this.species;
+    await this.rebuild({ relayout: true, contents: this.scenario?.published === 'steadycom-gut-nine' ? 'none' : 'all', solve: !doc.steadyCom });
+    // After the rebuild: a scenario's curated map, drawn again, brings its own
+    // palettes, and the ones in the file are what was saved.
+    this.view.fluxColorStops = fluxColorStops;
+    this.restoreAbsoluteFluxColors(absoluteFluxColors);
+    this.refreshFluxScale();
+    this.restorePathwayManagerState(doc.pathwayManager);
+    this.restoreOmicsState(doc.omics);
+    this.overrides = new Map((doc.overrides ?? []).map((o) => [o.id, { lower: o.lower, upper: o.upper }]));
+    this.geneKnockouts = this.geneKnockoutsFrom(doc.geneKnockouts);
+    this.customObjective = this.customObjectiveFrom(doc.customObjective);
+    this.applyOverrides();
+    // Before solving, so the repaint that follows already reads "Saved".
+    this.markScenarioSaved();
+    if (doc.steadyCom) {
+      const context = this.workContextKey();
+      await this.solveSteadyComAt(doc.steadyCom.mu);
+      this.settleOpenedSteadyCom(context);
+    } else {
+      this.solve();
+    }
+  }
+}
+
+/** Refuse invalid parameters before they can change the active calculation. */
+function validateCommunityGIMMESettings(omics) {
+  if (omics.gimmeThreshold !== null && omics.gimmeThreshold !== undefined
+    && !Number.isFinite(omics.gimmeThreshold)) {
+    throw new Error('The GIMME threshold must be a finite number or blank for automatic.');
+  }
+  if (!Number.isFinite(omics.gimmeObjectiveFraction)
+    || omics.gimmeObjectiveFraction < 0 || omics.gimmeObjectiveFraction > 1) {
+    throw new Error('The GIMME objective fraction must be between 0 and 1.');
+  }
+}
+
+/** Map a validated GIMME request without modifying the current settings or solution. */
+function communityGIMMEInputs(community, species, models, omics) {
+  validateCommunityGIMMESettings(omics);
+  if (!omics.dataset) {
+    throw new Error('Load metatranscriptomics data first.');
+  }
+  if (!Array.isArray(omics.dataset.conditions) || !omics.dataset.conditions.includes(omics.conditionA)) {
+    throw new Error('Choose a GIMME condition present in the expression data.');
+  }
+  if (!community) {
+    throw new Error('Open a community before running GIMME.');
+  }
+  const expression = reactionOmicsScores(community, species, models, omics.dataset, omics.conditionA);
+  if (![...expression.values()].some(Number.isFinite)) {
+    throw new Error('GIMME needs expression mapped to at least one reaction.');
+  }
+  return expression;
+}
+
+/** Read every embedded model and drawing before replacing the open work. */
+function prepareBundleModels(bundle) {
+  if (!Array.isArray(bundle.community?.species) || !bundle.community.species.length) {
+    throw new Error('The bundle contains no reproducible species.');
+  }
+  const species = bundle.community.species.map(species => ({ ...species, file: `repro-${species?.id ?? ''}` }));
+  const medium = bundle.constraints?.medium;
+  const bounds = bundle.constraints?.reactionOverrides ?? {};
+  if (!bounds || typeof bounds !== 'object' || Array.isArray(bounds)) {
+    throw new Error('The bundle reaction bounds must be an object.');
+  }
+  const overrides = Object.entries(bounds).map(([id, value]) => ({ ...value, id }));
+  validateScenarioState({ species, medium, overrides });
+  if (!species.some(species => species.enabled !== false)) {
+    throw new Error('The bundle must enable at least one species.');
+  }
+  const models = new Map();
+  const entries = [];
+  for (const item of species) {
+    const raw = bundle.models?.[item.id];
+    if (!raw) {
+      throw new Error(`The bundle model for "${item.id}" is missing.`);
+    }
+    const model = parseModelJSON(JSON.stringify(raw), `Bundle model "${item.id}"`);
+    models.set(item.file, model);
+    entries.push({ ...item, model });
+  }
+  const mediumSpec = {};
+  for (const [id, limit] of Object.entries(medium)) {
+    mediumSpec[id] = { lower: -limit, upper: 1000 };
+  }
+  const community = new CommunityModel({
+    species: entries, medium: mediumSpec, objective: bundle.community.objective ?? OBJECTIVES.EQUAL_GROWTH,
+    productTarget: bundle.community.productTarget ?? null,
+  });
+  if (bundle.analysis?.method === 'GIMME') {
+    const settings = bundle.omics.settings ?? {};
+    const gimme = bundle.analysis.gimme ?? {};
+    if (typeof gimme !== 'object' || Array.isArray(gimme)) {
+      throw new Error('The bundle GIMME settings must be an object.');
+    }
+    if (gimme.threshold !== null && gimme.threshold !== undefined && !Number.isFinite(gimme.threshold)) {
+      throw new Error('The GIMME threshold must be a finite number or blank for automatic.');
+    }
+    communityGIMMEInputs(community, species, models, {
+      dataset: { ...bundle.omics, values: new Map(Object.entries(bundle.omics.values)) },
+      conditionA: gimme.condition ?? settings.conditionA ?? null,
+      gimmeThreshold: Object.hasOwn(settings, 'gimmeThreshold') ? settings.gimmeThreshold : (gimme.threshold ?? null),
+      gimmeObjectiveFraction: gimme.objectiveFraction ?? settings.gimmeObjectiveFraction ?? 0.9,
+    });
+  }
+  let map = null;
+  if (bundle.map !== null && bundle.map !== undefined) {
+    validateMapDocument(bundle.map, community, species);
+    map = EditableMap.fromJSON(JSON.parse(JSON.stringify(bundle.map)));
+  }
+  return { species, models, map };
+}
+
+/** Validate scientific settings that must not fall back to a different analysis. */
+function validateBundleAnalysis(bundle) {
+  const analysis = bundle.analysis ?? {};
+  if (typeof analysis !== 'object' || Array.isArray(analysis)) {
+    throw new Error('The bundle analysis must be an object.');
+  }
+  const method = analysis.method ?? 'FBA';
+  const methods = ['FBA', 'pFBA', 'pFVA', 'loopless FBA', 'CycleFreeFlux', 'GIMME'];
+  if (bundle.study?.id === ZUNIGA_ID) {
+    methods.push('Stationary source-model FBA');
+  }
+  if (!methods.includes(method)) {
+    throw new Error(`The bundle analysis method "${method}" is not supported.`);
+  }
+  for (const key of ['parsimonious', 'loopless', 'cycleFree', 'fvaEnabled', 'pfvaEnabled', 'pfbaExactObjective']) {
+    if (analysis[key] !== undefined && typeof analysis[key] !== 'boolean') {
+      throw new Error(`The bundle analysis setting "${key}" must be boolean.`);
+    }
+  }
+  if (analysis.pfbaBiomassPercent !== undefined
+    && (!Number.isFinite(analysis.pfbaBiomassPercent) || analysis.pfbaBiomassPercent < 0 || analysis.pfbaBiomassPercent > 100)) {
+    throw new Error('The bundle pFBA biomass percentage must be between 0 and 100.');
+  }
+  if (method === 'GIMME' && !bundle.omics) {
+    throw new Error('The bundle declares GIMME but lacks the omics dataset needed to reproduce it.');
+  }
+  const omics = bundle.omics;
+  if (omics !== null && omics !== undefined) {
+    if (typeof omics !== 'object' || Array.isArray(omics) || !Array.isArray(omics.conditions)
+      || !omics.values || typeof omics.values !== 'object' || Array.isArray(omics.values)) {
+      throw new Error('The bundle omics must contain conditions and a values object.');
+    }
+    for (const row of Object.values(omics.values)) {
+      if (!row || !row.values || typeof row.values !== 'object' || Array.isArray(row.values)) {
+        throw new Error('The bundle omics rows must contain a values object.');
+      }
+      for (const value of Object.values(row.values)) {
+        if (!Number.isFinite(value)) {
+          throw new Error('The bundle omics values must be finite numbers.');
+        }
+      }
+    }
+  }
+  const tolerances = bundle.replay?.tolerances ?? {};
+  for (const key of ['absolute', 'relative']) {
+    if (tolerances[key] !== undefined && (!Number.isFinite(tolerances[key]) || tolerances[key] < 0)) {
+      throw new Error('The bundle replay tolerances must be finite nonnegative numbers.');
+    }
+  }
+}
+
+/** Normalize saved drawing settings before any bundle state is installed. */
+function normalizeBundlePresentation(raw) {
+  if (raw === null || raw === undefined) return null;
+  if (typeof raw !== 'object' || Array.isArray(raw)) {
+    throw new Error('The bundle presentation must be an object.');
+  }
+  const state = { ...raw };
+  state.fluxColorStops = normalizeFluxColorStops(raw.fluxColorStops ?? null);
+  state.absoluteFluxColors = normalizeAbsoluteFluxColors(raw.absoluteFluxColors);
+  if (raw.layoutSettings) {
+    state.layoutSettings = normalizeLayoutSettings(raw.layoutSettings);
+  }
+  if (raw.mapMode !== undefined && !['full', 'empty', 'core-overview', 'published-case'].includes(raw.mapMode)) {
+    throw new Error('The bundle presentation declares an invalid drawing mode.');
+  }
+  for (const key of ['widthByFlux', 'dashNoFlux', 'lineHops', 'showCurrency', 'showCrossFeeding']) {
+    if (raw[key] !== undefined && typeof raw[key] !== 'boolean') {
+      throw new Error(`The bundle presentation setting "${key}" must be boolean.`);
+    }
+  }
+  for (const key of ['crossFeedingWidth', 'pathwayRibbonWidth', 'pathwayRibbonOpacity']) {
+    if (raw[key] !== undefined && !Number.isFinite(raw[key])) {
+      throw new Error(`The bundle presentation setting "${key}" must be a finite number.`);
+    }
+  }
+  if (raw.pathwayManager !== undefined && raw.pathwayManager !== null
+    && (!Array.isArray(raw.pathwayManager.manual) || !Array.isArray(raw.pathwayManager.settings))) {
+    throw new Error('The bundle pathway presentation must contain manual and settings lists.');
+  }
+  for (const pathway of raw.pathwayManager?.manual ?? []) {
+    if (!pathway || !Array.isArray(pathway.reactionIds)) {
+      throw new Error('The bundle pathway presentation must use reaction ID lists.');
+    }
+    for (const id of pathway.reactionIds) {
+      if (typeof id !== 'string') {
+        throw new Error('The bundle pathway reaction IDs must be strings.');
+      }
+    }
+  }
+  const dataset = raw.mapOmics?.dataset;
+  if (dataset && (!Array.isArray(dataset.conditions) || !Array.isArray(dataset.rows))) {
+    throw new Error('The bundle map omics must contain conditions and rows.');
+  }
+  return state;
+}
+
+/** Validate the biological settings before a Scenario file replaces any open work. */
+function validateScenarioState(doc) {
+  if (!doc || typeof doc !== 'object' || Array.isArray(doc)
+    || !Array.isArray(doc.species) || doc.species.length === 0) {
+    throw new Error('Open a Scenario file containing species and medium settings.');
+  }
+  if (!doc.medium || typeof doc.medium !== 'object' || Array.isArray(doc.medium)) {
+    throw new Error('The scenario medium must contain numeric uptake limits.');
+  }
+  for (const [id, limit] of Object.entries(doc.medium)) {
+    if (!Number.isFinite(limit) || limit < 0) {
+      throw new Error(`The scenario medium limit for "${id}" must be a finite nonnegative number.`);
+    }
+  }
+  const speciesIds = new Set();
+  for (const species of doc.species) {
+    if (!species || typeof species.id !== 'string' || !species.id.trim()
+      || typeof species.file !== 'string' || !species.file.trim()) {
+      throw new Error('Each scenario species needs an ID and a model file.');
+    }
+    if (speciesIds.has(species.id)) {
+      throw new Error(`The scenario repeats species "${species.id}".`);
+    }
+    speciesIds.add(species.id);
+    if (species.abundance !== undefined && (!Number.isFinite(species.abundance) || species.abundance < 0)) {
+      throw new Error(`The abundance of scenario species "${species.id}" must be a finite nonnegative number.`);
+    }
+    if (species.enabled !== undefined && typeof species.enabled !== 'boolean') {
+      throw new Error(`The enabled setting of scenario species "${species.id}" must be true or false.`);
+    }
+  }
+  if (doc.overrides !== undefined && !Array.isArray(doc.overrides)) {
+    throw new Error('The scenario reaction overrides must be a list of bounds.');
+  }
+  const reactionIds = new Set();
+  for (const bounds of doc.overrides ?? []) {
+    if (!bounds || typeof bounds.id !== 'string' || !bounds.id.trim()
+      || !Number.isFinite(bounds.lower) || !Number.isFinite(bounds.upper) || bounds.lower > bounds.upper) {
+      throw new Error('Each scenario reaction override needs an ID and finite bounds with lower ≤ upper.');
+    }
+    if (reactionIds.has(bounds.id)) {
+      throw new Error(`The scenario repeats the reaction override for "${bounds.id}".`);
+    }
+    reactionIds.add(bounds.id);
+  }
+}
+
+// Per built model: which reactions the medium controls, the reactions table's catalogue and the gene index.
+const mediumReactionCache = new WeakMap();
+const reactionCatalogCache = new WeakMap();
+const geneIndexCache = new WeakMap();
+const EMPTY_MAP = new Map();
+
+/**
+ * A result solved as the maximum of the negated objective, read back as the
+ * minimum of the objective: the objective value and every dual change sign.
+ */
+function minimisedResult(res) {
+  if (!res) return res;
+  const flip = (values) => (values instanceof Map ? new Map([...values].map(([id, v]) => [id, -v])) : values);
+  return {
+    ...res,
+    objectiveValue: Number.isFinite(res.objectiveValue) ? -res.objectiveValue : res.objectiveValue,
+    reducedCosts: flip(res.reducedCosts),
+    scaledReducedCosts: flip(res.scaledReducedCosts),
+    shadowPrices: flip(res.shadowPrices),
+    sense: 'min',
+  };
+}
+
+/** Whether every community-level bound and extra constraint admits zero flux. steadyComRange caps the total biomass only then. */
+function steadyComCapIsSafe(spec) {
+  for (const bounds of Object.values(spec.communityExchangeBounds ?? {})) {
+    if (bounds.lower > 0 || bounds.upper < 0) return false;
+  }
+  if (spec.reactions) {
+    for (const reaction of spec.reactions.values()) {
+      if (reaction.species !== (spec.communityTag ?? 'comm')) continue;
+      if (reaction.lowerBound > 0 || reaction.upperBound < 0) return false;
+    }
+    for (const constraint of spec.constraints ?? []) {
+      if ((constraint.lo ?? -Infinity) > 0 || (constraint.hi ?? Infinity) < 0) return false;
+    }
+  }
+  return true;
+}
+
+/*
+ * A stable number per object, for signatures that must notice an object being
+ * replaced (a new omics dataset) without serialising all of it on every paint.
+ */
+const objectRevisions = new WeakMap();
+let nextObjectRevision = 1;
+function objectRevision(value) {
+  if (!value || typeof value !== 'object') return null;
+  if (!objectRevisions.has(value)) objectRevisions.set(value, nextObjectRevision++);
+  return objectRevisions.get(value);
+}
+
+/**
+ * The number a control holds, or null when it holds none.
+ *
+ * Number('') and Number('  ') are 0, which would turn a cleared bound field
+ * into a bound of 0. Empty, blank and non-finite input is "no value" instead.
+ */
+function finiteInput(value) {
+  if (value === null || value === undefined) return null;
+  if (typeof value === 'string' && value.trim() === '') return null;
+  const number = Number(value);
+  return Number.isFinite(number) ? number : null;
+}
+
+
+function uniquePathwayId(name, pathways) {
+  const base = String(name)
+    .toLowerCase()
+    .normalize('NFKD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '') || 'pathway';
+  let id = base;
+  let index = 2;
+  while (pathways.has(id)) {
+    id = `${base}-${index}`;
+    index += 1;
+  }
+  return id;
+}
+
+function legendFromManagedGroups(groups, colors, reactionIds = null) {
+  const allowed = reactionIds == null ? null : new Set(reactionIds);
+  const counts = new Map();
+  const swatches = new Map();
+  for (const [rid, group] of groups) {
+    if (allowed && !allowed.has(rid)) continue;
+    if (!group || /^Sin pathway$/i.test(group)) continue;
+    counts.set(group, (counts.get(group) || 0) + 1);
+    if (!swatches.has(group) && colors.has(rid)) swatches.set(group, colors.get(rid));
+  }
+  return [...counts]
+    .map(([label, count]) => ({ label, count, color: swatches.get(label) ?? '#64748b' }))
+    .sort((a, b) => a.label.localeCompare(b.label));
+}
+
+function clampNumber(value, min, max, fallback) {
+  const n = Number(value);
+  if (!Number.isFinite(n)) return fallback;
+  return Math.min(max, Math.max(min, n));
+}
+
+/** A cross-feeding line width multiple inside the slider's range, or `fallback` for one that is not a number. */
+function crossFeedingWidthValue(value, fallback = CROSSFEED_WIDTH_RANGE.default) {
+  const { min, max } = CROSSFEED_WIDTH_RANGE;
+  return clampNumber(value === null || value === '' ? NaN : value, min, max, fallback);
+}
+
+/** Whether a parsed map has the drawing a map is made of, whatever it was drawn over. */
+function hasMapStructure(doc) {
+  return Boolean(doc && Array.isArray(doc.reactions) && Array.isArray(doc.nodes) && Array.isArray(doc.segments));
+}
+
+/**
+ * The model a map was drawn over, as the user knows it: an imported model by
+ * the name of its file, anything else by its species.
+ */
+function mapModelLabel(parsed) {
+  const uploads = (parsed?.metadata?.species ?? [])
+    .map((sp) => /^upload:(.+)$/.exec(String(sp.model ?? ''))?.[1])
+    .filter(Boolean);
+  if (uploads.length) return uploads.map((stem) => `“${stem}”`).join(', ');
+  const species = mapSpeciesIds(parsed);
+  if (species.length) return `species ${species.map((id) => `“${id}”`).join(', ')}`;
+  return 'its model';
+}
+
+/** Throw unless a map document can be applied to the community: right structure, known cells, and some reaction (or metabolite) in common. */
+function validateMapDocument(doc, community, species) {
+  if (!doc || typeof doc !== 'object') throw new Error('The file does not contain a valid map.');
+  if (!Array.isArray(doc.reactions) || !Array.isArray(doc.nodes) || !Array.isArray(doc.segments)) {
+    throw new Error('The file does not have the expected EditableMap structure.');
+  }
+
+  // Every cell the map draws has to be a species of the community. It is
+  // checked against the community and not against what happens to be drawn:
+  // a map is allowed to draw fewer cells than there are species, and the one on
+  // screen may be a blank canvas with none at all, which would turn away every
+  // map offered to it. A switched-off species counts: a hand-built map keeps
+  // its cell, dimmed, so a map saved that way has to open again.
+  const known = new Set((species ?? []).map((sp) => sp.id));
+  if ((doc.cells ?? []).some((cell) => !known.has(cell.id))) {
+    throw new Error('The map was created for a different set of cells/species.');
+  }
+
+  // A model that is still being built loses and renames things between one
+  // export and the next, and a map drawn over the earlier one is still a map of
+  // this model: what is gone is taken off it when it is applied. Only a map that
+  // shares nothing with the active model is a map of something else.
+  const reactions = doc.reactions.filter((reaction) => reaction?.id);
+  const missing = reactions.find((reaction) => !community.merged.reactions.has(reaction.id));
+  if (missing && !reactions.some((reaction) => community.merged.reactions.has(reaction.id))) {
+    throw new Error(reactions.length === 1
+      ? `Reaction ${missing.id} does not exist in the active model.`
+      : `None of the ${reactions.length} reactions on this map exist in the active model (the first is ${missing.id}).`);
+  }
+  if (!reactions.length) {
+    const nodes = doc.nodes.filter((node) => node?.mergedId);
+    const lost = nodes.find((node) => !community.merged.metabolites.has(node.mergedId));
+    if (lost && !nodes.some((node) => community.merged.metabolites.has(node.mergedId))) {
+      throw new Error(`Metabolite ${lost.mergedId} does not exist in the active model.`);
+    }
+  }
+}
+
+function normalizePfbaPercent(value) {
+  const n = Number(value);
+  if (!Number.isFinite(n)) return 100;
+  return Math.min(100, Math.max(0, n));
+}
+
+function normalizeSearch(value) {
+  return String(value ?? '')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .trim()
+    .toLowerCase();
+}
+
+function describeStatus(status) {
+  if (status === 'infeasible') return 'No solution: the constraints are incompatible.';
+  if (status === 'unbounded') return 'Unbounded objective: a constraint is missing.';
+  if (status === 'iteration_limit') return 'The iteration limit was reached.';
+  return status;
+}
+
+function pointInsideRect(point, rect, padding = 0) {
+  return point.x > rect.x - padding
+    && point.x < rect.x + rect.w + padding
+    && point.y > rect.y - padding
+    && point.y < rect.y + rect.h + padding;
+}
+
+function yeastPreviewAnchors(map, speciesId, compartmentId, count) {
+  const cell = map?.cells?.find((item) => item.id === speciesId);
+  const compartment = cell?.compartments?.find((item) => item.id === compartmentId);
+  if (!cell || !compartment || count <= 0) return [];
+
+  const rect = compartment.rect;
+  const children = cell.compartments
+    .filter((item) => item.parentId === compartmentId)
+    .map((item) => item.rect);
+
+  const candidates = [];
+  const cols = 8;
+  const rows = 6;
+  for (let row = 0; row < rows; row += 1) {
+    for (let col = 0; col < cols; col += 1) {
+      const point = {
+        x: rect.x + rect.w * ((col + 1) / (cols + 1)),
+        y: rect.y + rect.h * ((row + 1) / (rows + 1)),
+      };
+      const childPadding = Math.min(rect.w, rect.h) * 0.018;
+      if (!children.some((child) => pointInsideRect(point, child, childPadding))) {
+        candidates.push(point);
+      }
+    }
+  }
+
+  const pool = candidates.length >= count ? candidates : Array.from({ length: count }, (_, index) => ({
+    x: rect.x + rect.w * (((index % 4) + 1) / 5),
+    y: rect.y + rect.h * ((Math.floor(index / 4) + 1) / (Math.ceil(count / 4) + 1)),
+  }));
+
+  if (count === 1) return [pool[Math.floor(pool.length / 2)]];
+  return Array.from({ length: count }, (_, index) => {
+    const slot = Math.round(index * (pool.length - 1) / (count - 1));
+    return pool[slot];
+  });
+}
+
+const csv = (s) => `"${String(s).replace(/"/g, '""')}"`;
+const frame = () => new Promise((resolve) => {
+  if (typeof requestAnimationFrame === 'function') requestAnimationFrame(() => resolve());
+  else setTimeout(resolve, 0);
+});
+
+/**
+ * Wait until what was just drawn is on the screen: past the next frame, and a
+ * task after it, which is when the browser has painted. A hidden page gets no
+ * frames, so a short timeout stands in for one.
+ */
+const paintFrame = () => new Promise((resolve) => {
+  let done = false;
+  const go = () => { if (!done) { done = true; resolve(); } };
+  if (typeof requestAnimationFrame === 'function') requestAnimationFrame(() => setTimeout(go, 0));
+  setTimeout(go, 60);
+});
+
+/** The analyses runAnalysis() knows, by the name the Simulate panel shows. */
+const ANALYSIS_LABELS = { fba: 'FBA', pfba: 'pFBA', fva: 'FVA', pfva: 'pFVA', loopless: 'Loopless FBA', cyclefree: 'CycleFreeFlux' };
+
+/** `850 ms`, `4.2 s`, `2 min 05 s`. */
+function formatDuration(ms) {
+  if (!Number.isFinite(ms) || ms < 0) return '—';
+  if (ms < 1000) return `${Math.round(ms)} ms`;
+  if (ms < 60000) return `${(ms / 1000).toFixed(1)} s`;
+  const s = Math.round(ms / 1000);
+  return `${Math.floor(s / 60)} min ${String(s % 60).padStart(2, '0')} s`;
+}
+
+/**
+ * Which community keeps its full member models and draws a curated map beside
+ * them, rather than drawing the members themselves.
+ *
+ * Only the four-E. coli benchmark does: it has a hand-made central-metabolism
+ * overview, so the member models can stay genome-scale without anything trying
+ * to draw them.
+ */
+function usesCuratedCoreMap(communityId) {
+  return communityId === 'steadycom-ecoli-auxotrophs';
+}
+
+function publishedMemberFileForRuntime(communityId, member) {
+  const full = member?.model ?? null;
+  const preview = member?.preview ?? null;
+  const embedded = globalThis.__ESCHER_MCMC_DATA__;
+
+  /*
+   * Without a curated map, whatever is loaded here *is* what gets drawn, and
+   * selecting the nine-species community that way takes 557 seconds: nine
+   * genome-scale members, ten thousand reactions, laid out as a drawing nobody
+   * can read. The excerpt exists for exactly that, and the card already says
+   * the growth rate on such a map is the excerpt's. The full model remains what
+   * the Download and the SBML conversion read.
+   */
+  if (!usesCuratedCoreMap(communityId) && communityId !== 'steadycom-gut-nine' && preview) return preview;
+
+  // Hosted/dev builds can read the full member files from models/published/.
+  // The standalone intentionally embeds only the much smaller map previews.
+  if (embedded) {
+    const fullKey = full ? `models/published/${communityId}/${full}` : null;
+    const previewKey = preview ? `models/published/${communityId}/${preview}` : null;
+    if (fullKey && fullKey in embedded) return full;
+    if (previewKey && previewKey in embedded) return preview;
+  }
+
+  return full ?? preview;
+}
+
+/** Which published communities are distributed as SteadyCom problems. */
+const STEADYCOM_COMMUNITIES = new Set(['steadycom-ecoli-auxotrophs', 'steadycom-gut-nine']);
+
+/*
+ * The growth rate (h⁻¹) each SteadyCom community opens solved at: the top of
+ * its range on the default conditions, which is the panel's default µ too
+ * (0.7359848 for the four strains, the paper's 0.73599; 0.0796936 for the gut
+ * community on the authors' diet), rounded down so that it stays inside the
+ * range the search finds.
+ */
+const STEADYCOM_OPEN_MU = new Map([['steadycom-ecoli-auxotrophs', 0.7359], ['steadycom-gut-nine', 0.0796]]);
+
+function steadyComCrossFeeding(spec, fluxes, threshold = 1e-6) {
+  const links = [], perMetabolite = [];
+  let exchanges;
+  if (spec.reactions) exchanges = communityBalances(spec, fluxes);
+  else {
+    const speciesExchanges = new Map();
+    for (const member of spec.members) for (const [base, rid] of Object.entries(member.exchangeFor)) {
+      if (!speciesExchanges.has(base)) speciesExchanges.set(base, new Map());
+      speciesExchanges.get(base).set(member.id, fluxes.get(`${member.id}|${rid}`) ?? 0);
+    }
+    exchanges = { speciesExchanges, communityUptake: new Map(), communityExport: new Map() };
+    for (const [base, bySpecies] of speciesExchanges) {
+      const net = [...bySpecies.values()].reduce((sum, value) => sum + value, 0);
+      exchanges.communityUptake.set(base, Math.max(0, -net));
+      exchanges.communityExport.set(base, Math.max(0, net));
+    }
+  }
+  for (const [mid, bySpecies] of exchanges.speciesExchanges) {
+    const base = spec.metadata?.bases?.get(mid) ?? mid;
+    const producers = [], consumers = [];
+    for (const [speciesId, value] of bySpecies) {
+      if (value > threshold) producers.push({ speciesId, flux: value });
+      if (value < -threshold) consumers.push({ speciesId, flux: -value });
+    }
+    const uptake = exchanges.communityUptake.get(mid) ?? 0;
+    const secretion = exchanges.communityExport.get(mid) ?? 0;
+    if (uptake > threshold) producers.push({ speciesId: null, flux: uptake });
+    if (secretion > threshold) consumers.push({ speciesId: null, flux: secretion });
+    const output = producers.reduce((sum, item) => sum + item.flux, 0);
+    const input = consumers.reduce((sum, item) => sum + item.flux, 0);
+    const total = Math.min(output, input);
+    if (output > 0 && input > 0) for (const p of producers) for (const q of consumers) {
+      const flux = (p.flux / output) * (q.flux / input) * total;
+      if (flux > threshold) links.push({ base, from: p.speciesId, to: q.speciesId, flux });
+    }
+    if (producers.length || consumers.length) perMetabolite.push({ base, producers, consumers, total });
+  }
+  links.sort((a, b) => b.flux - a.flux);
+  return { links, perMetabolite };
+}
+
+function staleSteadyComError() {
+  const error = new Error('The community constraints changed; this calculation was discarded.');
+  error.name = 'AbortError';
+  return error;
+}
+
+async function fetchText(url) {
+  const embedded = globalThis.__ESCHER_MCMC_TEXT__;
+  if (embedded) {
+    const key = String(url).replace(/^.*?(?=models\/)/, '');
+    if (key in embedded) return embedded[key];
+  }
+  const res = await fetch(url);
+  if (!res.ok) throw new Error(`Could not load ${url} (${res.status})`);
+  return res.text();
+}
+
+async function fetchJSON(url) {
+  // The single-file build embeds the catalogue, because fetch() is blocked on
+  // file:// and the whole point of that build is to open without a server.
+  const embedded = globalThis.__ESCHER_MCMC_DATA__;
+  if (embedded) {
+    const at = url.indexOf('models/');
+    const key = at >= 0 ? url.slice(at) : url;
+    if (key in embedded) return JSON.parse(JSON.stringify(embedded[key]));
+  }
+  const res = await fetch(url);
+  if (!res.ok) throw new Error(`Could not load ${url} (${res.status})`);
+  return res.json();
+}
+
+export { OBJECTIVES };

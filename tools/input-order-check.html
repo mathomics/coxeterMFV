@@ -1,0 +1,223 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Input order checks</title>
+<style>
+  body { font: 13px/1.6 ui-monospace, monospace; margin: 24px; background: #0b1220; color: #e2e8f0; }
+  .pass { color: #4ade80; }
+  .fail { color: #fb7185; }
+  iframe { width: 1200px; height: 800px; border: 1px solid #334155; margin-top: 16px; }
+</style>
+</head>
+<body>
+<h1>Pending edits before Run, Save and model changes</h1>
+<p>Save dialogs are answered in memory. The desktop is not used.</p>
+<div id="out"></div>
+<script type="module">
+/** Check that a pending numeric edit belongs to the model on which it was made. */
+const out = document.getElementById('out');
+const lines = [];
+let failures = 0;
+let total = 0;
+
+function check(name, passed) {
+  total += 1;
+  if (!passed) {
+    failures += 1;
+  }
+  const line = document.createElement('div');
+  line.className = passed ? 'pass' : 'fail';
+  line.textContent = `${passed ? 'OK' : 'FAIL'} ${name}`;
+  out.appendChild(line);
+  lines.push(line.textContent);
+}
+
+async function tick() {
+  await new Promise(resolve => requestAnimationFrame(resolve));
+  await new Promise(resolve => setTimeout(resolve, 30));
+}
+
+async function waitFor(read, label) {
+  const deadline = Date.now() + 30000;
+  while (!read()) {
+    if (Date.now() > deadline) {
+      throw new Error(`Timed out: ${label}`);
+    }
+    await tick();
+  }
+}
+
+try {
+  const frame = document.createElement('iframe');
+  frame.src = new URLSearchParams(location.search).has('standalone') ? '../coxeter_mfv.html' : '../index.html';
+  document.body.appendChild(frame);
+  await waitFor(() => frame.contentWindow?.escherMCMC?.store?.solution?.status === 'optimal', 'startup');
+  const app = frame.contentWindow;
+  const doc = app.document;
+  const store = app.escherMCMC.store;
+  const saved = [];
+  let slowReadStarted = false;
+  let finishSlowRead;
+  let pickerRequests = 0;
+  app.showSaveFilePicker = async (options) => {
+    pickerRequests += 1;
+    let blob;
+    return {
+      name: options.suggestedName,
+      async createWritable() {
+        return {
+          async write(content) {
+            blob = content;
+          },
+          async close() {
+            saved.push(blob);
+          },
+          async abort() {},
+        };
+      },
+    };
+  };
+
+  async function workspace(name) {
+    doc.querySelector('[data-action="close-workspace"]')?.click();
+    doc.querySelector('[data-action="left-tab"][data-tab="model"]').click();
+    await tick();
+    doc.querySelector(`#task-panel [data-workspace="${name}"]`).click();
+    await tick();
+  }
+
+  function change(selector, value) {
+    const input = doc.querySelector(selector);
+    if (!input) {
+      throw new Error(`Missing control: ${selector}`);
+    }
+    input.value = value;
+    input.dispatchEvent(new app.Event('change', { bubbles: true }));
+  }
+
+  function clickExport(action) {
+    const menu = doc.querySelector('.file-menu');
+    menu.open = true;
+    menu.querySelector(`[data-action="${action}"]`).click();
+  }
+
+  function upload(text, name, delayed = false) {
+    const input = doc.getElementById('model-file-input');
+    const transfer = new app.DataTransfer();
+    const file = new app.File([text], name);
+    if (delayed) {
+      const read = app.File.prototype.text;
+      app.File.prototype.text = function () {
+        if (this.name !== name) {
+          return read.call(this);
+        }
+        slowReadStarted = true;
+        return new Promise(resolve => {
+          finishSlowRead = () => {
+            app.File.prototype.text = read;
+            resolve(text);
+          };
+        });
+      };
+    }
+    transfer.items.add(file);
+    input.files = transfer.files;
+    input.dispatchEvent(new app.Event('change', { bubbles: true }));
+    return input;
+  }
+
+  const raw = await (await fetch('../models/ecoli_core_mc.json')).text();
+  let input = upload(raw, 'input-order-fixture.json');
+  await waitFor(() => input.value === '' && store.status.state !== 'busy', 'fixture');
+  await workspace('medium');
+  change('[data-action="medium-number"][data-base="glc__D"]', '4');
+  const requests = pickerRequests;
+  clickExport('export-state');
+  check('the Save picker opens during the original click', pickerRequests === requests + 1);
+  await waitFor(() => saved.length === 1, 'scenario export');
+  const scenario = JSON.parse(await saved[0].text());
+  check('an immediate scenario save includes the pending medium limit', scenario.medium.glc__D === 4);
+  await new Promise(resolve => setTimeout(resolve, 220));
+
+  await workspace('scenario');
+  const optimum = store.problem.optimize().objectiveValue;
+  change('[data-action="pfba-biomass-percent"]', '75');
+  const simulate = doc.querySelector('.analysis-menu');
+  simulate.open = true;
+  simulate.querySelector('[data-action="run-pfba"]').click();
+  await waitFor(() => store.lastRun && store.status.state !== 'busy', 'immediate pFBA');
+  const immediateObjective = store.solution.objectiveValue;
+  await new Promise(resolve => setTimeout(resolve, 280));
+  check('an immediate pFBA run keeps its completed report after the edit settles',
+    store.lastRun?.method === 'pfba' && store.pfbaBiomassPercent === 75);
+  check('the immediate pFBA result uses the edited retained objective',
+    Math.abs(immediateObjective - optimum * 0.75) < 1e-7);
+
+  await workspace('medium');
+  change('[data-action="medium-number"][data-base="glc__D"]', '2');
+  clickExport('export-reproducibility');
+  await waitFor(() => saved.length === 2, 'bundle export');
+  const bundle = JSON.parse(await saved[1].text());
+  check('an immediate bundle save includes the pending medium limit', bundle.constraints.medium.glc__D === 2);
+  check('an immediate bundle save includes a result for those inputs',
+    bundle.solution.status === 'optimal' && Math.abs(bundle.solution.objectiveValue - store.solution.objectiveValue) < 1e-9);
+
+  change('[data-action="medium-number"][data-base="glc__D"]', '1');
+  input = upload(raw, 'new-context.json');
+  await waitFor(() => input.value === '' && store.status.state !== 'busy', 'model replacement');
+  await new Promise(resolve => setTimeout(resolve, 300));
+  check('an edit made before import never lands on the replacement model', store.medium.glc__D === 10);
+
+  await workspace('medium');
+  input = upload(raw, 'slow-context.json', true);
+  await waitFor(() => slowReadStarted, 'slow file read');
+  change('[data-action="medium-number"][data-base="glc__D"]', '3');
+  finishSlowRead();
+  await waitFor(() => input.value === '' && store.status.state !== 'busy', 'slow model replacement');
+  await new Promise(resolve => setTimeout(resolve, 300));
+  check('an old control edited during a file read never changes the replacement model', store.medium.glc__D === 10);
+
+  await workspace('community');
+  const species = store.species[0].id;
+  change(`[data-action="abundance"][data-species="${species}"]`, '0.4');
+  input = upload(raw, 'after-abundance.json');
+  await waitFor(() => input.value === '' && store.status.state !== 'busy', 'abundance then model import');
+  await new Promise(resolve => setTimeout(resolve, 250));
+  check('an abundance rebuild completes before importing the replacement model',
+    store.species.length === 1 && store.species[0].abundance === 1 && store.solution.status === 'optimal');
+
+  await workspace('medium');
+  change('[data-action="medium-number"][data-base="glc__D"]', '5');
+  input = upload('{broken', 'invalid-context.json');
+  await waitFor(() => input.value === '', 'rejected model import');
+  await new Promise(resolve => setTimeout(resolve, 250));
+  check('a rejected import preserves the committed edit on the original model', store.medium.glc__D === 5);
+
+  change('[data-action="medium-number"][data-base="glc__D"]', '6');
+  doc.querySelector('[data-action="clear-solution"]').click();
+  await new Promise(resolve => setTimeout(resolve, 300));
+  check('Clear solution commits the pending edit and stays cleared', store.medium.glc__D === 6 && store.solution === null);
+
+  slowReadStarted = false;
+  const replacement = JSON.parse(raw);
+  replacement.id = 'export-after-read';
+  input = upload(JSON.stringify(replacement), 'export-replacement.json', true);
+  await waitFor(() => slowReadStarted, 'replacement read before model export');
+  clickExport('export-model-json');
+  finishSlowRead();
+  await waitFor(() => input.value === '' && (saved.length === 3 || store.status.state === 'error'), 'queued model export');
+  let exportedModel = null;
+  if (saved.length === 3) {
+    exportedModel = JSON.parse(await saved[2].text());
+  }
+  check('model export after a pending import uses the replacement species', exportedModel?.id === replacement.id);
+} catch (error) {
+  check(error.message, false);
+}
+
+document.title = failures ? `FAIL (${failures})` : 'PASS';
+window.__checkComplete = Promise.resolve({ failures, total, lines });
+</script>
+</body>
+</html>

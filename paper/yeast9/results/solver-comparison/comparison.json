@@ -1,0 +1,1916 @@
+{
+  "model": "yeastGEM_v9.1.1",
+  "condition": "Aerobic source bounds; glucose uptake limited to 1 mmol gDW^-1 h^-1",
+  "modelSHA256": "1cda4ad32f400afc53cc0224a5df00d4ff6b3531274066c9b0788b3bd7f5ed24",
+  "mapSHA256": "d9b6e024421aaf52a6ac0abe2334550c3bbe11af486e09064a224ea63b321d15",
+  "curatedMapSHA256": "7a63627aeda1648cbe2761d5e71137bec45c62213dc310bfcd1645922093b883",
+  "addedReactions": [
+    "r_4262",
+    "r_2131",
+    "r_0471",
+    "r_0476",
+    "r_0468",
+    "r_0473",
+    "r_1887",
+    "r_0957",
+    "r_0029",
+    "r_0699",
+    "r_1596",
+    "r_0663",
+    "r_0659"
+  ],
+  "solver": "Coxeter GLPK 5.0 / glpk.js 5.0.0",
+  "objectiveFraction": 1,
+  "modelReactions": 4105,
+  "drawnReactions": 128,
+  "mapTheme": "light",
+  "fontFamily": "Arial",
+  "sharedScale": {
+    "reference": 2.3519299148562283,
+    "max": 1000,
+    "colorMode": "absolute-logarithmic",
+    "minimumVisibleWidth": 9,
+    "legend": [
+      {
+        "value": 0,
+        "color": "#9ca3af",
+        "width": 1.1
+      },
+      {
+        "t": 0,
+        "value": 0.001,
+        "color": "#4c9be8",
+        "width": 9.028198223119748
+      },
+      {
+        "t": 0.25,
+        "value": 0.01,
+        "color": "#2b59c3",
+        "width": 9.277249925811358
+      },
+      {
+        "t": 0.5,
+        "value": 0.1,
+        "color": "#7b2cbf",
+        "width": 11.392185618865192
+      },
+      {
+        "t": 0.75,
+        "value": 1,
+        "color": "#c2185b",
+        "width": 20.621970527192108
+      },
+      {
+        "t": 1,
+        "value": 10,
+        "color": "#e65100",
+        "width": 26
+      }
+    ]
+  },
+  "summary": {
+    "fba": {
+      "status": "optimal",
+      "objective": 0.08110024049735533,
+      "totalAbsoluteFlux": 387103.95195029327,
+      "drawnActive": 74,
+      "internalFluxBefore": null,
+      "internalFlux": null
+    },
+    "pfba": {
+      "status": "optimal",
+      "objective": 0.08110024049735533,
+      "totalAbsoluteFlux": 100.7611764274828,
+      "drawnActive": 71,
+      "internalFluxBefore": null,
+      "internalFlux": null
+    },
+    "cyclefree": {
+      "status": "optimal",
+      "objective": 0.08110024049735533,
+      "totalAbsoluteFlux": 107.8187535222932,
+      "drawnActive": 70,
+      "internalFluxBefore": 387092.9681408147,
+      "internalFlux": 96.8349440436643
+    }
+  },
+  "rows": [
+    {
+      "id": "r_2034",
+      "name": "pyruvate transport",
+      "compartments": [
+        "c",
+        "m"
+      ],
+      "fba": 1.1105372904936004,
+      "pfba": 0.9993825097045842,
+      "cyclefree": 1.1105372905221509,
+      "fva": {
+        "min": 0,
+        "max": 1.1105462447754977
+      }
+    },
+    {
+      "id": "r_0961",
+      "name": "pyruvate dehydrogenase",
+      "compartments": [
+        "m"
+      ],
+      "fba": 0.9932859620281186,
+      "pfba": 0.882131830038287,
+      "cyclefree": 0.99328596205703,
+      "fva": {
+        "min": 0.33211380310355854,
+        "max": 0.9962167215224069
+      }
+    },
+    {
+      "id": "r_0300",
+      "name": "citrate synthase",
+      "compartments": [
+        "m"
+      ],
+      "fba": 0.7721336521536445,
+      "pfba": 0.6609802509211379,
+      "cyclefree": 0.7721336521710286,
+      "fva": {
+        "min": 0.11101140788831003,
+        "max": 0.7750651450810293
+      }
+    },
+    {
+      "id": "r_0302",
+      "name": "citrate to cis-aconitate(3-)",
+      "compartments": [
+        "m"
+      ],
+      "fba": -1000,
+      "pfba": 0,
+      "cyclefree": 0,
+      "fva": {
+        "min": -1000,
+        "max": 1000
+      }
+    },
+    {
+      "id": "r_0280",
+      "name": "cis-aconitate(3-) to isocitrate",
+      "compartments": [
+        "m"
+      ],
+      "fba": -1000,
+      "pfba": 0,
+      "cyclefree": 0,
+      "fva": {
+        "min": -1000,
+        "max": 999.9999999999998
+      }
+    },
+    {
+      "id": "r_0658",
+      "name": "isocitrate dehydrogenase (NAD+)",
+      "compartments": [
+        "m"
+      ],
+      "fba": 0,
+      "pfba": 0.5557726978756958,
+      "cyclefree": 0,
+      "fva": {
+        "min": 0,
+        "max": 3.3202072063313564
+      }
+    },
+    {
+      "id": "r_0832",
+      "name": "oxoglutarate dehydrogenase (lipoamide)",
+      "compartments": [
+        "m"
+      ],
+      "fba": 0.6611099484169349,
+      "pfba": 0.5499565471842307,
+      "cyclefree": 0.6611099484165004,
+      "fva": {
+        "min": 0,
+        "max": 0.6640414413455867
+      }
+    },
+    {
+      "id": "r_0831",
+      "name": "oxoglutarate dehydrogenase (dihydrolipoamide S-succinyltransferase)",
+      "compartments": [
+        "m"
+      ],
+      "fba": 0.6611099484169349,
+      "pfba": 0.5499565471842308,
+      "cyclefree": 0.6611099484165004,
+      "fva": {
+        "min": 0,
+        "max": 0.664036994086261
+      }
+    },
+    {
+      "id": "r_0505",
+      "name": "glycine-cleavage complex (lipoamide)",
+      "compartments": [
+        "m"
+      ],
+      "fba": 0.6611099484169349,
+      "pfba": 0.5499565471842307,
+      "cyclefree": 0.6611099484165005,
+      "fva": {
+        "min": -3.9107585550595284e-11,
+        "max": 0.6640369937743146
+      }
+    },
+    {
+      "id": "r_1022",
+      "name": "succinate-CoA ligase (ADP-forming)",
+      "compartments": [
+        "m"
+      ],
+      "fba": 0.7723119276999763,
+      "pfba": 0.661159174419065,
+      "cyclefree": 0.7723119277109625,
+      "fva": {
+        "min": 0.1111411474391178,
+        "max": 0.7752563631359185
+      }
+    },
+    {
+      "id": "r_1021",
+      "name": "succinate dehydrogenase (ubiquinone-6)",
+      "compartments": [
+        "m"
+      ],
+      "fba": 0.6698087874739258,
+      "pfba": 0.5586560350434062,
+      "cyclefree": 0.6698087874739258,
+      "fva": {
+        "min": 0.008698393301642682,
+        "max": 4.614956608280977
+      }
+    },
+    {
+      "id": "r_0451",
+      "name": "fumarase",
+      "compartments": [
+        "m"
+      ],
+      "fba": 0.6611092996143952,
+      "pfba": 0.5499565471842308,
+      "cyclefree": 0.6611092996143952,
+      "fva": {
+        "min": -6.577146223207819e-7,
+        "max": 0.6640538974795618
+      }
+    },
+    {
+      "id": "r_0713",
+      "name": "malate dehydrogenase",
+      "compartments": [
+        "m"
+      ],
+      "fba": 2.269647270886935,
+      "pfba": 0.5710665559225566,
+      "cyclefree": 2.2696472709048483,
+      "fva": {
+        "min": -3.6790968784309825,
+        "max": 1000
+      }
+    },
+    {
+      "id": "r_0439",
+      "name": "ubiquinol:ferricytochrome c reductase",
+      "compartments": [
+        "c",
+        "m"
+      ],
+      "fba": 4.614933707765049,
+      "pfba": 4.614926697333504,
+      "cyclefree": 4.614933707765049,
+      "fva": {
+        "min": 4.614926690398889,
+        "max": 4.614963923017714
+      }
+    },
+    {
+      "id": "r_0438",
+      "name": "ferrocytochrome-c:oxygen oxidoreductase",
+      "compartments": [
+        "c",
+        "m"
+      ],
+      "fba": 9.229867415529835,
+      "pfba": 9.229853394667009,
+      "cyclefree": 9.229867415529835,
+      "fva": {
+        "min": 9.22985338128477,
+        "max": 9.22992784603543
+      }
+    },
+    {
+      "id": "r_0226",
+      "name": "ATP synthase",
+      "compartments": [
+        "c",
+        "m"
+      ],
+      "fba": 5.818718006970016,
+      "pfba": 6.041016967434635,
+      "cyclefree": 5.818718006953523,
+      "fva": {
+        "min": 5.818707878368741,
+        "max": 7.155580934692466
+      }
+    },
+    {
+      "id": "r_2129",
+      "name": "proton leak",
+      "compartments": [
+        "c",
+        "m"
+      ],
+      "fba": 0,
+      "pfba": 0,
+      "cyclefree": 0,
+      "fva": {
+        "min": 0,
+        "max": 0.000061484150049013
+      }
+    },
+    {
+      "id": "r_0475",
+      "name": "glutaminase",
+      "compartments": [
+        "c"
+      ],
+      "fba": 0,
+      "pfba": 0,
+      "cyclefree": 0,
+      "fva": {
+        "min": 0,
+        "max": 0.00002049230130827009
+      }
+    },
+    {
+      "id": "r_0470",
+      "name": "glutamate dehydrogenase (NAD)",
+      "compartments": [
+        "c"
+      ],
+      "fba": 0,
+      "pfba": 0,
+      "cyclefree": 0,
+      "fva": {
+        "min": 0,
+        "max": 0.00006147889989986374
+      }
+    },
+    {
+      "id": "r_1099",
+      "name": "2-oxoadipate and 2-oxoglutarate transport",
+      "compartments": [
+        "c",
+        "m"
+      ],
+      "fba": 0.026714390028359958,
+      "pfba": 0.026714390028327678,
+      "cyclefree": 0.026714390028359958,
+      "fva": {
+        "min": 0.026714390028359958,
+        "max": 0.026714390028359958
+      }
+    },
+    {
+      "id": "r_4615",
+      "name": "L-glutamine transport",
+      "compartments": [
+        "c",
+        "m"
+      ],
+      "fba": 0,
+      "pfba": 0,
+      "cyclefree": 0,
+      "fva": {
+        "min": 0,
+        "max": 0
+      }
+    },
+    {
+      "id": "r_4155",
+      "name": "Glutamyl-tRNA(Gln) amidotransferase subunit B, mitochondrial (Glu-AdT subunit B) (EC 6.3.5.-) (Cytochrome c oxidase assembly factor PET112)",
+      "compartments": [
+        "m"
+      ],
+      "fba": 0,
+      "pfba": 0,
+      "cyclefree": 0,
+      "fva": {
+        "min": 0,
+        "max": 0
+      }
+    },
+    {
+      "id": "r_0674",
+      "name": "L-alanine transaminase",
+      "compartments": [
+        "m"
+      ],
+      "fba": 1.1368683772161603e-13,
+      "pfba": 0,
+      "cyclefree": 0,
+      "fva": {
+        "min": -0.00003073945015330537,
+        "max": 0
+      }
+    },
+    {
+      "id": "r_0081",
+      "name": "5-aminolevulinate synthase",
+      "compartments": [
+        "m"
+      ],
+      "fba": 6.488019223407756e-7,
+      "pfba": 0,
+      "cyclefree": 6.488019223407756e-7,
+      "fva": {
+        "min": 0,
+        "max": 9.56866314136831e-7
+      }
+    },
+    {
+      "id": "r_1905",
+      "name": "L-proline transport",
+      "compartments": [
+        "c",
+        "m"
+      ],
+      "fba": 0,
+      "pfba": 0,
+      "cyclefree": 0,
+      "fva": {
+        "min": 0,
+        "max": 0.000010242917142022634
+      }
+    },
+    {
+      "id": "r_0940",
+      "name": "proline oxidase (NAD)",
+      "compartments": [
+        "m"
+      ],
+      "fba": 0,
+      "pfba": 0,
+      "cyclefree": 0,
+      "fva": {
+        "min": 0,
+        "max": 0.000007040884829521775
+      }
+    },
+    {
+      "id": "r_0012",
+      "name": "1-pyrroline-5-carboxylate dehydrogenase",
+      "compartments": [
+        "m"
+      ],
+      "fba": 0,
+      "pfba": 0,
+      "cyclefree": 0,
+      "fva": {
+        "min": 0,
+        "max": 0.000010246483316643617
+      }
+    },
+    {
+      "id": "r_0761",
+      "name": "N-acteylglutamate synthase",
+      "compartments": [
+        "m"
+      ],
+      "fba": -1.1368683772161603e-13,
+      "pfba": 0,
+      "cyclefree": 0,
+      "fva": {
+        "min": 2.2737367544323206e-13,
+        "max": 8.494613439324894e-7
+      }
+    },
+    {
+      "id": "r_0115",
+      "name": "acetylglutamate kinase",
+      "compartments": [
+        "m"
+      ],
+      "fba": 0.01575746896915665,
+      "pfba": 0.015757468969195654,
+      "cyclefree": 0.01575746896915665,
+      "fva": {
+        "min": 0.015757468968969977,
+        "max": 0.030351254630984266
+      }
+    },
+    {
+      "id": "r_0759",
+      "name": "N-acetyl-g-glutamyl-phosphate reductase",
+      "compartments": [
+        "m"
+      ],
+      "fba": 0.01575746896908162,
+      "pfba": 0.015757468969195654,
+      "cyclefree": 0.01575746896908162,
+      "fva": {
+        "min": 0.01575746896896998,
+        "max": 0.030351253915437432
+      }
+    },
+    {
+      "id": "r_0118",
+      "name": "acteylornithine transaminase",
+      "compartments": [
+        "m"
+      ],
+      "fba": 0.015757468969143353,
+      "pfba": 0.015757468969195654,
+      "cyclefree": 0.015757468969143353,
+      "fva": {
+        "min": 0.01575746896896998,
+        "max": 0.030348050486087384
+      }
+    },
+    {
+      "id": "r_0818",
+      "name": "ornithine transacetylase",
+      "compartments": [
+        "m"
+      ],
+      "fba": 0.015757468969274793,
+      "pfba": 0.015757468969195658,
+      "cyclefree": 0.015757468969274793,
+      "fva": {
+        "min": 0.01575746896896998,
+        "max": 0.03035125052768678
+      }
+    },
+    {
+      "id": "r_1237",
+      "name": "ornithine transport",
+      "compartments": [
+        "c",
+        "m"
+      ],
+      "fba": 0.015757468969274796,
+      "pfba": 0.015757468969195654,
+      "cyclefree": 0.015757468969274796,
+      "fva": {
+        "min": 0.015757468968969984,
+        "max": 0.030351249852860442
+      }
+    },
+    {
+      "id": "r_0250",
+      "name": "carbamoyl-phosphate synthase (glutamine-hydrolysing)",
+      "compartments": [
+        "c"
+      ],
+      "fba": 0.024456956828732238,
+      "pfba": 0.024456956828371172,
+      "cyclefree": 0.024456956828732238,
+      "fva": {
+        "min": 0.024456956828694948,
+        "max": 0.024461055422021608
+      }
+    },
+    {
+      "id": "r_0816",
+      "name": "ornithine carbamoyltransferase",
+      "compartments": [
+        "c"
+      ],
+      "fba": 0.015757468969109935,
+      "pfba": 0.015757468969195654,
+      "cyclefree": 0.015757468969109935,
+      "fva": {
+        "min": 0.015757468968969984,
+        "max": 0.01576088364686255
+      }
+    },
+    {
+      "id": "r_0208",
+      "name": "argininosuccinate synthase",
+      "compartments": [
+        "c"
+      ],
+      "fba": 0.01575746896912733,
+      "pfba": 0.015757468969195658,
+      "cyclefree": 0.01575746896912733,
+      "fva": {
+        "min": 0.015757468969013644,
+        "max": 0.015760884463361435
+      }
+    },
+    {
+      "id": "r_0207",
+      "name": "argininosuccinate lyase",
+      "compartments": [
+        "c"
+      ],
+      "fba": 0.015757468969241017,
+      "pfba": 0.015757468969195658,
+      "cyclefree": 0.015757468969241017,
+      "fva": {
+        "min": 0.015757468969013644,
+        "max": 0.01575981696760209
+      }
+    },
+    {
+      "id": "r_1622",
+      "name": "5-aminolevulinate transport",
+      "compartments": [
+        "c",
+        "m"
+      ],
+      "fba": -6.488019153039204e-7,
+      "pfba": 0,
+      "cyclefree": -6.488019153039204e-7,
+      "fva": {
+        "min": -9.56605276769551e-7,
+        "max": 0
+      }
+    },
+    {
+      "id": "r_0773",
+      "name": "NADH:ubiquinone oxidoreductase",
+      "compartments": [
+        "m"
+      ],
+      "fba": 3.945124920291126,
+      "pfba": 2.585642021049098,
+      "cyclefree": 3.945124920291126,
+      "fva": {
+        "min": 0,
+        "max": 4.606257138807498
+      }
+    },
+    {
+      "id": "r_0770",
+      "name": "NADH dehydrogenase, cytosolic/mitochondrial",
+      "compartments": [
+        "c",
+        "m"
+      ],
+      "fba": 0,
+      "pfba": 1.4706286412410001,
+      "cyclefree": 0,
+      "fva": {
+        "min": 0,
+        "max": 4.6062644351531
+      }
+    },
+    {
+      "id": "r_0935",
+      "name": "porphobilinogen synthase",
+      "compartments": [
+        "c"
+      ],
+      "fba": 3.244009611703878e-7,
+      "pfba": 0,
+      "cyclefree": 3.244009611703878e-7,
+      "fva": {
+        "min": 0,
+        "max": 3.2884148617109845e-7
+      }
+    },
+    {
+      "id": "r_0557",
+      "name": "hydroxymethylbilane synthase",
+      "compartments": [
+        "c"
+      ],
+      "fba": 8.110024029259693e-8,
+      "pfba": 0,
+      "cyclefree": 8.110024029259693e-8,
+      "fva": {
+        "min": 0,
+        "max": 1.1960681452931828e-7
+      }
+    },
+    {
+      "id": "r_1083",
+      "name": "uroporphyrinogen-III synthase",
+      "compartments": [
+        "c"
+      ],
+      "fba": 8.110024029259696e-8,
+      "pfba": 0,
+      "cyclefree": 8.110024029259696e-8,
+      "fva": {
+        "min": 0,
+        "max": 1.1959653278557124e-7
+      }
+    },
+    {
+      "id": "r_1081",
+      "name": "uroporphyrinogen decarboxylase (uroporphyrinogen III)",
+      "compartments": [
+        "c"
+      ],
+      "fba": 8.110024029259696e-8,
+      "pfba": 0,
+      "cyclefree": 8.110024029259696e-8,
+      "fva": {
+        "min": 0,
+        "max": 8.221498309310191e-8
+      }
+    },
+    {
+      "id": "r_0304",
+      "name": "coproporphyrinogen oxidase (O2 required)",
+      "compartments": [
+        "c"
+      ],
+      "fba": 8.110024029259695e-8,
+      "pfba": 0,
+      "cyclefree": 8.110024029259695e-8,
+      "fva": {
+        "min": 0,
+        "max": 1.1957969437111845e-7
+      }
+    },
+    {
+      "id": "r_2022",
+      "name": "protoporphyrinogen IX transport",
+      "compartments": [
+        "c",
+        "m"
+      ],
+      "fba": 8.11000973044429e-8,
+      "pfba": 0,
+      "cyclefree": 8.11000973044429e-8,
+      "fva": {
+        "min": 0,
+        "max": 1.1956592516071396e-7
+      }
+    },
+    {
+      "id": "r_0942",
+      "name": "protoporphyrinogen oxidase",
+      "compartments": [
+        "m"
+      ],
+      "fba": 4.055012014629846e-8,
+      "pfba": 0,
+      "cyclefree": 4.055012014629846e-8,
+      "fva": {
+        "min": 0,
+        "max": 5.97941370393113e-8
+      }
+    },
+    {
+      "id": "r_0436",
+      "name": "ferrochelatase",
+      "compartments": [
+        "m"
+      ],
+      "fba": 8.110024029259692e-8,
+      "pfba": 0,
+      "cyclefree": 8.110024029259692e-8,
+      "fva": {
+        "min": 0,
+        "max": 1.1960828926710383e-7
+      }
+    },
+    {
+      "id": "r_0531",
+      "name": "Heme O synthase",
+      "compartments": [
+        "m"
+      ],
+      "fba": 8.110024029259695e-8,
+      "pfba": 0,
+      "cyclefree": 8.110024029259695e-8,
+      "fva": {
+        "min": 0,
+        "max": 8.221941880501243e-8
+      }
+    },
+    {
+      "id": "r_0530",
+      "name": "heme O monooxygenase",
+      "compartments": [
+        "m"
+      ],
+      "fba": 8.110024029259695e-8,
+      "pfba": 0,
+      "cyclefree": 8.110024029259695e-8,
+      "fva": {
+        "min": 0,
+        "max": 1.1960828926710383e-7
+      }
+    },
+    {
+      "id": "r_0503",
+      "name": "glycine hydroxymethyltransferase",
+      "compartments": [
+        "m"
+      ],
+      "fba": 0.00001540904600005888,
+      "pfba": 0.000015409046190250678,
+      "cyclefree": 0.00001540904600005888,
+      "fva": {
+        "min": 0.000015409042134706397,
+        "max": 0.00001540904202101956
+      }
+    },
+    {
+      "id": "r_0447",
+      "name": "formate-tetrahydrofolate ligase",
+      "compartments": [
+        "m"
+      ],
+      "fba": 0,
+      "pfba": 0,
+      "cyclefree": 0,
+      "fva": {
+        "min": 1.1368683772161603e-13,
+        "max": 0
+      }
+    },
+    {
+      "id": "r_0724",
+      "name": "methenyltetrahydrifikate cyclohydrolase",
+      "compartments": [
+        "m"
+      ],
+      "fba": 0,
+      "pfba": 0,
+      "cyclefree": 0,
+      "fva": {
+        "min": 1.1368683772161603e-13,
+        "max": 0
+      }
+    },
+    {
+      "id": "r_0733",
+      "name": "methylenetetrahydrofolate dehydrogenase (NADP)",
+      "compartments": [
+        "m"
+      ],
+      "fba": 0,
+      "pfba": 0,
+      "cyclefree": 0,
+      "fva": {
+        "min": 0,
+        "max": -1.1892646854024386e-13
+      }
+    },
+    {
+      "id": "r_1030",
+      "name": "tetrahydrofolate aminomethyltransferase",
+      "compartments": [
+        "m"
+      ],
+      "fba": 0,
+      "pfba": 0,
+      "cyclefree": 0,
+      "fva": {
+        "min": 0,
+        "max": 0.000014089510169886717
+      }
+    },
+    {
+      "id": "r_1623",
+      "name": "5-formethyltetrahydrofolate cyclo-ligase",
+      "compartments": [
+        "m"
+      ],
+      "fba": 0,
+      "pfba": 0,
+      "cyclefree": 0,
+      "fva": {
+        "min": 0,
+        "max": 0.00002049296663328846
+      }
+    },
+    {
+      "id": "r_0501",
+      "name": "glycine cleavage system",
+      "compartments": [
+        "m"
+      ],
+      "fba": 0,
+      "pfba": 0,
+      "cyclefree": 0,
+      "fva": {
+        "min": 0,
+        "max": 0
+      }
+    },
+    {
+      "id": "r_0097",
+      "name": "acetolactate synthase",
+      "compartments": [
+        "m"
+      ],
+      "fba": 0.054930640019216576,
+      "pfba": 0.05493064001933341,
+      "cyclefree": 0.054930640019216576,
+      "fva": {
+        "min": 0.05493064002110254,
+        "max": 0.05493148895807372
+      }
+    },
+    {
+      "id": "r_0096",
+      "name": "acetohydroxy acid isomeroreductase",
+      "compartments": [
+        "m"
+      ],
+      "fba": 0.054930640019216576,
+      "pfba": 0.05493064001933342,
+      "cyclefree": 0.054930640019216576,
+      "fva": {
+        "min": 0.05493064002190874,
+        "max": 0.054931875083580564
+      }
+    },
+    {
+      "id": "r_0352",
+      "name": "dihydroxy-acid dehydratase (2,3-dihydroxy-3-methylbutanoate)",
+      "compartments": [
+        "m"
+      ],
+      "fba": 0.054930640019216576,
+      "pfba": 0.054930640019333406,
+      "cyclefree": 0.054930640019216576,
+      "fva": {
+        "min": 0.05493064002033639,
+        "max": 0.05493148908293817
+      }
+    },
+    {
+      "id": "r_1088",
+      "name": "valine transaminase, mitochondiral",
+      "compartments": [
+        "m"
+      ],
+      "fba": -0.025514504648299408,
+      "pfba": -0.025514504648303342,
+      "cyclefree": -0.025514504648299408,
+      "fva": {
+        "min": -0.025534992087727915,
+        "max": -0.02551450464818572
+      }
+    },
+    {
+      "id": "r_0016",
+      "name": "2-aceto-2-hydroxybutanoate synthase",
+      "compartments": [
+        "m"
+      ],
+      "fba": 0.0215313288155514,
+      "pfba": 0.021531328815846757,
+      "cyclefree": 0.0215313288155514,
+      "fva": {
+        "min": 0.02153132881576479,
+        "max": 0.021532271956992116
+      }
+    },
+    {
+      "id": "r_0669",
+      "name": "ketol-acid reductoisomerase (2-aceto-2-hydroxybutanoate)",
+      "compartments": [
+        "m"
+      ],
+      "fba": 0.0215313288155514,
+      "pfba": 0.021531328815846754,
+      "cyclefree": 0.0215313288155514,
+      "fva": {
+        "min": 0.021531328815764788,
+        "max": 0.0215322721487897
+      }
+    },
+    {
+      "id": "r_0353",
+      "name": "dihydroxy-acid dehydratase (2,3-dihydroxy-3-methylpentanoate)",
+      "compartments": [
+        "m"
+      ],
+      "fba": 0.0215313288155514,
+      "pfba": 0.021531328815846757,
+      "cyclefree": 0.0215313288155514,
+      "fva": {
+        "min": 0.02153132881599254,
+        "max": 0.021532272025290334
+      }
+    },
+    {
+      "id": "r_0664",
+      "name": "isoleucine transaminase",
+      "compartments": [
+        "m"
+      ],
+      "fba": 1.1368683772161603e-13,
+      "pfba": 0,
+      "cyclefree": 0,
+      "fva": {
+        "min": -0.00006147889985186339,
+        "max": 1.1368683772161603e-13
+      }
+    },
+    {
+      "id": "r_0025",
+      "name": "2-isopropylmalate synthase",
+      "compartments": [
+        "m"
+      ],
+      "fba": 0.02940072632469215,
+      "pfba": 0.02940072632483982,
+      "cyclefree": 0.02940072632469215,
+      "fva": {
+        "min": 0.029380233358080307,
+        "max": 0.029401684357810577
+      }
+    },
+    {
+      "id": "r_1574",
+      "name": "2-isopropylmalate transport",
+      "compartments": [
+        "c",
+        "m"
+      ],
+      "fba": -0.0294007263248659,
+      "pfba": -0.029400726324839817,
+      "cyclefree": -0.0294007263248659,
+      "fva": {
+        "min": -0.029401384968195998,
+        "max": -0.029386637500579127
+      }
+    },
+    {
+      "id": "r_0023",
+      "name": "2-isopropylmalate hydratase",
+      "compartments": [
+        "c"
+      ],
+      "fba": -0.029400726324752213,
+      "pfba": -0.02940072632483982,
+      "cyclefree": -0.029400726324752213,
+      "fva": {
+        "min": -0.02940138492135702,
+        "max": -0.029400726324752213
+      }
+    },
+    {
+      "id": "r_0060",
+      "name": "3-isopropylmalate dehydratase",
+      "compartments": [
+        "c"
+      ],
+      "fba": -0.029400726324752213,
+      "pfba": -0.029400726324839817,
+      "cyclefree": -0.029400726324752213,
+      "fva": {
+        "min": -0.029401683145579227,
+        "max": -0.029400726324752213
+      }
+    },
+    {
+      "id": "r_0061",
+      "name": "3-isopropylmalate dehydrogenase",
+      "compartments": [
+        "c"
+      ],
+      "fba": 0.029400726324692147,
+      "pfba": 0.02940072632483982,
+      "cyclefree": 0.029400726324692147,
+      "fva": {
+        "min": 0.029400726324725002,
+        "max": 0.029401684357821988
+      }
+    },
+    {
+      "id": "r_1595",
+      "name": "3-carboxy-4-methyl-2-oxopentanoate transport",
+      "compartments": [
+        "c",
+        "m"
+      ],
+      "fba": 0,
+      "pfba": 0,
+      "cyclefree": 0,
+      "fva": {
+        "min": 0,
+        "max": 0
+      }
+    },
+    {
+      "id": "r_0030",
+      "name": "2-oxo-4-methyl-3-carboxypentanoate decarboxylation",
+      "compartments": [
+        "m"
+      ],
+      "fba": 0,
+      "pfba": 0,
+      "cyclefree": 0,
+      "fva": {
+        "min": 0,
+        "max": 0
+      }
+    },
+    {
+      "id": "r_0700",
+      "name": "leucine transaminase",
+      "compartments": [
+        "m"
+      ],
+      "fba": 0,
+      "pfba": 0,
+      "cyclefree": 0,
+      "fva": {
+        "min": 0,
+        "max": 0
+      }
+    },
+    {
+      "id": "r_1024",
+      "name": "sucrose hydrolyzing enzyme",
+      "compartments": [
+        "e"
+      ],
+      "fba": 0,
+      "pfba": 0,
+      "cyclefree": 0,
+      "fva": {
+        "min": 0,
+        "max": 0
+      }
+    },
+    {
+      "id": "r_0370",
+      "name": "exo-1,3-beta-glucan glucohydrase",
+      "compartments": [
+        "e"
+      ],
+      "fba": 0,
+      "pfba": 0,
+      "cyclefree": 0,
+      "fva": {
+        "min": 0,
+        "max": 0
+      }
+    },
+    {
+      "id": "r_0005",
+      "name": "1,3-beta-glucan synthase",
+      "compartments": [
+        "c",
+        "ce"
+      ],
+      "fba": 0.05994443176121522,
+      "pfba": 0.059944431761215215,
+      "cyclefree": 0.05994443176121522,
+      "fva": {
+        "min": 0.059944431761215215,
+        "max": 0.059944431761215215
+      }
+    },
+    {
+      "id": "r_0006",
+      "name": "1,6-beta-glucan synthase",
+      "compartments": [
+        "c",
+        "ce"
+      ],
+      "fba": 0.020028515393226875,
+      "pfba": 0.02002851539322687,
+      "cyclefree": 0.020028515393226875,
+      "fva": {
+        "min": 0.02002851539322687,
+        "max": 0.02002851539322687
+      }
+    },
+    {
+      "id": "r_1979",
+      "name": "O2 transport",
+      "compartments": [
+        "c",
+        "e"
+      ],
+      "fba": 2.3519299148562283,
+      "pfba": 2.3519261257468895,
+      "cyclefree": 2.3519299148562283,
+      "fva": {
+        "min": 2.3519261221287127,
+        "max": 2.351957415420923
+      }
+    },
+    {
+      "id": "r_1244",
+      "name": "phosphate transport",
+      "compartments": [
+        "c",
+        "e"
+      ],
+      "fba": 0.022646005635478056,
+      "pfba": 0.0226459082391988,
+      "cyclefree": 0.022646005635478056,
+      "fva": {
+        "min": 0.022645811392220702,
+        "max": 0.02265342816654596
+      }
+    },
+    {
+      "id": "r_0533",
+      "name": "hexokinase (D-fructose:ATP)",
+      "compartments": [
+        "c"
+      ],
+      "fba": 0,
+      "pfba": 0,
+      "cyclefree": 0,
+      "fva": {
+        "min": 0,
+        "max": 0
+      }
+    },
+    {
+      "id": "r_0886",
+      "name": "phosphofructokinase",
+      "compartments": [
+        "c"
+      ],
+      "fba": 0.7057131815022776,
+      "pfba": 0.5945565059988316,
+      "cyclefree": 0.7057131815022776,
+      "fva": {
+        "min": 0.044586928676346727,
+        "max": 0.708651733700427
+      }
+    },
+    {
+      "id": "r_0450",
+      "name": "fructose-bisphosphate aldolase",
+      "compartments": [
+        "c"
+      ],
+      "fba": 0.7057131815022331,
+      "pfba": 0.5945565059988316,
+      "cyclefree": 0.7057131815022331,
+      "fva": {
+        "min": 0.04458693022127136,
+        "max": 0.7086517465033921
+      }
+    },
+    {
+      "id": "r_0486",
+      "name": "glyceraldehyde-3-phosphate dehydrogenase",
+      "compartments": [
+        "c"
+      ],
+      "fba": 1.45790497065218,
+      "pfba": 1.34674457759441,
+      "cyclefree": 1.45790497065218,
+      "fva": {
+        "min": 0.7967758160385756,
+        "max": 1.4608404166342552
+      }
+    },
+    {
+      "id": "r_0892",
+      "name": "phosphoglycerate kinase",
+      "compartments": [
+        "c"
+      ],
+      "fba": 1.45790497065218,
+      "pfba": 1.34674457759441,
+      "cyclefree": 1.45790497065218,
+      "fva": {
+        "min": 0.7967814555333916,
+        "max": 1.4608360660605513
+      }
+    },
+    {
+      "id": "r_0893",
+      "name": "phosphoglycerate mutase",
+      "compartments": [
+        "c"
+      ],
+      "fba": 1.3865112882951962,
+      "pfba": 1.275356507504045,
+      "cyclefree": 1.3865112882951962,
+      "fva": {
+        "min": 0.7253877691531443,
+        "max": 1.3894369535649957
+      }
+    },
+    {
+      "id": "r_0366",
+      "name": "enolase",
+      "compartments": [
+        "c"
+      ],
+      "fba": 1.3865112882950825,
+      "pfba": 1.275356507504045,
+      "cyclefree": 1.3865112882950825,
+      "fva": {
+        "min": 0.7253877753321376,
+        "max": 1.3894369514947584
+      }
+    },
+    {
+      "id": "r_0962",
+      "name": "pyruvate kinase",
+      "compartments": [
+        "c"
+      ],
+      "fba": 1.332251199442664,
+      "pfba": 1.2210964186454798,
+      "cyclefree": 1.332251199442664,
+      "fva": {
+        "min": 0.6711221429159515,
+        "max": 1.335189508829445
+      }
+    },
+    {
+      "id": "r_0467",
+      "name": "glucose-6-phosphate isomerase",
+      "compartments": [
+        "c"
+      ],
+      "fba": 0.6404517707246669,
+      "pfba": 0.3069891794524833,
+      "cyclefree": 0.6404517707246669,
+      "fva": {
+        "min": -1.3429203717952305,
+        "max": 0.6492408393578444
+      }
+    },
+    {
+      "id": "r_1050",
+      "name": "transketolase 2",
+      "compartments": [
+        "c"
+      ],
+      "fba": 0.04849087793365925,
+      "pfba": 0.1596438358169857,
+      "cyclefree": 0.04849087793365925,
+      "fva": {
+        "min": 0.0455612532671239,
+        "max": 0.7096149903900368
+      }
+    },
+    {
+      "id": "r_1048",
+      "name": "transaldolase",
+      "compartments": [
+        "c"
+      ],
+      "fba": 0.07562092236037188,
+      "pfba": 0.18677388024626856,
+      "cyclefree": 0.07562092236037188,
+      "fva": {
+        "min": 0.0726912976949734,
+        "max": 0.7367532318897929
+      }
+    },
+    {
+      "id": "r_1049",
+      "name": "transketolase 1",
+      "compartments": [
+        "c"
+      ],
+      "fba": 0.07562092236037188,
+      "pfba": 0.1867738802462686,
+      "cyclefree": 0.07562092236037188,
+      "fva": {
+        "min": 0.07269130642089294,
+        "max": 0.7367450230668737
+      }
+    },
+    {
+      "id": "r_0323",
+      "name": "D-sorbitol dehydrogenase (D-fructose producing)",
+      "compartments": [
+        "c"
+      ],
+      "fba": 0,
+      "pfba": 0,
+      "cyclefree": 0,
+      "fva": {
+        "min": 0,
+        "max": 0
+      }
+    },
+    {
+      "id": "r_0534",
+      "name": "hexokinase (D-glucose:ATP)",
+      "compartments": [
+        "c"
+      ],
+      "fba": 1.0000000000000564,
+      "pfba": 1,
+      "cyclefree": 1.0000000000000564,
+      "fva": {
+        "min": 0.9999989322156054,
+        "max": 1.0000153697249574
+      }
+    },
+    {
+      "id": "r_1166",
+      "name": "glucose transport",
+      "compartments": [
+        "c",
+        "e"
+      ],
+      "fba": 1.0000000000000564,
+      "pfba": 1,
+      "cyclefree": 1.0000000000000564,
+      "fva": {
+        "min": 0.9999989322157191,
+        "max": 1.0000000000000961
+      }
+    },
+    {
+      "id": "r_1714",
+      "name": "D-glucose exchange",
+      "compartments": [
+        "e"
+      ],
+      "fba": -1,
+      "pfba": -1,
+      "cyclefree": -1,
+      "fva": {
+        "min": -1,
+        "max": -0.9999992659896563
+      }
+    },
+    {
+      "id": "r_0959",
+      "name": "pyruvate decarboxylase",
+      "compartments": [
+        "c"
+      ],
+      "fba": 0,
+      "pfba": 0,
+      "cyclefree": 0,
+      "fva": {
+        "min": 0,
+        "max": 0.00006147890480478334
+      }
+    },
+    {
+      "id": "r_0163",
+      "name": "alcohol dehydrogenase (ethanol to acetaldehyde)",
+      "compartments": [
+        "c"
+      ],
+      "fba": 0,
+      "pfba": 0,
+      "cyclefree": 0,
+      "fva": {
+        "min": 0,
+        "max": 1000
+      }
+    },
+    {
+      "id": "r_2115",
+      "name": "alcohol dehydrogenase, (acetaldehyde to ethanol)",
+      "compartments": [
+        "c"
+      ],
+      "fba": 0,
+      "pfba": 0,
+      "cyclefree": 0,
+      "fva": {
+        "min": 0,
+        "max": 1000
+      }
+    },
+    {
+      "id": "r_0990",
+      "name": "sedoheptulose 1,7-bisphosphate D-glyceraldehyde-3-phosphate-lyase",
+      "compartments": [
+        "c"
+      ],
+      "fba": -1.1368683772161603e-13,
+      "pfba": 0,
+      "cyclefree": 0,
+      "fva": {
+        "min": -0.000014085492466620053,
+        "max": 0
+      }
+    },
+    {
+      "id": "r_0958",
+      "name": "pyruvate carboxylase",
+      "compartments": [
+        "c"
+      ],
+      "fba": 0.1976301044577301,
+      "pfba": 0.1976301044552179,
+      "cyclefree": 0.1976301044577301,
+      "fva": {
+        "min": 0.1976147347329453,
+        "max": 0.21227512182090139
+      }
+    },
+    {
+      "id": "r_0714",
+      "name": "malate dehydrogenase, cytoplasmic",
+      "compartments": [
+        "c"
+      ],
+      "fba": -1.5874273137412729,
+      "pfba": 0,
+      "cyclefree": -1.5874273137412729,
+      "fva": {
+        "min": -999.9935350086467,
+        "max": 3.6856057621286027
+      }
+    },
+    {
+      "id": "r_1901",
+      "name": "L-malate transport",
+      "compartments": [
+        "c",
+        "e"
+      ],
+      "fba": 1000,
+      "pfba": 0,
+      "cyclefree": 0,
+      "fva": {
+        "min": -1000,
+        "max": 1000
+      }
+    },
+    {
+      "id": "r_1652",
+      "name": "alpha-ketoglutarate/malate transporter",
+      "compartments": [
+        "c",
+        "e"
+      ],
+      "fba": -1000,
+      "pfba": 0,
+      "cyclefree": 0,
+      "fva": {
+        "min": -1000,
+        "max": 1000
+      }
+    },
+    {
+      "id": "r_2126",
+      "name": "sedoheptulose bisphosphatase",
+      "compartments": [
+        "c"
+      ],
+      "fba": 0,
+      "pfba": 0,
+      "cyclefree": 0,
+      "fva": {
+        "min": 0,
+        "max": 0.000014086571456101711
+      }
+    },
+    {
+      "id": "r_1930",
+      "name": "malate/oxaloacetate shuttle",
+      "compartments": [
+        "c",
+        "p"
+      ],
+      "fba": 5.684341886080801e-13,
+      "pfba": 0,
+      "cyclefree": 0,
+      "fva": {
+        "min": 2.2737367544323206e-13,
+        "max": 0.000011882614330716024
+      }
+    },
+    {
+      "id": "r_0715",
+      "name": "malate dehydrogenase, peroxisomal",
+      "compartments": [
+        "p"
+      ],
+      "fba": -4.547473508864641e-13,
+      "pfba": 0,
+      "cyclefree": 0,
+      "fva": {
+        "min": -0.000005693525508831954,
+        "max": 1.921307557495311e-11
+      }
+    },
+    {
+      "id": "r_2268",
+      "name": "3-hydroxyacyl-CoA dehydrogenase (3-oxohexadecanoyl-CoA)",
+      "compartments": [
+        "p"
+      ],
+      "fba": 0,
+      "pfba": 0,
+      "cyclefree": 0,
+      "fva": {
+        "min": 0,
+        "max": 0.000005693605191325239
+      }
+    },
+    {
+      "id": "r_2251",
+      "name": "2-enoyl-CoA hydratase (3-hydroxyhexadecanoyl-CoA)",
+      "compartments": [
+        "p"
+      ],
+      "fba": 0,
+      "pfba": 0,
+      "cyclefree": 0,
+      "fva": {
+        "min": 0,
+        "max": 0.000005691986352765081
+      }
+    },
+    {
+      "id": "r_0123",
+      "name": "acyl-CoA oxidase (hexadecanoyl-CoA)",
+      "compartments": [
+        "p"
+      ],
+      "fba": 0,
+      "pfba": 0,
+      "cyclefree": 0,
+      "fva": {
+        "min": 0,
+        "max": 0.000005692584286944627
+      }
+    },
+    {
+      "id": "r_0256",
+      "name": "catalase",
+      "compartments": [
+        "p"
+      ],
+      "fba": 8.659772020132206e-15,
+      "pfba": 0,
+      "cyclefree": 0,
+      "fva": {
+        "min": 0,
+        "max": 0.00000195537629227107
+      }
+    },
+    {
+      "id": "r_0102",
+      "name": "acetyl-CoA C-acyltransferase (myristoyl-CoA)",
+      "compartments": [
+        "p"
+      ],
+      "fba": 0,
+      "pfba": 0,
+      "cyclefree": 0,
+      "fva": {
+        "min": 0,
+        "max": 0.000005692672450622899
+      }
+    },
+    {
+      "id": "r_0253",
+      "name": "carnitine O-acetyltransferase",
+      "compartments": [
+        "p"
+      ],
+      "fba": 0,
+      "pfba": 0,
+      "cyclefree": 0,
+      "fva": {
+        "min": 0,
+        "max": 0.0000039502608281700926
+      }
+    },
+    {
+      "id": "r_1674",
+      "name": "carnitine-acetylcarnitine carrier",
+      "compartments": [
+        "c",
+        "p"
+      ],
+      "fba": 0,
+      "pfba": 0,
+      "cyclefree": 0,
+      "fva": {
+        "min": 0,
+        "max": 0.000005746675815472943
+      }
+    },
+    {
+      "id": "r_1120",
+      "name": "carnithine-acetylcarnithine carrier",
+      "compartments": [
+        "c",
+        "m"
+      ],
+      "fba": 0,
+      "pfba": 0,
+      "cyclefree": 0,
+      "fva": {
+        "min": 0,
+        "max": 0.000005746656535879879
+      }
+    },
+    {
+      "id": "r_0254",
+      "name": "carnitine O-acetyltransferase",
+      "compartments": [
+        "m"
+      ],
+      "fba": 0,
+      "pfba": 0,
+      "cyclefree": 0,
+      "fva": {
+        "min": -1.925559467731987e-11,
+        "max": 0.000005746656535879879
+      }
+    },
+    {
+      "id": "r_4262",
+      "name": "citrate hydroxymutase",
+      "compartments": [
+        "m"
+      ],
+      "fba": 0.7721336521537978,
+      "pfba": 0.633850206491855,
+      "cyclefree": 0.07807815741501165,
+      "fva": {
+        "min": -1000,
+        "max": 1000
+      }
+    },
+    {
+      "id": "r_2131",
+      "name": "isocitrate dehydrogenase",
+      "compartments": [
+        "m"
+      ],
+      "fba": 0.07807815741501165,
+      "pfba": 0.07807750861615938,
+      "cyclefree": 0.07807815741501165,
+      "fva": {
+        "min": 0.07801602971349797,
+        "max": 0.10681322275158531
+      }
+    },
+    {
+      "id": "r_0471",
+      "name": "glutamate dehydrogenase (NADP)",
+      "compartments": [
+        "c"
+      ],
+      "fba": 0.4485890289853534,
+      "pfba": 0.4485834167219593,
+      "cyclefree": 0.4485890289853534,
+      "fva": {
+        "min": 0.4485743000390359,
+        "max": 0.4486512931682423
+      }
+    },
+    {
+      "id": "r_0476",
+      "name": "glutamine synthetase",
+      "compartments": [
+        "c"
+      ],
+      "fba": 0.08474579382811111,
+      "pfba": 0.08474550187795438,
+      "cyclefree": 0.08474579382811111,
+      "fva": {
+        "min": 0.08474550187746356,
+        "max": 0.08476599484401524
+      }
+    },
+    {
+      "id": "r_0468",
+      "name": "glutamate 5-kinase",
+      "compartments": [
+        "c"
+      ],
+      "fba": 0.01458353846298038,
+      "pfba": 0.01458353846298038,
+      "cyclefree": 0.01458353846298038,
+      "fva": {
+        "min": 0,
+        "max": 0.01459378566201356
+      }
+    },
+    {
+      "id": "r_0473",
+      "name": "glutamate-5-semialdehyde dehydrogenase",
+      "compartments": [
+        "c"
+      ],
+      "fba": 0.01458353846298038,
+      "pfba": 0.014583538462980382,
+      "cyclefree": 0.01458353846298038,
+      "fva": {
+        "min": 0,
+        "max": 0.014593784946467457
+      }
+    },
+    {
+      "id": "r_1887",
+      "name": "L-glutamate 5-semialdehyde dehydratase",
+      "compartments": [
+        "c"
+      ],
+      "fba": 0.014583538463057266,
+      "pfba": 0.014583538462980382,
+      "cyclefree": 0.014583538463057266,
+      "fva": {
+        "min": 0.014583538463057266,
+        "max": 0.014590579347895982
+      }
+    },
+    {
+      "id": "r_0957",
+      "name": "pyrroline-5-carboxylate reductase",
+      "compartments": [
+        "c"
+      ],
+      "fba": 0.01458353846298038,
+      "pfba": 0.01458353846298038,
+      "cyclefree": 0.01458353846298038,
+      "fva": {
+        "min": 0.014583538462945361,
+        "max": 0.014590579347774883
+      }
+    },
+    {
+      "id": "r_0029",
+      "name": "2-oxo-4-methyl-3-carboxypentanoate decarboxylation",
+      "compartments": [
+        "c"
+      ],
+      "fba": 0.02940072632470042,
+      "pfba": 0.02940072632483982,
+      "cyclefree": 0.02940072632470042,
+      "fva": {
+        "min": 0.029400726324725,
+        "max": 0.029401684452691354
+      }
+    },
+    {
+      "id": "r_0699",
+      "name": "leucine transaminase",
+      "compartments": [
+        "c"
+      ],
+      "fba": -0.029400726324638526,
+      "pfba": -0.029400726324839827,
+      "cyclefree": -0.029400726324638526,
+      "fva": {
+        "min": -0.029400726324752213,
+        "max": -0.029400726324752213
+      }
+    },
+    {
+      "id": "r_1596",
+      "name": "3-methyl-2-oxopentanoate transport",
+      "compartments": [
+        "c",
+        "m"
+      ],
+      "fba": -0.021531328815626694,
+      "pfba": -0.021531328815846757,
+      "cyclefree": -0.021531328815626694,
+      "fva": {
+        "min": -0.021532271989826768,
+        "max": -0.021469860287879783
+      }
+    },
+    {
+      "id": "r_0663",
+      "name": "isoleucine transaminase",
+      "compartments": [
+        "c"
+      ],
+      "fba": -0.021531328815626694,
+      "pfba": -0.021531328815846757,
+      "cyclefree": -0.021531328815626694,
+      "fva": {
+        "min": -0.021531328815854067,
+        "max": -0.021469869728775848
+      }
+    },
+    {
+      "id": "r_0659",
+      "name": "isocitrate dehydrogenase (NADP)",
+      "compartments": [
+        "c"
+      ],
+      "fba": 0.6940554947389046,
+      "pfba": 0.02713004442928284,
+      "cyclefree": 0.6940554947562234,
+      "fva": {
+        "min": -3.287261011201849,
+        "max": 0.6970491153695093
+      }
+    }
+  ]
+}

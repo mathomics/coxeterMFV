@@ -1,0 +1,217 @@
+{
+ "cobra": "0.32.1",
+ "solver": "glpk",
+ "sbml": "yeast-GEM.xml",
+ "changed_reactions": [
+  "r_0659",
+  "r_0714",
+  "r_1548",
+  "r_1757",
+  "r_1915",
+  "r_1967",
+  "r_1992",
+  "r_1994",
+  "r_2106",
+  "r_2134",
+  "r_2189",
+  "r_4041",
+  "r_4047",
+  "r_4598"
+ ],
+ "aerobic": {
+  "status": "optimal",
+  "growth_fba": 0.0811002405605932,
+  "growth_pfba": 0.08110024056059288,
+  "total_absolute_flux": 100.76139895425129,
+  "exchanges": {
+   "r_1654": {
+    "name": "ammonium exchange",
+    "flux": -0.5338960803140372
+   },
+   "r_1672": {
+    "name": "carbon dioxide exchange",
+    "flux": 2.6530067075585415
+   },
+   "r_1714": {
+    "name": "D-glucose exchange",
+    "flux": -1.0
+   },
+   "r_1810": {
+    "name": "L-glycine exchange",
+    "flux": 0.006609819736621148
+   },
+   "r_1814": {
+    "name": "glycolaldehyde exchange",
+    "flux": 5.23907575009868e-06
+   },
+   "r_1832": {
+    "name": "H+ exchange",
+    "flux": 0.4674421904253867
+   },
+   "r_1861": {
+    "name": "iron(2+) exchange",
+    "flux": -2.5465475914293462e-06
+   },
+   "r_1992": {
+    "name": "oxygen exchange",
+    "flux": -2.3519299156924203
+   },
+   "r_2005": {
+    "name": "phosphate exchange",
+    "flux": -0.022646005577152344
+   },
+   "r_2020": {
+    "name": "potassium exchange",
+    "flux": -0.0002943938678632242
+   },
+   "r_2049": {
+    "name": "sodium exchange",
+    "flux": -0.000321967951907655
+   },
+   "r_2060": {
+    "name": "sulphate exchange",
+    "flux": -0.01129314083521592
+   },
+   "r_2100": {
+    "name": "water exchange",
+    "flux": 3.854702731970981
+   },
+   "r_4593": {
+    "name": "chloride exchange",
+    "flux": -0.00010461931387611848
+   },
+   "r_4594": {
+    "name": "Cu2(+) exchange",
+    "flux": -5.34450595101185e-05
+   },
+   "r_4595": {
+    "name": "Mn(2+) exchange",
+    "flux": -0.0002214036620538075
+   },
+   "r_4596": {
+    "name": "Zn(2+) exchange",
+    "flux": -6.0662979232962366e-05
+   },
+   "r_4597": {
+    "name": "Mg(2+) exchange",
+    "flux": -0.00010077053528401679
+   },
+   "r_4600": {
+    "name": "Ca(2+) exchange",
+    "flux": -1.7598751668554473e-05
+   }
+  }
+ },
+ "anaerobic": {
+  "status": "optimal",
+  "growth_fba": 0.010881025861645716,
+  "growth_pfba": 0.010881025861645344,
+  "total_absolute_flux": 29.299559408636632,
+  "exchanges": {
+   "r_1548": {
+    "name": "(R)-pantothenate exchange",
+    "flux": -2.06739498021107e-06
+   },
+   "r_1654": {
+    "name": "ammonium exchange",
+    "flux": -0.07149860930152642
+   },
+   "r_1672": {
+    "name": "carbon dioxide exchange",
+    "flux": 1.7926349561854142
+   },
+   "r_1714": {
+    "name": "D-glucose exchange",
+    "flux": -1.0
+   },
+   "r_1757": {
+    "name": "ergosterol exchange",
+    "flux": -0.00040622823534047575
+   },
+   "r_1761": {
+    "name": "ethanol exchange",
+    "flux": 1.7046225177452723
+   },
+   "r_1808": {
+    "name": "glycerol exchange",
+    "flux": 0.12491044207450622
+   },
+   "r_1810": {
+    "name": "L-glycine exchange",
+    "flux": 0.0008479408111211241
+   },
+   "r_1814": {
+    "name": "glycolaldehyde exchange",
+    "flux": 7.029142988260746e-07
+   },
+   "r_1832": {
+    "name": "H+ exchange",
+    "flux": 0.06445229599559339
+   },
+   "r_1861": {
+    "name": "iron(2+) exchange",
+    "flux": -3.3078319129661255e-07
+   },
+   "r_1967": {
+    "name": "nicotinate exchange",
+    "flux": -6.604782669709836e-05
+   },
+   "r_1994": {
+    "name": "palmitoleate exchange",
+    "flux": -0.00101492069544247
+   },
+   "r_2005": {
+    "name": "phosphate exchange",
+    "flux": -0.0030358785906944184
+   },
+   "r_2020": {
+    "name": "potassium exchange",
+    "flux": -3.949812315706067e-05
+   },
+   "r_2049": {
+    "name": "sodium exchange",
+    "flux": -4.319767225241098e-05
+   },
+   "r_2056": {
+    "name": "succinate exchange",
+    "flux": 0.002037671608669742
+   },
+   "r_2060": {
+    "name": "sulphate exchange",
+    "flux": -0.0014760380488086128
+   },
+   "r_2100": {
+    "name": "water exchange",
+    "flux": 0.12338477977845409
+   },
+   "r_2189": {
+    "name": "oleate exchange",
+    "flux": -0.00033539224105648337
+   },
+   "r_4593": {
+    "name": "chloride exchange",
+    "flux": -1.4036523838213818e-05
+   },
+   "r_4594": {
+    "name": "Cu2(+) exchange",
+    "flux": -7.170596174400824e-06
+   },
+   "r_4595": {
+    "name": "Mn(2+) exchange",
+    "flux": -2.9705201316518192e-05
+   },
+   "r_4596": {
+    "name": "Zn(2+) exchange",
+    "flux": -8.139007249739928e-06
+   },
+   "r_4597": {
+    "name": "Mg(2+) exchange",
+    "flux": -1.3520142393387933e-05
+   },
+   "r_4600": {
+    "name": "Ca(2+) exchange",
+    "flux": -2.361182540453064e-06
+   }
+  }
+ }
+}

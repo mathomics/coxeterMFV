@@ -1,0 +1,246 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Inspector checks</title>
+<style>
+  body { font: 13px/1.6 ui-monospace, monospace; margin: 24px; background: #0b1220; color: #e2e8f0; }
+  .pass { color: #4ade80; }
+  .fail { color: #fb7185; }
+  iframe { width: 1300px; height: 900px; border: 1px solid #334155; margin-top: 16px; }
+</style>
+</head>
+<body>
+<h1>Inspector controls, selections and drawing history</h1>
+<div id="out"></div>
+<script type="module">
+/** Check inspector controls and selection transitions with the bundled E. coli map. */
+const out = document.getElementById('out');
+let failures = 0;
+
+function check(name, passed) {
+  if (!passed) {
+    failures += 1;
+  }
+  const line = document.createElement('div');
+  line.className = passed ? 'pass' : 'fail';
+  line.textContent = `${passed ? 'OK' : 'FAIL'} ${name}`;
+  out.appendChild(line);
+}
+
+async function tick() {
+  await new Promise(resolve => requestAnimationFrame(resolve));
+  await new Promise(resolve => setTimeout(resolve, 30));
+}
+
+async function waitFor(read, label) {
+  const deadline = Date.now() + 30000;
+  while (!read()) {
+    if (Date.now() > deadline) {
+      throw new Error(`Timed out: ${label}`);
+    }
+    await tick();
+  }
+}
+
+try {
+  const frame = document.createElement('iframe');
+  frame.src = new URLSearchParams(location.search).has('standalone') ? '../coxeter_mfv.html' : '../index.html';
+  document.body.appendChild(frame);
+  await waitFor(() => frame.contentWindow?.escherMCMC?.store?.solution?.status === 'optimal', 'startup');
+  const app = frame.contentWindow;
+  const doc = app.document;
+  const store = app.escherMCMC.store;
+  await store.useScenario('solo-ecoli');
+  await tick();
+  const inspector = doc.getElementById('inspector-panel');
+  if (inspector.getBoundingClientRect().width < 100) {
+    doc.querySelector('.canvas-toolbar [data-action="toggle-inspector"]').click();
+    await tick();
+  }
+  const solution = store.solution;
+  const biology = JSON.stringify(store.models.get('ecoli_core_mc').toJSON());
+  const bounds = JSON.stringify(store.problem.snapshotBounds());
+
+  function button(action) {
+    const element = doc.querySelector(`[data-action="${action}"]`);
+    if (!element) {
+      throw new Error(`Missing control: ${action}`);
+    }
+    return element;
+  }
+
+  function change(action, value) {
+    const input = button(action);
+    input.value = value;
+    input.dispatchEvent(new app.Event('change', { bubbles: true }));
+  }
+
+  async function pick(type, id, details = {}) {
+    store.selectEntity(type, id, details);
+    await tick();
+  }
+
+  async function tap(element) {
+    const rect = element.getBoundingClientRect();
+    const at = { clientX: rect.x + rect.width / 2, clientY: rect.y + 1 };
+    element.dispatchEvent(new app.PointerEvent('pointerdown', { bubbles: true, pointerType: 'mouse', pointerId: 41, button: 0, ...at }));
+    element.dispatchEvent(new app.PointerEvent('pointerup', { bubbles: true, pointerType: 'mouse', pointerId: 41, button: 0, ...at }));
+    await tick();
+  }
+
+  async function controlEdit(name, action) {
+    const before = JSON.stringify(store.map.toJSON());
+    const count = store.mapHistory.undoStack.length;
+    action();
+    await tick();
+    const after = JSON.stringify(store.map.toJSON());
+    check(`${name} changes one drawing history step`, before !== after && store.mapHistory.undoStack.length === count + 1);
+    button('map-undo').click();
+    await tick();
+    const undone = JSON.stringify(store.map.toJSON()) === before;
+    button('map-redo').click();
+    await tick();
+    check(`${name} survives actual Undo and Redo controls`, undone && JSON.stringify(store.map.toJSON()) === after);
+  }
+
+  const note = store.addMapText('Inspector note', 200, 200);
+  store.toggleMultiSelection('reaction', 'eco@PGI');
+  store.toggleMultiSelection('text', note.id);
+  await tick();
+  const membrane = [...doc.querySelectorAll('.emc-boundary-hit[data-boundary]')].find(element => {
+    const boundary = store.layout.boundary(element.dataset.boundary);
+    return boundary?.cellId === 'eco' && boundary.compartmentId === 'c';
+  });
+  if (!membrane) {
+    throw new Error('Missing cytosol membrane');
+  }
+  await tap(membrane);
+  check('clicking a membrane replaces a previous multi-selection',
+    store.selectedGeometry?.compartmentId === 'c' && store.multiSelectionSize === 0);
+  check('the membrane click displays compartment controls in the inspector',
+    Boolean(doc.querySelector('#inspector-panel [data-action="compartment-fill-color"]')));
+  store.clearMultiSelection();
+  store.selectGeometry('eco', 'c');
+  await tick();
+  await tap(doc.querySelector('.emc-marker[data-rxn="eco@PGI"]'));
+  check('clicking a reaction retires the previous geometry handles',
+    store.selectedReaction === 'eco@PGI' && store.selectedGeometry === null);
+
+  const survivor = store.addMapText('Keep selected', 230, 230);
+  store.toggleMultiSelection('text', note.id);
+  store.toggleMultiSelection('text', survivor.id);
+  store.removeMapText(note.id);
+  check('removing one annotation prunes only its stale pick',
+    !store.multiSelection.texts.has(note.id) && store.multiSelection.texts.has(survivor.id));
+  store.clearMultiSelection();
+  await pick('text', survivor.id);
+  button('remove-map-text').click();
+  await tick();
+  check('Delete text records an English history label', store.mapHistory.undoStack.at(-1)?.label === 'Remove text');
+  button('map-undo').click();
+  await tick();
+
+  const target = store.map.nodes.get('met:eco@g6p_c');
+  const copy = store.duplicateMapMetabolite(target.id, { offset: 40 });
+  store.toggleMultiSelection('node', copy.id);
+  store.toggleMultiSelection('reaction', 'eco@PGI');
+  store.removeMapNode(copy.id);
+  check('removing one metabolite prunes its stale pick and preserves another reaction',
+    !store.multiSelection.nodes.has(copy.id) && store.multiSelection.reactions.has('eco@PGI'));
+  store.clearMultiSelection();
+  const source = store.duplicateMapMetabolite(target.id, { offset: 40 });
+  store.selectEntity('metabolite', source.id);
+  store.toggleMultiSelection('node', source.id);
+  store.toggleMultiSelection('node', target.id);
+  const edit = store.beginMapEdit('Merge metabolites');
+  store.moveNode(source.id, target.x, target.y);
+  const merged = store.mergeOverlappingMetabolite(source.id);
+  store.commitMapEdit(edit);
+  check('a drag merge replaces its selected source with one surviving target',
+    merged?.target.id === target.id && !store.multiSelection.nodes.has(source.id)
+    && store.multiSelection.nodes.has(target.id) && store.multiSelection.nodes.size === 1);
+  store.clearMultiSelection();
+
+  await pick('metabolite', target.id);
+  const connected = store.map.segmentsAt(target.id).length;
+  const term = [...doc.querySelectorAll('#inspector-panel dt')].find(element => element.textContent === 'Connected paths');
+  check('the metabolite inspector shows its actual drawn connection count',
+    connected > 0 && term?.nextElementSibling?.textContent === String(connected));
+  const reactionLink = doc.querySelector('#inspector-panel [data-action="select-model-reaction"]');
+  if (!reactionLink) {
+    throw new Error('Missing metabolite reaction link');
+  }
+  const reactionId = reactionLink.dataset.rxn;
+  reactionLink.click();
+  await tick();
+  check('a metabolite reaction chip selects a valid biological reaction',
+    store.selectedReaction === reactionId && store.community.merged.reactions.has(reactionId));
+
+  const annotation = store.addMapText('Styled annotation', 250, 250);
+  await pick('text', annotation.id);
+  await controlEdit('Text size', () => change('text-font-size', '28'));
+  await pick('text', annotation.id);
+  await controlEdit('Text font', () => change('text-font-family', 'times'));
+  await pick('cell', 'eco');
+  await controlEdit('Cell fill', () => change('cell-fill-color', '#123456'));
+  await pick('cell', 'eco');
+  await controlEdit('Cell border', () => change('cell-border-color', '#765432'));
+  await pick('cell', 'eco');
+  await controlEdit('Cell theme reset', () => button('cell-reset-colors').click());
+  await pick('compartment', 'c', { cellId: 'eco' });
+  await controlEdit('Compartment fill', () => change('compartment-fill-color', '#abc123'));
+  await pick('compartment', 'c', { cellId: 'eco' });
+  await controlEdit('Compartment border', () => change('compartment-border-color', '#321abc'));
+  await pick('compartment', 'c', { cellId: 'eco' });
+  await controlEdit('Compartment theme reset', () => button('compartment-reset-colors').click());
+  await pick('compartment', 'c', { cellId: 'eco' });
+  const shapes = [...doc.querySelectorAll('[data-action="compartment-shape"]')].map(element => element.dataset.shape);
+  check('the compartment inspector exposes its shape presets', shapes.length > 0);
+  for (const shape of shapes) {
+    await pick('compartment', 'c', { cellId: 'eco' });
+    const preset = doc.querySelector(`[data-action="compartment-shape"][data-shape="${shape}"]`);
+    if (preset.getAttribute('aria-pressed') === 'true') {
+      const version = store.mapHistory.version;
+      preset.click();
+      await tick();
+      check(`the active compartment shape ${shape} adds no drawing history`, store.mapHistory.version === version);
+    } else {
+      await controlEdit(`Compartment shape ${shape}`, () => {
+        doc.querySelector(`[data-action="compartment-shape"][data-shape="${shape}"]`).click();
+      });
+    }
+  }
+  await pick('metabolite', target.id);
+  await controlEdit('Metabolite fill', () => change('node-fill', '#aabbcc'));
+  await pick('metabolite', target.id);
+  await controlEdit('Metabolite outline', () => change('node-stroke', '#112233'));
+  await pick('metabolite', target.id);
+  await controlEdit('Metabolite map colors reset', () => button('node-colors-reset').click());
+  await pick('reaction', 'eco@PGI');
+  await controlEdit('Reaction line color', () => change('reaction-line-color', '#246810'));
+  await pick('reaction', 'eco@PGI');
+  await controlEdit('Reaction pathway color reset', () => button('reaction-color-reset').click());
+
+  await pick('reaction', 'eco@PGI');
+  change('reaction-line-color', '#abcdef');
+  await tick();
+  button('map-undo').click();
+  await tick();
+  const version = store.mapHistory.version;
+  store.setMapNodeHidden('met:eco@f6p_c', false);
+  await tick();
+  check('an already visible metabolite creates no Undo step and keeps Redo available',
+    store.mapHistory.version === version && store.mapHistory.canRedo && !button('map-redo').disabled);
+  await pick('metabolite', target.id);
+  check('all inspector interactions preserve the biological model, LP bounds and installed numerical result',
+    JSON.stringify(store.models.get('ecoli_core_mc').toJSON()) === biology
+    && JSON.stringify(store.problem.snapshotBounds()) === bounds && store.solution === solution);
+} catch (error) {
+  check(error.message, false);
+}
+
+document.title = failures ? `FAIL (${failures})` : 'PASS';
+</script>
+</body>
+</html>

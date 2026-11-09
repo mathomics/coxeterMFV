@@ -4,7 +4,7 @@ Coxeter-MFV displays metabolic models inside explicit cell and compartment bound
 
 ## Start the application
 
-Download `app/web/coxeter_mfv.html` and open it in a current browser, or run `app/windows/coxeter-mfv.exe` on 64-bit Windows. The browser file contains the application, GLPK and bundled teaching models. No account is required.
+Download `app/coxeter_mfv.html` and open it in a current browser, or run `app/coxeter-mfv.exe` on 64-bit Windows. The browser file contains the application, GLPK and bundled teaching models. No account is required.
 
 The normal editing and solving workflow runs locally. Downloads of external models, including the Zuñiga source models and the optional Yeast9 model, require an internet connection. Following external database or reference links also connects to those services. Save outputs explicitly before closing the application.
 
@@ -21,7 +21,7 @@ Open `http://127.0.0.1:8080`. The container serves the same packaged HTML; calcu
 
 1. Open **Edit Model**, then **Scenario & objective**. Select a bundled teaching scenario. For a small first example, choose an *E. coli* core scenario.
 2. Return to the map. Inspect the cells, compartments and reaction directions. Use the mouse wheel to navigate and the application controls to fit the map to the viewport.
-3. In the simulation controls, run FBA. An optimal result should show a positive growth objective for an unmodified bundled teaching scenario. Exact objectives and balance checks can also be reproduced with `npm run validate` from `code/`.
+3. In the simulation controls, run FBA. An optimal result should show a positive growth objective for an unmodified bundled teaching scenario. Exact objectives and balance checks can also be reproduced with `npm run validate` from the repository root.
 4. Inspect reaction fluxes and the reported objective. Change a nutrient uptake bound, solve again, and observe the effect on growth and the drawn fluxes.
 5. Save the scenario and map, and export the flux table. Export a reproducibility bundle when you need to preserve the numerical setup and result together.
 

@@ -9,7 +9,7 @@ Start with the [user guide](docs/USER_GUIDE.md), [reproducibility guide](docs/RE
 | Symptom | What to check |
 | --- | --- |
 | Downloaded HTML displays source code | Download the actual `coxeter_mfv.html` file, rather than saving GitHub's file preview. Open the downloaded file in a current desktop browser. |
-| `code/index.html` is blank when opened directly | The source version needs an HTTP server. Run `npm run serve` from `code/` and open the address printed in the terminal. The ready-to-run file in `app/web/` opens directly. |
+| `index.html` is blank when opened directly | The source version needs an HTTP server. Run `npm run serve` from the repository root and open the address printed in the terminal. The ready-to-run file in `app/` opens directly. |
 | Zuñiga or Yeast9 source download fails | These features request external model files. Check connectivity and try again. The Zuñiga loader verifies the pinned source checksums. |
 | No feasible solution | Check the medium, uptake bounds, objective, gene knockouts, maintenance requirements and, for communities, abundances. A map alone does not define a feasible model. |
 | Two solvers show different reaction fluxes | Alternative optima can produce different flux vectors. Compare objective values, feasibility and solver tolerances; use pFBA or FVA when appropriate. |

@@ -7,4 +7,4 @@
 *.xlsx binary
 *.gz binary
 *.zip binary
-app/web/coxeter_mfv.html -text
+app/coxeter_mfv.html -text

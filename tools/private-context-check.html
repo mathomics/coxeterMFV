@@ -1,0 +1,224 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Private context checks</title>
+<style>
+  body { font: 13px/1.6 ui-monospace, monospace; margin: 24px; background: #0b1220; color: #e2e8f0; }
+  .pass { color: #4ade80; }
+  .fail { color: #fb7185; }
+  iframe { width: 1200px; height: 800px; border: 1px solid #334155; margin-top: 16px; }
+</style>
+</head>
+<body>
+<h1>Private case files and context changes</h1>
+<p>Loader fixtures use the bundled E. coli network. They do not reproduce the published study, and no private source files are downloaded.</p>
+<div id="out"></div>
+<script type="module">
+/** Exercise private-file validation and context switches through actual controls. */
+import { zunigaCoreFixture } from '../test/helpers/zuniga-core-fixture.mjs';
+import { ZUNIGA_ID } from '../src/communities/zuniga.js';
+import { sha256 } from '../src/core/reproducibility.js';
+
+const out = document.getElementById('out');
+const lines = [];
+let failures = 0;
+let total = 0;
+
+function check(name, passed) {
+  total += 1;
+  if (!passed) {
+    failures += 1;
+  }
+  const line = document.createElement('div');
+  line.className = passed ? 'pass' : 'fail';
+  line.textContent = `${passed ? 'OK' : 'FAIL'} ${name}`;
+  out.appendChild(line);
+  lines.push(line.textContent);
+}
+
+async function tick() {
+  await new Promise(resolve => requestAnimationFrame(resolve));
+  await new Promise(resolve => setTimeout(resolve, 30));
+}
+
+async function waitFor(read, label) {
+  const deadline = Date.now() + 30000;
+  while (!read()) {
+    if (Date.now() > deadline) {
+      throw new Error(`Timed out: ${label}`);
+    }
+    await tick();
+  }
+}
+
+try {
+  const frame = document.createElement('iframe');
+  frame.src = new URLSearchParams(location.search).has('standalone') ? '../coxeter_mfv.html' : '../index.html';
+  document.body.appendChild(frame);
+  await waitFor(() => frame.contentWindow?.escherMCMC?.store?.solution?.status === 'optimal', 'startup');
+  const app = frame.contentWindow;
+  const doc = app.document;
+  const store = app.escherMCMC.store;
+  const saved = [];
+  app.showSaveFilePicker = async (options) => {
+    let blob;
+    return {
+      name: options.suggestedName,
+      async createWritable() {
+        return {
+          async write(content) {
+            blob = content;
+          },
+          async close() {
+            saved.push(blob);
+          },
+          async abort() {},
+        };
+      },
+    };
+  };
+
+  async function workspace(name) {
+    doc.querySelector('[data-action="close-workspace"]')?.click();
+    doc.querySelector('[data-action="left-tab"][data-tab="model"]').click();
+    await tick();
+    doc.querySelector(`#task-panel [data-workspace="${name}"]`).click();
+    await tick();
+  }
+
+  function change(selector, value) {
+    const input = doc.querySelector(selector);
+    if (!input) {
+      throw new Error(`Missing control: ${selector}`);
+    }
+    input.value = value;
+    input.dispatchEvent(new app.Event('change', { bubbles: true }));
+  }
+
+  async function exportJSON(action) {
+    const before = saved.length;
+    const menu = doc.querySelector('.file-menu');
+    menu.open = true;
+    menu.querySelector(`[data-action="${action}"]`).click();
+    await waitFor(() => saved.length === before + 1, action);
+    return JSON.parse(await saved.at(-1).text());
+  }
+
+  async function upload(id, value, name) {
+    const input = doc.getElementById(id);
+    const transfer = new app.DataTransfer();
+    transfer.items.add(new app.File([JSON.stringify(value)], name));
+    input.files = transfer.files;
+    input.dispatchEvent(new app.Event('change', { bubbles: true }));
+    await waitFor(() => input.value === '' && store.status.state !== 'busy', name);
+    await tick();
+  }
+
+  await workspace('scenario');
+  change('[data-action="scenario"]', 'sc:solo-ecoli');
+  await waitFor(() => store.scenario?.id === 'solo-ecoli' && store.status.state !== 'busy', 'ordinary model');
+  const ordinary = await exportJSON('export-state');
+  const raw = await (await fetch('../models/ecoli_core_mc.json')).json();
+  const fixture = zunigaCoreFixture(raw);
+  app.__ESCHER_MCMC_DATA__ = {
+    ...(app.__ESCHER_MCMC_DATA__ ?? {}),
+    [`models/published/${ZUNIGA_ID}/map.json`]: fixture.map.toJSON(),
+  };
+  store.publishedManifests.set(ZUNIGA_ID, fixture.study.manifest);
+  await store.useZunigaStudy({ study: fixture.study });
+  check('the private loader fixture installs its full source LP independently of the drawing',
+    store.isZunigaStudy && store.problem.rxnIds.length === fixture.study.sourceModels.joint.reactions.length
+    && store.map.reactions.size === 2);
+  await workspace('scenario');
+  change('[data-action="zuniga-scenario"]', 'mutant-monoculture');
+  change('[data-action="zuniga-comparison"]', 'difference');
+  await tick();
+  check('case controls switch to the source monoculture and difference view',
+    store.zunigaScenarioId === 'mutant-monoculture' && store.zunigaComparison === 'difference'
+    && store.problem.rxnIds.length === fixture.study.sourceModels.mono.reactions.length);
+  const privateScenario = await exportJSON('export-state');
+  const privateMap = await exportJSON('map-save');
+  const bundle = await exportJSON('export-reproducibility');
+  check('the actual private bundle export records both complete source documents',
+    bundle.study.sourceModels.mono.reactions.length === fixture.study.sourceModels.mono.reactions.length
+    && bundle.study.sourceModels.joint.reactions.length === fixture.study.sourceModels.joint.reactions.length);
+  store.setView({ showCrossFeeding: true });
+  await upload('file-input', ordinary, 'ordinary-after-private.json');
+  check('ordinary Scenario import retires the private context and restores its earlier view',
+    !store.isZunigaStudy && !store.zunigaStudy && !store.zunigaPrepared
+    && store.zunigaSolutions.size === 0 && !store.view.showCrossFeeding && !store.solution.zuniga);
+  await workspace('medium');
+  const objective = store.solution.objectiveValue;
+  change('[data-action="medium-number"][data-base="glc__D"]', '5');
+  await waitFor(() => store.medium.glc__D === 5, 'editable ordinary medium');
+  check('the new ordinary model accepts medium edits and recalculates its own result',
+    store.solution.status === 'optimal' && store.solution.objectiveValue < objective);
+
+  let downloads = 0;
+  store.loadZunigaStudy = async () => {
+    downloads += 1;
+    return fixture.study;
+  };
+  for (const patch of [{ scenarioId: 'invented-case' }, { comparison: 'invented-comparison' }, { fluxReference: 999 }]) {
+    const before = store.solution;
+    const invalid = structuredClone(privateScenario);
+    Object.assign(invalid.study, patch);
+    await upload('file-input', invalid, 'invalid-private-scenario.json');
+    check(`private Scenario metadata ${Object.keys(patch)[0]} is rejected before downloading or replacing work`,
+      store.status.state === 'error' && downloads === 0 && store.solution === before && store.scenario.id === 'solo-ecoli');
+  }
+  const invalidMap = structuredClone(privateMap);
+  invalidMap.study.scenarioId = 'invented-case';
+  const beforeMap = store.map;
+  await upload('map-file-input', invalidMap, 'invalid-private-map.json');
+  check('private Map metadata is rejected before downloading or replacing the drawing',
+    downloads === 0 && store.map === beforeMap && store.scenario.id === 'solo-ecoli');
+  for (const includeMap of [true, false]) {
+    const invalid = structuredClone(bundle);
+    invalid.study.sourceModels.mono.reactions.find(reaction => reaction.id === 'PPNDH').gene_reaction_rule = '';
+    if (!includeMap) {
+      invalid.map = null;
+    }
+    delete invalid.integrity;
+    invalid.integrity = { algorithm: 'SHA-256', payloadHash: await sha256(invalid) };
+    const before = store.solution;
+    await upload('reproducibility-file-input', invalid, 'invalid-private-source.json');
+    check(`an unusable source LP is rejected with ${includeMap ? 'an archived map' : 'no archived map'} while retaining ordinary work`,
+      store.solution === before && store.scenario.id === 'solo-ecoli' && store.status.state === 'error');
+  }
+  const infeasible = structuredClone(bundle);
+  for (const reaction of infeasible.study.sourceModels.mono.reactions) {
+    if (reaction.id.startsWith('EX_') && reaction.lower_bound < 0) {
+      reaction.lower_bound = 0;
+    }
+  }
+  delete infeasible.integrity;
+  infeasible.integrity = { algorithm: 'SHA-256', payloadHash: await sha256(infeasible) };
+  const beforeInfeasible = store.solution;
+  await upload('reproducibility-file-input', infeasible, 'infeasible-private-source.json');
+  check('an infeasible source LP is reported before replacing the active result',
+    store.solution === beforeInfeasible && store.scenario.id === 'solo-ecoli' && store.status.message.includes('infeasible'));
+  await upload('reproducibility-file-input', bundle, 'valid-private-bundle.json');
+  check('a valid private bundle replays after the rejected files', store.isZunigaStudy && store.reproducibilityReplay?.replay?.pass);
+  const missing = structuredClone(ordinary);
+  missing.species[0].file = 'missing-private-context-model';
+  const privateResult = store.solution;
+  await upload('file-input', missing, 'missing-ordinary-model.json');
+  check('a failed ordinary model preload preserves the private result', store.isZunigaStudy && store.solution === privateResult);
+  await upload('file-input', ordinary, 'ordinary-before-valid-case.json');
+  await upload('file-input', privateScenario, 'valid-private-scenario.json');
+  check('a valid private Scenario loads once and restores its selected case',
+    downloads === 1 && store.isZunigaStudy && store.zunigaScenarioId === 'mutant-monoculture' && store.zunigaComparison === 'difference');
+  await upload('file-input', ordinary, 'final-ordinary.json');
+  check('the final ordinary file has its own editable model and no stale case verification',
+    store.scenario.id === 'solo-ecoli' && !store.zunigaStudy && !store.reproducibilityReplay && store.solution.status === 'optimal');
+} catch (error) {
+  check(error.message, false);
+}
+
+document.title = failures ? `FAIL (${failures})` : 'PASS';
+window.__checkComplete = Promise.resolve({ failures, total, lines });
+</script>
+</body>
+</html>

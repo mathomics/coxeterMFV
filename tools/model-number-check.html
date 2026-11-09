@@ -1,0 +1,119 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Running numeric model checks</title>
+<style>
+  body { margin: 16px; font: 14px system-ui; background: #0b1220; color: #e2e8f0; }
+  .pass { color: #4ade80; }
+  .fail { color: #fb7185; }
+  iframe { width: 1300px; height: 900px; border: 1px solid #334155; margin-top: 16px; }
+</style>
+</head>
+<body>
+<h1>Numeric coefficient validation and correction</h1>
+<div id="out"></div>
+<script type="module">
+/** Submit JSON coefficients through the real form and preserve valid numeric input. */
+const out = document.getElementById('out');
+let failures = 0;
+
+function check(name, passed) {
+  if (!passed) {
+    failures += 1;
+  }
+  const line = document.createElement('div');
+  line.className = passed ? 'pass' : 'fail';
+  line.textContent = `${passed ? 'OK' : 'FAIL'} ${name}`;
+  out.appendChild(line);
+}
+
+async function tick() {
+  await new Promise(resolve => requestAnimationFrame(resolve));
+  await new Promise(resolve => setTimeout(resolve, 60));
+}
+
+async function waitFor(read, label) {
+  const deadline = Date.now() + 30000;
+  while (!read()) {
+    if (Date.now() > deadline) {
+      throw new Error(`Timed out: ${label}`);
+    }
+    await tick();
+  }
+}
+
+try {
+  const frame = document.createElement('iframe');
+  frame.src = new URLSearchParams(location.search).has('standalone') ? '../coxeter_mfv.html' : '../index.html';
+  document.body.appendChild(frame);
+  await waitFor(() => frame.contentWindow?.escherMCMC?.store?.solution?.status === 'optimal', 'startup');
+  const app = frame.contentWindow;
+  const doc = app.document;
+  const store = app.escherMCMC.store;
+  const raw = await (await fetch('../models/ecoli_core_mc.json')).json();
+  const Model = store.models.get('ecoli_core_mc').constructor;
+
+  function click(action) {
+    doc.querySelector(`.model-editor-card [data-action="${action}"]`).click();
+  }
+
+  function field(name, value) {
+    const input = doc.querySelector(`.model-editor-form [name="${name}"]`);
+    input.value = value;
+    input.dispatchEvent(new app.Event('input', { bubbles: true }));
+    input.dispatchEvent(new app.Event('change', { bubbles: true }));
+  }
+
+  for (const [kind, value] of [['boolean', true], ['array', [-1]]]) {
+    store.models.set('ecoli_core_mc', new Model(raw));
+    await store.useScenario('solo-ecoli');
+    doc.querySelector('[data-action="left-tab"][data-tab="model"]').click();
+    await tick();
+    doc.querySelector('[data-action="open-workspace"][data-workspace="model"]').click();
+    await tick();
+    click('new-reaction');
+    await tick();
+    field('id', 'QA_NUMERIC');
+    const invalid = JSON.stringify({ g6p_c: value, f6p_c: 1 });
+    field('stoichiometry', invalid);
+    const biology = JSON.stringify(store.modelEditorModel().toJSON());
+    const solution = store.solution;
+    const version = store.mapHistory.version;
+    click('create-reaction');
+    await tick();
+    await tick();
+    check(`${kind} coefficients report an error through the Create control`,
+      /coefficient.*g6p_c/i.test(doc.querySelector('.model-editor-error')?.textContent ?? ''));
+    check(`rejected ${kind} coefficients preserve the model, solution and drawing history`,
+      JSON.stringify(store.modelEditorModel().toJSON()) === biology && store.solution === solution
+      && store.mapHistory.version === version);
+    check(`rejected ${kind} coefficients leave the draft available for correction`,
+      store.modelEditorMode === 'reaction'
+      && doc.querySelector('.model-editor-form [name="stoichiometry"]')?.value === invalid);
+    if (store.modelEditorMode !== 'reaction') {
+      click('new-reaction');
+      await tick();
+    }
+    field('id', 'QA_CORRECTED');
+    field('stoichiometry', '{"g6p_c":" -2e-1 ","f6p_c":0.2}');
+    field('lower', '-10');
+    field('upper', '2.5');
+    click('create-reaction');
+    await waitFor(() => store.modelEditorMode === null, 'corrected reaction');
+    const reaction = store.modelEditorModel().reactions.get('QA_CORRECTED');
+    check(`correcting the ${kind} case preserves numeric strings, fractions and bound signs`,
+      reaction?.metabolites.g6p_c === -0.2 && reaction?.metabolites.f6p_c === 0.2
+      && reaction?.lowerBound === -10 && reaction?.upperBound === 2.5);
+    check(`correcting the ${kind} case reaches an optimal LP and drawing`,
+      store.solution?.status === 'optimal' && store.problem.rxnIndex.has('eco@QA_CORRECTED')
+      && store.map.reactions.has('eco@QA_CORRECTED'));
+  }
+} catch (error) {
+  check(error.message, false);
+}
+
+document.title = failures ? `FAIL (${failures})` : 'PASS';
+</script>
+</body>
+</html>

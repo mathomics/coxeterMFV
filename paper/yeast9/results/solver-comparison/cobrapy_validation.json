@@ -1,0 +1,63 @@
+{
+  "cobraVersion": "0.29.0",
+  "solver": "GLPK",
+  "feasibilityTolerance": 1e-09,
+  "growth": 0.08110024056059321,
+  "totalAbsoluteFlux": 100.76139895425345,
+  "objectiveFraction": 1.0,
+  "fva": {
+    "endpoints": 256,
+    "largestErrors": [
+      {
+        "reaction": "r_0659",
+        "endpoint": "max",
+        "absoluteError": 7.691232887530042e-05
+      },
+      {
+        "reaction": "r_0658",
+        "endpoint": "max",
+        "absoluteError": 7.392286951812821e-05
+      },
+      {
+        "reaction": "r_0659",
+        "endpoint": "min",
+        "absoluteError": 7.327401487922103e-05
+      },
+      {
+        "reaction": "r_0713",
+        "endpoint": "min",
+        "absoluteError": 7.327293819736624e-05
+      },
+      {
+        "reaction": "r_0471",
+        "endpoint": "max",
+        "absoluteError": 6.226420267679833e-05
+      },
+      {
+        "reaction": "r_0961",
+        "endpoint": "min",
+        "absoluteError": 6.220991192090741e-05
+      },
+      {
+        "reaction": "r_2131",
+        "endpoint": "min",
+        "absoluteError": 6.212770903900322e-05
+      },
+      {
+        "reaction": "r_2129",
+        "endpoint": "max",
+        "absoluteError": 6.148415766147807e-05
+      },
+      {
+        "reaction": "r_0714",
+        "endpoint": "min",
+        "absoluteError": 6.147892111130204e-05
+      },
+      {
+        "reaction": "r_0470",
+        "endpoint": "max",
+        "absoluteError": 6.147890559545335e-05
+      }
+    ]
+  }
+}

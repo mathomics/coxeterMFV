@@ -1,0 +1,260 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Running contextual placement checks</title>
+<style>
+  body { margin: 16px; font: 14px system-ui; background: #0b1220; color: #e2e8f0; }
+  .pass { color: #4ade80; }
+  .fail { color: #fb7185; }
+  iframe { width: 1300px; height: 900px; border: 1px solid #334155; margin-top: 16px; }
+</style>
+</head>
+<body>
+<h1>Context menus, direction choices and compartment containment</h1>
+<div id="out"></div>
+<script type="module">
+/** Exercise contextual insertion controls and verify only new drawing objects change. */
+import { nodeFitsAt } from '../src/layout/drag.js';
+const out = document.getElementById('out');
+let failures = 0;
+
+function check(name, passed) {
+  if (!passed) {
+    failures += 1;
+  }
+  const line = document.createElement('div');
+  line.className = passed ? 'pass' : 'fail';
+  line.textContent = `${passed ? 'OK' : 'FAIL'} ${name}`;
+  out.appendChild(line);
+}
+
+async function tick() {
+  await new Promise(resolve => requestAnimationFrame(resolve));
+  await new Promise(resolve => setTimeout(resolve, 60));
+}
+
+async function waitFor(read, label) {
+  const deadline = Date.now() + 30000;
+  while (!read()) {
+    if (Date.now() > deadline) {
+      throw new Error(`Timed out: ${label}`);
+    }
+    await tick();
+  }
+}
+
+function contained(map) {
+  return [...map.nodes.values()].every(node => nodeFitsAt(map, node, node.x, node.y));
+}
+
+function connected(map) {
+  return map.segments.every(segment => {
+    if (!segment.nodeId) {
+      return true;
+    }
+    const node = map.nodes.get(segment.nodeId);
+    const point = segment.side === 'substrate' ? segment.from : segment.to;
+    return node && Math.hypot(node.x - point.x, node.y - point.y) < 1e-8;
+  });
+}
+
+try {
+  const frame = document.createElement('iframe');
+  frame.src = new URLSearchParams(location.search).has('standalone') ? '../coxeter_mfv.html' : '../index.html';
+  document.body.appendChild(frame);
+  await waitFor(() => frame.contentWindow?.escherMCMC?.store?.solution?.status === 'optimal', 'startup');
+  const app = frame.contentWindow;
+  const doc = app.document;
+  const store = app.escherMCMC.store;
+  await store.useScenario('solo-ecoli');
+  const EditableMap = store.map.constructor;
+  const shell = EditableMap.emptyFromCommunity(store.community).toJSON();
+  const solution = store.solution;
+  const biology = JSON.stringify(store.modelEditorModel().toJSON());
+  const bounds = JSON.stringify(store.problem.snapshotBounds());
+  doc.querySelector('[data-action="left-tab"][data-tab="build"]').click();
+  await tick();
+
+  function screen(point) {
+    const rect = doc.getElementById('stage').getBoundingClientRect();
+    return {
+      clientX: rect.left + app.escherMCMC.camera.x + point.x * app.escherMCMC.camera.scale,
+      clientY: rect.top + app.escherMCMC.camera.y + point.y * app.escherMCMC.camera.scale,
+    };
+  }
+
+  function press(target, point) {
+    target.dispatchEvent(new app.PointerEvent('pointerdown', { bubbles: true, pointerId: 911, ...point }));
+    target.dispatchEvent(new app.PointerEvent('pointerup', { bubbles: true, pointerId: 911, ...point }));
+  }
+
+  async function reset() {
+    store.map = EditableMap.fromJSON(JSON.parse(JSON.stringify(shell)));
+    store.mapHistory.clear();
+    store.select(null);
+    store.emit('map');
+    await tick();
+    doc.querySelector('[data-tool="reaction"]').click();
+    await tick();
+  }
+
+  async function openCompartment() {
+    const rect = store.map.cells[0].compartments.find(compartment => compartment.id === 'c').rect;
+    const point = screen({ x: rect.x + rect.w / 2, y: rect.y + rect.h / 2 });
+    press(doc.querySelector('[data-cell-space="eco"][data-compartment-space="c"]'), point);
+    await tick();
+  }
+
+  const half = Math.SQRT1_2;
+  const directions = [
+    ['n', 0, -1], ['ne', half, -half], ['e', 1, 0], ['se', half, half],
+    ['s', 0, 1], ['sw', -half, half], ['w', -1, 0], ['nw', -half, -half],
+  ];
+  for (const [direction, dx, dy] of directions) {
+    await reset();
+    await openCompartment();
+    check(`${direction}: directions require a selected reaction`,
+      doc.querySelectorAll('[data-add-rxn-direction]').length === 8
+      && [...doc.querySelectorAll('[data-add-rxn-direction]')].every(button => button.disabled));
+    const filter = doc.querySelector('[data-action="filter-add-reactions"]');
+    filter.value = 'FBA';
+    filter.dispatchEvent(new app.Event('input', { bubbles: true }));
+    doc.querySelector('[data-select-add-rxn="eco@FBA"]').click();
+    await tick();
+    if (direction === 'n') {
+      check('selecting a filtered compartment reaction keeps its filter and visible rows',
+        doc.querySelector('[data-action="filter-add-reactions"]').value === 'FBA'
+        && [...doc.querySelectorAll('.add-reaction-choice:not([hidden])')].every(button =>
+          button.dataset.search.toLowerCase().includes('fba')));
+    }
+    const terminal = doc.querySelector('.add-reaction-terminal code').textContent;
+    doc.querySelector('[data-rotate-terminal="1"]').click();
+    await tick();
+    check(`${direction}: Next terminal changes the product choice`,
+      doc.querySelector('.add-reaction-terminal code').textContent !== terminal);
+    doc.querySelector('[data-rotate-terminal="-1"]').click();
+    await tick();
+    check(`${direction}: Previous terminal restores the product choice`,
+      doc.querySelector('.add-reaction-terminal code').textContent === terminal);
+    if (direction === 'n') {
+      check('rotating the terminal keeps the compartment filter',
+        doc.querySelector('[data-action="filter-add-reactions"]').value === 'FBA');
+    }
+    doc.querySelector(`[data-add-rxn-direction="${direction}"]`).click();
+    await tick();
+    const reaction = store.map.reactions.get('eco@FBA');
+    check(`${direction}: insertion follows its direction with contained, connected nodes`,
+      reaction && Math.abs(reaction.axis.dir.x - dx) < 1e-8 && Math.abs(reaction.axis.dir.y - dy) < 1e-8
+      && contained(store.map) && connected(store.map));
+    const after = JSON.stringify(store.map.toJSON());
+    doc.querySelector('[data-action="map-undo"]').click();
+    await tick();
+    doc.querySelector('[data-action="map-redo"]').click();
+    await tick();
+    check(`${direction}: Undo and Redo restore the exact insertion`, JSON.stringify(store.map.toJSON()) === after);
+  }
+
+  await reset();
+  await openCompartment();
+  doc.querySelector('[data-action="close-add-reaction-menu"]').click();
+  await tick();
+  check('Close dismisses an uncommitted compartment menu without a history step',
+    !doc.querySelector('.add-reaction-menu') && store.mapHistory.undoStack.length === 0);
+
+  store.addMapReaction('eco@PGI');
+  const anchor = [...store.map.nodes.values()].find(node => node.mergedId === 'eco@f6p_c');
+  const prior = JSON.stringify({ x: anchor.x, y: anchor.y });
+  const point = screen(anchor);
+  const circle = doc.querySelector(`circle[data-node="${anchor.id}"]`);
+  circle.dispatchEvent(new app.PointerEvent('pointerdown', { bubbles: true, pointerId: 912, ...point }));
+  circle.dispatchEvent(new app.PointerEvent('pointerup', { bubbles: true, pointerId: 912, ...point }));
+  await tick();
+  const filter = doc.querySelector('[data-action="filter-add-reactions"]');
+  filter.value = 'PFK';
+  filter.dispatchEvent(new app.Event('input', { bubbles: true }));
+  doc.querySelector('[data-select-add-rxn="eco@PFK"]').click();
+  await tick();
+  check('selecting a filtered metabolite reaction keeps its filter',
+    doc.querySelector('[data-action="filter-add-reactions"]').value === 'PFK');
+  doc.querySelector('[data-add-rxn-direction="e"]').click();
+  await tick();
+  check('metabolite-origin insertion reuses the selected node without moving it',
+    store.map.reactions.has('eco@PFK') && anchor.sharedInstance === true
+    && JSON.stringify({ x: anchor.x, y: anchor.y }) === prior && connected(store.map));
+
+  await reset();
+  const boundary = store.map.boundary('eco/p');
+  const at = screen({ x: boundary.rect.x + boundary.rect.w / 2, y: boundary.rect.y });
+  press(doc.querySelector('[data-boundary="eco/p"]'), at);
+  await tick();
+  doc.querySelector('[data-add-boundary-rxn="eco@GLCtex"]').click();
+  await tick();
+  check('the outer membrane menu inserts its transporter on the selected boundary',
+    store.map.reactions.get('eco@GLCtex')?.boundaryId === 'eco/p');
+  check('the outer membrane menu keeps every metabolite out of nested compartments', contained(store.map));
+  check('the outer membrane menu preserves all new branch endpoints', connected(store.map));
+  check('all contextual map actions preserve biology, bounds and the installed calculation',
+    JSON.stringify(store.modelEditorModel().toJSON()) === biology
+    && JSON.stringify(store.problem.snapshotBounds()) === bounds && store.solution === solution);
+
+  doc.querySelector('[data-action="left-tab"][data-tab="model"]').click();
+  await tick();
+  doc.querySelector('[data-action="open-workspace"][data-workspace="model"]').click();
+  await tick();
+  doc.querySelector('[data-action="new-reaction"]').click();
+  await tick();
+  for (const [name, value] of [['id', 'QA_PERIPLASM'], ['stoichiometry', 'glc__D_p:-1, h_p:1']]) {
+    const input = doc.querySelector(`.model-editor-form [name="${name}"]`);
+    input.value = value;
+    input.dispatchEvent(new app.Event('input', { bubbles: true }));
+  }
+  doc.querySelector('[data-action="create-reaction"]').click();
+  await waitFor(() => store.modelEditorMode === null, 'periplasmic creation');
+  const periplasm = store.map.reactions.get('eco@QA_PERIPLASM');
+  const marker = { ...periplasm, kind: 'metabolite', compartment: 'p', r: 5 };
+  check('Create places an internal periplasmic marker outside the nested cytosol',
+    periplasm && nodeFitsAt(store.map, marker, marker.x, marker.y));
+  check('Create contains the periplasmic primary and secondary metabolites and their branches',
+    contained(store.map) && connected(store.map));
+  check('periplasmic creation reaches the biological model and an optimal calculation',
+    store.modelEditorModel().reactions.has('QA_PERIPLASM') && store.solution.status === 'optimal');
+  const contextDrawing = store.map.toJSON();
+  doc.querySelector('[data-action="close-workspace"]').click();
+  await tick();
+
+  const tiny = EditableMap.emptyFromCommunity(store.community).toJSON();
+  tiny.cells[0].compartments.find(compartment => compartment.id === 'c').rect = {
+    x: 300, y: 300, w: 12, h: 10,
+  };
+  store.loadMapJSON(JSON.stringify(tiny));
+  doc.querySelector('[data-action="left-tab"][data-tab="build"]').click();
+  await tick();
+  doc.querySelector('[data-action="open-workspace"][data-workspace="library"]').click();
+  await tick();
+  const search = doc.querySelector('#reaction-search-input');
+  search.value = 'PGI';
+  search.dispatchEvent(new app.Event('input', { bubbles: true }));
+  await tick();
+  doc.querySelector('[data-action="search-add-reaction"][data-rxn="eco@PGI"]').click();
+  await tick();
+  const small = store.map.reactions.get('eco@PGI');
+  check('library insertion centers the marker in a valid imported rectangle smaller than its padding',
+    small?.x === 306 && small?.y === 305);
+  check('library insertion keeps new metabolite centers inside that small rectangle',
+    [...store.map.nodes.values()].every(node => node.x >= 300 && node.x <= 312 && node.y >= 300 && node.y <= 310));
+  check('small-rectangle insertion keeps its branch endpoints connected', connected(store.map));
+  store.map = EditableMap.fromJSON(contextDrawing);
+  store.mapHistory.clear();
+  store.emit('map');
+  store.select('eco@GLCtex');
+  doc.querySelector('[data-action="zoom-fit"]').click();
+  await tick();
+} catch (error) {
+  check(error.message, false);
+}
+
+document.title = failures ? `FAIL (${failures})` : 'PASS';
+</script>
+</body>
+</html>

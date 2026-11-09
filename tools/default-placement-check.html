@@ -1,0 +1,202 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Running default placement checks</title>
+<style>
+  body { margin: 16px; font: 14px system-ui; background: #0b1220; color: #e2e8f0; }
+  .pass { color: #4ade80; }
+  .fail { color: #fb7185; }
+  iframe { width: 1300px; height: 900px; border: 1px solid #334155; margin-top: 16px; }
+</style>
+</head>
+<body>
+<h1>Blank canvas creation and successive reaction placement</h1>
+<div id="out"></div>
+<script type="module">
+/** Exercise creation, map insertion and history through their controls without changing existing biology. */
+const out = document.getElementById('out');
+let failures = 0;
+
+function check(name, passed) {
+  if (!passed) {
+    failures += 1;
+  }
+  const line = document.createElement('div');
+  line.className = passed ? 'pass' : 'fail';
+  line.textContent = `${passed ? 'OK' : 'FAIL'} ${name}`;
+  out.appendChild(line);
+}
+
+async function tick() {
+  await new Promise(resolve => requestAnimationFrame(resolve));
+  await new Promise(resolve => setTimeout(resolve, 60));
+}
+
+async function waitFor(read, label) {
+  const deadline = Date.now() + 30000;
+  while (!read()) {
+    if (Date.now() > deadline) {
+      throw new Error(`Timed out: ${label}`);
+    }
+    await tick();
+  }
+}
+
+try {
+  const frame = document.createElement('iframe');
+  frame.src = new URLSearchParams(location.search).has('standalone') ? '../coxeter_mfv.html' : '../index.html';
+  document.body.appendChild(frame);
+  await waitFor(() => frame.contentWindow?.escherMCMC?.store?.solution?.status === 'optimal', 'startup');
+  const app = frame.contentWindow;
+  const doc = app.document;
+  const store = app.escherMCMC.store;
+  await store.useScenario('solo-ecoli');
+  const EditableMap = store.map.constructor;
+
+  async function workspace(name) {
+    let tab = 'build';
+    if (name === 'model') {
+      tab = 'model';
+    }
+    doc.querySelector(`[data-action="left-tab"][data-tab="${tab}"]`).click();
+    await tick();
+    const button = doc.querySelector(`[data-action="open-workspace"][data-workspace="${name}"]`);
+    if (!button) {
+      throw new Error(`Missing workspace control for ${name}`);
+    }
+    button.click();
+    await tick();
+  }
+
+  function field(name, value) {
+    const input = doc.querySelector(`.model-editor-form [name="${name}"]`);
+    input.value = value;
+    input.dispatchEvent(new app.Event('input', { bubbles: true }));
+    input.dispatchEvent(new app.Event('change', { bubbles: true }));
+  }
+
+  async function create(id, addToMap) {
+    await workspace('model');
+    doc.querySelector('.model-editor-card [data-action="new-reaction"]').click();
+    await tick();
+    field('id', id);
+    field('stoichiometry', 'g6p_c:-1, f6p_c:1');
+    field('lower', '-10');
+    field('upper', '10');
+    const checkbox = doc.querySelector('.model-editor-form [name="addToMap"]');
+    if (checkbox.checked !== addToMap) {
+      checkbox.click();
+    }
+    doc.querySelector('.model-editor-card [data-action="create-reaction"]').click();
+    await waitFor(() => store.modelEditorMode === null, `create ${id}`);
+  }
+
+  async function addFromLibrary(id) {
+    await workspace('library');
+    const search = doc.querySelector('#reaction-search-input');
+    search.value = id;
+    search.dispatchEvent(new app.Event('input', { bubbles: true }));
+    await tick();
+    const button = doc.querySelector(`[data-action="search-add-reaction"][data-rxn="eco@${id}"]`);
+    if (!button) {
+      throw new Error(`Missing Add to map control for ${id}`);
+    }
+    button.click();
+    await tick();
+  }
+
+  await workspace('structure');
+  doc.querySelector('[data-action="map-empty"]').click();
+  await tick();
+  const blank = JSON.stringify(store.map.toJSON());
+  const blankVersion = store.mapHistory.version;
+  await create('QA_UNDRAWN', true);
+  check('Create with Add to map reports that the biological reaction was created but not drawn',
+    store.status.state === 'warn' && /created.*not drawn/i.test(store.status.message));
+  check('the warning remains visible and the successful form closes without an error',
+    doc.body.textContent.includes('but not drawn') && !doc.querySelector('.model-editor-error'));
+  check('failed optional insertion preserves the blank canvas and its history',
+    JSON.stringify(store.map.toJSON()) === blank && store.mapHistory.version === blankVersion);
+  check('the undrawn reaction exists in the model and an optimal calculation',
+    store.modelEditorModel().reactions.has('QA_UNDRAWN') && store.problem.rxnIndex.has('eco@QA_UNDRAWN')
+    && store.solution.status === 'optimal');
+  await create('QA_MODEL_ONLY', false);
+  check('the unchecked Add to map choice reports ordinary success on a blank canvas', store.status.state === 'ok');
+  check('model-only creation keeps the blank canvas and reaches the LP',
+    JSON.stringify(store.map.toJSON()) === blank && store.problem.rxnIndex.has('eco@QA_MODEL_ONLY'));
+
+  store.addMapCell('eco', { x: 80, y: 70, w: 900, h: 700 });
+  store.addMapCompartment('eco', 'p');
+  store.addMapCompartment('eco', 'c');
+  await tick();
+  const biology = JSON.stringify(store.modelEditorModel().toJSON());
+  const solution = store.solution;
+  await addFromLibrary('QA_UNDRAWN');
+  check('Add to map can draw the existing reaction after its compartments are supplied',
+    store.map.reactions.has('eco@QA_UNDRAWN') && store.selectedReaction === 'eco@QA_UNDRAWN');
+  const drawn = JSON.stringify(store.map.toJSON());
+  doc.querySelector('[data-action="map-undo"]').click();
+  await tick();
+  check('Undo removes only the later drawing insertion',
+    !store.map.reactions.has('eco@QA_UNDRAWN') && store.modelEditorModel().reactions.has('QA_UNDRAWN'));
+  doc.querySelector('[data-action="map-redo"]').click();
+  await tick();
+  check('Redo restores that drawing without changing biology or the numerical result',
+    JSON.stringify(store.map.toJSON()) === drawn && JSON.stringify(store.modelEditorModel().toJSON()) === biology
+    && store.solution === solution);
+
+  store.map = EditableMap.emptyFromCommunity(store.community);
+  store.mapHistory.clear();
+  store.emit('map');
+  const positions = [];
+  for (const id of ['PGI', 'PFK', 'GAPD', 'GLCptspp', 'H2Otpp']) {
+    const before = store.map.toJSON();
+    await addFromLibrary(id);
+    const current = store.map.reactions.get(`eco@${id}`);
+    check(`the ${id} library control adds a distinct marker`, current && positions.every(prior =>
+      Math.hypot(current.x - prior.x, current.y - prior.y) >= 20));
+    positions.push(current);
+    const after = store.map.toJSON();
+    check(`adding ${id} preserves all previous geometry`,
+      JSON.stringify(before.cells) === JSON.stringify(after.cells)
+      && JSON.stringify(before.segments) === JSON.stringify(after.segments.slice(0, before.segments.length))
+      && before.nodes.every(node => JSON.stringify(node) === JSON.stringify(after.nodes.find(item => item.id === node.id)))
+      && before.reactions.every(reaction => JSON.stringify(reaction)
+        === JSON.stringify(after.reactions.find(item => item.id === reaction.id))));
+  }
+  const first = store.map.reactions.get('eco@GLCptspp');
+  const second = store.map.reactions.get('eco@H2Otpp');
+  check('successive transporter controls preserve the same biological membrane',
+    first.onMembrane && second.onMembrane && first.boundaryId === second.boundaryId);
+  check('all library controls preserve the biological model, LP and numerical result',
+    JSON.stringify(store.modelEditorModel().toJSON()) === biology && store.solution === solution);
+  for (const id of ['QA_CREATED_FIRST', 'QA_CREATED_SECOND']) {
+    const before = store.map.toJSON();
+    await create(id, true);
+    const current = store.map.reactions.get(`eco@${id}`);
+    check(`Create ${id} adds a distinct marker to the existing drawing`, current && before.reactions.every(prior =>
+      Math.hypot(current.x - prior.x, current.y - prior.y) >= 20));
+    const after = store.map.toJSON();
+    check(`Create ${id} preserves all existing nodes, reactions and segments`,
+      JSON.stringify(before.segments) === JSON.stringify(after.segments.slice(0, before.segments.length))
+      && before.nodes.every(node => JSON.stringify(node) === JSON.stringify(after.nodes.find(item => item.id === node.id)))
+      && before.reactions.every(reaction => JSON.stringify(reaction)
+        === JSON.stringify(after.reactions.find(item => item.id === reaction.id))));
+    check(`Create ${id} reaches the biological model and an optimal LP`,
+      store.modelEditorModel().reactions.has(id) && store.problem.rxnIndex.has(`eco@${id}`)
+      && store.solution.status === 'optimal');
+  }
+  doc.querySelector('[data-action="close-workspace"]').click();
+  await tick();
+  store.select('eco@PFK');
+  doc.querySelector('[data-action="zoom-fit"]').click();
+  await tick();
+} catch (error) {
+  check(error.message, false);
+}
+
+document.title = failures ? `FAIL (${failures})` : 'PASS';
+</script>
+</body>
+</html>

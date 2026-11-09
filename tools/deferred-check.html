@@ -1,0 +1,127 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Deferred input checks</title>
+<style>
+  body { font: 13px/1.6 ui-monospace, monospace; margin: 24px; background: #0b1220; color: #e2e8f0; }
+  .pass { color: #4ade80; }
+  .fail { color: #fb7185; }
+  iframe { width: 1200px; height: 800px; border: 1px solid #334155; margin-top: 16px; }
+</style>
+</head>
+<body>
+<h1>Rapid edits to independent model inputs</h1>
+<div id="out"></div>
+<script type="module">
+/** Keep rapid edits to different species or medium components independent. */
+const out = document.getElementById('out');
+const lines = [];
+let failures = 0;
+let total = 0;
+
+function check(name, passed) {
+  total += 1;
+  if (!passed) {
+    failures += 1;
+  }
+  const line = document.createElement('div');
+  line.className = passed ? 'pass' : 'fail';
+  line.textContent = `${passed ? 'OK' : 'FAIL'} ${name}`;
+  out.appendChild(line);
+  lines.push(line.textContent);
+}
+
+async function tick() {
+  await new Promise(resolve => requestAnimationFrame(resolve));
+  await new Promise(resolve => setTimeout(resolve, 30));
+}
+
+async function waitFor(read, label) {
+  const deadline = Date.now() + 30000;
+  while (!read()) {
+    if (Date.now() > deadline) {
+      throw new Error(`Timed out: ${label}`);
+    }
+    await tick();
+  }
+}
+
+try {
+  const frame = document.createElement('iframe');
+  frame.src = new URLSearchParams(location.search).has('standalone') ? '../coxeter_mfv.html' : '../index.html';
+  document.body.appendChild(frame);
+  await waitFor(() => frame.contentWindow?.escherMCMC?.store?.solution?.status === 'optimal', 'startup');
+  const app = frame.contentWindow;
+  const doc = app.document;
+  const store = app.escherMCMC.store;
+  check('the initial community has multiple species and an optimal result', store.species.length > 1);
+
+  async function workspace(name) {
+    doc.querySelector('[data-action="left-tab"][data-tab="model"]').click();
+    await tick();
+    doc.querySelector(`#task-panel [data-workspace="${name}"]`).click();
+    await tick();
+  }
+
+  function change(selector, value) {
+    const input = doc.querySelector(selector);
+    if (!input) {
+      throw new Error(`Missing control: ${selector}`);
+    }
+    input.value = value;
+    input.dispatchEvent(new app.Event('change', { bubbles: true }));
+  }
+
+  await workspace('community');
+  const first = store.species[0].id;
+  const second = store.species[1].id;
+  const previous = store.solution;
+  change(`[data-action="abundance"][data-species="${first}"]`, '0.2');
+  change(`[data-action="abundance"][data-species="${second}"]`, '0.8');
+  await waitFor(() => store.solution !== previous && store.status.state !== 'busy', 'rapid abundance edits');
+  await tick();
+  check('rapid changes to two species preserve both abundance values',
+    store.species.find(species => species.id === first).abundance === 0.2
+    && store.species.find(species => species.id === second).abundance === 0.8);
+
+  const input = doc.getElementById('model-file-input');
+  const transfer = new app.DataTransfer();
+  transfer.items.add(new app.File([await (await fetch('../models/ecoli_core_mc.json')).text()], 'rapid-input-fixture.json'));
+  input.files = transfer.files;
+  input.dispatchEvent(new app.Event('change', { bubbles: true }));
+  await waitFor(() => input.value === '' && store.status.state !== 'busy', 'model fixture');
+  await tick();
+  check('the single-cell fixture imports and solves', store.solution.status === 'optimal' && store.species.length === 1);
+  await workspace('medium');
+
+  async function mediumPair(glucose, oxygen) {
+    const before = store.solution;
+    change('[data-action="medium-number"][data-base="glc__D"]', String(glucose));
+    change('[data-action="medium-number"][data-base="o2"]', String(oxygen));
+    await waitFor(() => store.solution !== before && store.status.state !== 'busy', 'rapid medium edits');
+    await tick();
+  }
+
+  await mediumPair(5, 0);
+  check('rapid medium changes preserve both component limits', store.medium.glc__D === 5 && store.medium.o2 === 0);
+  const before = store.solution;
+  change('[data-action="medium-number"][data-base="glc__D"]', '7');
+  change('[data-action="medium-number"][data-base="glc__D"]', '4');
+  await waitFor(() => store.solution !== before, 'repeated component edit');
+  check('repeated changes to one component still keep its final value', store.medium.glc__D === 4);
+  await mediumPair(0, 0);
+  check('rapid closure of both energy supplies produces the intended infeasible model',
+    store.medium.glc__D === 0 && store.medium.o2 === 0 && store.solution.status === 'infeasible');
+  await mediumPair(10, 1000);
+  check('rapidly restoring both supplies recovers the intended optimal model',
+    store.medium.glc__D === 10 && store.medium.o2 === 1000 && store.solution.status === 'optimal');
+} catch (error) {
+  check(error.message, false);
+}
+
+document.title = failures ? `FAIL (${failures})` : 'PASS';
+window.__checkComplete = Promise.resolve({ failures, total, lines });
+</script>
+</body>
+</html>

@@ -1,0 +1,801 @@
+{
+ "tolerance": 1e-06,
+ "drawn_reactions_found": 115,
+ "aerobic": {
+  "reactions_compared": 4105,
+  "growth_coxeter": 0.08110024044214156,
+  "growth_cobrapy": 0.08110024056059288,
+  "total_flux_coxeter": 100.76117626801691,
+  "total_flux_cobrapy": 100.76139895425128,
+  "reactions_differing": 124,
+  "largest_differences": [
+   [
+    "r_3849",
+    "phosphatidyl-L-serine (1-16:0, 2-18:1) transport, ER membrane-vacuolar membrane",
+    0.0,
+    0.0016649112362461698
+   ],
+   [
+    "r_3857",
+    "phosphatidylethanolamine (1-16:0, 2-18:1) transport, vacuolar membrane-ER membrane",
+    0.0,
+    0.0016649112362461698
+   ],
+   [
+    "r_2484",
+    "PS decarboxylase (1-16:0, 2-18:1), vacuolar membrane",
+    0.0,
+    0.00166491123624617
+   ],
+   [
+    "r_3669",
+    "carbon dioxide transport, cytoplasm-mitochondrial membrane",
+    -0.0032840570998085134,
+    -0.0010437778666912965
+   ],
+   [
+    "r_3653",
+    "carbon dioxide transport, cytoplasm-vacuolar membrane",
+    0.0,
+    -0.0025572922990926773
+   ],
+   [
+    "r_2096",
+    "water diffusion",
+    -8.639530138934408,
+    -6.090654738140581
+   ],
+   [
+    "r_4724",
+    "polyphosphate phosphohydrolase, m",
+    0.0,
+    2.548891849392293
+   ],
+   [
+    "r_4333",
+    "Polyphosphate phosphohydrolase",
+    0.0,
+    -2.5488918493922936
+   ],
+   [
+    "r_4745",
+    "polyphosphate transport, c-m",
+    0.0,
+    2.5488918493922936
+   ],
+   [
+    "r_1245",
+    "phosphate transport",
+    5.097780518051544,
+    0.0
+   ]
+  ],
+  "drawn_reactions_differing": 17,
+  "drawn_differences": [
+   [
+    "r_1050",
+    "transketolase 2",
+    0.1596438349789212,
+    0.15964511941481693
+   ],
+   [
+    "r_1048",
+    "transaldolase",
+    0.18677387938973364,
+    0.18677516386525447
+   ],
+   [
+    "r_1049",
+    "transketolase 1",
+    0.18677387938973367,
+    0.1867751638652545
+   ],
+   [
+    "r_1022",
+    "succinate-CoA ligase (ADP-forming)",
+    0.6611591746395417,
+    0.6611576857139334
+   ],
+   [
+    "r_1021",
+    "succinate dehydrogenase (ubiquinone-6)",
+    0.5586560353336679,
+    0.5586545462583467
+   ],
+   [
+    "r_0658",
+    "isocitrate dehydrogenase (NAD+)",
+    0.5557726981679205,
+    0.555771209088386
+   ],
+   [
+    "r_0451",
+    "fumarase",
+    0.5499565474804151,
+    0.5499550583923878
+   ],
+   [
+    "r_0886",
+    "phosphofructokinase",
+    0.5945565045985545,
+    0.5945589398213291
+   ],
+   [
+    "r_0450",
+    "fructose-bisphosphate aldolase",
+    0.5945565045985545,
+    0.5945589398213292
+   ],
+   [
+    "r_0773",
+    "NADH:ubiquinone oxidoreductase",
+    2.585642021971169,
+    2.5856386613902482
+   ],
+   [
+    "r_1979",
+    "O2 transport",
+    2.351926122766504,
+    2.3519299156924203
+   ],
+   [
+    "r_0486",
+    "glyceraldehyde-3-phosphate dehydrogenase",
+    1.3467445739571613,
+    1.3467507288356675
+   ],
+   [
+    "r_0892",
+    "phosphoglycerate kinase",
+    1.3467445739571613,
+    1.3467507288356675
+   ],
+   [
+    "r_0439",
+    "ubiquinol:ferricytochrome c reductase",
+    4.614926691433274,
+    4.614933709453543
+   ],
+   [
+    "r_0226",
+    "ATP synthase",
+    6.041016959501359,
+    6.041026492584719
+   ],
+   [
+    "r_0770",
+    "NADH dehydrogenase, cytosolic/mitochondrial",
+    1.4706286341284365,
+    1.470640501804948
+   ],
+   [
+    "r_0438",
+    "ferrocytochrome-c:oxygen oxidoreductase",
+    9.229853382866546,
+    9.229867418907086
+   ]
+  ],
+  "drawn_reactions_with_flux": 58,
+  "drawn_with_flux_by_compartment": {
+   "c": 20,
+   "c+ce": 2,
+   "c+e": 3,
+   "c+m": 8,
+   "e": 1,
+   "m": 24
+  },
+  "drawn_fluxes": {
+   "r_0005": [
+    "1,3-beta-glucan synthase",
+    "c+ce",
+    0.05994443172040453
+   ],
+   "r_0006": [
+    "1,6-beta-glucan synthase",
+    "c+ce",
+    0.020028515379591282
+   ],
+   "r_0016": [
+    "2-aceto-2-hydroxybutanoate synthase",
+    "m",
+    0.02153132880118804
+   ],
+   "r_0023": [
+    "2-isopropylmalate hydratase",
+    "c",
+    -0.029400726304823543
+   ],
+   "r_0025": [
+    "2-isopropylmalate synthase",
+    "m",
+    0.029400726304823547
+   ],
+   "r_0060": [
+    "3-isopropylmalate dehydratase",
+    "c",
+    -0.029400726304823543
+   ],
+   "r_0061": [
+    "3-isopropylmalate dehydrogenase",
+    "c",
+    0.029400726304823547
+   ],
+   "r_0096": [
+    "acetohydroxy acid isomeroreductase",
+    "m",
+    0.05493063998193627
+   ],
+   "r_0097": [
+    "acetolactate synthase",
+    "m",
+    0.05493063998193627
+   ],
+   "r_0115": [
+    "acetylglutamate kinase",
+    "m",
+    0.01575746895846783
+   ],
+   "r_0118": [
+    "acteylornithine transaminase",
+    "m",
+    0.01575746895846783
+   ],
+   "r_0207": [
+    "argininosuccinate lyase",
+    "c",
+    0.015757468958467833
+   ],
+   "r_0208": [
+    "argininosuccinate synthase",
+    "c",
+    0.01575746895846783
+   ],
+   "r_0226": [
+    "ATP synthase",
+    "c+m",
+    6.041016959501359
+   ],
+   "r_0250": [
+    "carbamoyl-phosphate synthase (glutamine-hydrolysing)",
+    "c",
+    0.02445695681172068
+   ],
+   "r_0300": [
+    "citrate synthase",
+    "m",
+    0.6609802511417366
+   ],
+   "r_0352": [
+    "dihydroxy-acid dehydratase (2,3-dihydroxy-3-methylbutanoate)",
+    "m",
+    0.054930639981936265
+   ],
+   "r_0353": [
+    "dihydroxy-acid dehydratase (2,3-dihydroxy-3-methylpentanoate)",
+    "m",
+    0.02153132880118804
+   ],
+   "r_0366": [
+    "enolase",
+    "c",
+    1.2753565073063717
+   ],
+   "r_0438": [
+    "ferrocytochrome-c:oxygen oxidoreductase",
+    "c+m",
+    9.229853382866546
+   ],
+   "r_0439": [
+    "ubiquinol:ferricytochrome c reductase",
+    "c+m",
+    4.614926691433274
+   ],
+   "r_0450": [
+    "fructose-bisphosphate aldolase",
+    "c",
+    0.5945565045985545
+   ],
+   "r_0451": [
+    "fumarase",
+    "m",
+    0.5499565474804151
+   ],
+   "r_0467": [
+    "glucose-6-phosphate isomerase",
+    "c",
+    0.3069891797067392
+   ],
+   "r_0486": [
+    "glyceraldehyde-3-phosphate dehydrogenase",
+    "c",
+    1.3467445739571613
+   ],
+   "r_0503": [
+    "glycine hydroxymethyltransferase",
+    "m",
+    1.5409046179875415e-05
+   ],
+   "r_0505": [
+    "glycine-cleavage complex (lipoamide)",
+    "m",
+    0.549956547480415
+   ],
+   "r_0534": [
+    "hexokinase (D-glucose:ATP)",
+    "c",
+    1.0
+   ],
+   "r_0658": [
+    "isocitrate dehydrogenase (NAD+)",
+    "m",
+    0.5557726981679205
+   ],
+   "r_0669": [
+    "ketol-acid reductoisomerase (2-aceto-2-hydroxybutanoate)",
+    "m",
+    0.021531328801188042
+   ],
+   "r_0713": [
+    "malate dehydrogenase",
+    "m",
+    0.571066556204369
+   ],
+   "r_0759": [
+    "N-acetyl-g-glutamyl-phosphate reductase",
+    "m",
+    0.01575746895846783
+   ],
+   "r_0770": [
+    "NADH dehydrogenase, cytosolic/mitochondrial",
+    "c+m",
+    1.4706286341284365
+   ],
+   "r_0773": [
+    "NADH:ubiquinone oxidoreductase",
+    "m",
+    2.585642021971169
+   ],
+   "r_0816": [
+    "ornithine carbamoyltransferase",
+    "c",
+    0.01575746895846783
+   ],
+   "r_0818": [
+    "ornithine transacetylase",
+    "m",
+    0.015757468958467833
+   ],
+   "r_0831": [
+    "oxoglutarate dehydrogenase (dihydrolipoamide S-succinyltransferase)",
+    "m",
+    0.5499565474804151
+   ],
+   "r_0832": [
+    "oxoglutarate dehydrogenase (lipoamide)",
+    "m",
+    0.549956547480415
+   ],
+   "r_0886": [
+    "phosphofructokinase",
+    "c",
+    0.5945565045985545
+   ],
+   "r_0892": [
+    "phosphoglycerate kinase",
+    "c",
+    1.3467445739571613
+   ],
+   "r_0893": [
+    "phosphoglycerate mutase",
+    "c",
+    1.2753565073063717
+   ],
+   "r_0958": [
+    "pyruvate carboxylase",
+    "c",
+    0.19763010432067007
+   ],
+   "r_0961": [
+    "pyruvate dehydrogenase",
+    "m",
+    0.8821318301083239
+   ],
+   "r_0962": [
+    "pyruvate kinase",
+    "c",
+    1.2210964184847475
+   ],
+   "r_1021": [
+    "succinate dehydrogenase (ubiquinone-6)",
+    "m",
+    0.5586560353336679
+   ],
+   "r_1022": [
+    "succinate-CoA ligase (ADP-forming)",
+    "m",
+    0.6611591746395417
+   ],
+   "r_1048": [
+    "transaldolase",
+    "c",
+    0.18677387938973364
+   ],
+   "r_1049": [
+    "transketolase 1",
+    "c",
+    0.18677387938973367
+   ],
+   "r_1050": [
+    "transketolase 2",
+    "c",
+    0.1596438349789212
+   ],
+   "r_1088": [
+    "valine transaminase, mitochondiral",
+    "m",
+    -0.025514504630932845
+   ],
+   "r_1099": [
+    "2-oxoadipate and 2-oxoglutarate transport",
+    "c+m",
+    0.02671439001014028
+   ],
+   "r_1166": [
+    "glucose transport",
+    "c+e",
+    1.0
+   ],
+   "r_1237": [
+    "ornithine transport",
+    "c+m",
+    0.01575746895846783
+   ],
+   "r_1244": [
+    "phosphate transport",
+    "c+e",
+    0.022645908223783148
+   ],
+   "r_1574": [
+    "2-isopropylmalate transport",
+    "c+m",
+    -0.029400726304823547
+   ],
+   "r_1714": [
+    "D-glucose exchange",
+    "e",
+    -1.0
+   ],
+   "r_1979": [
+    "O2 transport",
+    "c+e",
+    2.351926122766504
+   ],
+   "r_2034": [
+    "pyruvate transport",
+    "c+m",
+    0.9993825096947961
+   ]
+  }
+ },
+ "anaerobic": {
+  "reactions_compared": 4105,
+  "growth_coxeter": 0.010881025863850122,
+  "growth_cobrapy": 0.010881025861645344,
+  "total_flux_coxeter": 29.299548014242337,
+  "total_flux_cobrapy": 29.299559408636636,
+  "reactions_differing": 56,
+  "largest_differences": [
+   [
+    "r_3777",
+    "phosphatidylethanolamine (1-16:0, 2-18:1) transport, mitochondrial membrane-ER membrane",
+    0.0,
+    0.00024113352983752388
+   ],
+   [
+    "r_2476",
+    "PS decarboxylase (1-16:0, 2-18:1), Golgi membrane",
+    0.0002449213256263303,
+    0.0
+   ],
+   [
+    "r_3817",
+    "phosphatidyl-L-serine (1-16:0, 2-18:1) transport, ER membrane-Golgi membrane",
+    0.0002449213256263303,
+    0.0
+   ],
+   [
+    "r_3825",
+    "phosphatidylethanolamine (1-16:0, 2-18:1) transport, Golgi membrane-ER membrane",
+    0.0002449213256263303,
+    0.0
+   ],
+   [
+    "r_3669",
+    "carbon dioxide transport, cytoplasm-mitochondrial membrane",
+    -0.0001095997587080715,
+    -0.00044120420400315123
+   ],
+   [
+    "r_3665",
+    "carbon dioxide transport, cytoplasm-Golgi membrane",
+    -0.00036905312668310595,
+    -3.744868129103842e-05
+   ],
+   [
+    "r_0718",
+    "malic enzyme (NAD)",
+    0.008619055565279596,
+    0.0
+   ],
+   [
+    "r_0719",
+    "malic enzyme (NADP)",
+    0.0019915288991683793,
+    0.010610754923577647
+   ],
+   [
+    "r_0658",
+    "isocitrate dehydrogenase (NAD+)",
+    0.0,
+    0.008619226024812751
+   ],
+   [
+    "r_2131",
+    "isocitrate dehydrogenase",
+    0.012322839208219775,
+    0.003703613180910043
+   ]
+  ],
+  "drawn_reactions_differing": 2,
+  "drawn_differences": [
+   [
+    "r_0959",
+    "pyruvate decarboxylase",
+    1.71233334271985,
+    1.7123347134751943
+   ],
+   [
+    "r_0658",
+    "isocitrate dehydrogenase (NAD+)",
+    0.0,
+    0.008619226024812751
+   ]
+  ],
+  "drawn_reactions_with_flux": 45,
+  "drawn_with_flux_by_compartment": {
+   "c": 22,
+   "c+ce": 2,
+   "c+e": 2,
+   "c+m": 4,
+   "e": 1,
+   "m": 14
+  },
+  "drawn_fluxes": {
+   "r_0005": [
+    "1,3-beta-glucan synthase",
+    "c+ce",
+    0.00804260145700618
+   ],
+   "r_0006": [
+    "1,6-beta-glucan synthase",
+    "c+ce",
+    0.002687178147336426
+   ],
+   "r_0016": [
+    "2-aceto-2-hydroxybutanoate synthase",
+    "m",
+    0.0028792190991053764
+   ],
+   "r_0023": [
+    "2-isopropylmalate hydratase",
+    "c",
+    -0.003930300160986367
+   ],
+   "r_0060": [
+    "3-isopropylmalate dehydratase",
+    "c",
+    -0.003930300160986367
+   ],
+   "r_0061": [
+    "3-isopropylmalate dehydrogenase",
+    "c",
+    0.003930300160986367
+   ],
+   "r_0096": [
+    "acetohydroxy acid isomeroreductase",
+    "m",
+    0.007366362669255894
+   ],
+   "r_0097": [
+    "acetolactate synthase",
+    "m",
+    0.007366362669255894
+   ],
+   "r_0115": [
+    "acetylglutamate kinase",
+    "m",
+    0.004068786339026881
+   ],
+   "r_0118": [
+    "acteylornithine transaminase",
+    "m",
+    0.004068786339026881
+   ],
+   "r_0207": [
+    "argininosuccinate lyase",
+    "c",
+    0.0020818350637990565
+   ],
+   "r_0208": [
+    "argininosuccinate synthase",
+    "c",
+    0.002081835063799056
+   ],
+   "r_0226": [
+    "ATP synthase",
+    "c+m",
+    0.004892669037751541
+   ],
+   "r_0250": [
+    "carbamoyl-phosphate synthase (glutamine-hydrolysing)",
+    "c",
+    0.003249024603773677
+   ],
+   "r_0300": [
+    "citrate synthase",
+    "m",
+    0.012322839208219773
+   ],
+   "r_0352": [
+    "dihydroxy-acid dehydratase (2,3-dihydroxy-3-methylbutanoate)",
+    "m",
+    0.007366362669255893
+   ],
+   "r_0353": [
+    "dihydroxy-acid dehydratase (2,3-dihydroxy-3-methylpentanoate)",
+    "m",
+    0.0028792190991053764
+   ],
+   "r_0366": [
+    "enolase",
+    "c",
+    1.7830175519299745
+   ],
+   "r_0450": [
+    "fructose-bisphosphate aldolase",
+    "c",
+    0.9507417598579698
+   ],
+   "r_0467": [
+    "glucose-6-phosphate isomerase",
+    "c",
+    0.9223639920634971
+   ],
+   "r_0486": [
+    "glyceraldehyde-3-phosphate dehydrogenase",
+    "c",
+    1.7925596902326226
+   ],
+   "r_0534": [
+    "hexokinase (D-glucose:ATP)",
+    "c",
+    0.9999999999999997
+   ],
+   "r_0669": [
+    "ketol-acid reductoisomerase (2-aceto-2-hydroxybutanoate)",
+    "m",
+    0.0028792190991053764
+   ],
+   "r_0713": [
+    "malate dehydrogenase",
+    "m",
+    -0.00792900052555524
+   ],
+   "r_0759": [
+    "N-acetyl-g-glutamyl-phosphate reductase",
+    "m",
+    0.004068786339026881
+   ],
+   "r_0816": [
+    "ornithine carbamoyltransferase",
+    "c",
+    0.002081835063799056
+   ],
+   "r_0818": [
+    "ornithine transacetylase",
+    "m",
+    0.004068786339026882
+   ],
+   "r_0886": [
+    "phosphofructokinase",
+    "c",
+    0.9507417598579699
+   ],
+   "r_0892": [
+    "phosphoglycerate kinase",
+    "c",
+    1.7925596902326228
+   ],
+   "r_0893": [
+    "phosphoglycerate mutase",
+    "c",
+    1.7830175519299745
+   ],
+   "r_0958": [
+    "pyruvate carboxylase",
+    "c",
+    0.03713532576544784
+   ],
+   "r_0959": [
+    "pyruvate decarboxylase",
+    "c",
+    1.71233334271985
+   ],
+   "r_0961": [
+    "pyruvate dehydrogenase",
+    "m",
+    0.01588254216534773
+   ],
+   "r_0962": [
+    "pyruvate kinase",
+    "c",
+    1.7757303257478283
+   ],
+   "r_1048": [
+    "transaldolase",
+    "c",
+    0.01995859865182437
+   ],
+   "r_1049": [
+    "transketolase 1",
+    "c",
+    0.01995859865182437
+   ],
+   "r_1050": [
+    "transketolase 2",
+    "c",
+    0.016314985560751293
+   ],
+   "r_1088": [
+    "valine transaminase, mitochondiral",
+    "m",
+    -0.0073656808241458005
+   ],
+   "r_1099": [
+    "2-oxoadipate and 2-oxoglutarate transport",
+    "c+m",
+    0.0035590211120178654
+   ],
+   "r_1166": [
+    "glucose transport",
+    "c+e",
+    0.9999999999999997
+   ],
+   "r_1237": [
+    "ornithine transport",
+    "c+m",
+    0.004068786339026881
+   ],
+   "r_1244": [
+    "phosphate transport",
+    "c+e",
+    0.0030358655340821175
+   ],
+   "r_1714": [
+    "D-glucose exchange",
+    "e",
+    -1.0
+   ],
+   "r_2034": [
+    "pyruvate transport",
+    "c+m",
+    0.022883902138516925
+   ],
+   "r_2115": [
+    "alcohol dehydrogenase, (acetaldehyde to ethanol)",
+    "c",
+    1.7046218288334838
+   ]
+  }
+ }
+}

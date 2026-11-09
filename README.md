@@ -8,8 +8,8 @@ Metabolic maps with explicit cells and subcellular compartments, and flux balanc
 
 [![License: MIT](https://img.shields.io/badge/code-MIT-blue.svg)](LICENSE)
 [![Documentation](https://img.shields.io/badge/docs-user%20guide-brightgreen.svg)](docs/USER_GUIDE.md)
-[![Web app](https://img.shields.io/badge/web-single%20HTML%20file-orange.svg)](app/web)
-[![Windows](https://img.shields.io/badge/desktop-Windows%20x64-0078D6.svg)](app/windows)
+[![Web app](https://img.shields.io/badge/web-single%20HTML%20file-orange.svg)](app/coxeter_mfv.html)
+[![Windows](https://img.shields.io/badge/desktop-Windows%20x64-0078D6.svg)](app/coxeter-mfv.exe)
 
 <img src="docs/images/yeast9-cytosol-mitochondria-peroxisome.png" alt="Yeast9 map of the cytoplasm, mitochondrion and peroxisome drawn with Coxeter-MFV" width="100%">
 
@@ -67,11 +67,11 @@ Coxeter-MFV was built for researchers who work with genome-scale metabolic model
 
 ### Web application
 
-Download [`app/web/coxeter_mfv.html`](app/web/coxeter_mfv.html) using GitHub's **Download raw file** action, then open the downloaded file in a current browser. The application, solver and bundled teaching models run locally. No account or installation is required. External model downloads, including the Zuñiga source models and optional Yeast9 download, require internet access; imported models are processed on your computer.
+Download [`app/coxeter_mfv.html`](app/coxeter_mfv.html) using GitHub's **Download raw file** action, then open the downloaded file in a current browser. The application, solver and bundled teaching models run locally. No account or installation is required. External model downloads, including the Zuñiga source models and optional Yeast9 download, require internet access; imported models are processed on your computer.
 
 ### Windows desktop application
 
-Download [`app/windows/coxeter-mfv.exe`](app/windows/coxeter-mfv.exe) and run it. The bundled models are compiled into the program, so it needs no other files. Models and maps can also be passed on the command line.
+Download [`app/coxeter-mfv.exe`](app/coxeter-mfv.exe) and run it. The bundled models are compiled into the program, so it needs no other files. Models and maps can also be passed on the command line.
 
 ```powershell
 coxeter-mfv.exe yeastgem_v9.1.1-edited.json yeast9_cytosol_mitochondria_peroxisome.json
@@ -79,7 +79,7 @@ coxeter-mfv.exe yeastgem_v9.1.1-edited.json yeast9_cytosol_mitochondria_peroxiso
 
 ### From source
 
-The complete source of both applications, with their tests, is in [`code`](code). Building instructions for the web and native versions are in [`code/README.md`](code/README.md).
+The complete source of both applications, with their tests, is at the top level of this repository: the web application in [`src`](src) and the desktop application in [`rust`](rust). Building instructions for both are in [`docs/BUILDING.md`](docs/BUILDING.md).
 
 ### Container
 
@@ -108,22 +108,26 @@ Each example folder holds the model and map files needed to open it. The work ea
 
 The literature communities open from the scenario list in both applications. The Zuñiga case downloads its pinned source models on demand; its saved reference results and map are bundled.
 
+## Case studies of the article
+
+The scripts, models, solutions and figures of the three case studies in the Coxeter-MFV article (the Yeast9 compartment map, the Zuñiga et al. phototroph–heterotroph community and the SteadyCom auxotroph community) are in [`paper`](paper). Its README maps each figure and table to the scripts that produce it.
+
 ## Repository structure
 
 ```text
 coxeterMFV/
-├── app/                 ready-to-run applications
-│   ├── web/             single-file web application (coxeter_mfv.html)
-│   └── windows/         native desktop application (coxeter-mfv.exe)
-├── code/                complete source code, models and tests
-│   ├── src/             web application (JavaScript)
-│   ├── rust/            native application (Rust)
-│   ├── models/          bundled models, scenarios and published communities
-│   ├── test/            test suite of the web application
-│   └── tools/           build and validation scripts
-├── examples/            example maps and models from the literature
-├── data/                original source data and its provenance
-└── docs/images/         figures used in this README
+├── app/          ready-to-run applications (coxeter_mfv.html, coxeter-mfv.exe)
+├── src/          web application (JavaScript)
+├── assets/       stylesheets and the vendored GLPK solver
+├── rust/         desktop application (Rust)
+├── models/       bundled models, scenarios and published communities
+├── test/         test suite of the web application
+├── tools/        build, validation and release scripts
+├── examples/     example maps and models from the literature
+├── paper/        case studies of the article: scripts, results and figures
+├── data/         original source data and its provenance
+├── docs/         user guide, building, reproducibility and release notes
+└── LICENSES/     licence texts of the bundled third-party components
 ```
 
 ## How to cite

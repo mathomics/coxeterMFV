@@ -14,14 +14,14 @@ command = [
     '--filter-platform',
     'x86_64-pc-windows-msvc',
 ]
-result = subprocess.run(command, cwd=root / 'code/rust', check=True, capture_output=True, encoding='utf-8')
+result = subprocess.run(command, cwd=root / 'rust', check=True, capture_output=True, encoding='utf-8')
 metadata = json.loads(result.stdout)
 packages = sorted(metadata['packages'], key=lambda package: (package['name'], package['version']))
 upstream_sources = json.loads((root / 'LICENSES/native/sources.json').read_text(encoding='utf-8'))
 lines = [
     'Third-party dependency notices for the Windows distribution',
     '',
-    'Generated from code/rust/Cargo.lock and downloaded Cargo package sources.',
+    'Generated from rust/Cargo.lock and downloaded Cargo package sources.',
     'This includes build dependencies and packages in the resolved graph; inclusion',
     'does not imply that every package is linked into the executable.',
     'Project source is covered separately by the root MIT LICENSE.',
@@ -73,7 +73,7 @@ for package in packages:
     lines.append('')
     count += 1
 
-output = root / 'app/windows/THIRD_PARTY_LICENSES.txt'
+output = root / 'app/THIRD_PARTY_LICENSES.txt'
 output.write_text('\n'.join(lines), encoding='utf-8', newline='\n')
 print(f'Recorded notices for {count} dependency packages in {output.relative_to(root)}.')
 if missing:

@@ -1,0 +1,276 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Running canvas ownership checks</title>
+<style>
+  body { margin: 16px; font: 14px system-ui; background: #0b1220; color: #e2e8f0; }
+  .pass { color: #4ade80; }
+  .fail { color: #fb7185; }
+  iframe { width: 1300px; height: 900px; border: 1px solid #334155; margin-top: 16px; }
+</style>
+</head>
+<body>
+<h1>Canvas pointer ownership, menu overlap, lost capture and pinch transitions</h1>
+<div id="out"></div>
+<script type="module">
+/** Exercise independent canvas pointers and pinch transitions without desktop input. */
+const out = document.getElementById('out');
+let failures = 0;
+
+function check(name, passed) {
+  if (!passed) {
+    failures += 1;
+  }
+  const line = document.createElement('div');
+  line.className = passed ? 'pass' : 'fail';
+  line.textContent = `${passed ? 'OK' : 'FAIL'} ${name}`;
+  out.appendChild(line);
+}
+
+async function tick() {
+  await new Promise(resolve => requestAnimationFrame(resolve));
+  await new Promise(resolve => setTimeout(resolve, 60));
+}
+
+async function waitFor(read, label) {
+  const deadline = Date.now() + 30000;
+  while (!read()) {
+    if (Date.now() > deadline) {
+      throw new Error(`Timed out: ${label}`);
+    }
+    await tick();
+  }
+}
+
+try {
+  const frame = document.createElement('iframe');
+  frame.src = new URLSearchParams(location.search).has('standalone') ? '../coxeter_mfv.html' : '../index.html';
+  document.body.appendChild(frame);
+  await waitFor(() => frame.contentWindow?.escherMCMC?.store?.solution?.status === 'optimal', 'startup');
+  const app = frame.contentWindow;
+  const doc = app.document;
+  const store = app.escherMCMC.store;
+  await store.useScenario('solo-ecoli');
+  const EditableMap = store.map.constructor;
+  const stage = doc.getElementById('stage');
+  const biology = JSON.stringify(store.modelEditorModel().toJSON());
+  const bounds = JSON.stringify(store.problem.snapshotBounds());
+  const solution = store.solution;
+  doc.querySelector('[data-action="left-tab"][data-tab="build"]').click();
+
+  function screen(point) {
+    const rect = stage.getBoundingClientRect();
+    return {
+      clientX: rect.left + app.escherMCMC.camera.x + point.x * app.escherMCMC.camera.scale,
+      clientY: rect.top + app.escherMCMC.camera.y + point.y * app.escherMCMC.camera.scale,
+    };
+  }
+
+  function pointer(target, type, id, at, pointerType = 'mouse') {
+    target.dispatchEvent(new app.PointerEvent(type, {
+      bubbles: true, pointerId: id, pointerType, button: 0,
+      buttons: type === 'pointerdown' || type === 'pointermove' ? 1 : 0, ...at,
+    }));
+  }
+
+  function camera() {
+    const current = app.escherMCMC.camera;
+    return JSON.stringify({ x: current.x, y: current.y, scale: current.scale });
+  }
+
+  async function reset(tool = 'select') {
+    for (const id of [901, 902, 911, 912, 920, 921, 922, 931, 932, 933, 934, 941]) {
+      pointer(stage, 'pointercancel', id, { clientX: 0, clientY: 0 }, 'touch');
+    }
+    store.map = EditableMap.emptyFromCommunity(store.community);
+    store.addMapReaction('eco@PGI');
+    store.mapHistory.clear();
+    store.select(null);
+    store.emit('map');
+    doc.querySelector(`[data-tool="${tool}"]`).click();
+    doc.querySelector('[data-action="zoom-fit"]').click();
+    await tick();
+    return store.map.nodesForMetabolite('eco@g6p_c')[0];
+  }
+
+  for (const interruption of ['pointermove', 'pointerup', 'pointercancel', 'pointerdown']) {
+    const node = await reset();
+    const start = screen(node);
+    pointer(doc.querySelector(`circle[data-node="${node.id}"]`), 'pointerdown', 901, start);
+    check(`${interruption}: a metabolite drag starts with its original pointer`,
+      app.escherMCMC.gestures().node?.pointerId === 901);
+    const before = JSON.stringify(store.map.toJSON());
+    const other = screen({ x: node.x + 60, y: node.y + 40 });
+    pointer(stage, interruption, 902, other, 'pen');
+    await tick();
+    check(`${interruption}: another pointer cannot move, finish or replace the node gesture`,
+      JSON.stringify(store.map.toJSON()) === before && app.escherMCMC.gestures().node?.pointerId === 901
+      && !app.escherMCMC.gestures().pan && store.mapHistory.undoStack.length === 0);
+    const next = screen({ x: node.x + 30, y: node.y + 20 });
+    pointer(stage, 'pointermove', 901, next);
+    pointer(stage, 'pointerup', 901, next);
+    await tick();
+    check(`${interruption}: the original pointer still moves the node and commits one history step`,
+      JSON.stringify(store.map.toJSON()) !== before && !app.escherMCMC.gestures().node
+      && store.mapHistory.undoStack.length === 1);
+    const after = JSON.stringify(store.map.toJSON());
+    doc.querySelector('[data-action="map-undo"]').click();
+    await tick();
+    const undone = JSON.stringify(store.map.toJSON()) === before;
+    doc.querySelector('[data-action="map-redo"]').click();
+    await tick();
+    check(`${interruption}: Undo and Redo restore the exact owned edit`, undone && JSON.stringify(store.map.toJSON()) === after);
+  }
+
+  const lostNode = await reset();
+  const lostStart = screen(lostNode);
+  pointer(doc.querySelector(`circle[data-node="${lostNode.id}"]`), 'pointerdown', 901, lostStart);
+  const lostBefore = JSON.stringify(store.map.toJSON());
+  pointer(stage, 'lostpointercapture', 901, lostStart);
+  check('losing canvas capture retires the active node gesture', !app.escherMCMC.gestures().node);
+  pointer(stage, 'pointermove', 901, { clientX: lostStart.clientX + 80, clientY: lostStart.clientY + 60 });
+  await tick();
+  check('movement after lost capture cannot alter the drawing or create history',
+    JSON.stringify(store.map.toJSON()) === lostBefore && store.mapHistory.undoStack.length === 0);
+
+  const movedNode = await reset();
+  const movedStart = screen(movedNode);
+  const movedBefore = JSON.stringify(store.map.toJSON());
+  pointer(doc.querySelector(`circle[data-node="${movedNode.id}"]`), 'pointerdown', 901, movedStart);
+  const movedEnd = { clientX: movedStart.clientX + 30, clientY: movedStart.clientY + 20 };
+  pointer(stage, 'pointermove', 901, movedEnd);
+  await tick();
+  const movedAfter = JSON.stringify(store.map.toJSON());
+  pointer(stage, 'lostpointercapture', 901, movedEnd);
+  pointer(stage, 'pointermove', 902, { clientX: movedEnd.clientX + 80, clientY: movedEnd.clientY + 60 }, 'pen');
+  pointer(stage, 'pointerup', 901, movedEnd);
+  await tick();
+  check('capture loss after movement commits the last position once and ignores later events',
+    movedAfter !== movedBefore && JSON.stringify(store.map.toJSON()) === movedAfter
+    && !app.escherMCMC.gestures().node && store.mapHistory.undoStack.length === 1);
+  doc.querySelector('[data-action="map-undo"]').click();
+  await tick();
+  const movedUndone = JSON.stringify(store.map.toJSON()) === movedBefore;
+  doc.querySelector('[data-action="map-redo"]').click();
+  await tick();
+  check('the interrupted drag has exact Undo and Redo', movedUndone && JSON.stringify(store.map.toJSON()) === movedAfter);
+
+  const transitionNode = await reset();
+  const transitionStart = screen(transitionNode);
+  const transitionBefore = JSON.stringify(store.map.toJSON());
+  pointer(doc.querySelector(`circle[data-node="${transitionNode.id}"]`), 'pointerdown', 901, transitionStart, 'touch');
+  const transitionEnd = { clientX: transitionStart.clientX + 30, clientY: transitionStart.clientY + 20 };
+  pointer(stage, 'pointermove', 901, transitionEnd, 'touch');
+  await tick();
+  const transitionAfter = JSON.stringify(store.map.toJSON());
+  const pinchStart = { clientX: transitionEnd.clientX + 100, clientY: transitionEnd.clientY };
+  pointer(stage, 'pointerdown', 902, pinchStart, 'touch');
+  check('a second map touch suspends the moved node and commits its edit once before pinching',
+    transitionAfter !== transitionBefore && !app.escherMCMC.gestures().node
+    && Boolean(app.escherMCMC.gestures().pinch) && store.mapHistory.undoStack.length === 1);
+  pointer(stage, 'pointermove', 902, { clientX: pinchStart.clientX + 30, clientY: pinchStart.clientY }, 'touch');
+  pointer(stage, 'pointerup', 901, transitionEnd, 'touch');
+  pointer(stage, 'pointerup', 902, pinchStart, 'touch');
+  check('finishing the pinch preserves the suspended node position and its single history entry',
+    JSON.stringify(store.map.toJSON()) === transitionAfter && store.mapHistory.undoStack.length === 1
+    && app.escherMCMC.gestures().touchPointers === 0);
+  doc.querySelector('[data-action="map-undo"]').click();
+  await tick();
+  const transitionUndone = JSON.stringify(store.map.toJSON()) === transitionBefore;
+  doc.querySelector('[data-action="map-redo"]').click();
+  await tick();
+  check('the drag-to-pinch transition preserves exact Undo and Redo',
+    transitionUndone && JSON.stringify(store.map.toJSON()) === transitionAfter);
+
+  await reset('pan');
+  const stageBox = stage.getBoundingClientRect();
+  const at = { clientX: stageBox.left + 120, clientY: stageBox.top + 120 };
+  pointer(stage, 'pointerdown', 911, at);
+  const beforePan = camera();
+  pointer(stage, 'pointermove', 912, { clientX: at.clientX + 80, clientY: at.clientY + 60 }, 'pen');
+  pointer(stage, 'pointerup', 912, at, 'pen');
+  await tick();
+  check('another pointer cannot move or finish a canvas pan', camera() === beforePan && Boolean(app.escherMCMC.gestures().pan));
+  pointer(stage, 'pointermove', 911, { clientX: at.clientX + 30, clientY: at.clientY + 20 });
+  pointer(stage, 'pointerup', 911, at);
+  await tick();
+  check('the pan owner still moves the camera without editing the drawing',
+    camera() !== beforePan && !app.escherMCMC.gestures().pan && store.mapHistory.undoStack.length === 0);
+
+  const picked = await reset('reaction');
+  const first = store.map.nodesForMetabolite('eco@f6p_c')[0];
+  pointer(doc.querySelector(`circle[data-node="${first.id}"]`), 'pointerdown', 920, screen(first), 'touch');
+  pointer(stage, 'pointerup', 920, screen(first), 'touch');
+  await tick();
+  const input = doc.querySelector('[data-action="filter-add-reactions"]');
+  input.value = 'PFK';
+  input.dispatchEvent(new app.Event('input', { bubbles: true }));
+  pointer(doc.querySelector(`circle[data-node="${picked.id}"]`), 'pointerdown', 921, screen(picked), 'touch');
+  const header = doc.querySelector('.add-reaction-menu .add-reaction-head');
+  const headerBox = header.getBoundingClientRect();
+  const headerAt = { clientX: headerBox.left + 15, clientY: headerBox.top + 15 };
+  const beforeMenuTouch = camera();
+  pointer(header, 'pointerdown', 922, headerAt, 'touch');
+  pointer(header, 'pointermove', 922, { clientX: headerAt.clientX - 20, clientY: headerAt.clientY + 10 }, 'touch');
+  pointer(header, 'pointerup', 922, headerAt, 'touch');
+  await tick();
+  check('a menu touch cannot release the map reaction pick or replace its current filter',
+    app.escherMCMC.gestures().reactionPick?.pointerId === 921
+    && doc.querySelector('[data-action="filter-add-reactions"]')?.value === 'PFK' && camera() === beforeMenuTouch);
+  pointer(stage, 'pointerup', 921, screen(picked), 'touch');
+  await tick();
+  check('the map touch opens its own metabolite menu only when that touch releases',
+    !app.escherMCMC.gestures().reactionPick && Boolean(doc.querySelector('.add-reaction-menu'))
+    && store.selectedEntity?.id === picked.id);
+
+  await reset('pan');
+  const firstTouch = { clientX: at.clientX, clientY: at.clientY };
+  const secondTouch = { clientX: at.clientX + 100, clientY: at.clientY };
+  pointer(stage, 'pointerdown', 931, firstTouch, 'touch');
+  pointer(stage, 'pointerdown', 932, secondTouch, 'touch');
+  check('two canvas touches begin a pinch', Boolean(app.escherMCMC.gestures().pinch));
+  const scale = app.escherMCMC.camera.scale;
+  pointer(stage, 'pointermove', 931, { clientX: firstTouch.clientX - 20, clientY: firstTouch.clientY }, 'touch');
+  check('the first pinch pointer remains able to zoom', app.escherMCMC.camera.scale > scale);
+  const nextScale = app.escherMCMC.camera.scale;
+  pointer(stage, 'pointermove', 932, { clientX: secondTouch.clientX + 50, clientY: secondTouch.clientY }, 'touch');
+  check('the second pinch pointer remains able to zoom', app.escherMCMC.camera.scale > nextScale);
+  const pinch = JSON.stringify(app.escherMCMC.gestures().pinch);
+  pointer(stage, 'pointerdown', 933, { clientX: at.clientX + 280, clientY: at.clientY + 100 }, 'touch');
+  check('a third touch does not replace the active pinch pair', JSON.stringify(app.escherMCMC.gestures().pinch) === pinch);
+  const beforeLift = camera();
+  pointer(stage, 'pointerup', 931, firstTouch, 'touch');
+  check('lifting a pinch member ends that pair even while a third touch remains', !app.escherMCMC.gestures().pinch);
+  pointer(stage, 'pointermove', 932, { clientX: secondTouch.clientX + 51, clientY: secondTouch.clientY }, 'touch');
+  check('remaining touches cannot jump the camera onto a new pinch pair', camera() === beforeLift);
+  pointer(stage, 'pointerdown', 934, { clientX: at.clientX + 400, clientY: at.clientY + 100 }, 'touch');
+  check('a new touch waits until the previous pinch touches have all cleared', !app.escherMCMC.gestures().pinch);
+  for (const id of [932, 933, 934]) {
+    pointer(stage, 'pointerup', id, secondTouch, 'touch');
+  }
+  check('releasing all fingers clears pinch tracking', !app.escherMCMC.gestures().pinch && app.escherMCMC.gestures().touchPointers === 0);
+  const recovered = camera();
+  pointer(stage, 'pointerdown', 941, at);
+  pointer(stage, 'pointermove', 941, { clientX: at.clientX + 20, clientY: at.clientY + 20 });
+  pointer(stage, 'pointerup', 941, at);
+  check('normal panning recovers after the touch sequence', camera() !== recovered && !app.escherMCMC.gestures().pan);
+  pointer(stage, 'pointerdown', 931, firstTouch, 'touch');
+  pointer(stage, 'pointerdown', 932, secondTouch, 'touch');
+  const beforeCaptureLoss = camera();
+  pointer(stage, 'lostpointercapture', 931, firstTouch, 'touch');
+  pointer(stage, 'pointermove', 932, { clientX: secondTouch.clientX + 40, clientY: secondTouch.clientY }, 'touch');
+  pointer(stage, 'pointerup', 932, secondTouch, 'touch');
+  check('losing capture on a pinch member ends the pair and clears its remaining touch',
+    camera() === beforeCaptureLoss && !app.escherMCMC.gestures().pinch && app.escherMCMC.gestures().touchPointers === 0);
+  check('all canvas combinations preserve model JSON, LP bounds and the installed result',
+    JSON.stringify(store.modelEditorModel().toJSON()) === biology
+    && JSON.stringify(store.problem.snapshotBounds()) === bounds && store.solution === solution);
+} catch (error) {
+  check(error.message, false);
+}
+
+document.title = failures ? `FAIL (${failures})` : 'PASS';
+</script>
+</body>
+</html>

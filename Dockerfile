@@ -1,7 +1,7 @@
 FROM python:3.12-alpine
 
 WORKDIR /app
-COPY app/web/coxeter_mfv.html ./index.html
+COPY app/coxeter_mfv.html ./index.html
 COPY LICENSES ./LICENSES
 COPY LICENSE THIRD_PARTY_NOTICES.md ./
 

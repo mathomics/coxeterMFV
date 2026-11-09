@@ -1,8 +1,6 @@
 *
 !Dockerfile
-!app/
-!app/web/
-!app/web/coxeter_mfv.html
+!app/coxeter_mfv.html
 !LICENSE
 !LICENSES/
 !LICENSES/**

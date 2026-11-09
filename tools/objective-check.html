@@ -1,0 +1,241 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Objective checks</title>
+<style>
+  body { font: 13px/1.6 ui-monospace, monospace; margin: 24px; background: #0b1220; color: #e2e8f0; }
+  .pass { color: #4ade80; }
+  .fail { color: #fb7185; }
+  iframe { width: 1200px; height: 800px; border: 1px solid #334155; margin-top: 16px; }
+</style>
+</head>
+<body>
+<h1>Signed objective and analysis combination checks</h1>
+<div id="out"></div>
+<script type="module">
+/**
+ * Exercise objective edits, retention controls and real analysis buttons on the
+ * bundled E. coli network. Fixtures and saved bundles stay inside the page.
+ */
+const out = document.getElementById('out');
+const lines = [];
+let failures = 0;
+let total = 0;
+
+function check(name, passed) {
+  total += 1;
+  if (!passed) {
+    failures += 1;
+  }
+  const line = document.createElement('div');
+  line.className = passed ? 'pass' : 'fail';
+  line.textContent = `${passed ? 'OK' : 'FAIL'} ${name}`;
+  out.appendChild(line);
+  lines.push(line.textContent);
+}
+
+async function tick() {
+  await new Promise(resolve => requestAnimationFrame(resolve));
+  await new Promise(resolve => setTimeout(resolve, 30));
+}
+
+async function waitFor(read, label) {
+  const deadline = Date.now() + 30000;
+  while (!read()) {
+    if (Date.now() > deadline) {
+      throw new Error(`Timed out: ${label}`);
+    }
+    await tick();
+  }
+}
+
+try {
+  const frame = document.createElement('iframe');
+  frame.src = new URLSearchParams(location.search).has('standalone') ? '../coxeter_mfv.html' : '../index.html';
+  document.body.appendChild(frame);
+  await waitFor(() => frame.contentWindow?.escherMCMC?.store?.solution?.status === 'optimal', 'startup');
+  const app = frame.contentWindow;
+  const doc = app.document;
+  const store = app.escherMCMC.store;
+
+  async function upload(id, text, name) {
+    const input = doc.getElementById(id);
+    const transfer = new app.DataTransfer();
+    transfer.items.add(new app.File([text], name));
+    input.files = transfer.files;
+    input.dispatchEvent(new app.Event('change', { bubbles: true }));
+    await waitFor(() => input.value === '' && store.status.state !== 'busy', name);
+    await tick();
+  }
+
+  async function workspace(name) {
+    doc.querySelector('[data-action="left-tab"][data-tab="model"]').click();
+    await tick();
+    doc.querySelector(`#task-panel [data-workspace="${name}"]`).click();
+    await tick();
+  }
+
+  function change(selector, value) {
+    const input = doc.querySelector(selector);
+    if (!input) {
+      throw new Error(`Missing control: ${selector}`);
+    }
+    input.value = value;
+    input.dispatchEvent(new app.Event('change', { bubbles: true }));
+  }
+
+  async function ordinary(method) {
+    const close = doc.querySelector('[data-action="close-workspace"]');
+    if (close && close.getClientRects().length) {
+      close.click();
+    }
+    doc.querySelector('[data-action="left-tab"][data-tab="analysis"]').click();
+    await tick();
+    doc.querySelector(`#task-panel [data-action="run-${method}"]`).click();
+    await waitFor(() => store.lastRun?.method === method && store.lastRun.phase !== 'running', method);
+    await tick();
+  }
+
+  async function objective(id, coefficient, sense) {
+    await ordinary('fba');
+    await workspace('reactions');
+    while (doc.querySelector('[data-action="rx-objective-remove"]')) {
+      doc.querySelector('[data-action="rx-objective-remove"]').click();
+      await tick();
+    }
+    const search = doc.querySelector('[data-action="rx-search"]');
+    search.value = id;
+    search.dispatchEvent(new app.Event('input', { bubbles: true }));
+    await waitFor(() => doc.querySelector(`[data-action="rx-objective"][data-rid="${id}"]`), id);
+    change(`[data-action="rx-objective"][data-rid="${id}"]`, String(coefficient));
+    await tick();
+    change('[data-action="rx-objective-sense"]', sense);
+    await tick();
+  }
+
+  async function retention(percent) {
+    await workspace('scenario');
+    change('[data-action="pfba-biomass-percent"]', String(percent));
+    await waitFor(() => store.pfbaBiomassPercent === percent, 'objective retention');
+    await tick();
+  }
+
+  function containsSolution() {
+    if (store.fvaRanges.size !== store.problem.rxnIds.length) {
+      return false;
+    }
+    for (const [id, range] of store.fvaRanges) {
+      const flux = store.solution.fluxes.get(id);
+      if (!Number.isFinite(range.min) || !Number.isFinite(range.max)
+        || flux < range.min - 1e-5 || flux > range.max + 1e-5) {
+        return false;
+      }
+    }
+    return true;
+  }
+
+  const raw = await (await fetch('../models/ecoli_core_mc.json')).json();
+  raw.reactions.find(reaction => reaction.id === 'GAPD').gene_reaction_rule = 'test_gap';
+  await upload('model-file-input', JSON.stringify(raw), 'objective-fixture.json');
+  const species = store.species[0].id;
+  const drawing = JSON.stringify(store.map.toJSON());
+  check('the objective fixture imports and solves', store.solution.status === 'optimal');
+
+  for (const [reaction, coefficient, sense, multiplier] of [
+    ['BIOMASS_Ec_core', 1, 'max', 0.9], ['ATPM', -1, 'max', 1.1],
+    ['ATPM', 1, 'min', 1.1], ['BIOMASS_Ec_core', -1, 'min', 0.9],
+  ]) {
+    const id = `${species}@${reaction}`;
+    const label = `${sense} ${coefficient} ${reaction}`;
+    await objective(id, coefficient, sense);
+    check(`objective coefficient, removal, search and sense controls set ${label}`,
+      store.objectiveSense() === sense && Object.keys(store.objectiveCoefficients()).length === 1
+      && store.objectiveCoefficients()[id] === coefficient);
+    const optimum = store.solution.objectiveValue;
+    await retention(90);
+    await ordinary('pfba');
+    check(`pFBA at 90% reaches the feasible exact target for ${label}`,
+      store.lastRun.phase === 'done' && Number.isFinite(store.solution.totalFlux)
+      && Math.abs(store.solution.objectiveValue - multiplier * optimum) < 1e-6);
+    await ordinary('pfva');
+    check(`pFVA at 90% includes its displayed solution in every range for ${label}`,
+      store.lastRun.phase === 'done' && Number.isFinite(store.solution.totalFlux) && containsSolution());
+  }
+
+  await objective(`${species}@ATPM`, 1, 'min');
+  await workspace('omics');
+  await upload('metatranscriptomics-file-input',
+    `MAG,gene,condition,TPM\n${species},test_gap,Control,1\n`, 'objective-expression.csv');
+  change('[data-action="gimme-objective-fraction"]', '90');
+  change('[data-action="gimme-threshold"]', '5');
+  doc.querySelector('[data-action="run-gimme"]').click();
+  await tick();
+  check('GIMME at 90% retains a feasible positive minimized objective',
+    store.solution.status === 'optimal' && Math.abs(store.solution.requiredObjective - 9.229) < 1e-6
+    && store.solution.objectiveValue <= 9.229 + 1e-6);
+  const archive = await store.reproducibilityBundle();
+  await upload('reproducibility-file-input', JSON.stringify(archive), 'signed-gimme-bundle.json');
+  check('the bundle file control replays minimized GIMME without changing its result',
+    store.reproducibilityReplay?.replay.pass && store.solution.gimme && store.objectiveSense() === 'min');
+  const replayedModel = store.community;
+  const replayedMap = store.map;
+  const replayedSolution = store.solution;
+  await workspace('scenario');
+  check('the Scenario chooser keeps a reopened bundle selected',
+    doc.querySelector('[data-action="scenario"]').value === `sc:${store.scenario.id}`);
+  doc.querySelector('[data-action="close-workspace"]').click();
+  await waitFor(() => doc.getElementById('workspace-editor').hidden && store.status.state !== 'busy', 'Return to map');
+  await tick();
+  check('Return to map preserves the reopened model, drawing and numerical result',
+    store.community === replayedModel && store.map === replayedMap && store.solution === replayedSolution);
+  const report = await store.methodsProvenanceReport();
+  check('Methods explains objective retention using the optimum magnitude',
+    report.text.includes('Objective retention allows deterioration') && report.text.includes('Custom objective (min)'));
+
+  await objective(`${species}@ATPM`, -1, 'max');
+  await workspace('omics');
+  doc.querySelector('[data-action="run-gimme"]').click();
+  await tick();
+  check('GIMME at 90% also retains a feasible negative maximum',
+    store.solution.status === 'optimal' && Math.abs(store.solution.requiredObjective + 9.229) < 1e-6);
+
+  await objective(`${species}@BIOMASS_Ec_core`, 1, 'max');
+  store.setReactionBounds(`${species}@BIOMASS_Ec_core`, 0.5, 0.5);
+  await retention(90);
+  const toggle = doc.querySelector('[data-action="parsimonious"]');
+  toggle.checked = true;
+  toggle.dispatchEvent(new app.Event('change', { bubbles: true }));
+  await tick();
+  check('an unreachable exact pFBA target reports its FBA fallback after automatic solving',
+    store.status.state === 'warn' && store.status.message.includes('FBA solution is shown')
+    && doc.getElementById('results-summary').textContent.includes('FBA solution is shown'));
+  frame.style.width = '550px';
+  await tick();
+  check('the fallback warning stays visible in a narrow viewport',
+    app.getComputedStyle(doc.getElementById('results-summary')).display !== 'none');
+  await ordinary('pfba');
+  check('an unreachable pFBA button request reports failure instead of completion',
+    store.lastRun.phase === 'failed' && store.status.state === 'error'
+    && doc.getElementById('results-summary').textContent.includes('FBA solution is shown'));
+  await waitFor(() => !doc.getElementById('results-summary').classList.contains('is-just-finished'), 'completion flash');
+  check('the narrow-viewport error stays visible after the completion flash ends',
+    app.getComputedStyle(doc.getElementById('results-summary')).display !== 'none');
+  frame.style.width = '1200px';
+  await ordinary('pfva');
+  check('pFVA permits a fixed biomass inside its retention interval',
+    store.lastRun.phase === 'done' && containsSolution() && Number.isFinite(store.solution.totalFlux));
+  await retention(100);
+  await ordinary('pfba');
+  check('a reachable pFBA target clears the failure and completes normally',
+    store.lastRun.phase === 'done' && store.status.state === 'ok' && Number.isFinite(store.solution.totalFlux));
+  check('objective and analysis combinations leave drawing geometry unchanged', JSON.stringify(store.map.toJSON()) === drawing);
+} catch (error) {
+  check(error.message, false);
+}
+
+document.title = failures ? `FAIL (${failures})` : 'PASS';
+window.__checkComplete = Promise.resolve({ failures, total, lines });
+</script>
+</body>
+</html>

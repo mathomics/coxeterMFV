@@ -1,0 +1,66 @@
+{
+ "aerobic": {
+  "status": "optimal",
+  "growth": 0.08110024044214156,
+  "objective": 0.08110024044214156,
+  "totalAbsoluteFlux": 100.84227650845895,
+  "directStatus": "optimal",
+  "directGrowth": 0.08110024049735533,
+  "directTotalAbsoluteFlux": 100.7611764274828,
+  "drawnReactions": 115,
+  "mapLoadNote": null
+ },
+ "anaerobic": {
+  "status": "optimal",
+  "growth": 0.010881025863850122,
+  "objective": 0.010881025863850122,
+  "totalAbsoluteFlux": 29.310429040106218,
+  "directStatus": "optimal",
+  "directGrowth": 0.01088102586203645,
+  "directTotalAbsoluteFlux": 29.299548008917252,
+  "drawnReactions": 115,
+  "mapLoadNote": " It was saved for \"yeastGEM_v9.1.1\" and has been read against \"yeastGEM_v9.1.1_anaerobic\"."
+ },
+ "sharedScale": {
+  "reference": 1.7830175519299745,
+  "max": 9.229853382866546,
+  "legend": [
+   {
+    "t": 0,
+    "value": 0,
+    "color": "#cbd5e1",
+    "width": 1.1
+   },
+   {
+    "t": 0.2,
+    "value": 0.11587498090694691,
+    "color": "#319ef3",
+    "width": 4.28
+   },
+   {
+    "t": 0.4,
+    "value": 0.2995244493229286,
+    "color": "#345ceb",
+    "width": 6.960000000000001
+   },
+   {
+    "t": 0.6,
+    "value": 0.5905892416145201,
+    "color": "#6e41ed",
+    "width": 9.64
+   },
+   {
+    "t": 0.8,
+    "value": 1.0518958494825719,
+    "color": "#9829a1",
+    "width": 12.32
+   },
+   {
+    "t": 1,
+    "value": 1.783017551929975,
+    "color": "#be123c",
+    "width": 15
+   }
+  ]
+ }
+}

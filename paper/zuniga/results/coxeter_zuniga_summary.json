@@ -1,0 +1,75 @@
+{
+ "scenarios": {
+  "wt-monoculture": {
+   "status": "optimal",
+   "growth": {
+    "Ec": 0.08797173802589708
+   },
+   "pheSecretedBySe": null,
+   "pheTakenUpByEc": 0
+  },
+  "mutant-monoculture": {
+   "status": "optimal",
+   "growth": {
+    "Ec": 0
+   },
+   "pheSecretedBySe": null,
+   "pheTakenUpByEc": 0
+  },
+  "mutant-coculture": {
+   "status": "optimal",
+   "growth": {
+    "Ec": 0.07757404795471114,
+    "Se": 0.034848410076886396
+   },
+   "pheSecretedBySe": -0.014371755994488922,
+   "pheTakenUpByEc": 0.014371755994375235
+  }
+ },
+ "knockouts": [
+  "Ec@PPNDH"
+ ],
+ "drawnReactions": 25,
+ "fluxReference": 0.1,
+ "scale": {
+  "reference": 0.1,
+  "legend": [
+   {
+    "t": 0,
+    "value": 0,
+    "color": "#cbd5e1",
+    "width": 1.1
+   },
+   {
+    "t": 0.2,
+    "value": 0.00649881324956793,
+    "color": "#319ef3",
+    "width": 4.28
+   },
+   {
+    "t": 0.4,
+    "value": 0.016798738127884228,
+    "color": "#345ceb",
+    "width": 6.960000000000001
+   },
+   {
+    "t": 0.6,
+    "value": 0.033123018950388584,
+    "color": "#6e41ed",
+    "width": 9.639999999999999
+   },
+   {
+    "t": 0.8,
+    "value": 0.058995260497799275,
+    "color": "#9829a1",
+    "width": 12.32
+   },
+   {
+    "t": 1,
+    "value": 0.10000000000000003,
+    "color": "#be123c",
+    "width": 15
+   }
+  ]
+ }
+}

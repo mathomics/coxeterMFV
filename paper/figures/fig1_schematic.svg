@@ -1,0 +1,117 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1800 530" width="1800" height="530" font-family="'Noto Sans', 'DejaVu Sans', Arial, sans-serif">
+  <defs>
+    <marker id="flux" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="5" markerHeight="5" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#be123c"/>
+    </marker>
+    <marker id="fluxblue" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="5" markerHeight="5" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#2c60eb"/>
+    </marker>
+    <style>
+      .panel { font-size: 34px; font-weight: 700; fill: #0b0b0b; }
+      .title { font-size: 25px; font-weight: 700; fill: #0b0b0b; }
+      .small { font-size: 16px; fill: #52514e; }
+      .mono { font-family: 'DejaVu Sans Mono', 'Noto Sans Mono', monospace; font-size: 16px; fill: #0b0b0b; }
+      .node { fill: #e07a46; stroke: #ffffff; stroke-width: 2; }
+      .cofactor { fill: #e9a27c; stroke: #ffffff; stroke-width: 1.5; }
+      .nodelabel { font-size: 16px; font-weight: 600; fill: #0b0b0b; }
+      .complabel { font-size: 14px; font-weight: 700; letter-spacing: 1px; }
+      .link { stroke: #64748b; stroke-width: 1.6; stroke-dasharray: 6 5; fill: none; }
+    </style>
+  </defs>
+  <rect width="1800" height="530" fill="#ffffff"/>
+
+  <!-- A. Model and map linked by identifiers -->
+  <text class="panel" x="20" y="44">A</text>
+  <text class="title" x="64" y="42">A model and its map share identifiers</text>
+
+  <rect x="40" y="76" width="440" height="364" rx="14" fill="#f8fafc" stroke="#94a3b8" stroke-width="1.6"/>
+  <text class="title" x="62" y="114" style="font-size:21px">Model</text>
+  <text class="mono" x="62" y="180" style="font-weight:700">r_1110</text>
+  <text class="mono" x="160" y="180" style="font-weight:700">ADP/ATP transporter</text>
+  <text class="mono" x="78" y="212">s_0394</text>
+  <text class="mono" x="160" y="212">ADP [c]</text>
+  <text class="mono" x="452" y="212" text-anchor="end">−1</text>
+  <text class="mono" x="78" y="240">s_0437</text>
+  <text class="mono" x="160" y="240">ATP [m]</text>
+  <text class="mono" x="452" y="240" text-anchor="end">−1</text>
+  <text class="mono" x="78" y="268">s_0397</text>
+  <text class="mono" x="160" y="268">ADP [m]</text>
+  <text class="mono" x="452" y="268" text-anchor="end">+1</text>
+  <text class="mono" x="78" y="296">s_0434</text>
+  <text class="mono" x="160" y="296">ATP [c]</text>
+  <text class="mono" x="452" y="296" text-anchor="end">+1</text>
+  <text class="mono" x="78" y="340">bounds</text>
+  <text class="mono" x="160" y="340">[−1000, 1000]</text>
+  <text class="mono" x="78" y="368">genes</text>
+  <text class="mono" x="160" y="368">YBL030C or YBR085W or YMR056C</text>
+
+  <rect x="560" y="76" width="320" height="364" rx="14" fill="#e0f0fb" stroke="#0284c7" stroke-width="2.4"/>
+  <text class="title" x="582" y="114" style="font-size:21px">Map</text>
+  <text class="complabel" x="582" y="146" fill="#0369a1">CYTOPLASM</text>
+  <!-- the mitochondrion nested in the cytoplasm, with its two membranes -->
+  <rect x="584" y="232" width="276" height="200" rx="44" fill="#fde2e4" stroke="#dc2626" stroke-width="2.4"/>
+  <rect x="596" y="244" width="252" height="176" rx="36" fill="#fdeef0" stroke="#dc2626" stroke-width="1.6"/>
+  <text class="complabel" x="612" y="404" fill="#b91c1c">MITOCHONDRION</text>
+  <!-- the carrier on the mitochondrial membranes exchanges cytoplasmic ADP for matrix ATP -->
+  <path d="M640,186 C676,194 696,214 704,232" stroke="#be123c" stroke-width="5" fill="none"/>
+  <path d="M640,310 C676,302 696,262 704,244" stroke="#be123c" stroke-width="5" fill="none"/>
+  <path d="M736,232 C744,214 764,196 785,191" stroke="#be123c" stroke-width="5" fill="none" marker-end="url(#flux)"/>
+  <path d="M736,244 C744,262 764,300 785,306" stroke="#be123c" stroke-width="5" fill="none" marker-end="url(#flux)"/>
+  <rect x="696" y="226" width="48" height="24" rx="7" fill="#ffffff" stroke="#dc2626" stroke-width="2.2"/>
+  <circle class="node" cx="640" cy="186" r="15"/>
+  <circle class="node" cx="800" cy="186" r="15"/>
+  <circle class="node" cx="640" cy="310" r="15"/>
+  <circle class="node" cx="800" cy="310" r="15"/>
+  <text class="nodelabel" x="626" y="222" text-anchor="end">ADP</text>
+  <text class="nodelabel" x="814" y="222">ATP</text>
+  <text class="nodelabel" x="640" y="346" text-anchor="middle">ATP</text>
+  <text class="nodelabel" x="800" y="346" text-anchor="middle">ADP</text>
+  <text class="small" x="720" y="206" text-anchor="middle" style="font-weight:600;fill:#0b0b0b">r_1110</text>
+
+  <!-- identifier links -->
+  <path class="link" d="M350,174 L470,174 C530,174 560,160 610,160 L684,160 C708,160 720,172 720,188"/>
+  <path class="link" d="M460,207 C530,207 570,186 622,186"/>
+  <path class="link" d="M460,235 C540,235 570,310 622,310"/>
+
+  <!-- B. Multicompartment map -->
+  <text class="panel" x="940" y="44">B</text>
+  <text class="title" x="984" y="42">Cells, nested compartments and a shared medium</text>
+
+  <rect x="960" y="76" width="820" height="440" rx="18" fill="#f8fafc" stroke="#94a3b8" stroke-width="2" stroke-dasharray="10 7"/>
+  <text class="complabel" x="980" y="500" fill="#64748b">SHARED MEDIUM</text>
+
+  <!-- eukaryotic cell: envelope, cytoplasm, mitochondrion with membrane, peroxisome -->
+  <rect x="990" y="104" width="420" height="370" rx="40" fill="#f1f5f9" stroke="#64748b" stroke-width="2.4"/>
+  <rect x="1008" y="122" width="384" height="334" rx="32" fill="#e0f0fb" stroke="#0284c7" stroke-width="2.4"/>
+  <text class="complabel" x="1030" y="148" fill="#0369a1">CYTOPLASM</text>
+  <rect x="1150" y="168" width="222" height="162" rx="56" fill="#fde2e4" stroke="#dc2626" stroke-width="2.4"/>
+  <rect x="1164" y="182" width="194" height="134" rx="46" fill="#fdeef0" stroke="#dc2626" stroke-width="1.6"/>
+  <text class="complabel" x="1196" y="208" fill="#b91c1c">MITOCHONDRION</text>
+  <rect x="1030" y="372" width="140" height="70" rx="24" fill="#e7e5e4" stroke="#57534e" stroke-width="2.2"/>
+  <text class="complabel" x="1046" y="412" fill="#44403c">PEROXISOME</text>
+  <!-- pyruvate import drawn on the mitochondrial membranes -->
+  <circle class="node" cx="1080" cy="252" r="13"/>
+  <text class="nodelabel" x="1032" y="230">pyruvate</text>
+  <line x1="1094" y1="252" x2="1232" y2="252" stroke="#be123c" stroke-width="6" marker-end="url(#flux)"/>
+  <rect x="1142" y="240" width="16" height="24" rx="6" fill="#ffffff" stroke="#dc2626" stroke-width="2.2"/>
+  <circle class="node" cx="1250" cy="252" r="13"/>
+  <text class="nodelabel" x="1222" y="290">pyruvate</text>
+
+  <!-- bacterial cell: periplasm and cytosol -->
+  <rect x="1546" y="150" width="210" height="330" rx="44" fill="#fef3c7" stroke="#b45309" stroke-width="2.4"/>
+  <rect x="1566" y="170" width="170" height="290" rx="34" fill="#e0f0fb" stroke="#0284c7" stroke-width="2.4"/>
+  <text class="complabel" x="1584" y="202" fill="#0369a1">CYTOSOL</text>
+  <text class="complabel" x="1588" y="165" fill="#b45309" style="font-size:12px">PERIPLASM</text>
+
+  <!-- a metabolite made in the cytoplasm of one cell crosses the shared medium into the other -->
+  <circle class="node" cx="1290" cy="400" r="13"/>
+  <text class="nodelabel" x="1250" y="438">metabolite</text>
+  <line x1="1304" y1="400" x2="1458" y2="400" stroke="#2c60eb" stroke-width="5" marker-end="url(#fluxblue)"/>
+  <rect x="1402" y="389" width="14" height="22" rx="5" fill="#ffffff" stroke="#64748b" stroke-width="2"/>
+  <circle class="node" cx="1478" cy="400" r="15"/>
+  <text class="nodelabel" x="1444" y="440">metabolite</text>
+  <line x1="1494" y1="400" x2="1630" y2="400" stroke="#2c60eb" stroke-width="5" marker-end="url(#fluxblue)"/>
+  <rect x="1550" y="389" width="14" height="22" rx="5" fill="#ffffff" stroke="#b45309" stroke-width="2"/>
+  <circle class="node" cx="1648" cy="400" r="13"/>
+  <text class="nodelabel" x="1608" y="438">metabolite</text>
+</svg>

@@ -1,0 +1,256 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Running shaped placement checks</title>
+<style>
+  body { margin: 16px; font: 14px system-ui; background: #0b1220; color: #e2e8f0; }
+  .pass { color: #4ade80; }
+  .fail { color: #fb7185; }
+  iframe { width: 1300px; height: 900px; border: 1px solid #334155; margin-top: 16px; }
+</style>
+</head>
+<body>
+<h1>Shaped compartments, insertion, dragging and automatic secondary metabolites</h1>
+<div id="out"></div>
+<script type="module">
+/** Exercise shape and placement controls against the displayed outline without changing the calculation. */
+import { compartmentCorners } from '../src/layout/geometry.js';
+import { nodeFitsAt } from '../src/layout/drag.js';
+const out = document.getElementById('out');
+let failures = 0;
+
+function check(name, passed) {
+  if (!passed) {
+    failures += 1;
+  }
+  const line = document.createElement('div');
+  line.className = passed ? 'pass' : 'fail';
+  line.textContent = `${passed ? 'OK' : 'FAIL'} ${name}`;
+  out.appendChild(line);
+}
+
+async function tick() {
+  await new Promise(resolve => requestAnimationFrame(resolve));
+  await new Promise(resolve => setTimeout(resolve, 60));
+}
+
+async function waitFor(read, label) {
+  const deadline = Date.now() + 30000;
+  while (!read()) {
+    if (Date.now() > deadline) {
+      throw new Error(`Timed out: ${label}`);
+    }
+    await tick();
+  }
+}
+
+function inside(compartment, point) {
+  const rect = compartment.rect;
+  const dx = Math.abs(point.x - rect.x - rect.w / 2);
+  const dy = Math.abs(point.y - rect.y - rect.h / 2);
+  if (dx > rect.w / 2 + 1e-7 || dy > rect.h / 2 + 1e-7) {
+    return false;
+  }
+  const { rx, ry } = compartmentCorners(compartment);
+  if (!rx || !ry) {
+    return true;
+  }
+  const u = Math.max(0, dx - (rect.w / 2 - rx)) / rx;
+  const v = Math.max(0, dy - (rect.h / 2 - ry)) / ry;
+  return u * u + v * v <= 1 + 1e-7;
+}
+
+function diskInside(compartment, node) {
+  for (let index = 0; index < 64; index += 1) {
+    const angle = index * Math.PI / 32;
+    const radius = node.r + 6;
+    if (!inside(compartment, { x: node.x + radius * Math.cos(angle), y: node.y + radius * Math.sin(angle) })) {
+      return false;
+    }
+  }
+  return true;
+}
+
+function connected(map) {
+  return map.segments.every(segment => {
+    if (!segment.nodeId) {
+      return true;
+    }
+    const node = map.nodes.get(segment.nodeId);
+    const point = segment.side === 'substrate' ? segment.from : segment.to;
+    return node && Math.hypot(node.x - point.x, node.y - point.y) < 1e-8;
+  });
+}
+
+try {
+  const frame = document.createElement('iframe');
+  frame.src = new URLSearchParams(location.search).has('standalone') ? '../coxeter_mfv.html' : '../index.html';
+  document.body.appendChild(frame);
+  await waitFor(() => frame.contentWindow?.escherMCMC?.store?.solution?.status === 'optimal', 'startup');
+  const app = frame.contentWindow;
+  const doc = app.document;
+  const store = app.escherMCMC.store;
+  await store.useScenario('solo-ecoli');
+  const EditableMap = store.map.constructor;
+  const biology = JSON.stringify(store.modelEditorModel().toJSON());
+  const bounds = JSON.stringify(store.problem.snapshotBounds());
+  const solution = store.solution;
+  doc.querySelector('[data-action="left-tab"][data-tab="build"]').click();
+  if (doc.getElementById('inspector-panel').getBoundingClientRect().width < 100) {
+    doc.querySelector('.canvas-toolbar [data-action="toggle-inspector"]').click();
+  }
+
+  function screen(point) {
+    const rect = doc.getElementById('stage').getBoundingClientRect();
+    return {
+      clientX: rect.left + app.escherMCMC.camera.x + point.x * app.escherMCMC.camera.scale,
+      clientY: rect.top + app.escherMCMC.camera.y + point.y * app.escherMCMC.camera.scale,
+    };
+  }
+
+  function press(target, point) {
+    const at = screen(point);
+    target.dispatchEvent(new app.PointerEvent('pointerdown', {
+      bubbles: true, pointerId: 981, pointerType: 'mouse', button: 0, ...at,
+    }));
+    target.dispatchEvent(new app.PointerEvent('pointerup', {
+      bubbles: true, pointerId: 981, pointerType: 'mouse', button: 0, ...at,
+    }));
+  }
+
+  async function reset(shape) {
+    store.map = EditableMap.emptyFromCommunity(store.community);
+    store.mapHistory.clear();
+    store.select(null);
+    store.emit('map');
+    store.selectGeometry('eco', 'c');
+    await tick();
+    doc.querySelector(`#inspector-panel [data-action="compartment-shape"][data-shape="${shape}"]`).click();
+    await tick();
+    doc.querySelector('[data-action="zoom-fit"]').click();
+    await tick();
+    return store.map.cells[0].compartments.find(compartment => compartment.id === 'c');
+  }
+
+  async function open(tool, compartment, point) {
+    doc.querySelector(`[data-tool="${tool}"]`).click();
+    await tick();
+    press(doc.querySelector(`[data-cell-space="eco"][data-compartment-space="${compartment}"]`), point);
+    await tick();
+  }
+
+  function edgeOrigin(compartment) {
+    const rect = compartment.rect;
+    const { rx, ry } = compartmentCorners(compartment);
+    if (!rx || !ry) {
+      return { x: rect.x + 2, y: rect.y + 2 };
+    }
+    const length = Math.hypot(1 / rx, 1 / ry);
+    return {
+      x: rect.x + rx - rx * Math.SQRT1_2 + 2 / rx / length,
+      y: rect.y + ry - ry * Math.SQRT1_2 + 2 / ry / length,
+    };
+  }
+
+  for (const shape of ['rectangle', 'rounded', 'capsule', 'oval']) {
+    const compartment = await reset(shape);
+    check(`${shape}: the inspector activates the selected shape`,
+      doc.querySelector(`#inspector-panel [data-shape="${shape}"]`).getAttribute('aria-pressed') === 'true');
+    await open('metabolite', 'c', edgeOrigin(compartment));
+    doc.querySelector('[data-add-metabolite="eco@g6p_c"]').click();
+    await tick();
+    const node = store.map.nodesForMetabolite('eco@g6p_c')[0];
+    check(`${shape}: edge insertion keeps the entire metabolite circle inside the displayed outline`,
+      node && diskInside(compartment, node));
+    doc.querySelector('[data-tool="select"]').click();
+    await tick();
+    const before = JSON.stringify(store.map.toJSON());
+    const target = doc.querySelector(`circle[data-node="${node.id}"]`);
+    const start = screen(node);
+    const end = screen({ x: compartment.rect.x + compartment.rect.w - 5, y: compartment.rect.y - 30 });
+    target.dispatchEvent(new app.PointerEvent('pointerdown', {
+      bubbles: true, pointerId: 982, pointerType: 'mouse', button: 0, buttons: 1, ...start,
+    }));
+    doc.getElementById('stage').dispatchEvent(new app.PointerEvent('pointermove', {
+      bubbles: true, pointerId: 982, pointerType: 'mouse', buttons: 1, ...end,
+    }));
+    doc.getElementById('stage').dispatchEvent(new app.PointerEvent('pointerup', {
+      bubbles: true, pointerId: 982, pointerType: 'mouse', button: 0, ...end,
+    }));
+    await tick();
+    const after = JSON.stringify(store.map.toJSON());
+    check(`${shape}: dragging beyond the corner moves and contains the complete circle`,
+      before !== after && diskInside(compartment, store.map.nodes.get(node.id)));
+    doc.querySelector('[data-action="map-undo"]').click();
+    await tick();
+    check(`${shape}: Undo restores the exact insertion`, JSON.stringify(store.map.toJSON()) === before);
+    doc.querySelector('[data-action="map-redo"]').click();
+    await tick();
+    check(`${shape}: Redo restores the exact constrained drag`, JSON.stringify(store.map.toJSON()) === after);
+  }
+
+  const oval = await reset('oval');
+  await open('reaction', 'c', edgeOrigin(oval));
+  const filter = doc.querySelector('[data-action="filter-add-reactions"]');
+  filter.value = 'PFK';
+  filter.dispatchEvent(new app.Event('input', { bubbles: true }));
+  doc.querySelector('[data-select-add-rxn="eco@PFK"]').click();
+  await tick();
+  doc.querySelector('[data-add-rxn-direction="nw"]').click();
+  await tick();
+  const reaction = store.map.reactions.get('eco@PFK');
+  check('oval: directional reaction insertion contains its marker', reaction && diskInside(oval, { ...reaction, r: 5 }));
+  check('oval: primary and secondary circles stay inside and their branches stay connected',
+    [...store.map.nodes.values()].every(node => diskInside(oval, node)) && connected(store.map));
+  const inserted = JSON.stringify(store.map.toJSON());
+  doc.querySelector('[data-action="map-undo"]').click();
+  await tick();
+  const removed = !store.map.reactions.has('eco@PFK');
+  doc.querySelector('[data-action="map-redo"]').click();
+  await tick();
+  check('oval: reaction Undo and Redo restore the complete drawing', removed && JSON.stringify(store.map.toJSON()) === inserted);
+
+  const cytosol = await reset('oval');
+  const free = { x: cytosol.rect.x + 40, y: cytosol.rect.y + 40 };
+  await open('metabolite', 'p', free);
+  doc.querySelector('[data-add-metabolite="eco@glc__D_p"]').click();
+  await tick();
+  const periplasm = store.map.nodesForMetabolite('eco@glc__D_p')[0];
+  check('periplasm: valid space outside an oval child remains usable inside its bounding box',
+    periplasm && !inside(cytosol, free) && Math.hypot(periplasm.x - free.x, periplasm.y - free.y) < 1e-8
+    && nodeFitsAt(store.map, periplasm, periplasm.x, periplasm.y));
+  check('all shape and incremental placement controls preserve biology, bounds and the installed calculation',
+    JSON.stringify(store.modelEditorModel().toJSON()) === biology
+    && JSON.stringify(store.problem.snapshotBounds()) === bounds && store.solution === solution);
+
+  for (const scenario of ['solo-ecoli', 'solo-levadura']) {
+    await store.useScenario(scenario);
+    const priorModel = JSON.stringify(store.modelEditorModel().toJSON());
+    const priorBounds = JSON.stringify(store.problem.snapshotBounds());
+    const priorSolution = store.solution;
+    doc.querySelector('[data-action="open-workspace"][data-workspace="structure"]').click();
+    await tick();
+    doc.querySelector('[data-workspace-content="structure"] [data-action="map-full"]').click();
+    await tick();
+    const nodes = [...store.map.nodes.values()].filter(node => node.kind === 'currency');
+    check(`${scenario}: Full map contains every automatic secondary circle in its displayed compartment`,
+      nodes.length > 0 && nodes.every(node => {
+        const cell = store.map.cells.find(cell => cell.id === node.cellId);
+        const compartment = cell.compartments.find(compartment => compartment.id === node.compartment);
+        return diskInside(compartment, node) && nodeFitsAt(store.map, node, node.x, node.y);
+      }));
+    check(`${scenario}: Full map keeps all secondary branches connected`, connected(store.map));
+    check(`${scenario}: Full map preserves biology, bounds and the installed calculation`,
+      JSON.stringify(store.modelEditorModel().toJSON()) === priorModel
+      && JSON.stringify(store.problem.snapshotBounds()) === priorBounds && store.solution === priorSolution);
+  }
+  doc.querySelector('[data-action="zoom-fit"]').click();
+} catch (error) {
+  check(error.message, false);
+}
+
+document.title = failures ? `FAIL (${failures})` : 'PASS';
+</script>
+</body>
+</html>

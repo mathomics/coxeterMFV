@@ -4,11 +4,11 @@ node_modules/
 .cache/
 
 # Rust build output
-code/rust/target/
-code/rust/fixtures/large/
+rust/target/
+rust/fixtures/large/
 
-# Standalone build written by `npm run build:standalone` inside code/
-code/coxeter_mfv.html
+# Standalone build written by `npm run build:standalone`; the distributed copy is app/coxeter_mfv.html
+/coxeter_mfv.html
 
 # Generated release packages and Python caches
 dist/

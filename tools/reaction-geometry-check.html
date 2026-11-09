@@ -1,0 +1,235 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Running reaction geometry checks</title>
+<style>
+  body { margin: 16px; font: 14px system-ui; background: #0b1220; color: #e2e8f0; }
+  .pass { color: #4ade80; }
+  .fail { color: #fb7185; }
+  iframe { width: 1300px; height: 1000px; border: 1px solid #334155; margin-top: 16px; }
+</style>
+</head>
+<body>
+<h1>Reaction geometry controls and mixed history</h1>
+<div id="out"></div>
+<script type="module">
+/** Exercise actual drawing controls while checking geometry, history and an installed FBA result. */
+const out = document.getElementById('out');
+let failures = 0;
+
+function check(name, passed) {
+  if (!passed) {
+    failures += 1;
+  }
+  const line = document.createElement('div');
+  line.className = passed ? 'pass' : 'fail';
+  line.textContent = `${passed ? 'OK' : 'FAIL'} ${name}`;
+  out.appendChild(line);
+}
+
+async function tick() {
+  await new Promise(resolve => requestAnimationFrame(resolve));
+  await new Promise(resolve => setTimeout(resolve, 50));
+}
+
+async function waitFor(read, label) {
+  const deadline = Date.now() + 30000;
+  while (!read()) {
+    if (Date.now() > deadline) {
+      throw new Error(`Timed out: ${label}`);
+    }
+    await tick();
+  }
+}
+
+function intact(map) {
+  for (const node of map.nodes.values()) {
+    if (!Number.isFinite(node.x) || !Number.isFinite(node.y)) {
+      return false;
+    }
+  }
+  for (const segment of map.segments) {
+    for (const point of [segment.from, segment.to, segment.b1, segment.b2]) {
+      if (point && (!Number.isFinite(point.x) || !Number.isFinite(point.y))) {
+        return false;
+      }
+    }
+    if (segment.nodeId) {
+      const node = map.nodes.get(segment.nodeId);
+      const point = segment.side === 'substrate' ? segment.from : segment.to;
+      if (!node || Math.hypot(node.x - point.x, node.y - point.y) >= 1e-6) {
+        return false;
+      }
+    }
+  }
+  return true;
+}
+
+try {
+  const frame = document.createElement('iframe');
+  frame.src = new URLSearchParams(location.search).has('standalone') ? '../coxeter_mfv.html' : '../index.html';
+  document.body.appendChild(frame);
+  await waitFor(() => frame.contentWindow?.escherMCMC?.store?.solution?.status === 'optimal', 'startup');
+  const doc = frame.contentWindow.document;
+  const store = frame.contentWindow.escherMCMC.store;
+  await store.useScenario('solo-ecoli');
+  const EditableMap = store.map.constructor;
+  store.map = EditableMap.emptyFromCommunity(store.community);
+  store.addMapReaction('eco@PFK');
+  store.addMapReaction('eco@PGI');
+  const rid = 'eco@PFK';
+  store.setMapReactionLinear(rid, true);
+  store.mapHistory.clear();
+  store.select(rid);
+  store.emit('map');
+  await tick();
+  const inspector = doc.getElementById('inspector-panel');
+  if (inspector.getBoundingClientRect().width < 100) {
+    doc.querySelector('.canvas-toolbar [data-action="toggle-inspector"]').click();
+    await tick();
+  }
+  doc.querySelector('[data-action="zoom-fit"]').click();
+  const solution = store.solution;
+  const problem = store.problem;
+  const bounds = JSON.stringify(problem.snapshotBounds());
+  const biology = JSON.stringify(store.models.get('ecoli_core_mc').toJSON());
+  const reaction = () => store.map.reactions.get(rid);
+
+  function button(action, selector = '') {
+    const found = inspector.querySelector(`[data-action="${action}"]${selector}`);
+    if (!found) {
+      throw new Error(`Missing reaction control: ${action} ${selector}`);
+    }
+    return found;
+  }
+
+  const from = store.map.nodes.get(reaction().linear.from);
+  const to = store.map.nodes.get(reaction().linear.to);
+  let edit = store.beginMapEdit('Slide reaction');
+  store.map.moveReaction(rid, from.x + 0.25 * (to.x - from.x), from.y + 0.25 * (to.y - from.y));
+  store.commitMapEdit(edit);
+  const cofactor = store.map.segmentsOf(rid).find(segment => segment.nodeId && segment.b1
+    && segment.nodeId !== reaction().linear.from && segment.nodeId !== reaction().linear.to);
+  edit = store.beginMapEdit('Bend cofactor');
+  store.map.moveBranchControl(rid, cofactor.nodeId, 'b1', cofactor.b1.x + 17, cofactor.b1.y - 11);
+  store.commitMapEdit(edit);
+  store.addMapText('Redo control', 10, 10);
+  await tick();
+  doc.querySelector('[data-action="map-undo"]').click();
+  await tick();
+  store.select(rid);
+  await tick();
+  const before = JSON.stringify(store.map.toJSON());
+  const version = store.mapHistory.version;
+  button('reaction-linear').click();
+  await tick();
+  check('clicking active Linear preserves the deliberately slid marker', Math.abs(reaction().linear.t - 0.25) < 1e-9);
+  check('active Linear preserves the complete drawing and history version',
+    JSON.stringify(store.map.toJSON()) === before && store.mapHistory.version === version);
+  check('active Linear keeps the actual Redo control available',
+    store.mapHistory.canRedo && !doc.querySelector('[data-action="map-redo"]').disabled);
+  const startDepth = store.mapHistory.undoStack.length;
+
+  const sides = store.map.reactionSides(rid);
+  const atp = sides.substrates.find(entry => entry.label === 'atp').nodeId;
+  button('reaction-line-end', `[data-node="${CSS.escape(atp)}"]`).click();
+  await tick();
+  check('the substrate role control changes the chosen line endpoint', reaction().linear.from === atp);
+  button('reaction-free').click();
+  await tick();
+  check('Free releases the line and enables both rotation controls', !reaction().linear
+    && !button('reaction-rotate', '[data-angle="90"]').disabled
+    && !button('reaction-rotate', '[data-angle="-90"]').disabled);
+  let direction = { ...reaction().axis.dir };
+  button('reaction-rotate', '[data-angle="90"]').click();
+  await tick();
+  check('the clockwise rotation button turns the backbone by 90 degrees',
+    Math.abs(reaction().axis.dir.x + direction.y) < 1e-6
+    && Math.abs(reaction().axis.dir.y - direction.x) < 1e-6);
+  button('reaction-rotate', '[data-angle="-90"]').click();
+  await tick();
+  check('the anticlockwise button restores the original direction',
+    Math.abs(reaction().axis.dir.x - direction.x) < 1e-6 && Math.abs(reaction().axis.dir.y - direction.y) < 1e-6);
+
+  edit = store.beginMapEdit('Move reaction label');
+  store.setReactionLabelOffset(rid, { x: 35, y: -15 });
+  store.commitMapEdit(edit);
+  store.emit('map');
+  await tick();
+  button('reaction-label-reset').click();
+  await tick();
+  check('Reset label removes a manually moved label offset', !reaction().labelOffset);
+
+  const directions = {
+    N: [0, -1], NE: [Math.SQRT1_2, -Math.SQRT1_2], E: [1, 0], SE: [Math.SQRT1_2, Math.SQRT1_2],
+    S: [0, 1], SW: [-Math.SQRT1_2, Math.SQRT1_2], W: [-1, 0], NW: [-Math.SQRT1_2, -Math.SQRT1_2],
+  };
+  for (const [name, vector] of Object.entries(directions)) {
+    button('reaction-align', `[data-direction="${name}"]`).click();
+    await tick();
+    check(`the ${name} compass button aligns a connected linear reaction`, reaction().linear
+      && Math.abs(reaction().axis.dir.x - vector[0]) < 1e-6
+      && Math.abs(reaction().axis.dir.y - vector[1]) < 1e-6 && intact(store.map));
+  }
+  check('a linear reaction disables both fixed rotation controls',
+    button('reaction-rotate', '[data-angle="90"]').disabled
+    && button('reaction-rotate', '[data-angle="-90"]').disabled);
+  button('reaction-align-axis', '[data-axis="vertical"]').click();
+  await tick();
+  check('Vertical places the marked metabolites and reaction on one vertical line', Math.abs(reaction().axis.dir.x) < 1e-6);
+  button('reaction-align-axis', '[data-axis="horizontal"]').click();
+  await tick();
+  check('Horizontal places them on one horizontal line', Math.abs(reaction().axis.dir.y) < 1e-6);
+  direction = { ...reaction().axis.dir };
+  button('reaction-flip').click();
+  await tick();
+  check('Swap substrates and products reverses the drawing direction',
+    Math.abs(reaction().axis.dir.x + direction.x) < 1e-6 && Math.abs(reaction().axis.dir.y + direction.y) < 1e-6);
+  const swap = [...inspector.querySelectorAll('[data-action="reaction-swap"]')].find(element => !element.disabled);
+  const a = store.map.nodes.get(swap.dataset.a);
+  const b = store.map.nodes.get(swap.dataset.b);
+  const positions = [{ x: a.x, y: a.y }, { x: b.x, y: b.y }];
+  swap.click();
+  await tick();
+  check('the metabolite swap control exchanges the two positions',
+    Math.hypot(a.x - positions[1].x, a.y - positions[1].y) < 1e-6
+    && Math.hypot(b.x - positions[0].x, b.y - positions[0].y) < 1e-6 && intact(store.map));
+  button('reaction-mirror').click();
+  await tick();
+  check('Mirror preserves finite connected geometry', intact(store.map));
+  button('reaction-tidy').click();
+  await tick();
+  check('Tidy curves preserves finite connected geometry', intact(store.map));
+
+  const after = JSON.stringify(store.map.toJSON());
+  const count = store.mapHistory.undoStack.length - startDepth;
+  for (let index = 0; index < count; index += 1) {
+    doc.querySelector('[data-action="map-undo"]').click();
+    await tick();
+  }
+  check('Undo restores the complete drawing from before the mixed controls', JSON.stringify(store.map.toJSON()) === before);
+  for (let index = 0; index < count; index += 1) {
+    doc.querySelector('[data-action="map-redo"]').click();
+    await tick();
+  }
+  check('Redo restores every mixed geometry edit', JSON.stringify(store.map.toJSON()) === after && intact(store.map));
+  const invalidVersion = store.mapHistory.version;
+  for (const name of ['constructor', '__proto__', 'toString', 'upwards']) {
+    store.alignMapReaction(rid, name);
+  }
+  check('unsupported compass names leave the drawing and history unchanged',
+    JSON.stringify(store.map.toJSON()) === after && store.mapHistory.version === invalidVersion && intact(store.map));
+  check('all drawing controls preserve the model, LP bounds and installed numerical result',
+    JSON.stringify(store.models.get('ecoli_core_mc').toJSON()) === biology
+    && store.problem === problem && JSON.stringify(problem.snapshotBounds()) === bounds && store.solution === solution);
+  store.select(rid);
+  await tick();
+} catch (error) {
+  check(error.message, false);
+}
+
+document.title = failures ? `FAIL (${failures})` : 'PASS';
+</script>
+</body>
+</html>

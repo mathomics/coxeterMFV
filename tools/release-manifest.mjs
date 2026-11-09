@@ -1,12 +1,26 @@
 import { createHash } from 'node:crypto';
-import { readFile, readdir, writeFile } from 'node:fs/promises';
+import { readFile, readdir, stat, writeFile } from 'node:fs/promises';
 import { dirname, join, relative } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..');
 const manifestPath = join(root, 'release-manifest.json');
-const packageInfo = JSON.parse(await readFile(join(root, 'code/package.json'), 'utf8'));
-const artifacts = ['app/web/coxeter_mfv.html', 'app/windows/coxeter-mfv.exe'];
+const packageInfo = JSON.parse(await readFile(join(root, 'package.json'), 'utf8'));
+const artifacts = ['app/coxeter_mfv.html', 'app/coxeter-mfv.exe'];
+// The application source that a promotion copies from the working repository. Documentation, examples, data and
+// the paper analyses are maintained here and stay out of the source digest.
+const sourceEntries = [
+  'assets',
+  'docs/gut9-map',
+  'index.html',
+  'models',
+  'package-lock.json',
+  'package.json',
+  'rust',
+  'src',
+  'test',
+  'tools',
+];
 const ignoredDirectories = new Set(['node_modules', 'target', '.cache', '.git', '__pycache__']);
 const textExtensions = /\.(?:js|mjs|json|md|toml|lock|rs|html|css|csv|txt|xml|sh|py|m|yml)$/;
 const sourceFiles = [];
@@ -17,7 +31,7 @@ async function collect(directory) {
   for (const entry of entries) {
     const path = join(directory, entry.name);
     const relativePath = relative(root, path).replaceAll('\\', '/');
-    if (relativePath === 'code/rust/fixtures/large') {
+    if (relativePath === 'rust/fixtures/large') {
       continue;
     }
     if (entry.isDirectory()) {
@@ -25,15 +39,20 @@ async function collect(directory) {
         await collect(path);
       }
     } else if (entry.isFile()) {
-      const name = relative(root, path).replaceAll('\\', '/');
-      if (name !== 'code/coxeter_mfv.html') {
-        sourceFiles.push(name);
-      }
+      sourceFiles.push(relativePath);
     }
   }
 }
 
-await collect(join(root, 'code'));
+for (const entry of sourceEntries) {
+  const path = join(root, entry);
+  const info = await stat(path);
+  if (info.isDirectory()) {
+    await collect(path);
+  } else {
+    sourceFiles.push(entry);
+  }
+}
 sourceFiles.sort();
 const sourceHash = createHash('sha256');
 for (const name of sourceFiles) {
@@ -86,7 +105,7 @@ if (args.includes('--write')) {
 } else {
   const manifest = JSON.parse(await readFile(manifestPath, 'utf8'));
   if (manifest.version !== packageInfo.version) {
-    throw new Error('Manifest version differs from code/package.json.');
+    throw new Error('Manifest version differs from package.json.');
   }
   if (JSON.stringify(manifest.source) !== JSON.stringify(source)) {
     throw new Error('Distributed source differs from release-manifest.json. Review and rebuild before recording a new manifest.');
@@ -95,9 +114,9 @@ if (args.includes('--write')) {
     throw new Error('Application files differ from release-manifest.json.');
   }
   const citation = await readFile(join(root, 'CITATION.cff'), 'utf8');
-  const packageLock = JSON.parse(await readFile(join(root, 'code/package-lock.json'), 'utf8'));
-  const rust = await readFile(join(root, 'code/rust/Cargo.toml'), 'utf8');
-  const nativeConfig = await readFile(join(root, 'code/rust/.cargo/config.toml'), 'utf8');
+  const packageLock = JSON.parse(await readFile(join(root, 'package-lock.json'), 'utf8'));
+  const rust = await readFile(join(root, 'rust/Cargo.toml'), 'utf8');
+  const nativeConfig = await readFile(join(root, 'rust/.cargo/config.toml'), 'utf8');
   if (packageLock.version !== packageInfo.version || packageLock.packages[''].version !== packageInfo.version) {
     throw new Error('npm lockfile version differs from the JavaScript package.');
   }

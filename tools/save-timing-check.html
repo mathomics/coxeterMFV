@@ -1,0 +1,280 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Save timing checks</title>
+<style>
+  body { font: 13px/1.6 ui-monospace, monospace; margin: 24px; background: #0b1220; color: #e2e8f0; }
+  .pass { color: #4ade80; }
+  .fail { color: #fb7185; }
+  iframe { width: 1200px; height: 800px; border: 1px solid #334155; margin-top: 16px; }
+</style>
+</head>
+<body>
+<h1>Saved files and edits made during writing</h1>
+<p>Save pickers and writes stay in memory. No desktop input or system dialogs are used.</p>
+<div id="out"></div>
+<script type="module">
+/** Hold real export writes while changing inputs, drawings and models. */
+const out = document.getElementById('out');
+const lines = [];
+const writes = [];
+let failures = 0;
+let total = 0;
+
+function check(name, passed) {
+  total += 1;
+  if (!passed) {
+    failures += 1;
+  }
+  const line = document.createElement('div');
+  line.className = passed ? 'pass' : 'fail';
+  line.textContent = `${passed ? 'OK' : 'FAIL'} ${name}`;
+  out.appendChild(line);
+  lines.push(line.textContent);
+}
+
+async function tick() {
+  await new Promise(resolve => requestAnimationFrame(resolve));
+  await new Promise(resolve => setTimeout(resolve, 30));
+}
+
+async function waitFor(read, label) {
+  const deadline = Date.now() + 30000;
+  while (!read()) {
+    if (Date.now() > deadline) {
+      throw new Error(`Timed out: ${label}`);
+    }
+    await tick();
+  }
+}
+
+try {
+  const frame = document.createElement('iframe');
+  frame.src = new URLSearchParams(location.search).has('standalone') ? '../coxeter_mfv.html' : '../index.html';
+  document.body.appendChild(frame);
+  await waitFor(() => frame.contentWindow?.escherMCMC?.store?.solution?.status === 'optimal', 'startup');
+  const app = frame.contentWindow;
+  const doc = app.document;
+  const store = app.escherMCMC.store;
+  await store.useScenario('solo-ecoli');
+  let nextWrite = null;
+  app.showSaveFilePicker = async (options) => {
+    const write = nextWrite ?? { release() {} };
+    nextWrite = null;
+    writes.push(write);
+    return {
+      name: options.suggestedName,
+      async createWritable() {
+        return {
+          async write(blob) {
+            write.blob = blob;
+            write.started = true;
+            await write.held;
+            if (write.fail) {
+              throw new Error('Deliberate save failure');
+            }
+          },
+          async close() {
+            write.done = true;
+          },
+          async abort() {
+            write.aborted = true;
+          },
+        };
+      },
+    };
+  };
+
+  function clickExport(action) {
+    const menu = doc.querySelector('.file-menu');
+    menu.open = true;
+    menu.querySelector(`[data-action="${action}"]`).click();
+  }
+
+  async function startSave(action, hold = true, fail = false) {
+    let release;
+    const held = new Promise(resolve => {
+      release = resolve;
+    });
+    const write = { held, release, fail };
+    nextWrite = write;
+    clickExport(action);
+    await waitFor(() => write.started, action);
+    if (!hold) {
+      write.release();
+      await finishSave(write);
+    }
+    return write;
+  }
+
+  async function finishSave(write) {
+    write.release();
+    await waitFor(() => write.done || write.aborted, 'write completion');
+    await tick();
+  }
+
+  async function medium(value) {
+    doc.querySelector('[data-action="close-workspace"]')?.click();
+    doc.querySelector('[data-action="left-tab"][data-tab="model"]').click();
+    await tick();
+    doc.querySelector('#task-panel [data-workspace="medium"]').click();
+    await tick();
+    const input = doc.querySelector('[data-action="medium-number"][data-base="glc__D"]');
+    input.value = String(value);
+    input.dispatchEvent(new app.Event('change', { bubbles: true }));
+    await waitFor(() => store.medium.glc__D === value, 'medium edit');
+    await tick();
+  }
+
+  async function upload(id, text, name) {
+    const input = doc.getElementById(id);
+    const transfer = new app.DataTransfer();
+    transfer.items.add(new app.File([text], name));
+    input.files = transfer.files;
+    input.dispatchEvent(new app.Event('change', { bubbles: true }));
+    await waitFor(() => input.value === '' && store.status.state !== 'busy', name);
+    await tick();
+  }
+
+  await medium(4);
+  const scenarioWrite = await startSave('export-state');
+  await medium(3);
+  await finishSave(scenarioWrite);
+  await new Promise(resolve => setTimeout(resolve, 220));
+  check('the held Scenario file contains its original inputs', JSON.parse(await scenarioWrite.blob.text()).medium.glc__D === 4);
+  check('an edit made during Scenario writing remains Unsaved in the actual badge',
+    store.unsavedWork().scenario && doc.getElementById('save-state').classList.contains('is-unsaved'));
+  await medium(4);
+  check('returning to the written Scenario inputs restores Saved', !store.unsavedWork().scenario);
+
+  const sharedWrite = await startSave('export-state');
+  store.createManualPathway({ name: 'Later pathway', color: '#123456', reactionIds: ['eco@PGI'] });
+  await finishSave(sharedWrite);
+  check('shared pathway settings edited during Scenario writing remain Unsaved', store.unsavedWork().map);
+  doc.querySelector('[data-action="map-undo"]').click();
+  await tick();
+  check('Undo restores the shared settings actually written in the Scenario', !store.unsavedWork().map);
+
+  store.addMapText('Written annotation', 200, 200);
+  const mapWrite = await startSave('map-save');
+  store.addMapText('Later annotation', 250, 250);
+  await finishSave(mapWrite);
+  const writtenMap = JSON.parse(await mapWrite.blob.text());
+  check('the held Map file contains only the annotation present when serialized',
+    writtenMap.map.texts.some(text => text.text === 'Written annotation')
+    && !writtenMap.map.texts.some(text => text.text === 'Later annotation'));
+  check('a drawing edit made during Map writing remains Unsaved', store.unsavedWork().map);
+  doc.querySelector('[data-action="map-undo"]').click();
+  await tick();
+  check('Undo back to the written drawing restores Saved', !store.unsavedWork().map);
+
+  const oldContext = await startSave('export-state');
+  const reopened = JSON.parse(store.stateJSON());
+  reopened.medium.glc__D = 9;
+  await upload('file-input', JSON.stringify(reopened), 'reopened-scenario.json');
+  await medium(8);
+  await finishSave(oldContext);
+  check('completion of an old save does not save edits in a reopened context with the same ID', store.unsavedWork().scenario);
+  await medium(9);
+  check('the reopened Scenario keeps its own saved baseline', !store.unsavedWork().scenario);
+
+  store.addMapText('Previous context map', 300, 300);
+  const oldMap = await startSave('map-save');
+  await store.useScenario('solo-ecoli');
+  store.addMapText('New context map', 350, 350);
+  await finishSave(oldMap);
+  check('completion of an old Map save does not save a replacement drawing', store.unsavedWork().map);
+  doc.querySelector('[data-action="map-undo"]').click();
+  await tick();
+  check('the replacement drawing keeps its original saved history', !store.unsavedWork().map);
+
+  await store.createModelMetabolite({ id: 'save_json_a_c', name: 'Written metabolite', compartment: 'c' });
+  const modelWrite = await startSave('export-model-json');
+  await store.createModelMetabolite({ id: 'save_json_b_c', name: 'Later metabolite', compartment: 'c' });
+  await finishSave(modelWrite);
+  const model = JSON.parse(await modelWrite.blob.text());
+  check('the held model JSON contains only the biological edit present when serialized',
+    model.metabolites.some(metabolite => metabolite.id === 'save_json_a_c')
+    && !model.metabolites.some(metabolite => metabolite.id === 'save_json_b_c'));
+  check('a biological edit made during model JSON writing remains Unsaved', store.unsavedWork().model);
+  await startSave('export-model-json', false);
+  check('a subsequent model JSON export saves the latest biological edits', !store.unsavedWork().model);
+
+  await store.createModelMetabolite({ id: 'save_xml_a_c', name: 'Written SBML metabolite', compartment: 'c' });
+  const xmlWrite = await startSave('export-model-sbml');
+  await store.createModelMetabolite({ id: 'save_xml_b_c', name: 'Later SBML metabolite', compartment: 'c' });
+  await finishSave(xmlWrite);
+  const xml = await xmlWrite.blob.text();
+  check('the held SBML contains only the biological edit present when serialized',
+    xml.includes('save_xml_a_c') && !xml.includes('save_xml_b_c'));
+  check('a biological edit made during SBML writing remains Unsaved', store.unsavedWork().model);
+
+  await medium(4);
+  const earlier = await startSave('export-state');
+  await medium(3);
+  const later = await startSave('export-state', false);
+  check('the newer completed save initially matches the current inputs',
+    !store.unsavedWork().scenario && JSON.parse(await later.blob.text()).medium.glc__D === 3);
+  await finishSave(earlier);
+  check('out-of-order completion records the contents of the last file actually written', store.unsavedWork().scenario);
+  await medium(4);
+  check('the last completed file remains the saved Scenario baseline', !store.unsavedWork().scenario);
+
+  await medium(2);
+  const failed = await startSave('export-state', true, true);
+  await medium(1);
+  await finishSave(failed);
+  check('a failed write aborts without saving either version of the Scenario',
+    failed.aborted && !failed.done && store.unsavedWork().scenario);
+  await startSave('export-state', false);
+  check('Save recovers after a write failure and saves the current Scenario', !store.unsavedWork().scenario);
+
+  await startSave('export-model-json', false);
+  await store.createModelMetabolite({ id: 'not_exported_c', name: 'Original cached model edit', compartment: 'c' });
+  const raw = JSON.parse(await (await fetch('../models/ecoli_core_mc.json')).text());
+  raw.id = 'save-after-import';
+  let finishRead;
+  let readStarted = false;
+  const read = app.File.prototype.text;
+  app.File.prototype.text = function () {
+    if (this.name !== 'replacement-model.json') {
+      return read.call(this);
+    }
+    readStarted = true;
+    return new Promise(resolve => {
+      finishRead = () => {
+        app.File.prototype.text = read;
+        resolve(JSON.stringify(raw));
+      };
+    });
+  };
+  const pendingImport = upload('model-file-input', JSON.stringify(raw), 'replacement-model.json');
+  await waitFor(() => readStarted, 'held model import');
+  const count = writes.length;
+  try {
+    clickExport('export-model-json');
+    finishRead();
+    await pendingImport;
+    await waitFor(() => writes.length === count + 1 && writes.at(-1).done, 'export after model import');
+    await tick();
+  } finally {
+    finishRead();
+  }
+  const replacementModel = JSON.parse(await writes.at(-1).blob.text());
+  check('model export behind a pending import serializes the replacement model', replacementModel.id === raw.id);
+  await store.useScenario('solo-ecoli');
+  check('exporting the replacement model does not mark the cached original model saved', store.unsavedWork().model);
+} catch (error) {
+  check(error.message, false);
+} finally {
+  for (const write of writes) {
+    write.release();
+  }
+}
+
+document.title = failures ? `FAIL (${failures})` : 'PASS';
+window.__checkComplete = Promise.resolve({ failures, total, lines });
+</script>
+</body>
+</html>

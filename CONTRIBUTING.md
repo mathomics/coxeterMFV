@@ -12,7 +12,7 @@ Include the release version, operating system, browser or desktop application, s
 
 Documentation fixes can be proposed directly here. For application changes, identify the working repository's source commit and explain the resulting behaviour. Keep changes focused and use straightforward code consistent with the surrounding modules. Include tests for changes to numerical methods, file formats or application behaviour.
 
-From `code/`, install the locked dependencies with `npm ci`, then run `npm test` and `npm run validate`. Native changes also need the relevant Rust tests. Follow [the release procedure](docs/RELEASING.md) when promoting source, changing dependencies or replacing an application build.
+From the repository root, install the locked dependencies with `npm ci`, then run `npm test` and `npm run validate`. Native changes also need the relevant Rust tests. Follow [the release procedure](docs/RELEASING.md) when promoting source, changing dependencies or replacing an application build.
 
 Do not edit generated HTML, model catalogues or executable files by hand. Do not include manuscript drafts, private source models, solver licences, credentials, temporary results or build caches in a promotion.
 
