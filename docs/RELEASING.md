@@ -58,7 +58,7 @@ Replace `FULL_WORKING_COMMIT` with the full 40-character identifier. Writing the
 
 ## Website
 
-`.github/workflows/pages.yml` publishes https://mathomics.github.io/coxeterMFV/ on every push to `main`: `site/index.html` and `site/help.html` at the root, and the promoted `index.html` as `app.html` next to the folders it reads. Settings > Pages > Source must be GitHub Actions. When the interface changes, check that `site/help.html` still describes it, and open the case-study links on the home page.
+`.github/workflows/pages.yml` publishes https://mathomics.github.io/coxeterMFV/ on every push to `main`: `site/index.html` and `site/help.html` at the root, and the promoted `index.html` as `app.html` next to the folders it reads. Settings > Pages > Source must be GitHub Actions. When the interface changes, check that `site/help.html` still describes it, and open the example links on the home page. Update the version in the footers of both pages with the software version.
 
 ## Publish and archive
 

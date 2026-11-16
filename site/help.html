@@ -1,9 +1,10 @@
 <!doctype html>
 <!--
-  Help page of the Coxeter-MFV website: how to start, which files the app
-  reads, what each analysis computes, how to read a solved map, what can be
-  saved, privacy and common problems. It describes the app in app.html and
-  leaves the longer notes in docs/ to the repository.
+  Help page of the Coxeter-MFV website: the parts of the screen, which files
+  the app reads, how to draw and edit the map, how to change the model and its
+  conditions, what each analysis computes, how to read a solved map and its
+  results, what can be saved, privacy and common problems. It describes the
+  app in app.html and leaves the longer notes in docs/ to the repository.
 -->
 <html lang="en" data-theme="light">
 <head>
@@ -17,25 +18,25 @@ try {
   document.documentElement.dataset.theme = theme === 'dark' || (theme !== 'light' && matchMedia('(prefers-color-scheme: dark)').matches) ? 'dark' : 'light';
 } catch (_) {}
 </script>
-<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect x='2' y='6' width='28' height='20' rx='6' fill='none' stroke='%230284c7' stroke-width='3'/><rect x='9' y='12' width='14' height='8' rx='4' fill='%23dc2626' opacity='.8'/></svg>">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 34 34'><path d='M7 25 14 17 19 8 27 13' fill='none' stroke='%232563eb' stroke-width='2.5' stroke-linecap='round'/><g fill='white' stroke='%232563eb' stroke-width='2.5'><circle cx='7' cy='25' r='4'/><circle cx='14' cy='17' r='3.3'/><circle cx='19' cy='8' r='4'/><circle cx='27' cy='13' r='3'/></g></svg>">
 <link rel="stylesheet" href="site.css">
 </head>
 <body>
 
-<header class="site-header">
+<header class="topline is-solid">
   <div class="wrap">
     <a class="brand" href="./">
-      <svg viewBox="0 0 34 34" aria-hidden="true">
-        <path d="M7 25 14 17 19 8 27 13" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"/>
+      <svg class="logo" viewBox="0 0 34 34" aria-hidden="true">
+        <path d="M7 25 14 17 19 8 27 13"/>
         <circle cx="7" cy="25" r="4"/><circle cx="14" cy="17" r="3.3"/><circle cx="19" cy="8" r="4"/><circle cx="27" cy="13" r="3"/>
       </svg>
       Coxeter-MFV
     </a>
-    <nav class="site-nav" aria-label="Site">
-      <a href="./#examples">Examples</a>
-      <a href="help.html" aria-current="page">Help</a>
-      <a href="./#cite">Cite</a>
-      <a href="app.html">Open the app</a>
+    <nav class="toplinks" aria-label="Site">
+      <a class="button small" href="help.html" aria-current="page">Help</a>
+      <a class="button small" href="./#faq">FAQ</a>
+      <a class="button small" href="https://github.com/mathomics/coxeterMFV">GitHub</a>
+      <a class="button small primary" href="app.html">Open the app</a>
     </nav>
   </div>
 </header>
@@ -45,10 +46,13 @@ try {
     <ol>
       <li><a href="#start">Getting started</a></li>
       <li><a href="#your-model">Your model</a></li>
+      <li><a href="#edit-map">Editing the map</a></li>
+      <li><a href="#edit-model">Changing the model</a></li>
       <li><a href="#analyses">Analyses</a></li>
       <li><a href="#reading-the-map">Reading the map</a></li>
-      <li><a href="#results">Results panel</a></li>
+      <li><a href="#results">Results</a></li>
       <li><a href="#saving">Saving and exporting</a></li>
+      <li><a href="#shortcuts">Keyboard shortcuts</a></li>
       <li><a href="#privacy">Privacy</a></li>
       <li><a href="#problems">Common problems</a></li>
     </ol>
@@ -56,58 +60,149 @@ try {
 
   <main>
     <h1>Help</h1>
-    <p>Coxeter-MFV draws a metabolic model as cells with nested compartments and solves it in your browser.
+    <p>Coxeter-MFV draws a metabolic model as a map of cells and compartments and solves it in your browser.
       The map shows part of the model, and every analysis solves the whole model.</p>
 
     <h2 id="start">Getting started</h2>
-    <p><a href="app.html">Open the app</a>. A welcome window offers three case studies and <b>Import a model</b>.
-      Close it to reach the editor, and reopen it with <b>?</b> in the header.</p>
-    <ul>
-      <li>The left panel has three tabs. <b>Edit Map</b> draws, <b>Edit Model</b> changes the network, medium and
-        scenario, and <b>Simulate</b> chooses the analysis.</li>
-      <li>The map is in the middle. The <b>Inspector</b> on the right describes the selected reaction, metabolite or cell.</li>
-      <li>Below the map are <b>Analysis results</b>, <b>Table view</b> and <b>Logs</b>.</li>
-    </ul>
-    <p>To solve, choose the analysis in the Simulate tab and press <b>Simulate</b>.</p>
-    <p>The three case studies open directly:
+    <p><a href="app.html">Open the app</a>. A welcome window offers the three case studies of the article and
+      <b>Import a model</b>. <b>Open the editor</b> closes it, <b>?</b> in the top bar opens it again, and
+      <b>Show at startup</b> stops it from opening each time. The case studies also open directly:
       <a href="app.html?scenario=yeast9-9-1-1">Yeast9 compartments</a>,
       <a href="app.html?scenario=pub:zuniga-2020-phea-rescue">phenylalanine rescue</a> and
       <a href="app.html?scenario=pub:steadycom-ecoli-auxotrophs">auxotrophic community</a>.</p>
 
+    <h3>The screen</h3>
+    <ul>
+      <li><b>Top bar.</b> <b>Find</b> searches every reaction of the model. <b>?</b> opens the welcome window and
+        <b>◐</b> switches between light and dark. <b>File</b> imports and exports, <b>Simulate</b> runs an analysis and
+        <b>Clear solution</b> removes it from the map. The status shows the last analysis, and <b>Saved</b> shows that
+        your work matches the last file saved or opened.</li>
+      <li><b>Left panel</b>, in three tabs. <b>Edit Map</b> holds the drawing tools, <b>Edit Model</b> the scenario,
+        species, medium, reactions, model and omics, and <b>Simulate</b> the analyses. <b>‹</b> collapses it and
+        <b>Focus mode</b> gives the map more space.</li>
+      <li><b>Map toolbar.</b> Show or hide the left panel, undo and redo map edits, zoom and fit the map, and choose the
+        labels, line color, cofactors, cross-feeding lines and line width. <b>Image</b> exports the map, <b>View</b>
+        holds further display options and <b>Inspector</b> shows or hides the right panel.</li>
+      <li><b>Right panel.</b> <b>Inspector</b> describes the selected reaction, metabolite or cell and edits it.
+        <b>Layout</b> sets the automatic layout and the canvas size.</li>
+      <li><b>Results panel</b>, below the map: <b>Analysis results</b>, <b>Table view</b> and <b>Logs</b>.</li>
+    </ul>
+    <p>Larger editors, such as Reactions &amp; bounds or Map options, open as full pages over the map.
+      <b>← Return to map</b> or <kbd>Esc</kbd> closes them.</p>
+
     <h2 id="your-model">Your model</h2>
     <table>
       <tr><th>File, Import</th><th>Reads</th></tr>
-      <tr><td>Model</td><td>SBML Level 3 with the FBC package, COBRA JSON, COBRA Toolbox MAT or Excel.
-        Select several files at once to build a community: each model becomes a cell, and the cells share one
-        extracellular medium.</td></tr>
-      <tr><td>Map JSON</td><td>A saved Coxeter-MFV map. Import the model first so the map's identifiers can be
-        matched to it.</td></tr>
-      <tr><td>Flux data</td><td>Fluxes computed elsewhere, as Escher reaction data JSON or a CSV of reactions and fluxes.</td></tr>
-      <tr><td>Metatranscriptomics</td><td>Expression tables as CSV or TSV.</td></tr>
+      <tr><td>Model</td><td>SBML Level 3 with the FBC package, COBRA JSON, COBRA Toolbox MAT or Excel. Select several
+        files at once to build a community: each model becomes a cell, and the cells share one extracellular medium.</td></tr>
+      <tr><td>Metatranscriptomics</td><td>A CSV or TSV table with species or MAG, gene, condition and expression.</td></tr>
+      <tr><td>Map JSON</td><td>A map saved by Coxeter-MFV. Import its model first; a map opened before its model waits
+        for it, and <b>Forget waiting map</b> drops it.</td></tr>
+      <tr><td>Flux data</td><td>Fluxes computed elsewhere, as Escher reaction data JSON or a CSV of reactions and
+        fluxes. They are drawn like a solution.</td></tr>
+      <tr><td>Scenario</td><td>The conditions of an analysis saved by Coxeter-MFV.</td></tr>
+      <tr><td>Reproducibility bundle</td><td>A saved analysis, which solves again and is compared with the stored result.</td></tr>
     </table>
-    <p>Without a map, the app lays out models of up to about 350 reactions per organism, and an overview of core
-      metabolism for larger ones. You can then move, reshape and add elements; drawing never changes the model.</p>
+    <p>Species can also be added under Edit Model, <b>Species &amp; abundance</b>: <b>Load model(s)</b> reads files,
+      and <b>Yeast9 9.1.1</b> loads the official Yeast9 model. Gene expression and proteomics tables are read under
+      <b>Omics &amp; expression</b>.</p>
+    <p>Without a map, the app lays out models of up to about 350 reactions per organism. Larger models start from an
+      overview of core metabolism that you can extend. Drawing never changes the model.</p>
     <p>Sample files: the Yeast9 9.1.1 model
       (<a href="examples/yeast9-cytosol-mitochondria-peroxisome/yeastgem_v9.1.1-edited.json" download>JSON, 3.4 MB</a>)
       and its map of the cytoplasm, mitochondrion and peroxisome
       (<a href="examples/yeast9-cytosol-mitochondria-peroxisome/yeast9_cytosol_mitochondria_peroxisome.json" download>JSON, 0.8 MB</a>).
       Import the model, then the map.</p>
 
+    <h2 id="edit-map">Editing the map</h2>
+    <p>Map edits change only the drawing, never the model, and each can be undone.</p>
+    <h3>Tools</h3>
+    <table>
+      <tr><th>Edit Map tool</th><th>Use</th></tr>
+      <tr><td>Select</td><td>Click an object to inspect it, drag it to move it, or drag the background to select several.
+        <kbd>Shift</kbd>- or <kbd>Ctrl</kbd>-click adds to the selection.</td></tr>
+      <tr><td>Pan Mode</td><td>Drag to move around the map.</td></tr>
+      <tr><td>Edit Control Points</td><td>Drag the handles of a reaction to reshape its curve.</td></tr>
+      <tr><td>Add Reaction</td><td>Click a metabolite to add one of its reactions, free space in a compartment to add a
+        reaction there, or a membrane to add a transport reaction across it. Choose the reaction, then one of eight
+        directions to place it.</td></tr>
+      <tr><td>Add Metabolite</td><td>Click free space in a compartment to place one of its metabolites.</td></tr>
+      <tr><td>Text</td><td>Click to place a free text label.</td></tr>
+      <tr><td>Add Compartment</td><td>Draw a compartment of the model that is not on the map yet.</td></tr>
+      <tr><td>Add Cell</td><td>Draw a species of the model as a cell.</td></tr>
+    </table>
+    <p><kbd>Delete</kbd> removes the selected reaction or metabolite from the map.</p>
+
+    <h3>Inspector</h3>
+    <ul>
+      <li>A <b>reaction</b> shows its equation, gene rule, genes, subsystem, annotations, flux, reduced costs and
+        bounds. Bounds change with sliders or typed values, and <b>Knockout</b> closes the reaction. Under
+        <b>Map drawing</b>, it can be curved or straight, aligned, mirrored, rotated, turned around, tidied or deleted
+        from the map, and given its own label and color.</li>
+      <li>A <b>metabolite</b> shows its formula, charge, shadow price and reactions. It can be primary or secondary
+        (smaller), recolored, duplicated to untangle lines, or hidden.</li>
+      <li>A <b>cell</b> shows its species, compartments, abundance and growth rate.</li>
+      <li>Several selected objects can be aligned, distributed, evenly spaced, rotated, or laid out as a circle with
+        <b>Circularize</b>, as for the TCA cycle.</li>
+    </ul>
+
+    <h3>Map pages</h3>
+    <table>
+      <tr><th>Edit Map page</th><th>Use</th></tr>
+      <tr><td>Reaction library</td><td>Search every reaction of the model. <b>Select</b> finds a drawn one on the map,
+        and <b>Add to map</b> draws one that is not.</td></tr>
+      <tr><td>Structure</td><td>Draw the model's compartments and cells, choosing each compartment's shape. Resize the
+        canvas, clear the drawing or draw the full model.</td></tr>
+      <tr><td>Map options</td><td>Move and resize cells and compartments (<b>Edit geometry</b>), select several objects
+        (<b>Multi-select</b>), line colors and widths, metabolite circle colors, pathway ribbons, the
+        <b>Pathway Manager</b> for pathways you define, the canvas and the <b>Legend</b>.</td></tr>
+    </table>
+    <p>The <b>Layout</b> tab, in the right panel, reruns the automatic layout with a preset (Compact, Normal or
+      Spacious) or your own cell area, cell spacing, compartment size and node spacing, and sets the canvas size.
+      For a model too large to lay out automatically, the presets keep a drawing made by hand.</p>
+
+    <h2 id="edit-model">Changing the model</h2>
+    <p>These pages, under Edit Model, change the model or its conditions. Solve again to see the effect.</p>
+    <table>
+      <tr><th>Edit Model page</th><th>Use</th></tr>
+      <tr><td>Scenario &amp; objective</td><td>Choose a scenario: a teaching scenario or a published community, with its
+        source, its species' models (JSON or SBML), medium and bounds (CSV) and published results. Set the objective,
+        and for a community solve SteadyCom at a fixed growth rate.</td></tr>
+      <tr><td>Species &amp; abundance</td><td>Each species' abundance in the community, which sum to 1, and its
+        compartments. Add species from model files.</td></tr>
+      <tr><td>Shared medium</td><td>The uptake limit of each metabolite, in mmol gDW⁻¹ h⁻¹. At 0 a metabolite is
+        available only if a species secretes it.</td></tr>
+      <tr><td>Reactions &amp; bounds</td><td>Every reaction, grouped by type, compartment, species, subsystem or pathway,
+        and filtered by exchanges, modified, active, blocked, on or off the map, or knocked out. Edit bounds, knock out
+        reactions or genes (through the gene rules), set the objective, undo changes, and import or export bounds as CSV.</td></tr>
+      <tr><td>Biological model</td><td>Add metabolites and reactions to a species' model, see its size, and export it
+        as COBRA JSON or SBML.</td></tr>
+      <tr><td>Omics &amp; expression</td><td>Overlay gene expression or proteomics (a CSV with identifiers and two
+        conditions) or metatranscriptomics, compare conditions, and run GIMME. Values reach reactions through the gene
+        rules: the minimum for AND and the maximum for OR.</td></tr>
+    </table>
+    <p>The objective can be any reaction with any coefficient, maximized or minimized. For a community, choose equal
+      growth of all species (shared μ) or a weighted sum of their biomass reactions.</p>
+
     <h2 id="analyses">Analyses</h2>
+    <p>Run an analysis from <b>Simulate</b> in the top bar or the Simulate tab. <b>Simulation settings</b> sets the
+      objective, the fraction of the optimum pFBA keeps, loopless and FVA.</p>
     <table>
       <tr><th>Analysis</th><th>What it computes</th></tr>
       <tr><td>FBA</td><td>A flux distribution that optimizes the objective, usually growth, at steady state within the bounds.</td></tr>
-      <tr><td>pFBA</td><td>Fixes the objective at a chosen fraction of its optimum, 100% by default, and minimizes total absolute flux.</td></tr>
-      <tr><td>FVA</td><td>The minimum and maximum flux of each reaction at the chosen objective requirement.</td></tr>
-      <tr><td>Loopless FBA</td><td>FBA with constraints that exclude internal cycles.</td></tr>
+      <tr><td>pFBA</td><td>Keeps the objective at a chosen fraction of its optimum, 100% by default, and minimizes total absolute flux.</td></tr>
+      <tr><td>FVA</td><td>The minimum and maximum flux of each reaction at the chosen objective requirement. Run FBA, pFBA or
+        Loopless first.</td></tr>
+      <tr><td>pFVA</td><td>The same ranges among solutions with the least total flux of pFBA.</td></tr>
+      <tr><td>Loopless FBA</td><td>FBA with constraints that exclude internal cycles. Slower, as a mixed-integer problem.</td></tr>
       <tr><td>CycleFreeFlux</td><td>Removes internal cycles from an FBA solution, keeping its objective and exchange fluxes.</td></tr>
-      <tr><td>SteadyCom</td><td>Grows all members of a community at one rate, μ, finds the largest feasible μ and predicts each member's abundance.</td></tr>
-      <tr><td>GIMME</td><td>Builds a context-specific model from gene expression data.</td></tr>
+      <tr><td>SteadyCom</td><td>For a community: all species grow at one rate, μ. <b>Calculate range</b> finds the feasible μ
+        and <b>Solve at this μ</b> predicts each species' abundance. Under Scenario &amp; objective.</td></tr>
+      <tr><td>GIMME</td><td>A context-specific solution that penalizes flux through reactions whose expression is below a
+        threshold. Under Omics &amp; expression.</td></tr>
     </table>
-    <p>Change the medium, bounds and reaction or gene knockouts from the map or under Edit Model, then solve again.
-      The browser solves with GLPK.</p>
-    <p>An FBA optimum is usually one of many. Before reading much into an internal flux, compare it with pFBA,
-      CycleFreeFlux or its FVA range.</p>
+    <p>The browser solves with GLPK. An FBA optimum is usually one of many: before reading much into an internal flux,
+      compare it with pFBA, CycleFreeFlux or its FVA range.</p>
 
     <h2 id="reading-the-map">Reading the map</h2>
 
@@ -138,38 +233,60 @@ try {
       <svg viewBox="0 0 64 22" aria-hidden="true"><path d="M4 11 H60" stroke="#db2777" stroke-width="3" stroke-dasharray="8 5"/></svg>
       <p>Pink and dashed: closed, with both bounds at 0, for example after a reaction or gene knockout.</p>
     </div>
-    <p>The <b>Color</b> menu can also show absolute flux from white to red, or color by subsystem or pathway. The <b>Labels</b>
-      menu chooses which reactions are labeled, and <b>Cofactors</b> shows or hides secondary metabolites such as ATP
-      and NADH.</p>
+
+    <h3>Display options</h3>
+    <ul>
+      <li><b>Color</b> colors lines by flux, by absolute flux from white to red, by pathway or by subsystem. Map options
+        also offers your own color scale, and <b>Pathway ribbons</b> draw a translucent band behind the reactions of each
+      subsystem or pathway.</li>
+      <li><b>Labels</b> labels the reactions with major fluxes, all active reactions, all reactions or none. Under
+        <b>View</b>, labels can show model IDs, names, EC numbers or database identifiers such as BiGG, KEGG or MetaNetX,
+        when the model has them.</li>
+      <li><b>Cofactors</b> shows or hides secondary metabolites such as ATP, NADH and H⁺. Under View, cofactors can
+        also be labeled or drawn small and light.</li>
+      <li>Under View, <b>Map view</b> switches between the full map and core metabolism, and the scrolling choice sets
+        whether the mouse wheel zooms or a touchpad pans.</li>
+    </ul>
 
     <h3>Flux ranges</h3>
-    <p>With FVA on, each drawn reaction shows <code>[minimum, maximum]</code> after its name. Each bound comes from
-      its own optimization, so the bounds of different reactions need not occur in the same solution. A range of a
-      single value means the flux is the same in every optimum.</p>
+    <p>With FVA or pFVA on, each drawn reaction shows <code>[minimum, maximum]</code> after its name. Each bound comes
+      from its own optimization, so the bounds of different reactions need not occur in the same solution. A range of a
+      single value means the flux is the same in every optimum. In Reactions &amp; bounds, <b>Blocked</b> lists the
+      reactions whose range is 0 to 0.</p>
 
     <h3>Communities</h3>
     <ul>
       <li><b>Cross-feeding</b>, in the toolbar, highlights metabolites that pass between cells through the shared
-        medium, one color per metabolite. The Legend lists them with their number of lines.</li>
+        medium, one color per metabolite. The Legend lists them with their number of lines. Under View, choose how
+        many are shown, or pick them one by one, and set their line width.</li>
       <li>A solution says how much each cell secretes and takes up, not who feeds whom. The app splits each
         metabolite's transfer among producer and consumer pairs in proportion to their secretion and uptake,
         counting external supply as a producer and washout as a consumer.</li>
-      <li>The <b>Cross-Feeding Explorer</b> lists each transfer with its producer, consumer and flux, and filters them.</li>
+      <li>The <b>Cross-feeding explorer</b>, in the Simulate tab, lists each transfer with its producer, consumer and
+        flux, and chooses which metabolites appear on the map.</li>
       <li>After SteadyCom, reaction lines are in mmol per gDW of that species per hour, and cross-feeding lines in
         mmol per gDW of the whole community per hour, which is abundance times flux.</li>
     </ul>
 
     <h3>Differences</h3>
-    <p>In the phenylalanine rescue example, <b>Δ flux vs WT monoculture</b> colors each reaction by its change from
-      the wild type, blue for a decrease and red for an increase.</p>
+    <p>In the phenylalanine rescue example, Scenario &amp; objective chooses the case to solve, and <b>Flux display</b>,
+      <b>Δ flux vs WT monoculture</b>, colors each reaction by its change from the wild type, blue for a decrease and
+      red for an increase.</p>
 
     <h3>Reactions that are not drawn</h3>
-    <p>Every analysis uses the complete model, so reactions that are not on the map can still carry flux. In the
-      reaction list, the <b>Not on map</b> filter shows them, and <b>Active</b> shows every reaction with flux.</p>
+    <p>Every analysis uses the complete model, so reactions that are not on the map can still carry flux. In Reactions
+      &amp; bounds, <b>Not on map</b> shows them, and <b>Active</b> shows every reaction with flux.</p>
 
-    <h2 id="results">Results panel</h2>
-    <p><b>Analysis results</b> reports the status, objective value, solver and computation time. <b>Table view</b>
-      lists the reaction fluxes, and <b>Logs</b> keeps a record of each run.</p>
+    <h2 id="results">Results</h2>
+    <ul>
+      <li><b>Analysis results</b> reports the status, objective value, solver and computation time. Its tabs list the
+        largest fluxes, the FVA ranges, the reduced costs, scaled and unscaled, the shadow prices, and the comparison of
+        a reproducibility replay. Values the solver does not return are marked as such.</li>
+      <li><b>Table view</b> lists every reaction's flux, and the shadow prices of the metabolites.
+        <b>Open in Reactions</b> opens the full table.</li>
+      <li><b>Logs</b> records each run with its time.</li>
+      <li>The Inspector shows the same values for the selected reaction or metabolite.</li>
+    </ul>
 
     <h2 id="saving">Saving and exporting</h2>
     <p>Your current work is kept in this browser. Save files to keep it elsewhere or share it.</p>
@@ -177,19 +294,34 @@ try {
       <tr><th>File, Export</th><th>Use</th></tr>
       <tr><td>Map JSON</td><td>Layout, cell boundaries and drawing choices.</td></tr>
       <tr><td>Model JSON or SBML</td><td>The network, for this or other tools.</td></tr>
-      <tr><td>SVG or PNG map</td><td>Figures. SVG keeps vector geometry.</td></tr>
+      <tr><td>SVG or PNG map</td><td>Figures. SVG keeps vector geometry. Also under <b>Image</b> in the toolbar.</td></tr>
       <tr><td>Flux table (CSV)</td><td>Reaction fluxes, for analysis elsewhere.</td></tr>
+      <tr><td>Flux data (JSON)</td><td>Reaction fluxes as Escher reaction data, which Escher and COBRApy read.</td></tr>
       <tr><td>Scenario</td><td>The conditions of an analysis, such as bounds and objective.</td></tr>
       <tr><td>Reproducibility bundle</td><td>Model, map, settings and solution with SHA-256 checksums. Importing it
         solves again and compares the result with the stored one.</td></tr>
       <tr><td>Methods / provenance report</td><td>The software version, solver and settings, for a methods section.</td></tr>
     </table>
+    <p>Reactions &amp; bounds also exports and imports the bounds as CSV, and Scenario &amp; objective downloads each
+      published model and its reproduced findings.</p>
+
+    <h2 id="shortcuts">Keyboard shortcuts</h2>
+    <table>
+      <tr><th>Keys</th><th>Action</th></tr>
+      <tr><td><kbd>Ctrl</kbd> <kbd>F</kbd></td><td>Find a reaction.</td></tr>
+      <tr><td><kbd>Ctrl</kbd> <kbd>Z</kbd></td><td>Undo the last map edit.</td></tr>
+      <tr><td><kbd>Ctrl</kbd> <kbd>Y</kbd> or <kbd>Ctrl</kbd> <kbd>Shift</kbd> <kbd>Z</kbd></td><td>Redo.</td></tr>
+      <tr><td><kbd>Delete</kbd></td><td>Remove the selected reaction or metabolite from the map.</td></tr>
+      <tr><td><kbd>+</kbd> <kbd>−</kbd> <kbd>0</kbd></td><td>Zoom in, zoom out, fit the map.</td></tr>
+      <tr><td><kbd>Esc</kbd></td><td>Close a page or menu, or cancel a drag.</td></tr>
+    </table>
+    <p>On a Mac, use <kbd>⌘</kbd> for <kbd>Ctrl</kbd>.</p>
 
     <h2 id="privacy">Privacy</h2>
     <p>Every calculation runs in your browser. Models, maps and results are not uploaded. There is no login, no cookie
       and no tracking. The app keeps your work in this browser's storage, and a private window forgets it when closed.
-      Links to databases such as BiGG or KEGG open only when you click them, and the phenylalanine rescue example
-      downloads the authors' public model files.</p>
+      Links to databases such as BiGG or KEGG open only when you click them. The Yeast9 and phenylalanine rescue
+      examples download public model files.</p>
 
     <h2 id="problems">Common problems</h2>
     <table>
@@ -198,21 +330,24 @@ try {
         For communities, also the abundances.</td></tr>
       <tr><td>Internal fluxes change between runs or solvers</td><td>Alternative optima. Compare the objective values,
         and use pFBA or FVA.</td></tr>
-      <tr><td>The phenylalanine rescue does not load</td><td>It needs an internet connection the first time, to
-        download and verify the authors' models.</td></tr>
+      <tr><td>FVA or pFVA cannot be chosen</td><td>Run FBA, pFBA or Loopless first.</td></tr>
+      <tr><td>A reaction carries flux but is not on the map</td><td>It is not drawn. Find it under Reactions &amp; bounds,
+        Not on map, and add it with the Reaction library.</td></tr>
+      <tr><td>An example does not load</td><td>Yeast9 and the phenylalanine rescue need an internet connection to
+        download their models.</td></tr>
       <tr><td>Something else</td><td>Report it on <a href="https://github.com/mathomics/coxeterMFV/issues">GitHub issues</a>,
         with the browser and a small example. Avoid posting unpublished or personal data.</td></tr>
     </table>
-    <p>Coxeter-MFV runs in current desktop browsers and was tested in Chromium and Firefox.
+    <p>Coxeter-MFV runs in current browsers and is tested in Chromium and Firefox.
       <a href="app/coxeter_mfv.html" download>Download the single-file app</a> to work offline.</p>
   </main>
 </div>
 
 <footer class="site-footer">
   <div class="wrap">
-    <p>Coxeter-MFV is developed at the Center for Mathematical Modeling, University of Chile.
-      Code under the <a href="https://github.com/mathomics/coxeterMFV/blob/main/LICENSE">MIT License</a>; the app as
-      distributed is <a href="https://github.com/mathomics/coxeterMFV/blob/main/LICENSES/GPL-3.0.txt">GPL-3.0</a>.</p>
+    <p><a href="./">Home</a> · <a href="https://github.com/mathomics/coxeterMFV">GitHub</a> ·
+      <a href="https://github.com/mathomics/coxeterMFV/issues">Issues</a></p>
+    <p>Version 0.1.0 · © 2026 The Coxeter-MFV authors</p>
   </div>
 </footer>
 
