@@ -3,7 +3,8 @@
  * (app.html) keeps its own styles in assets/. The colours and buttons repeat the
  * app's tokens so the site and the app look like one thing, in both themes. The
  * home page follows the layout of the Escher website: a masthead, a launcher,
- * then sections separated by rules with their heading on the left.
+ * then sections separated by rules with their heading on the left. All text is
+ * at full size and colour; there are no grey subtitles or notes.
  */
 
 :root {
@@ -164,18 +165,10 @@ kbd {
   letter-spacing: -.01em;
 }
 
-.masthead .tagline {
-  margin: 8px 0 0;
-  font-size: 20px;
-  font-style: italic;
-  color: var(--ink-2);
-}
-
 .lead {
   max-width: 780px;
   margin: 18px 0 0;
-  font-size: 18px;
-  color: var(--ink-2);
+  font-size: 19px;
 }
 
 /* Launcher */
@@ -209,8 +202,6 @@ select {
   font-weight: 400;
 }
 
-.note { color: var(--ink-2); font-size: 15px; margin: 12px 0 0; }
-
 .shot {
   margin: 24px 0 0;
   background: var(--panel);
@@ -219,8 +210,6 @@ select {
   box-shadow: var(--shadow);
   overflow: hidden;
 }
-
-.shot figcaption { padding: 10px 16px; color: var(--ink-2); font-size: 14px; border-top: 1px solid var(--line); }
 
 /* Sections: heading on the left, content on the right, separated by rules */
 
@@ -235,9 +224,7 @@ select {
 .page > .block:first-of-type { margin-top: 32px; }
 
 .block > h2 { margin: 0; font-size: 26px; line-height: 1.2; }
-.block > h2 small { display: block; margin-top: 6px; font-size: 15px; font-weight: 400; color: var(--ink-2); }
-.block > div > p:first-child { margin-top: 0; }
-.block > div > p:last-child { margin-bottom: 0; }
+.block > p { margin: 0; }
 
 .cards {
   display: grid;
@@ -256,8 +243,7 @@ select {
 }
 
 .card h3 { margin: 0; font-size: 17px; }
-.card p { margin: 0; color: var(--ink-2); font-size: 15px; }
-.card .source { font-size: 13px; }
+.card p { margin: 0; }
 .card .button { align-self: flex-start; margin-top: auto; }
 
 .facts {
@@ -274,16 +260,13 @@ select {
 }
 
 .facts h3 { margin: 0 0 4px; font-size: 16px; }
-.facts p { margin: 0; color: var(--ink-2); font-size: 15px; }
+.facts p { margin: 0; }
 
 .faq { margin: 0; padding-left: 22px; }
 .faq li { margin: 0 0 20px; padding-left: 4px; }
 .faq li:last-child { margin-bottom: 0; }
 .faq h3 { margin: 0 0 4px; font-size: 17px; }
-.faq p { margin: 0 0 6px; color: var(--ink-2); }
-
-.credit { padding: 24px 0 36px; border-top: 1px solid var(--line); text-align: center; color: var(--ink-2); font-size: 15px; }
-.credit p { margin: 4px 0; }
+.faq p { margin: 0; }
 
 /* Help page */
 
@@ -329,20 +312,21 @@ tr:last-child td { border-bottom: 0; }
 /* Footer */
 
 .site-footer {
+  margin-top: 16px;
   background: var(--foot-bg);
   color: var(--foot-ink);
   padding: 18px 0;
-  font-size: 14px;
+  font-size: 15px;
 }
 
 .site-footer .wrap { display: flex; flex-wrap: wrap; gap: 6px 24px; justify-content: space-between; }
 .site-footer p { margin: 0; }
 .site-footer a { color: var(--foot-link); }
+.foot-links { display: flex; gap: 18px; }
 
 @media (max-width: 760px) {
   .masthead { gap: 16px; padding-top: 16px; }
   .masthead .logo { width: 72px; height: 72px; }
-  .masthead .tagline { font-size: 17px; }
   .lead { font-size: 17px; }
   .block { grid-template-columns: 1fr; padding: 24px 0; }
   .doc { grid-template-columns: 1fr; gap: 16px; }

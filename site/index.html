@@ -11,8 +11,8 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Coxeter-MFV · Coxeter Multicell Flux Visualizer</title>
-<meta name="description" content="Coxeter-MFV is a free web app that draws metabolic models as cells and compartments and runs flux balance analysis on them in the browser.">
+<title>Coxeter-MFV</title>
+<meta name="description" content="A free web app that draws metabolic models as cells and compartments and runs flux balance analysis on them.">
 <script>
 try {
   const theme = localStorage.getItem('coxeter-theme');
@@ -41,16 +41,12 @@ try {
       <path d="M7 25 14 17 19 8 27 13"/>
       <circle cx="7" cy="25" r="4"/><circle cx="14" cy="17" r="3.3"/><circle cx="19" cy="8" r="4"/><circle cx="27" cy="13" r="3"/>
     </svg>
-    <div>
-      <h1>Coxeter-MFV</h1>
-      <p class="tagline">Metabolic maps and flux analysis for cells and microbial communities</p>
-    </div>
+    <h1>Coxeter-MFV</h1>
   </div>
 
-  <p class="lead">Coxeter-MFV is a free web app for metabolic modeling. Open a model of one organism or of a microbial
-    community, see it drawn as cells and compartments, and run flux balance analysis on it. The results appear on the
-    map, showing which reactions carry flux, in which compartment and in which organism. Use it to explore a model,
-    test media and knockouts, follow cross-feeding between species and make figures.</p>
+  <p class="lead">A free web app that draws metabolic models of organisms and microbial communities as cells and
+    compartments, and runs flux balance analysis on them. Use it to explore a model, test media and knockouts,
+    follow cross-feeding between species and make figures.</p>
 
   <section class="launcher" aria-label="Open the app">
     <div class="launch-row">
@@ -70,53 +66,44 @@ try {
             <option value="consorcio-anaerobio">Anaerobic consortium (4 species)</option>
             <option value="aerobio-mixto">Aerobic co-culture (E. coli and yeast)</option>
             <option value="fototrofo-heterotrofo">Phototroph-heterotroph mutualism</option>
-            <option value="metanogenesis">Digester: E. coli and a methanogen</option>
+            <option value="metanogenesis">E. coli and a methanogen in a digester</option>
             <option value="todas">All five species</option>
-            <option value="solo-ecoli">A single cell: E. coli</option>
-            <option value="solo-levadura">A single cell: yeast</option>
+            <option value="solo-ecoli">E. coli alone</option>
+            <option value="solo-levadura">Yeast alone</option>
           </optgroup>
         </select>
       </label>
       <a class="button primary" id="open-app" href="app.html">Open the app</a>
       <a class="button" href="help.html">Help</a>
     </div>
-    <p class="note">Free, no login. Runs in your browser, so your models stay on your computer.</p>
   </section>
 
   <figure class="shot">
     <img src="docs/images/app-community-light.png" width="1600" height="1000"
       alt="The Coxeter-MFV editor showing four cells, L. lactis, E. coli, M. barkeri and S. cerevisiae, with their compartments and fluxes drawn as colored lines">
-    <figcaption>A four-species anaerobic consortium after FBA. Each cell shows its growth rate, and line color and width follow flux.</figcaption>
   </figure>
 
   <section class="block" id="examples">
-    <h2>Case studies<small>From the article. Each opens in the app.</small></h2>
-    <div>
-      <div class="cards">
-        <article class="card">
-          <h3>Yeast9 compartments</h3>
-          <p>The official Yeast9 model of <i>S. cerevisiae</i>, 4105 reactions, drawn across the cytoplasm, mitochondrion
-            and peroxisome. The model downloads from yeast-GEM when it opens. Press Simulate to solve it.</p>
-          <p class="source">Model from <a href="https://doi.org/10.1038/s44320-024-00060-7">Zhang et al. 2024</a></p>
-          <a class="button primary" href="app.html?scenario=yeast9-9-1-1">Open</a>
-        </article>
-        <article class="card">
-          <h3>Phenylalanine rescue</h3>
-          <p><i>S. elongatus</i> releases phenylalanine that lets an <i>E. coli</i> Δ<i>pheA</i> mutant grow. Opens
-            solved. The authors' models download the first time.</p>
-          <p class="source">Community from <a href="https://doi.org/10.1038/s41467-020-17612-8">Zuñiga et al. 2020</a></p>
-          <a class="button primary" href="app.html?scenario=pub:zuniga-2020-phea-rescue">Open</a>
-        </article>
-        <article class="card">
-          <h3>Auxotrophic community</h3>
-          <p>Four <i>E. coli</i> strains that need each other's amino acids, solved with SteadyCom at the maximum
-            community growth rate. Cross-feeding lines show who feeds whom.</p>
-          <p class="source">Strains from <a href="https://doi.org/10.1371/journal.pcbi.1005539">Chan et al. 2017</a></p>
-          <a class="button primary" href="app.html?scenario=pub:steadycom-ecoli-auxotrophs">Open</a>
-        </article>
-      </div>
-      <p class="note">More examples are in the list above and in the app under Edit Model, Scenario &amp; objective.
-        <a href="help.html#reading-the-map">How to read the map</a>.</p>
+    <h2>Case studies</h2>
+    <div class="cards">
+      <article class="card">
+        <h3>Yeast9 compartments</h3>
+        <p>The Yeast9 model of <i>S. cerevisiae</i>, with 4105 reactions, drawn across the cytoplasm, mitochondrion and
+          peroxisome (<a href="https://doi.org/10.1038/s44320-024-00060-7">Zhang et al. 2024</a>).</p>
+        <a class="button primary" href="app.html?scenario=yeast9-9-1-1">Open</a>
+      </article>
+      <article class="card">
+        <h3>Phenylalanine rescue</h3>
+        <p><i>S. elongatus</i> releases phenylalanine that lets an <i>E. coli</i> Δ<i>pheA</i> mutant grow
+          (<a href="https://doi.org/10.1038/s41467-020-17612-8">Zuñiga et al. 2020</a>).</p>
+        <a class="button primary" href="app.html?scenario=pub:zuniga-2020-phea-rescue">Open</a>
+      </article>
+      <article class="card">
+        <h3>Auxotrophic community</h3>
+        <p>Four <i>E. coli</i> strains that exchange the amino acids they cannot make, solved with SteadyCom
+          (<a href="https://doi.org/10.1371/journal.pcbi.1005539">Chan et al. 2017</a>).</p>
+        <a class="button primary" href="app.html?scenario=pub:steadycom-ecoli-auxotrophs">Open</a>
+      </article>
     </div>
   </section>
 
@@ -125,12 +112,11 @@ try {
     <div class="facts">
       <div>
         <h3>Open your own model</h3>
-        <p>SBML, COBRA JSON, COBRA Toolbox MAT or Excel. Several models make a community.
-          <a href="help.html#your-model">Formats and sample files</a>.</p>
+        <p>SBML, COBRA JSON, MAT or Excel. Several models make a community.</p>
       </div>
       <div>
         <h3>Draw cells and compartments</h3>
-        <p>Small models are laid out for you. Move, reshape and add reactions, metabolites, compartments and cells.</p>
+        <p>Automatic layout, then move, reshape and add reactions, metabolites, compartments and cells.</p>
       </div>
       <div>
         <h3>Analyze</h3>
@@ -138,15 +124,15 @@ try {
       </div>
       <div>
         <h3>Change conditions</h3>
-        <p>Edit the medium, bounds, reaction and gene knockouts and species abundances, then solve again.</p>
+        <p>Medium, bounds, reaction and gene knockouts, and species abundances.</p>
       </div>
       <div>
         <h3>Study communities</h3>
-        <p>See which metabolites pass between species, with the Cross-Feeding Explorer and lines on the map.</p>
+        <p>Metabolites exchanged between species, in the Cross-Feeding Explorer and on the map.</p>
       </div>
       <div>
         <h3>Add omics data</h3>
-        <p>Overlay gene expression, proteomics or metatranscriptomics, and build context-specific models with GIMME.</p>
+        <p>Gene expression, proteomics and metatranscriptomics, and GIMME context-specific models.</p>
       </div>
       <div>
         <h3>Export</h3>
@@ -154,18 +140,16 @@ try {
       </div>
       <div>
         <h3>Reproduce</h3>
-        <p>Save a bundle of model, map, settings and solution, with checksums, that solves again when opened.</p>
+        <p>Bundles of model, map, settings and solution, with checksums, that solve again when opened.</p>
       </div>
     </div>
   </section>
 
   <section class="block" id="offline">
     <h2>Offline and desktop</h2>
-    <div>
-      <p><a href="app/coxeter_mfv.html" download>Download the app as a single HTML file</a> (18 MB) and open it with
-        no internet connection. A Windows desktop version, with the HiGHS solver and optionally Gurobi or CPLEX, is in
-        the <a href="https://github.com/mathomics/coxeterMFV/tree/main/app">repository</a>.</p>
-    </div>
+    <p><a href="app/coxeter_mfv.html" download>Download the single-file app</a> (18 MB) to work offline. A Windows
+      version, with HiGHS and optionally Gurobi or CPLEX, is in the
+      <a href="https://github.com/mathomics/coxeterMFV/tree/main/app">repository</a>.</p>
   </section>
 
   <section class="block" id="faq">
@@ -173,89 +157,75 @@ try {
     <ol class="faq">
       <li>
         <h3>What is Coxeter-MFV?</h3>
-        <p>A web app that draws metabolic models as maps of cells and compartments and runs flux balance analysis on
-          them. To start, choose an example above and press <b>Open the app</b>, or read the <a href="help.html">help</a>.</p>
+        <p>A web app that draws metabolic models as maps of cells and compartments and runs flux balance analysis on them.</p>
       </li>
       <li>
         <h3>Do I need to install anything or create an account?</h3>
-        <p>No. It runs in a current web browser with no login. To work offline,
-          <a href="app/coxeter_mfv.html" download>download the single-file app</a>.</p>
+        <p>No. It runs in the browser, with no login.</p>
       </li>
       <li id="privacy">
         <h3>Are my models uploaded?</h3>
-        <p>No. Every calculation runs in your browser, and models, maps and results stay on your computer. The app keeps
-          your current work in this browser's storage so that it survives a reload. There is no cookie and no tracking.
-          The Yeast9 and phenylalanine rescue examples download public model files, and database links open only when
-          you click them. The site is hosted on GitHub Pages.</p>
+        <p>No. Calculations run in your browser, and there is no cookie or tracking. The Yeast9 and phenylalanine
+          rescue examples download public model files.</p>
       </li>
       <li>
         <h3>Which files can I open?</h3>
-        <p>Models in SBML Level 3 with FBC, COBRA JSON, COBRA Toolbox MAT or Excel. Maps, scenarios and reproducibility
-          bundles saved by Coxeter-MFV. Fluxes computed elsewhere, as Escher reaction data or CSV. Gene expression,
-          proteomics and metatranscriptomics tables as CSV or TSV.</p>
+        <p>Models in SBML Level 3 with FBC, COBRA JSON, COBRA Toolbox MAT or Excel, maps and scenarios saved by
+          Coxeter-MFV, fluxes as Escher reaction data or CSV, and omics tables as CSV or TSV.</p>
       </li>
       <li>
         <h3>Can I open Escher maps?</h3>
-        <p>Not as maps: Coxeter-MFV draws its own maps, with cells and compartments. It reads and writes Escher's
-          reaction data, so fluxes move between the two tools.</p>
+        <p>No. Coxeter-MFV reads and writes Escher's flux data, not its maps.</p>
       </li>
       <li>
         <h3>How large can a model be?</h3>
-        <p>Models of up to about 350 reactions per organism are laid out automatically. Larger ones start from an
-          overview of core metabolism that you can extend. Genome-scale models such as Yeast9, with 4105 reactions,
-          solve in the browser.</p>
+        <p>The automatic layout handles up to about 350 reactions per organism, and larger models start from core
+          metabolism. Genome-scale models such as Yeast9, with 4105 reactions, solve in the browser.</p>
       </li>
       <li>
         <h3>Which solver does it use?</h3>
-        <p>GLPK, compiled to WebAssembly, in the browser. The Windows desktop version uses HiGHS, or Gurobi or CPLEX
-          when they are installed.</p>
+        <p>GLPK in the browser. The Windows version uses HiGHS, or Gurobi or CPLEX when installed.</p>
       </li>
       <li>
         <h3>What browsers can I use?</h3>
-        <p>A current version of Chrome, Edge, Firefox or Safari. We test in Chromium and Firefox. Editing maps works
-          best with a mouse or touchpad.</p>
+        <p>A current version of Chrome, Edge, Firefox or Safari.</p>
       </li>
       <li id="cite">
         <h3>How do I cite Coxeter-MFV?</h3>
-        <p>Cite the software and the version you used, as given in
-          <a href="https://github.com/mathomics/coxeterMFV/blob/main/CITATION.cff">CITATION.cff</a>. The article
-          reference will be added here on publication.</p>
+        <p>Use <a href="https://github.com/mathomics/coxeterMFV/blob/main/CITATION.cff">CITATION.cff</a> until the
+          article is published.</p>
       </li>
       <li id="license">
         <h3>How is Coxeter-MFV licensed?</h3>
-        <p>The source code is under the <a href="https://github.com/mathomics/coxeterMFV/blob/main/LICENSE">MIT License</a>.
+        <p>The code is under the <a href="https://github.com/mathomics/coxeterMFV/blob/main/LICENSE">MIT License</a>.
           The app includes glpk.js and is distributed under
           <a href="https://github.com/mathomics/coxeterMFV/blob/main/LICENSES/GPL-3.0.txt">GPL-3.0</a>. Bundled models
-          keep their original licenses (<a href="https://github.com/mathomics/coxeterMFV/blob/main/data/README.md">model terms</a>).</p>
+          keep their own <a href="https://github.com/mathomics/coxeterMFV/blob/main/data/README.md">licenses</a>.</p>
       </li>
       <li>
-        <h3>I have more questions. Who do I ask?</h3>
-        <p>Start with the <a href="help.html">help</a>. To report a bug or ask a question, open an issue on
-          <a href="https://github.com/mathomics/coxeterMFV/issues">GitHub</a>, with your browser and a small example.</p>
+        <h3>Where do I report a problem?</h3>
+        <p>On <a href="https://github.com/mathomics/coxeterMFV/issues">GitHub issues</a>.</p>
       </li>
     </ol>
   </section>
 
   <section class="block" id="name">
     <h2>About the name</h2>
-    <div>
-      <p>Coxeter-MFV stands for Coxeter Multicell Flux Visualizer. The name honors the geometer Harold Scott MacDonald
-        Coxeter (1907-2003), whose work on nested geometric structures and symmetry groups inspired the app's
-        hierarchical representation of cellular compartments: mitochondria inside the cytoplasm, inside cells, inside
-        a shared medium. His figures of hyperbolic tilings also inspired M. C. Escher's Circle Limit prints.</p>
-    </div>
+    <p>Coxeter-MFV stands for Coxeter Multicell Flux Visualizer. The name honors the geometer Harold Scott MacDonald
+      Coxeter (1907-2003), whose work on nested geometric structures and symmetry groups inspired the app's nested
+      cells and compartments. His figures of hyperbolic tilings also inspired M. C. Escher's Circle Limit prints.</p>
   </section>
-
-  <div class="credit">
-    <p>Coxeter-MFV is developed at the Center for Mathematical Modeling, University of Chile.</p>
-  </div>
 </main>
 
 <footer class="site-footer">
   <div class="wrap">
-    <p><a href="help.html">Help</a> · <a href="https://github.com/mathomics/coxeterMFV">GitHub</a> ·
-      <a href="https://github.com/mathomics/coxeterMFV/issues">Issues</a></p>
-    <p>Version 0.1.0 · © 2026 The Coxeter-MFV authors</p>
+    <p>Center for Mathematical Modeling, University of Chile</p>
+    <nav class="foot-links" aria-label="Footer">
+      <a href="help.html">Help</a>
+      <a href="https://github.com/mathomics/coxeterMFV">GitHub</a>
+      <a href="https://github.com/mathomics/coxeterMFV/issues">Issues</a>
+    </nav>
+    <p>Version 0.1.0, © 2026 The Coxeter-MFV authors</p>
   </div>
 </footer>
 
