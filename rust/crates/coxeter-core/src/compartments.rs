@@ -493,6 +493,126 @@ pub fn build_compartment_tree<S: AsRef<str>>(
     CompartmentTree { roots, by_id }
 }
 
+/// A cell's own nesting of its compartments: compartment id to parent id,
+/// `None` for the outer compartment. It is set in the Edit compartments window
+/// and saved on the map cell (see `MapCell::nesting`).
+pub type Nesting = IndexMap<String, Option<String>>;
+
+/// The starting points the Edit compartments window offers for a cell's nesting.
+pub const NESTING_PRESETS: [&str; 4] = ["auto", "yeast9", "bigg", "empty"];
+
+/// A complete nesting for one cell, taken from one of the built-in tables.
+///
+/// The cell's outer compartment holds everything else, so no compartment is
+/// ever left outside the cell: one the table does not know, or that the table
+/// puts at the top, goes directly inside the outer compartment. A parent the
+/// model lacks is skipped over, as `build_compartment_tree` does.
+pub fn preset_nesting<S: AsRef<str>>(ids: &[S], outer_id: &str, preset: &str) -> Nesting {
+    let present: HashSet<&str> = ids.iter().map(|id| id.as_ref()).collect();
+    let table: Option<&[(&str, Option<&'static str>)]> = match preset {
+        "yeast9" => Some(YEAST9_PARENT),
+        "bigg" => Some(DEFAULT_PARENT),
+        _ => None,
+    };
+    let lookup = |id: &str| -> Option<String> {
+        match table {
+            Some(table) => table_parent(table, id).flatten(),
+            None => None,
+        }
+    };
+
+    let mut nesting = Nesting::new();
+    for id in ids {
+        let id = id.as_ref();
+        if id == outer_id {
+            nesting.insert(id.to_string(), None);
+            continue;
+        }
+        let mut parent = lookup(id);
+        let mut seen: HashSet<String> = HashSet::from([id.to_string()]);
+        while let Some(p) = parent.clone() {
+            if p.is_empty() || present.contains(p.as_str()) {
+                break;
+            }
+            if !seen.insert(p.clone()) {
+                parent = None;
+                break;
+            }
+            parent = lookup(&p);
+        }
+        let parent = match parent {
+            Some(p) if !p.is_empty() && p != id => p,
+            _ => outer_id.to_string(),
+        };
+        nesting.insert(id.to_string(), Some(parent));
+    }
+    nesting
+}
+
+/// The nesting a built tree describes, ready to be edited and saved on a cell.
+///
+/// The outer compartment stays outermost. Anything the tree leaves at the top
+/// beside it, which the map would draw outside the cell, goes inside it.
+pub fn tree_nesting(tree: &CompartmentTree, outer_id: &str) -> Nesting {
+    let mut nesting = Nesting::new();
+    for node in tree.by_id.values() {
+        if node.id == outer_id {
+            nesting.insert(node.id.clone(), None);
+        } else {
+            nesting.insert(node.id.clone(), Some(node.parent.clone().unwrap_or_else(|| outer_id.to_string())));
+        }
+    }
+    nesting
+}
+
+/// Why a nesting cannot be used, or `None` when it can.
+///
+/// Every compartment of the model needs a parent among the model's
+/// compartments, except the outer one, which has none, and following the
+/// parents up from any compartment has to arrive at the outer one.
+pub fn nesting_problem<S: AsRef<str>>(ids: &[S], outer_id: &str, nesting: &Nesting) -> Option<String> {
+    let present: HashSet<&str> = ids.iter().map(|id| id.as_ref()).collect();
+    if !present.contains(outer_id) {
+        return Some(format!("The model has no compartment {outer_id}."));
+    }
+    if nesting.get(outer_id).cloned().flatten().is_some() {
+        return Some(format!("{outer_id} is the outer compartment and stays outermost."));
+    }
+    for id in ids {
+        let id = id.as_ref();
+        if id == outer_id {
+            continue;
+        }
+        let parent = nesting.get(id).cloned().flatten();
+        let Some(parent) = parent.filter(|p| !p.is_empty()) else {
+            return Some(format!("{id} needs a parent inside the cell."));
+        };
+        if !present.contains(parent.as_str()) {
+            return Some(format!("{id} needs a parent inside the cell."));
+        }
+        if !nesting_reaches_outer(nesting, id, outer_id) {
+            return Some(format!("{id} cannot go inside itself."));
+        }
+    }
+    None
+}
+
+/// Does following the parents up from `id` arrive at the outer compartment?
+fn nesting_reaches_outer(nesting: &Nesting, id: &str, outer_id: &str) -> bool {
+    let mut seen: HashSet<String> = HashSet::new();
+    let mut at = id.to_string();
+    while at != outer_id {
+        if !seen.insert(at.clone()) {
+            return false;
+        }
+        match nesting.get(&at).cloned().flatten() {
+            Some(parent) if !parent.is_empty() => at = parent,
+            _ => return false,
+        }
+    }
+    true
+}
+
 /// All compartment ids known to the registry, in display order.
 pub fn known_compartment_ids() -> Vec<&'static str> {
     COMPARTMENTS.iter().map(|c| c.id).collect()
@@ -504,6 +624,40 @@ mod tests {
 
     fn names(pairs: &[(&str, &str)]) -> Names {
         pairs.iter().map(|(k, v)| (k.to_string(), v.to_string())).collect()
+    }
+
+    #[test]
+    fn the_yeast9_bigg_and_empty_presets_keep_every_compartment_inside_the_outer_compartment() {
+        let ids = ["c", "ce", "e", "f", "m", "mm", "p", "tm"];
+        for preset in ["yeast9", "bigg", "empty"] {
+            assert_eq!(nesting_problem(&ids, "e", &preset_nesting(&ids, "e", preset)), None, "{preset}");
+        }
+        let parent = |nesting: &Nesting, id: &str| nesting.get(id).cloned().flatten();
+        let yeast9 = preset_nesting(&ids, "e", "yeast9");
+        let got: Vec<Option<String>> = ["ce", "c", "mm", "m", "p", "f"].iter().map(|id| parent(&yeast9, id)).collect();
+        let want: Vec<Option<String>> = ["e", "ce", "c", "mm", "c", "e"].iter().map(|id| Some(id.to_string())).collect();
+        assert_eq!(got, want);
+        let bigg = preset_nesting(&ids, "e", "bigg");
+        let got: Vec<Option<String>> = ["p", "c", "m", "f", "tm"].iter().map(|id| parent(&bigg, id)).collect();
+        let want: Vec<Option<String>> = ["e", "p", "c", "e", "e"].iter().map(|id| Some(id.to_string())).collect();
+        assert_eq!(got, want);
+        let empty = preset_nesting(&ids, "e", "empty");
+        assert!(ids.iter().filter(|id| **id != "e").all(|id| parent(&empty, id).as_deref() == Some("e")));
+    }
+
+    #[test]
+    fn a_nesting_with_a_loop_or_a_moved_outer_compartment_is_refused() {
+        let ids = ["c", "e", "m"];
+        let mut nesting: Nesting = [("e", None), ("c", Some("e")), ("m", Some("c"))]
+            .iter()
+            .map(|(id, p)| (id.to_string(), p.map(str::to_string)))
+            .collect();
+        assert_eq!(nesting_problem(&ids, "e", &nesting), None);
+        nesting.insert("c".into(), Some("m".into()));
+        assert_eq!(nesting_problem(&ids, "e", &nesting).as_deref(), Some("c cannot go inside itself."));
+        nesting.insert("c".into(), Some("e".into()));
+        nesting.insert("e".into(), Some("c".into()));
+        assert_eq!(nesting_problem(&ids, "e", &nesting).as_deref(), Some("e is the outer compartment and stays outermost."));
     }
 
     #[test]

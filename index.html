@@ -96,7 +96,7 @@ try {
         <button class="tool-button" data-action="tool-reaction" data-tool="reaction" title="Click a metabolite to add its reactions"><span>⌁</span>Add Reaction</button>
         <button class="tool-button" data-action="tool-metabolite" data-tool="metabolite"><span>○</span>Add Metabolite</button>
         <button class="tool-button" data-action="tool-text" data-tool="text"><span>T</span>Text</button>
-        <button class="tool-button" data-action="tool-compartment" data-tool="compartment" title="Draw a model compartment"><span>▣</span>Add Compartment</button>
+        <button class="tool-button" data-action="tool-compartment" data-tool="compartment" title="Draw and nest model compartments"><span>▣</span>Edit Compartments</button>
         <button class="tool-button" data-action="tool-cell" data-tool="cell" title="Draw a model species as a cell"><span>⬡</span>Add Cell</button>
       </div>
       <div id="task-panel" class="task-panel" aria-live="polite"></div>
@@ -129,6 +129,7 @@ try {
         <button class="toolbar-label" data-action="toggle-inspector" aria-controls="inspector-panel" title="Show or hide selection properties">Inspector</button>
       </div>
       <div class="stage" id="stage" aria-label="Metabolic map"></div>
+      <div class="nesting-layer" id="nesting-window" hidden></div>
       <section class="workspace-editor" id="workspace-editor" aria-label="Workspace editor" hidden>
         <header class="workspace-editor-header">
           <div><span class="workspace-breadcrumb">Workspace</span><h2 id="workspace-title">Model</h2></div>

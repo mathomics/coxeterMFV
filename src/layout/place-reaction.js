@@ -10,7 +10,7 @@ import { stripCompartment } from '../core/model.js';
 import { SIZES } from './layout.js';
 import { center, clampToRect, closestBoundaryPoint } from './geometry.js';
 import { clampNodePosition, moveLayoutNode, nodeFitsAt } from './drag.js';
-import { reactionBoundaryKeys } from '../map/boundaries.js';
+import { mapSubtrees, reactionBoundaryKeys } from '../map/boundaries.js';
 import { shapeBranch, satellitePlace } from './reaction-edit.js';
 
 /** Which way a reaction runs when nothing says otherwise: down the page. */
@@ -118,7 +118,8 @@ export function placeReaction(map, community, reactionId, opts = {}) {
   const places = reactionMetabolites(community, modelReaction, cellId);
   if (!places.length) return null;
 
-  const crossed = reactionBoundaryKeys(community, reactionId);
+  // The membranes are the ones the map draws, nested as its cells say.
+  const crossed = reactionBoundaryKeys(community, reactionId, mapSubtrees(community, map));
   const requestedBoundary = opts.boundaryId && crossed.includes(opts.boundaryId)
     ? opts.boundaryId : null;
   const boundaryId = requestedBoundary ?? chooseBoundary(map, crossed, opts.anchor ?? null);

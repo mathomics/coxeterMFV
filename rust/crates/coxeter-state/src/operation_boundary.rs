@@ -30,7 +30,7 @@ impl OperationDomain {
 }
 
 /// The MAP (BUILD) operations, by JavaScript name.
-pub const MAP_OPERATIONS: [&str; 58] = [
+pub const MAP_OPERATIONS: [&str; 62] = [
     "beginMapEdit",
     "commitMapEdit",
     "undoMap",
@@ -61,6 +61,10 @@ pub const MAP_OPERATIONS: [&str; 58] = [
     "addMapCell",
     "addMapCompartment",
     "removeMapCompartment",
+    "setCompartmentNesting",
+    "setCompartmentParent",
+    "nestCompartment",
+    "applyNestingPreset",
     "setMapCanvasSize",
     "setLayoutPreset",
     "setLayoutSettings",

@@ -13,6 +13,7 @@ Changes to published releases are recorded here. Version numbers refer to the so
 - Promote application source from working revision `5fe032526bc617d79d572c61045709691f2fd4b7`, which opens on a welcome page with the three case studies, help and license, imports and exports flux data, shows scaled reduced costs, opens a case study from a link (`app.html?scenario=pub:<id>`) and fits the map to the window when a link opens it. Rebuild the browser application from it. The Windows executable is still the build from revision `79d9167656a4457809fd92098a5b46481dedbd5a` and will be rebuilt for the tagged release.
 - Retry the container check on any connection error, and give Chromium 30 s to start in the browser application check.
 - Publish the website at https://mathomics.github.io/coxeterMFV/, with a home page and a help page that explains how to read a solved map, built by `.github/workflows/pages.yml`.
+- Promote application source from working revision `522a150d1614873eb423b27bed1470fb2c51c36b`, which turns Add Compartment into Edit Compartments: a window beside the tools sets which compartment is inside which, starting from the Automatic, Yeast9, BiGG or Empty nesting, and saves that nesting with each cell of the map (map format version 4; older maps still open). Drawn compartments are fitted into their new parent, and a parent not yet drawn is drawn around them. Rebuild the browser application from it. The Windows executable is still the build from revision `79d9167656a4457809fd92098a5b46481dedbd5a`.
 
 ## 0.1.0
 

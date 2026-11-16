@@ -19,6 +19,7 @@
 //! | [`cross_feeding`] | `crossFeedingCard`, `crossFeedingTopControl`, `crossFeedingMetabolitePicker`, `renderCrossFeedingEvents` |
 //! | [`menus`] | `metabolite-menu.js`, `compartment-menu.js`, `boundary-menu.js`, `metabolite-add-menu.js` |
 //! | [`add_reaction`] | `add-reaction-panel.js` |
+//! | [`nesting_window`] | `nesting-window.js` |
 //! | [`welcome`] | `src/ui/welcome.js`, `dialog#welcome` of index.html |
 
 pub mod add_reaction;
@@ -28,6 +29,7 @@ pub mod left;
 pub mod map_options;
 pub mod menus;
 pub mod model;
+pub mod nesting_window;
 pub mod reactions;
 pub mod results;
 pub mod right;

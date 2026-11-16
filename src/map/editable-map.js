@@ -313,6 +313,26 @@ export class EditableMap {
   }
 
   /**
+   * The nesting each cell carries, by cell id, for the cells that have one.
+   *
+   * A cell's `nesting` is set by hand in the Edit compartments window and
+   * names a parent for every compartment of its species. Laying the map out
+   * again passes it back to the layout, so the compartments stay where the
+   * user nested them.
+   *
+   * @returns {Object<string, Object<string,string|null>>}
+   */
+  cellNesting() {
+    const out = {};
+    for (const cell of this.cells) {
+      if (cell.nesting) {
+        out[cell.id] = { ...cell.nesting };
+      }
+    }
+    return out;
+  }
+
+  /**
    * Add one biological compartment shell manually.
    *
    * If the species has no drawn cell yet, adding its first root compartment

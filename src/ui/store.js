@@ -37,7 +37,9 @@ import {
 import { communityOmicsMappingReport, parseMetatranscriptomics } from '../omics/community-omics.js';
 import { runGIMME } from '../omics/gimme.js';
 import { addMetaboliteToModel, addReactionToModel } from '../core/model-edit.js';
-import { cellCompartmentName } from '../core/compartments.js';
+import {
+  NESTING_PRESETS, cellCompartmentName, cellCompartmentVisualId, nestingProblem, presetNesting, treeNesting,
+} from '../core/compartments.js';
 import { COMPARTMENT_SHAPES } from '../layout/geometry.js';
 import { localMetaboliteBase } from '../layout/place-reaction.js';
 import { CommunityModel, OBJECTIVES, communityExchange, namespaced, splitId } from '../core/community.js';
@@ -4692,7 +4694,7 @@ export class Store {
    * Delete a compartment from the drawing, with the compartments nested in it
    * and everything drawn in them (a cell's outermost one takes the cell). One
    * undoable step; the model is unchanged, and the compartment can be drawn
-   * again from Add Compartment.
+   * again from Edit Compartments.
    */
   removeMapCompartment(cellId, compartmentId) {
     this.assertMapOperation('removeMapCompartment');
@@ -4759,7 +4761,10 @@ export class Store {
     if (!this.community) return null;
     const before = this.map?.toJSON() ?? null;
     const beforePresentation = this.mapPresentationState();
-    const next = EditableMap.fromCommunity(this.community, layoutEngineOptions(this.layoutSettings));
+    const next = EditableMap.fromCommunity(this.community, {
+      ...layoutEngineOptions(this.layoutSettings),
+      nesting: this.map?.cellNesting() ?? {},
+    });
     this.map = next;
     this.mapMode = 'full';
     this.removeCoreOverviewPathways();
@@ -4968,7 +4973,7 @@ export class Store {
       const cell = this.map.cells.find((c) => c.id === sp.id);
       if (!cell) continue;
       const drawn = new Set(cell.compartments?.map((c) => c.id) ?? []);
-      const { byId } = model.compartmentTree();
+      const { byId } = model.compartmentTree(cell.nesting ?? null);
 
       for (const node of byId.values()) {
         if (drawn.has(node.id)) continue;
@@ -5007,7 +5012,7 @@ export class Store {
       if (!model) continue;
       const cell = this.map.cells.find((c) => c.id === sp.id);
       const drawn = new Set(cell?.compartments?.map((c) => c.id) ?? []);
-      const { byId } = model.compartmentTree();
+      const { byId } = model.compartmentTree(cell?.nesting ?? null);
       const name = (id) => cellCompartmentName(id, model.compartmentNames);
 
       for (const node of byId.values()) {
@@ -5097,8 +5102,8 @@ export class Store {
     const model = this.models.get(sp?.file);
     if (!sp || !model) return null;
 
-    const treeNode = model.compartmentTree().byId.get(compartmentId);
     const cell = this.map.cells.find((item) => item.id === speciesId);
+    const treeNode = model.compartmentTree(cell?.nesting ?? null).byId.get(compartmentId);
     if (!treeNode || !cell || !treeNode.parent) return null;
 
     const before = this.map.toJSON();
@@ -5128,6 +5133,179 @@ export class Store {
       : null;
     this.emit('map');
     return result;
+  }
+
+  // Compartment nesting
+
+  /** A drawn cell of an active species, with its model, or null. */
+  nestingTarget(speciesId) {
+    if (!this.map) return null;
+    const sp = this.species.find((item) => item.id === speciesId && item.enabled !== false);
+    const model = this.models.get(sp?.file);
+    const cell = this.map.cells.find((item) => item.id === speciesId);
+    if (!sp || !model || !cell) return null;
+    return { sp, model, cell };
+  }
+
+  /** The drawn cells whose nesting the Edit compartments window can change. */
+  nestingCells() {
+    if (!this.map) return [];
+    const out = [];
+    for (const cell of this.map.cells) {
+      const target = this.nestingTarget(cell.id);
+      if (!target) continue;
+      out.push({ speciesId: cell.id, name: target.model.cell?.name ?? cell.name ?? cell.id });
+    }
+    return out;
+  }
+
+  /**
+   * One drawn cell's nesting as the Edit compartments window lists it: every
+   * compartment of the species' model, outside in, each one after its parent
+   * and its siblings in id order. `custom` says the cell carries a nesting set
+   * by hand rather than the automatic one.
+   *
+   * @returns {{speciesId: string, outerId: string, custom: boolean,
+   *   rows: Array<{id: string, name: string, visualId: string, parentId: string|null,
+   *   depth: number, drawn: boolean, outer: boolean}>}|null}
+   */
+  compartmentNesting(speciesId) {
+    const target = this.nestingTarget(speciesId);
+    if (!target) return null;
+    const { model, cell } = target;
+    const tree = model.compartmentTree(cell.nesting ?? null);
+    const drawn = new Set(cell.compartments.map((c) => c.id));
+    const rows = [];
+    const walk = (node) => {
+      rows.push({
+        id: node.id,
+        name: cellCompartmentName(node.id, model.compartmentNames),
+        visualId: cellCompartmentVisualId(node.id, model.compartmentNames),
+        parentId: node.parent ?? null,
+        depth: node.depth,
+        drawn: drawn.has(node.id),
+        outer: node.id === cell.outerCompartment,
+      });
+      for (const child of node.children) {
+        walk(child);
+      }
+    };
+    // The outer compartment comes first; anything the automatic tree leaves
+    // beside it follows.
+    const roots = [...tree.roots];
+    roots.sort((a, b) => Number(b.id === cell.outerCompartment) - Number(a.id === cell.outerCompartment));
+    for (const root of roots) {
+      walk(root);
+    }
+    return { speciesId, outerId: cell.outerCompartment, custom: Boolean(cell.nesting), rows };
+  }
+
+  /**
+   * Save a nesting on a drawn cell and redraw the cell to match, as one
+   * undoable edit. `nesting` names a parent for every compartment of the
+   * species, or is null to go back to the automatic nesting.
+   *
+   * A drawn compartment that now has another parent moves into it with its
+   * contents, and a parent that is not drawn yet is drawn around it; reactions
+   * that cross a different membrane now are drawn on that one. When a
+   * compartment does not fit in its new parent nothing changes.
+   *
+   * @returns {{cell: object, report: object}|null}
+   */
+  setCompartmentNesting(speciesId, nesting, label = 'Nest compartments') {
+    this.assertMapOperation('setCompartmentNesting');
+    const target = this.nestingTarget(speciesId);
+    if (!target || !this.community) return null;
+    const { model, cell } = target;
+    const names = model.compartmentNames;
+
+    if (nesting) {
+      const problem = nestingProblem(model.compartmentIds(), cell.outerCompartment, nesting);
+      if (problem) {
+        this.status = { ...this.status, state: 'warn', message: problem };
+        this.emit('status');
+        return null;
+      }
+    }
+
+    const before = this.map.toJSON();
+    if (nesting) {
+      cell.nesting = { ...nesting };
+    } else {
+      delete cell.nesting;
+    }
+    const report = reconcileCompartments(this.map, this.community, { cellIds: new Set([speciesId]) });
+
+    if (report.left.length) {
+      // Nothing is kept of a change that could not be drawn in full.
+      this.map = EditableMap.fromJSON(before);
+      const left = report.left[0];
+      const into = cellCompartmentName(left.into ?? '', names);
+      this.status = {
+        ...this.status,
+        state: 'warn',
+        message: `No room for ${cellCompartmentName(left.id, names)} inside ${into}. Enlarge ${into} first.`,
+      };
+      this.emit('map');
+      return null;
+    }
+
+    const after = this.map.toJSON();
+    if (JSON.stringify(after) === JSON.stringify(before)) return { cell, report };
+    this.mapHistory.record(before, after, label);
+    this.emit('map');
+    return { cell: this.map.cells.find((item) => item.id === speciesId), report };
+  }
+
+  /** Put one compartment inside another, as one undoable edit. */
+  setCompartmentParent(speciesId, compartmentId, parentId) {
+    this.assertMapOperation('setCompartmentParent');
+    const target = this.nestingTarget(speciesId);
+    if (!target) return null;
+    const { model, cell } = target;
+    const nesting = treeNesting(model.compartmentTree(cell.nesting ?? null), cell.outerCompartment);
+    if (!Object.prototype.hasOwnProperty.call(nesting, compartmentId)) return null;
+    if (nesting[compartmentId] === parentId) return null;
+    nesting[compartmentId] = parentId;
+    return this.setCompartmentNesting(speciesId, nesting, `Nest ${compartmentId} in ${parentId}`);
+  }
+
+  /**
+   * Tab and Shift+Tab in the nesting tree. 'in' puts a compartment inside the
+   * sibling listed just above it; 'out' moves it up beside its parent. Nothing
+   * moves out of the outer compartment, which stays outermost.
+   */
+  nestCompartment(speciesId, compartmentId, direction) {
+    this.assertMapOperation('nestCompartment');
+    const view = this.compartmentNesting(speciesId);
+    const row = view?.rows.find((item) => item.id === compartmentId);
+    if (!row || row.outer) return null;
+
+    let parentId = null;
+    if (direction === 'out') {
+      const parent = view.rows.find((item) => item.id === row.parentId);
+      if (!parent || parent.outer || !parent.parentId) return null;
+      parentId = parent.parentId;
+    } else {
+      const siblings = view.rows.filter((item) => item.parentId === row.parentId);
+      const index = siblings.indexOf(row);
+      if (index <= 0) return null;
+      parentId = siblings[index - 1].id;
+    }
+    return this.setCompartmentParent(speciesId, compartmentId, parentId);
+  }
+
+  /** Start a cell's nesting over from Automatic, Yeast9, BiGG or Empty, as one undoable edit. */
+  applyNestingPreset(speciesId, preset) {
+    this.assertMapOperation('applyNestingPreset');
+    const target = this.nestingTarget(speciesId);
+    if (!target || !NESTING_PRESETS.includes(preset)) return null;
+    if (preset === 'auto') {
+      return this.setCompartmentNesting(speciesId, null, 'Automatic nesting');
+    }
+    const { model, cell } = target;
+    const nesting = presetNesting(model.compartmentIds(), cell.outerCompartment, preset);
+    return this.setCompartmentNesting(speciesId, nesting, `Nesting from ${preset}`);
   }
 
   /** What setMapCanvasSize would settle on, without changing anything. */
@@ -5231,6 +5409,8 @@ export class Store {
       return this.map;
     }
     const before = this.map.toJSON();
+    // Compartments the user nested by hand stay where they put them.
+    const options = { ...layoutEngineOptions(this.layoutSettings), nesting: this.map.cellNesting() };
 
     let next;
     if (!drawnReactionIds.length) {
@@ -5238,12 +5418,9 @@ export class Store {
       // the full layout and throwing every reaction away again would give the
       // same cells and compartments, after freezing the page for as long as a
       // genome-scale model takes to place.
-      next = EditableMap.emptyFromCommunity(this.community, layoutEngineOptions(this.layoutSettings));
+      next = EditableMap.emptyFromCommunity(this.community, options);
     } else {
-      next = EditableMap.fromCommunity(
-        this.community,
-        layoutEngineOptions(this.layoutSettings),
-      );
+      next = EditableMap.fromCommunity(this.community, options);
       if (drawnReactionIds.length < next.reactions.size) {
         const keep = drawnReactionIds.filter((id) => next.reactions.has(id));
         next = next.subsetByReactions(keep);

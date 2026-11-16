@@ -1424,7 +1424,7 @@ fn pathway_item(ui: &mut Ui, shell: &mut Shell, item: &coxeter_state::PathwayEnt
 
 // Map structure
 
-/// `SHAPE_LABELS`: the shape presets of Add Compartment and the inspector.
+/// `SHAPE_LABELS`: the shape presets of Edit Compartments and the inspector.
 pub const SHAPE_LABELS: [(&str, &str); 5] = [
     ("auto", "Auto"),
     ("rectangle", "Rectangle"),
@@ -1438,7 +1438,7 @@ pub fn shape_label(name: &str) -> &'static str {
     SHAPE_LABELS.iter().find(|(n, _)| *n == name).map_or("", |(_, l)| l)
 }
 
-/// `compartmentPlacementControls(store, idPrefix)`: what Add Compartment
+/// `compartmentPlacementControls(store, idPrefix)`: what Edit Compartments
 /// draws next, and in what shape. Every compartment of the model is listed,
 /// and the ones that cannot be drawn yet are greyed out with the reason: the
 /// model's nesting decides what goes where, and a list of only the drawable
@@ -1487,8 +1487,8 @@ pub fn compartment_placement_controls(ui: &mut Ui, shell: &mut Shell, id_prefix:
     }
 }
 
-/// `compartmentToolControls(store)`: the left panel while Add Compartment is
-/// the tool: choose, then drag.
+/// `compartmentToolControls(store)`: the left panel while Edit Compartments
+/// is the tool: choose, then drag; the nesting has a window of its own.
 pub fn compartment_tool_controls(ui: &mut Ui, shell: &mut Shell) {
     ui.add_space(4.0);
     compartment_placement_controls(ui, shell, "tool");
@@ -1508,6 +1508,10 @@ pub fn compartment_tool_controls(ui: &mut Ui, shell: &mut Shell) {
         None => {
             widgets::hint(ui, "Nothing can be drawn yet.");
         }
+    }
+    if Btn::new("Nesting").title("Set which compartment is inside which").show(ui).clicked() {
+        let cell = shell.store.selected_geometry.as_ref().and_then(|g| g.cell_id.clone());
+        shell.nesting.open(&shell.store, cell.as_deref());
     }
 }
 

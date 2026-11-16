@@ -59,6 +59,8 @@ pub struct Shell {
     pub dialogs: Box<dyn FileDialogs>,
     /// The map's context menus and the Add Reaction panel.
     pub menus: panels::menus::MapMenus,
+    /// The Edit compartments window.
+    pub nesting: panels::nesting_window::NestingWindow,
     /// Counts store changes that touch the drawing: the map widget redraws
     /// when it moves.
     pub revision: u64,
@@ -102,6 +104,7 @@ impl Shell {
             map: MapView::new(),
             dialogs,
             menus: panels::menus::MapMenus::default(),
+            nesting: panels::nesting_window::NestingWindow::default(),
             revision: 1,
             table_revision: 1,
             table_model: None,
@@ -193,6 +196,7 @@ impl Shell {
             self.canvas_column(ui);
         });
         panels::menus::show(&ctx, self);
+        panels::nesting_window::show(&ctx, self);
         // The map's own shortcuts (Escape, Delete, Ctrl+Z) are not for the
         // welcome page, nor the Escape that closes it.
         let welcome_was_open = self.ui.welcome_open;

@@ -20,7 +20,7 @@
 
 use std::collections::HashSet;
 
-use coxeter_core::boundaries::{SubtreeCache, reaction_boundary_keys};
+use coxeter_core::boundaries::{map_subtrees, reaction_boundary_keys};
 use coxeter_core::community::{CommunityModel, LINK_COMPARTMENT};
 use coxeter_core::compartments::{Names, cell_compartment_name, cell_compartment_visual_id, membrane_style};
 use coxeter_core::js;
@@ -189,6 +189,8 @@ pub struct LeftCompartment {
     pub cell: String,
     pub id: String,
     pub reason: String,
+    /// The compartment it was to be moved into, when there was no room there.
+    pub into: Option<String>,
 }
 
 /// What `reconcileCompartments` did.
@@ -218,7 +220,16 @@ impl ShellReport {
                 Value::Object(m)
             }).collect::<Vec<_>>(),
             "moved": self.moved.iter().map(|m| json!({ "cell": m.cell, "id": m.id, "into": m.into })).collect::<Vec<_>>(),
-            "left": self.left.iter().map(|l| json!({ "cell": l.cell, "id": l.id, "reason": l.reason })).collect::<Vec<_>>(),
+            "left": self.left.iter().map(|l| {
+                let mut m = Map::new();
+                m.insert("cell".into(), json!(l.cell));
+                m.insert("id".into(), json!(l.id));
+                m.insert("reason".into(), json!(l.reason));
+                if let Some(into) = &l.into {
+                    m.insert("into".into(), json!(into));
+                }
+                Value::Object(m)
+            }).collect::<Vec<_>>(),
             "reseated": self.reseated,
             "pulled": self.pulled,
         })
@@ -292,9 +303,41 @@ fn wrap(map: &mut EditableMap, ci: usize, pending: &mut Vec<Pending>, outer: &st
     map.refresh_boundaries();
 }
 
-/// `reconcileCompartments(map, community)`: nest the drawn compartments the
-/// way the model nests them, and put back inside its compartment whatever is
-/// drawn outside it.
+/// Move compartment `ki`, with everything in it, to a free spot in `parent_id`.
+/// Returns why it could not be moved, or `None` once it is.
+fn move_into(map: &mut EditableMap, ci: usize, ki: usize, parent_id: &str) -> Option<String> {
+    let Some(spot) = find_spot(map, ci, ki, parent_id) else {
+        return Some(format!("there is no room for it in {parent_id}"));
+    };
+    let cell_id = map.g.cells[ci].id.clone();
+    let comp_id = map.g.cells[ci].compartments[ki].id.clone();
+    let was = (map.g.cells[ci].compartments[ki].parent_id.clone(), map.g.cells[ci].compartments[ki].rect);
+    {
+        let cell = &mut map.g.cells[ci];
+        cell.compartments[ki].parent_id = Some(parent_id.to_string());
+        if spot.resized {
+            let r = cell.compartments[ki].rect;
+            cell.compartments[ki].rect = Rect::new(r.x, r.y, spot.w, spot.h);
+        }
+        set_depths(cell);
+    }
+    map.refresh_boundaries();
+    let r = map.g.cells[ci].compartments[ki].rect;
+    if edit_geometry_rect(map, Some(&cell_id), &comp_id, Rect::new(spot.x, spot.y, r.w, r.h)).is_none() {
+        let cell = &mut map.g.cells[ci];
+        cell.compartments[ki].parent_id = was.0;
+        cell.compartments[ki].rect = was.1;
+        set_depths(cell);
+        map.refresh_boundaries();
+        return Some(format!("it could not be moved into {parent_id}"));
+    }
+    None
+}
+
+/// `reconcileCompartments(map, community, { cellIds })`: nest the drawn
+/// compartments the way the model nests them, or the way the cell's own
+/// `nesting` says where the user has set one, and put back inside its
+/// compartment whatever is drawn outside it.
 ///
 /// Three things can be wrong with a compartment, and each has its own remedy:
 ///
@@ -308,14 +351,26 @@ fn wrap(map: &mut EditableMap, ci: usize, pending: &mut Vec<Pending>, outer: &st
 ///
 /// What is already where it belongs is not touched: a map that needs nothing
 /// comes out exactly as it went in.
-pub fn reconcile_compartments(map: &mut EditableMap, community: &CommunityModel) -> ShellReport {
+///
+/// `cell_ids` looks over these cells only, and redraws what crosses their
+/// membranes even if no compartment had to move: their nesting has just been
+/// changed by hand.
+pub fn reconcile_compartments(map: &mut EditableMap, community: &CommunityModel, cell_ids: Option<&IndexSet<String>>) -> ShellReport {
     let mut report = ShellReport::default();
-    let mut touched: IndexSet<String> = mend_node_ownership(map, community); // cells to look over
+    // Cells to look over once their compartments are in place.
+    let mut touched: IndexSet<String> = match cell_ids {
+        Some(ids) => ids.clone(),
+        None => mend_node_ownership(map, community),
+    };
 
     for sp in community.active_species() {
+        if cell_ids.is_some_and(|ids| !ids.contains(&sp.id)) {
+            continue;
+        }
         let Some(ci) = map.g.cells.iter().position(|c| c.id == sp.id) else { continue };
         let cell_id = sp.id.clone();
-        let tree = sp.model.compartment_tree();
+        let nesting = map.g.cells[ci].nesting();
+        let tree = sp.model.compartment_tree(nesting.as_ref());
         let names: &Names = &sp.model.compartment_names;
         let mut pending: Vec<Pending> = Vec::new();
 
@@ -332,39 +387,66 @@ pub fn reconcile_compartments(map: &mut EditableMap, community: &CommunityModel)
             }
             let parent_drawn = want.as_deref().is_some_and(|w| comp_index(cell, w).is_some());
 
-            // The model has put a compartment between this one and the one it
-            // was drawn in, and that compartment is not drawn at all. Draw it
-            // here: nothing else could ever get it around what it has to
-            // contain.
+            // The compartment it belongs in is not drawn, and perhaps neither
+            // are the ones around that. They are drawn here, each around the
+            // next, out to the nearest one that is drawn: nothing else could
+            // ever get them around what they have to contain.
             if let (Some(w), false) = (&want, parent_drawn) {
-                let between = tree.by_id.get(w);
-                let outer_parent = between.and_then(|b| comp_index(cell, b.parent.as_deref().unwrap_or(""))).map(|k| cell.compartments[k].id.clone());
-                match (between, outer_parent) {
-                    (Some(b), Some(op)) if comp.parent_id == b.parent => {
-                        let visual_id = cell_compartment_visual_id(w, names);
-                        let created = MapCompartment {
-                            id: w.clone(),
-                            rect: comp.rect,
-                            depth: 0.0,
-                            parent_id: Some(op.clone()),
-                            label: cell_compartment_name(w, names, "en"),
-                            membrane: membrane_style(&visual_id, &Names::new()).as_str().into(),
-                            visual_id,
-                            fill: None,
-                            stroke: None,
-                            shape: None,
-                            extra: Map::new(),
-                        };
-                        map.g.cells[ci].compartments.push(created);
-                        wrap(map, ci, &mut pending, w, &comp.id, &op);
-                        touched.insert(cell_id.clone());
-                        report.wrapped.push(Wrapped { cell: cell_id.clone(), id: w.clone(), around: vec![comp.id.clone()], created: true });
+                let mut missing: Vec<String> = Vec::new(); // undrawn compartments, innermost first
+                let mut at = tree.by_id.get(w);
+                while let Some(node) = at {
+                    if comp_index(cell, &node.id).is_some() {
+                        break;
                     }
-                    _ => report.left.push(LeftCompartment {
+                    missing.push(node.id.clone());
+                    at = node.parent.as_deref().and_then(|p| tree.by_id.get(p));
+                }
+                let Some(outer_parent) = at.map(|n| n.id.clone()) else {
+                    report.left.push(LeftCompartment {
                         cell: cell_id.clone(),
                         id: comp.id.clone(),
                         reason: format!("its parent {w} is not drawn"),
-                    }),
+                        into: None,
+                    });
+                    continue;
+                };
+                // The new compartments are drawn where it stands, so it has
+                // to stand in the drawn one they go into.
+                if comp.parent_id.as_deref() != Some(outer_parent.as_str()) {
+                    if let Some(problem) = move_into(map, ci, ki, &outer_parent) {
+                        report.left.push(LeftCompartment {
+                            cell: cell_id.clone(),
+                            id: comp.id.clone(),
+                            reason: problem,
+                            into: Some(outer_parent.clone()),
+                        });
+                        continue;
+                    }
+                    touched.insert(cell_id.clone());
+                }
+                let mut inner = comp.id.clone();
+                for id in &missing {
+                    let visual_id = cell_compartment_visual_id(id, names);
+                    let cell = &map.g.cells[ci];
+                    let inner_rect = cell.compartments[comp_index(cell, &inner).expect("inner drawn")].rect;
+                    let created = MapCompartment {
+                        id: id.clone(),
+                        rect: inner_rect,
+                        depth: 0.0,
+                        parent_id: Some(outer_parent.clone()),
+                        label: cell_compartment_name(id, names, "en"),
+                        membrane: membrane_style(&visual_id, &Names::new()).as_str().into(),
+                        visual_id,
+                        fill: None,
+                        stroke: None,
+                        shape: None,
+                        extra: Map::new(),
+                    };
+                    map.g.cells[ci].compartments.push(created);
+                    wrap(map, ci, &mut pending, id, &inner, &outer_parent);
+                    touched.insert(cell_id.clone());
+                    report.wrapped.push(Wrapped { cell: cell_id.clone(), id: id.clone(), around: vec![inner.clone()], created: true });
+                    inner = id.clone();
                 }
                 continue;
             }
@@ -396,37 +478,8 @@ pub fn reconcile_compartments(map: &mut EditableMap, community: &CommunityModel)
             }
 
             // Otherwise it moves into its parent as it is, with everything in it.
-            let Some(spot) = find_spot(map, ci, ki, &want) else {
-                report.left.push(LeftCompartment {
-                    cell: cell_id.clone(),
-                    id: comp.id.clone(),
-                    reason: format!("there is no room for it in {want}"),
-                });
-                continue;
-            };
-            let was = (comp.parent_id.clone(), comp.rect);
-            {
-                let cell = &mut map.g.cells[ci];
-                cell.compartments[ki].parent_id = Some(want.clone());
-                if spot.resized {
-                    let r = cell.compartments[ki].rect;
-                    cell.compartments[ki].rect = Rect::new(r.x, r.y, spot.w, spot.h);
-                }
-                set_depths(cell);
-            }
-            map.refresh_boundaries();
-            let r = map.g.cells[ci].compartments[ki].rect;
-            if edit_geometry_rect(map, Some(&cell_id), &comp.id, Rect::new(spot.x, spot.y, r.w, r.h)).is_none() {
-                let cell = &mut map.g.cells[ci];
-                cell.compartments[ki].parent_id = was.0;
-                cell.compartments[ki].rect = was.1;
-                set_depths(cell);
-                map.refresh_boundaries();
-                report.left.push(LeftCompartment {
-                    cell: cell_id.clone(),
-                    id: comp.id.clone(),
-                    reason: format!("it could not be moved into {want}"),
-                });
+            if let Some(problem) = move_into(map, ci, ki, &want) {
+                report.left.push(LeftCompartment { cell: cell_id.clone(), id: comp.id.clone(), reason: problem, into: Some(want) });
                 continue;
             }
             touched.insert(cell_id.clone());
@@ -457,7 +510,7 @@ pub fn reconcile_compartments(map: &mut EditableMap, community: &CommunityModel)
         // A transporter has to be on a membrane it crosses, which for the
         // same reaction is a different one once the nesting changes. And a
         // reaction inside a compartment has to be inside it.
-        let mut cache = SubtreeCache::new();
+        let mut cache = map_subtrees(community, &map.g.cells);
         let mut misplaced: Vec<String> = Vec::new();
         let mut strays: IndexMap<String, Vec<String>> = IndexMap::new(); // compartment id -> reactions drawn outside it
         for (id, rxn) in &map.g.reactions {

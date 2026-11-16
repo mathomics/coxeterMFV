@@ -4,7 +4,7 @@
  * Lists model reactions crossing a membrane that are not already drawn.
  */
 
-import { reactionsCrossing } from '../map/boundaries.js';
+import { mapSubtrees, reactionsCrossing } from '../map/boundaries.js';
 import { panelPlacement, reactionListing } from './add-reaction-panel.js';
 
 const esc = (value) => String(value ?? '')
@@ -57,7 +57,8 @@ export class BoundaryMenuController {
 
   availableFor(boundaryId) {
     if (!boundaryId || !this.store.community || !this.store.map) return [];
-    return reactionsCrossing(this.store.community, boundaryId)
+    const subtrees = mapSubtrees(this.store.community, this.store.map);
+    return reactionsCrossing(this.store.community, boundaryId, subtrees)
       .filter((reactionId) => !this.store.map.hasReaction(reactionId));
   }
 

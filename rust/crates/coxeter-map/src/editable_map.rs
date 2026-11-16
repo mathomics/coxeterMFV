@@ -38,7 +38,7 @@ use coxeter_core::boundaries::{BoundaryKind, boundary_key, environment_key};
 use coxeter_core::colors::normalize_hex_color;
 use coxeter_core::community::{CommunityModel, SHARED_COMPARTMENT};
 use coxeter_core::compartments::{
-    Names, cell_compartment_name, cell_compartment_visual_id, compartment_name, membrane_style,
+    Names, Nesting, cell_compartment_name, cell_compartment_visual_id, compartment_name, membrane_style,
 };
 use coxeter_core::geometry::{SIZES, closest_perimeter_point, closest_perimeter_point_corners, compartment_corners};
 use coxeter_core::js;
@@ -450,6 +450,28 @@ impl EditableMap {
     }
     pub fn cell(&self, id: &str) -> Option<&MapCell> {
         self.g.cells.iter().find(|c| c.id == id)
+    }
+    /// The nesting each cell carries, by cell id, for the cells that have one.
+    ///
+    /// A cell's `nesting` is set by hand in the Edit compartments window and
+    /// names a parent for every compartment of its species. Laying the map out
+    /// again passes it back to the layout, so the compartments stay where the
+    /// user nested them.
+    pub fn cell_nesting(&self) -> IndexMap<String, Nesting> {
+        let mut out = IndexMap::new();
+        for cell in &self.g.cells {
+            if let Some(nesting) = cell.nesting() {
+                out.insert(cell.id.clone(), nesting);
+            }
+        }
+        out
+    }
+    /// Save a nesting on one cell, or with `None` go back to the automatic
+    /// one. The drawing is left as it is; `reconcile_compartments` fits it.
+    pub fn set_cell_nesting(&mut self, cell_id: &str, nesting: Option<&Nesting>) {
+        if let Some(cell) = self.g.cells.iter_mut().find(|c| c.id == cell_id) {
+            cell.set_nesting(nesting);
+        }
     }
     /// Which axis point each segment end is the same object as, parallel to
     /// [`EditableMap::segments`].

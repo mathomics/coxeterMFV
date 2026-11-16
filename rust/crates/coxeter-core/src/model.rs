@@ -20,7 +20,7 @@ use indexmap::{IndexMap, IndexSet};
 use regex::Regex;
 use serde_json::{Map, Value, json};
 
-use crate::compartments::{self, CompartmentTree, Names};
+use crate::compartments::{self, CompartmentTree, Names, Nesting};
 use crate::js;
 use crate::label_sources::{self, EntityKind, LabelSources, label_sources_to_value};
 
@@ -564,10 +564,20 @@ impl Model {
         ids
     }
 
-    /// The containment tree of every compartment the model names or uses,
-    /// nested by its own `compartment_tree` or else by the default nesting.
-    pub fn compartment_tree(&self) -> CompartmentTree {
-        compartments::build_compartment_tree(&self.compartment_ids(), self.explicit_tree.as_ref(), &self.compartment_names)
+    /// How the compartments nest, outside in.
+    ///
+    /// A map cell can carry a nesting the user set in the Edit compartments
+    /// window. It names a parent for every compartment, so it takes the place
+    /// of both the model's own `compartment_tree` and the built-in defaults.
+    pub fn compartment_tree(&self, nesting: Option<&Nesting>) -> CompartmentTree {
+        let Some(nesting) = nesting else {
+            return compartments::build_compartment_tree(&self.compartment_ids(), self.explicit_tree.as_ref(), &self.compartment_names);
+        };
+        let mut explicit = self.explicit_tree.clone().unwrap_or_default();
+        for (id, parent) in nesting {
+            explicit.insert(id.clone(), parent.clone());
+        }
+        compartments::build_compartment_tree(&self.compartment_ids(), Some(&explicit), &self.compartment_names)
     }
 
     /// Reactions whose objective coefficient is non-zero.

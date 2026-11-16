@@ -140,7 +140,7 @@ export function renderTaskPanel(store, ui = {}) {
     reaction: ['Add Reaction mode', 'Click a metabolite to add a reaction from it.'],
     metabolite: ['Add Metabolite mode', 'Click a compartment, then pick a metabolite.'],
     text: ['Add map text', 'Click the map, type, and press Enter.'],
-    compartment: ['Add Compartment', 'Pick a compartment and a shape, then drag inside its highlighted parent.'],
+    compartment: ['Edit Compartments', 'Pick a compartment and a shape, then drag inside its highlighted parent.'],
     cell: ['Add Cell', cellToolHelp(store)],
   }[tool] ?? ['Edit your map', 'Choose an editing tool.'];
 
@@ -1331,7 +1331,7 @@ const SHAPE_LABELS = {
 };
 
 /**
- * What Add Compartment draws next, and in what shape. Every compartment of the
+ * What Edit Compartments draws next, and in what shape. Every compartment of the
  * model is listed, and the ones that cannot be drawn yet are greyed out with
  * the reason: the model's nesting decides what goes where, and a list of only
  * the drawable ones would give no clue why most organelles are missing.
@@ -1366,7 +1366,7 @@ function compartmentPlacementControls(store, idPrefix) {
       aria-label="Shape of the new compartment">${shapes}</select>`;
 }
 
-/* The left panel while Add Compartment is the tool: choose, then drag. */
+/* The left panel while Edit Compartments is the tool: choose, then drag; the nesting has a window of its own. */
 function compartmentToolControls(store) {
   const current = store.currentCompartmentPlacement?.() ?? null;
   const parent = current
@@ -1378,6 +1378,7 @@ function compartmentToolControls(store) {
     <p class="hint">${current
       ? `Drag inside <strong>${esc(parent ?? current.parentId)}</strong>, highlighted on the map.`
       : 'Nothing can be drawn yet.'}</p>
+    <button type="button" data-action="open-nesting-window" title="Set which compartment is inside which">Nesting</button>
   </div>`;
 }
 

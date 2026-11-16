@@ -25,7 +25,7 @@ import { LINK_COMPARTMENT } from '../core/community.js';
 import { clampNodePosition, updateConnectedSegments } from '../layout/drag.js';
 import { closestBoundaryPoint } from '../layout/geometry.js';
 import { straightenLinearReactions } from '../layout/reaction-edit.js';
-import { reactionBoundaryKeys } from './boundaries.js';
+import { mapSubtrees, reactionBoundaryKeys } from './boundaries.js';
 import { editGeometryRect } from './geometry-edit.js';
 
 const METABOLITE_KINDS = new Set(['metabolite', 'medium', 'currency']);
@@ -126,8 +126,9 @@ export function pruneMapToModel(map, community, { keepSpecies = new Set() } = {}
 // Compartments
 
 /**
- * Nest the drawn compartments the way the model nests them, and put back
- * inside its compartment whatever is drawn outside it.
+ * Nest the drawn compartments the way the model nests them, or the way the
+ * cell's own `nesting` says where the user has set one, and put back inside its
+ * compartment whatever is drawn outside it.
  *
  * Three things can be wrong with a compartment, and each has its own remedy:
  *
@@ -142,16 +143,22 @@ export function pruneMapToModel(map, community, { keepSpecies = new Set() } = {}
  * What is already where it belongs is not touched: a map that needs nothing
  * comes out exactly as it went in.
  *
+ * @param {object} [opts]
+ * @param {Set<string>} [opts.cellIds] look over these cells only, and redraw
+ *   what crosses their membranes even if no compartment had to move: their
+ *   nesting has just been changed by hand
  * @returns {{wrapped: object[], moved: object[], left: object[], reseated: string[], pulled: number}}
  */
-export function reconcileCompartments(map, community) {
+export function reconcileCompartments(map, community, { cellIds = null } = {}) {
   const report = { wrapped: [], moved: [], left: [], reseated: [], pulled: 0 };
-  const touched = new Set(mendNodeOwnership(map, community));   // cells to look over
+  // Cells to look over once their compartments are in place.
+  const touched = cellIds ? new Set(cellIds) : new Set(mendNodeOwnership(map, community));
 
   for (const sp of community.activeSpecies ?? []) {
+    if (cellIds && !cellIds.has(sp.id)) continue;
     const cell = map.cells.find((c) => c.id === sp.id);
     if (!cell) continue;
-    const tree = sp.model.compartmentTree();
+    const tree = sp.model.compartmentTree(cell.nesting ?? null);
     const names = sp.model.compartmentNames;
     const drawn = () => new Map(cell.compartments.map((c) => [c.id, c]));
     const pending = [];   // reactions taken off to be drawn afresh: { id, at }
@@ -194,6 +201,29 @@ export function reconcileCompartments(map, community) {
       touched.add(cell.id);
     };
 
+    /**
+     * Move `comp`, with everything in it, to a free spot in `parent`.
+     * @returns {string|null} why it could not be moved, or null once it is
+     */
+    const moveInto = (comp, parent) => {
+      const spot = findSpot(map, cell, comp, parent);
+      if (!spot) return `there is no room for it in ${parent.id}`;
+      const was = { parentId: comp.parentId ?? null, rect: { ...comp.rect } };
+      comp.parentId = parent.id;
+      if (spot.resized) comp.rect = { ...comp.rect, w: spot.w, h: spot.h };
+      setDepths(cell);
+      map.refreshBoundaries?.();
+      if (!editGeometryRect(map, cell.id, comp.id, { x: spot.x, y: spot.y, w: comp.rect.w, h: comp.rect.h })) {
+        comp.parentId = was.parentId;
+        comp.rect = was.rect;
+        setDepths(cell);
+        map.refreshBoundaries?.();
+        return `it could not be moved into ${parent.id}`;
+      }
+      touched.add(cell.id);
+      return null;
+    };
+
     // Outside in, so a compartment's parent is settled before it is.
     const order = [...tree.byId.values()].sort((a, b) => a.depth - b.depth || a.id.localeCompare(b.id));
     for (const node of order) {
@@ -205,28 +235,47 @@ export function reconcileCompartments(map, community) {
 
       const parent = want ? comps.get(want) : null;
 
-      // The model has put a compartment between this one and the one it was
-      // drawn in, and that compartment is not drawn at all. Draw it here:
-      // nothing else could ever get it around what it has to contain.
+      // The compartment it belongs in is not drawn, and perhaps neither are
+      // the ones around that. They are drawn here, each around the next, out
+      // to the nearest one that is drawn: nothing else could ever get them
+      // around what they have to contain.
       if (want && !parent) {
-        const between = tree.byId.get(want);
-        const outerParent = between ? comps.get(between.parent ?? '') : null;
-        if (between && outerParent && (comp.parentId ?? null) === (between.parent ?? null)) {
-          const visualId = cellCompartmentVisualId(want, names);
+        const missing = [];   // undrawn compartments, innermost first
+        let at = tree.byId.get(want);
+        while (at && !comps.has(at.id)) {
+          missing.push(at.id);
+          at = at.parent ? tree.byId.get(at.parent) : null;
+        }
+        const outerParent = at ? comps.get(at.id) : null;
+        if (!outerParent) {
+          report.left.push({ cell: cell.id, id: comp.id, reason: `its parent ${want} is not drawn` });
+          continue;
+        }
+        // The new compartments are drawn where it stands, so it has to stand
+        // in the drawn one they go into.
+        if ((comp.parentId ?? null) !== outerParent.id) {
+          const problem = moveInto(comp, outerParent);
+          if (problem) {
+            report.left.push({ cell: cell.id, id: comp.id, reason: problem, into: outerParent.id });
+            continue;
+          }
+        }
+        let inner = comp;
+        for (const id of missing) {
+          const visualId = cellCompartmentVisualId(id, names);
           const created = {
-            id: want,
-            rect: { ...comp.rect },
+            id,
+            rect: { ...inner.rect },
             depth: 0,
             parentId: outerParent.id,
-            label: cellCompartmentName(want, names),
+            label: cellCompartmentName(id, names),
             membrane: membraneStyle(visualId),
             visualId,
           };
           cell.compartments.push(created);
-          wrap(created, comp, outerParent);
-          report.wrapped.push({ cell: cell.id, id: want, around: [comp.id], created: true });
-        } else {
-          report.left.push({ cell: cell.id, id: comp.id, reason: `its parent ${want} is not drawn` });
+          wrap(created, inner, outerParent);
+          report.wrapped.push({ cell: cell.id, id, around: [inner.id], created: true });
+          inner = created;
         }
         continue;
       }
@@ -252,25 +301,11 @@ export function reconcileCompartments(map, community) {
       }
 
       // Otherwise it moves into its parent as it is, with everything in it.
-      const spot = findSpot(map, cell, comp, parent);
-      if (!spot) {
-        report.left.push({ cell: cell.id, id: comp.id, reason: `there is no room for it in ${want}` });
+      const problem = moveInto(comp, parent);
+      if (problem) {
+        report.left.push({ cell: cell.id, id: comp.id, reason: problem, into: want });
         continue;
       }
-      const was = { parentId: comp.parentId ?? null, rect: { ...comp.rect } };
-      comp.parentId = want;
-      if (spot.resized) comp.rect = { ...comp.rect, w: spot.w, h: spot.h };
-      setDepths(cell);
-      map.refreshBoundaries?.();
-      if (!editGeometryRect(map, cell.id, comp.id, { x: spot.x, y: spot.y, w: comp.rect.w, h: comp.rect.h })) {
-        comp.parentId = was.parentId;
-        comp.rect = was.rect;
-        setDepths(cell);
-        map.refreshBoundaries?.();
-        report.left.push({ cell: cell.id, id: comp.id, reason: `it could not be moved into ${want}` });
-        continue;
-      }
-      touched.add(cell.id);
       report.moved.push({ cell: cell.id, id: comp.id, into: want });
     }
 
@@ -288,7 +323,7 @@ export function reconcileCompartments(map, community) {
     // A transporter has to be on a membrane it crosses, which for the same
     // reaction is a different one once the nesting changes. And a reaction
     // inside a compartment has to be inside it.
-    const cache = new Map();
+    const cache = mapSubtrees(community, map);
     const misplaced = [];
     const strays = new Map();   // compartment id -> reactions drawn outside it
     for (const [id, rxn] of map.reactions) {

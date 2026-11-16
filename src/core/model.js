@@ -261,8 +261,18 @@ export class Model {
     return [...ids].sort();
   }
 
-  compartmentTree() {
-    return buildCompartmentTree(this.compartmentIds(), this.explicitTree, this.compartmentNames);
+  /**
+   * How the compartments nest, outside in.
+   *
+   * A map cell can carry a nesting the user set in the Edit compartments
+   * window. It names a parent for every compartment, so it takes the place of
+   * both the model's own `compartment_tree` and the built-in defaults.
+   *
+   * @param {Object<string,string|null>|null} [nesting] a map cell's `nesting`
+   */
+  compartmentTree(nesting = null) {
+    const explicit = nesting ? { ...(this.explicitTree ?? {}), ...nesting } : this.explicitTree;
+    return buildCompartmentTree(this.compartmentIds(), explicit, this.compartmentNames);
   }
 
   /** Reactions whose objective coefficient is non-zero. */

@@ -17,6 +17,7 @@ use indexmap::IndexMap;
 use crate::community::{CommunityModel, LINK_COMPARTMENT, SHARED_COMPARTMENT};
 use crate::compartments::CompartmentTree;
 use crate::js;
+use crate::mapdata::MapCell;
 use crate::model::{Model, Reaction};
 
 /// Boundary kinds, in the order the map draws them.
@@ -138,7 +139,7 @@ pub fn reaction_boundaries(
     let sets = match subtrees {
         Some(s) => s,
         None => {
-            owned = compartment_subtrees(&model.compartment_tree());
+            owned = compartment_subtrees(&model.compartment_tree(None));
             &owned
         }
     };
@@ -157,7 +158,7 @@ pub fn is_transport_reaction(reaction: &Reaction, model: &Model, subtrees: Optio
 /// Every reaction of one model grouped by the compartment membrane it
 /// crosses. Compartments nothing crosses are present with an empty list.
 pub fn model_boundary_index(model: &Model) -> IndexMap<String, Vec<String>> {
-    let subtrees = compartment_subtrees(&model.compartment_tree());
+    let subtrees = compartment_subtrees(&model.compartment_tree(None));
     let mut out: IndexMap<String, Vec<String>> = subtrees.keys().map(|k| (k.clone(), vec![])).collect();
     for reaction in model.reactions.values() {
         for id in reaction_boundaries(reaction, model, Some(&subtrees)) {
@@ -195,7 +196,7 @@ pub fn community_boundaries(community: &CommunityModel) -> Vec<BoundaryInfo> {
         depth: -1,
     }];
     for sp in community.active_species() {
-        let tree = sp.model.compartment_tree();
+        let tree = sp.model.compartment_tree(None);
         for node in tree.by_id.values() {
             out.push(BoundaryInfo {
                 id: boundary_key(Some(&sp.id), &node.id),
@@ -215,6 +216,21 @@ pub fn community_boundaries(community: &CommunityModel) -> Vec<BoundaryInfo> {
 /// Per-species compartment subtrees, computed once for bulk callers.
 pub type SubtreeCache = IndexMap<String, IndexMap<String, HashSet<String>>>;
 
+/// Every active species' subtrees, nested the way a map draws its cells.
+///
+/// A drawn cell may carry its own `nesting`, set in the Edit compartments
+/// window, and that takes the place of the model's tree. The result is the
+/// `cache` that `reaction_boundary_keys` takes, so the crossing test follows
+/// the map rather than the model. The cells are only read for that one field.
+pub fn map_subtrees(community: &CommunityModel, cells: &[MapCell]) -> SubtreeCache {
+    let mut out = SubtreeCache::new();
+    for sp in community.active_species() {
+        let nesting = cells.iter().find(|c| c.id == sp.id).and_then(|c| c.nesting());
+        out.insert(sp.id.clone(), compartment_subtrees(&sp.model.compartment_tree(nesting.as_ref())));
+    }
+    out
+}
+
 /// The boundary keys one merged reaction crosses, sorted.
 pub fn reaction_boundary_keys(community: &CommunityModel, reaction_id: &str, cache: Option<&mut SubtreeCache>) -> Vec<String> {
     let Some(reaction) = community.merged.reactions.get(reaction_id) else { return vec![] };
@@ -230,7 +246,7 @@ pub fn reaction_boundary_keys(community: &CommunityModel, reaction_id: &str, cac
     };
     for sp in community.active_species() {
         if !cache.contains_key(&sp.id) {
-            cache.insert(sp.id.clone(), compartment_subtrees(&sp.model.compartment_tree()));
+            cache.insert(sp.id.clone(), compartment_subtrees(&sp.model.compartment_tree(None)));
         }
         for (comp_id, subtree) in &cache[&sp.id] {
             if crosses_subtree(&places, Some(&sp.id), subtree) {
@@ -243,10 +259,12 @@ pub fn reaction_boundary_keys(community: &CommunityModel, reaction_id: &str, cac
 }
 
 /// Every merged reaction grouped by the boundary it crosses. Boundaries with
-/// nothing on them are present with an empty list.
-pub fn reactions_by_boundary(community: &CommunityModel) -> IndexMap<String, Vec<String>> {
+/// nothing on them are present with an empty list. `cache` gives the subtrees
+/// to test against, as `map_subtrees` builds them for a map; without it each
+/// species is nested by its model.
+pub fn reactions_by_boundary(community: &CommunityModel, cache: Option<SubtreeCache>) -> IndexMap<String, Vec<String>> {
     let mut out: IndexMap<String, Vec<String>> = community_boundaries(community).into_iter().map(|b| (b.id, vec![])).collect();
-    let mut cache = SubtreeCache::new();
+    let mut cache = cache.unwrap_or_default();
     for id in community.merged.reactions.keys() {
         for key in reaction_boundary_keys(community, id, Some(&mut cache)) {
             out.entry(key).or_default().push(id.clone());
@@ -259,6 +277,6 @@ pub fn reactions_by_boundary(community: &CommunityModel) -> IndexMap<String, Vec
 }
 
 /// Reactions the model offers on one boundary, by key.
-pub fn reactions_crossing(community: &CommunityModel, key: &str) -> Vec<String> {
-    reactions_by_boundary(community).get(key).cloned().unwrap_or_default()
+pub fn reactions_crossing(community: &CommunityModel, key: &str, cache: Option<SubtreeCache>) -> Vec<String> {
+    reactions_by_boundary(community, cache).get(key).cloned().unwrap_or_default()
 }

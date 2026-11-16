@@ -700,6 +700,38 @@ pub struct AvailableCompartment {
     pub depth: usize,
 }
 
+/// A drawn cell whose nesting the Edit compartments window can change
+/// (`nestingCells()`).
+#[derive(Debug, Clone, PartialEq)]
+pub struct NestingCell {
+    pub species_id: String,
+    pub name: String,
+}
+
+/// One compartment as the Edit compartments window lists it.
+#[derive(Debug, Clone, PartialEq)]
+pub struct NestingRow {
+    pub id: String,
+    pub name: String,
+    pub visual_id: String,
+    pub parent_id: Option<String>,
+    pub depth: usize,
+    pub drawn: bool,
+    pub outer: bool,
+}
+
+/// One drawn cell's nesting (`compartmentNesting(speciesId)`): every
+/// compartment of the species' model, outside in, each one after its parent
+/// and its siblings in id order.
+#[derive(Debug, Clone, PartialEq)]
+pub struct NestingView {
+    pub species_id: String,
+    pub outer_id: String,
+    /// The cell carries a nesting set by hand rather than the automatic one.
+    pub custom: bool,
+    pub rows: Vec<NestingRow>,
+}
+
 /// One row of `mapCompartmentChoices()`: a compartment of an active species,
 /// drawn or not, and whether it can be drawn now.
 #[derive(Debug, Clone, PartialEq)]

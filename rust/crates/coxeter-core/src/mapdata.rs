@@ -21,6 +21,8 @@ use serde::de::Deserializer;
 use serde::{Deserialize, Serialize};
 use serde_json::{Map, Value};
 
+use crate::compartments::Nesting;
+
 /// A number that JSON may have written as `null` (JavaScript writes NaN that
 /// way). Read back as NaN rather than refusing the whole map.
 fn lenient_f64<'de, D: Deserializer<'de>>(d: D) -> Result<f64, D::Error> {
@@ -163,6 +165,37 @@ pub struct MapCell {
     pub manually_drawn: Option<bool>,
     #[serde(flatten)]
     pub extra: Map<String, Value>,
+}
+
+impl MapCell {
+    /// The nesting set by hand in the Edit compartments window, if the cell
+    /// has one. It is kept among the cell's other fields, in the place the
+    /// file gives it, so a map moves between the two apps unchanged.
+    pub fn nesting(&self) -> Option<Nesting> {
+        let Some(Value::Object(entries)) = self.extra.get("nesting") else { return None };
+        let mut out = Nesting::new();
+        for (id, parent) in entries {
+            out.insert(id.clone(), parent.as_str().map(str::to_string));
+        }
+        Some(out)
+    }
+
+    /// Save a nesting on the cell, or with `None` go back to the automatic one.
+    pub fn set_nesting(&mut self, nesting: Option<&Nesting>) {
+        let Some(nesting) = nesting else {
+            self.extra.shift_remove("nesting");
+            return;
+        };
+        let mut entries = Map::new();
+        for (id, parent) in nesting {
+            let value = match parent {
+                Some(parent) => Value::String(parent.clone()),
+                None => Value::Null,
+            };
+            entries.insert(id.clone(), value);
+        }
+        self.extra.insert("nesting".to_string(), Value::Object(entries));
+    }
 }
 
 /// The medium nodes and community exchanges drawn between the cells.
@@ -584,7 +617,12 @@ impl MapData {
 }
 
 pub const MAP_DOCUMENT_FORMAT: &str = "EscherMCMCMap";
-pub const MAP_DOCUMENT_VERSION: i64 = 3;
+
+/// The map document version this build writes. Version 2 introduced the
+/// envelope, 3 the pathway manager, and 4 a cell's own `nesting` of its
+/// compartments, set in the Edit compartments window. Every earlier version
+/// still loads: a cell without `nesting` is nested automatically, as before.
+pub const MAP_DOCUMENT_VERSION: i64 = 4;
 
 /// The versioned envelope a map is saved in (format `EscherMCMCMap`).
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]

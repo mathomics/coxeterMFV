@@ -6,7 +6,7 @@
 
 use std::collections::HashSet;
 
-use coxeter_core::boundaries::reaction_boundary_keys;
+use coxeter_core::boundaries::{map_subtrees, reaction_boundary_keys};
 use coxeter_core::community::{CommunityModel, LINK_COMPARTMENT, SHARED_COMPARTMENT, split_id};
 use coxeter_core::geometry::{SIZES, center, clamp_to_rect};
 use coxeter_core::js;
@@ -434,7 +434,9 @@ pub fn place_reaction(map: &mut EditableMap, community: &CommunityModel, reactio
         return None;
     }
 
-    let crossed = reaction_boundary_keys(community, reaction_id, None);
+    // The membranes are the ones the map draws, nested as its cells say.
+    let mut subtrees = map_subtrees(community, map.cells());
+    let crossed = reaction_boundary_keys(community, reaction_id, Some(&mut subtrees));
     let requested = opts.boundary_id.as_ref().filter(|b| !b.is_empty() && crossed.contains(b)).cloned();
     let boundary_id = requested.or_else(|| choose_boundary(map, &crossed, opts.anchor));
 

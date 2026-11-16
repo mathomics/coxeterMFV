@@ -19,10 +19,13 @@ use std::sync::atomic::{AtomicBool, Ordering};
 use std::time::{Duration, Instant};
 
 use coxeter_core::community::CommunityModel;
-use coxeter_core::compartments::cell_compartment_name;
+use coxeter_core::compartments::{
+    NESTING_PRESETS, Nesting, cell_compartment_name, cell_compartment_visual_id, nesting_problem, preset_nesting, tree_nesting,
+};
 use coxeter_core::js;
 use coxeter_core::label_sources::{EntityKind, LabelEntity, LabelObject, LabelSources, label_source_name, object_label, object_label_sources};
-use coxeter_core::mapdata::{Canvas, MapText, Node, Point, Rect};
+use coxeter_core::mapdata::{Canvas, MapCell, MapText, Node, Point, Rect};
+use coxeter_core::model::Model;
 use coxeter_core::text_style::{clamp_text_size, normalize_text_font};
 use coxeter_map::circularize::{CircleRefusal, Circularized};
 use coxeter_map::compartment_reactions::reactions_in_compartment;
@@ -37,6 +40,7 @@ use coxeter_map::layout_settings::{RawLayoutSettings, layout_engine_options, lay
 use coxeter_map::multi_selection::{ItemKind, Moved, SelectionRect, SelectionTurn, TurnRefusal, empty_selection, selection_size};
 use coxeter_map::place_reaction::{PlaceOptions, Placed};
 use coxeter_map::reaction_edit::Handle;
+use coxeter_map::reconcile_map::{ShellReport, reconcile_compartments};
 use coxeter_render::reaction_colors::{PathwayRibbonMode, category_color, normalize_pathway_ribbon_mode, normalize_reaction_color_mode};
 use coxeter_render::state::GeometrySelection;
 use coxeter_render::theme::{normalize_absolute_flux_colors_value, normalize_flux_color_stops_value};
@@ -955,7 +959,9 @@ impl Store {
     pub fn show_full_map(&mut self) -> bool {
         self.assert_map_operation("showFullMap").expect("drawing the full model is a map operation");
         let Some(community) = self.community.clone() else { return false };
-        let next = EditableMap::from_community(&community, &layout_engine_options(&(&self.layout_settings).into()));
+        let mut opts = layout_engine_options(&(&self.layout_settings).into());
+        opts.nesting = Some(self.map.as_ref().map(EditableMap::cell_nesting).unwrap_or_default());
+        let next = EditableMap::from_community(&community, &opts);
         self.install_full_map(next);
         true
     }
@@ -984,7 +990,8 @@ impl Store {
         self.assert_map_operation("showFullMap").expect("drawing the full model is a map operation");
         let Some(community) = self.community.clone() else { return false };
         self.cancel_layout_job();
-        let opts = layout_engine_options(&(&self.layout_settings).into());
+        let mut opts = layout_engine_options(&(&self.layout_settings).into());
+        opts.nesting = Some(self.map.as_ref().map(EditableMap::cell_nesting).unwrap_or_default());
         let cancel = Arc::new(AtomicBool::new(false));
         let job = LayoutJob {
             problem_serial: self.problem_serial, map_generation: self.map_history.generation(),
@@ -1120,7 +1127,7 @@ impl Store {
         let mut out = Vec::new();
         for sp in self.species.iter().filter(|sp| sp.enabled && !drawn.contains(sp.id.as_str())) {
             let Some(model) = self.models.get(&sp.file) else { continue };
-            let tree = model.compartment_tree();
+            let tree = model.compartment_tree(None);
             let outer = match tree.by_id.get("e").filter(|e| e.parent.is_none()) {
                 Some(e) => Some(e.id.clone()),
                 None => tree.roots.first().cloned(),
@@ -1216,7 +1223,7 @@ impl Store {
             let Some(model) = self.models.get(&sp.file) else { continue };
             let Some(cell) = map.cell(&sp.id) else { continue };
             let drawn: HashSet<&str> = cell.compartments.iter().map(|c| c.id.as_str()).collect();
-            let tree = model.compartment_tree();
+            let tree = model.compartment_tree(cell.nesting().as_ref());
             for node in tree.by_id.values() {
                 if drawn.contains(node.id.as_str()) {
                     continue;
@@ -1255,7 +1262,7 @@ impl Store {
             let Some(model) = self.models.get(&sp.file) else { continue };
             let cell = map.cell(&sp.id);
             let drawn: HashSet<&str> = cell.map(|c| c.compartments.iter().map(|k| k.id.as_str()).collect()).unwrap_or_default();
-            let tree = model.compartment_tree();
+            let tree = model.compartment_tree(cell.and_then(|c| c.nesting()).as_ref());
             let name = |id: &str| cell_compartment_name(id, &model.compartment_names, "en");
             for node in tree.by_id.values() {
                 let (status, reason) = if drawn.contains(node.id.as_str()) {
@@ -1307,7 +1314,7 @@ impl Store {
     /// from the drawing, with the compartments nested in it and everything
     /// drawn in them (a cell's outermost one takes the cell). One undoable
     /// step; the model is unchanged, and the compartment can be drawn again
-    /// from Add Compartment.
+    /// from Edit Compartments.
     pub fn remove_map_compartment(&mut self, cell_id: &str, compartment_id: &str) -> Option<RemovedCompartment> {
         let _ = self.assert_map_operation("removeMapCompartment");
         let map = self.map.as_mut()?;
@@ -1398,10 +1405,10 @@ impl Store {
         self.map.as_ref()?;
         let sp = self.species.iter().find(|s| s.id == species_id && s.enabled)?.clone();
         let model = self.models.get(&sp.file)?.clone();
-        let tree = model.compartment_tree();
+        let nesting = self.map.as_ref()?.cell(species_id)?.nesting();
+        let tree = model.compartment_tree(nesting.as_ref());
         let tree_node = tree.by_id.get(compartment_id)?;
         let parent = tree_node.parent.clone()?;
-        self.map.as_ref()?.cell(species_id)?;
         let map = self.map.as_mut()?;
         let before = map.to_json();
         let result = map.add_compartment(&CompartmentSpec {
@@ -1429,6 +1436,174 @@ impl Store {
         self.compartment_placement_key = self.available_map_compartments().first().map(AvailableCompartment::key);
         self.emit("map");
         Some(result)
+    }
+
+    // Compartment nesting
+
+    /// `nestingTarget(speciesId)`: a drawn cell of an active species, with
+    /// its model.
+    fn nesting_target(&self, species_id: &str) -> Option<(&Model, &MapCell)> {
+        let map = self.map.as_ref()?;
+        let sp = self.species.iter().find(|s| s.id == species_id && s.enabled)?;
+        let model = self.models.get(&sp.file)?;
+        let cell = map.cell(species_id)?;
+        Some((model, cell))
+    }
+
+    /// `nestingCells()`: the drawn cells whose nesting the Edit compartments
+    /// window can change.
+    pub fn nesting_cells(&self) -> Vec<NestingCell> {
+        let Some(map) = self.map.as_ref() else { return Vec::new() };
+        let mut out = Vec::new();
+        for cell in map.cells() {
+            let Some((model, _)) = self.nesting_target(&cell.id) else { continue };
+            out.push(NestingCell { species_id: cell.id.clone(), name: model.cell.name.clone() });
+        }
+        out
+    }
+
+    /// `compartmentNesting(speciesId)`: one drawn cell's nesting as the Edit
+    /// compartments window lists it (see [`NestingView`]).
+    pub fn compartment_nesting(&self, species_id: &str) -> Option<NestingView> {
+        let (model, cell) = self.nesting_target(species_id)?;
+        let nesting = cell.nesting();
+        let tree = model.compartment_tree(nesting.as_ref());
+        let names = &model.compartment_names;
+        let outer_id = cell.outer_compartment.clone().unwrap_or_default();
+        let drawn: HashSet<&str> = cell.compartments.iter().map(|c| c.id.as_str()).collect();
+
+        // The outer compartment comes first; anything the automatic tree
+        // leaves beside it follows.
+        let mut roots = tree.roots.clone();
+        roots.sort_by_key(|id| *id != outer_id);
+
+        // Each compartment after its parent, depth first.
+        let mut rows = Vec::new();
+        let mut stack: Vec<String> = roots.into_iter().rev().collect();
+        while let Some(id) = stack.pop() {
+            let Some(node) = tree.by_id.get(&id) else { continue };
+            rows.push(NestingRow {
+                id: node.id.clone(),
+                name: cell_compartment_name(&node.id, names, "en"),
+                visual_id: cell_compartment_visual_id(&node.id, names),
+                parent_id: node.parent.clone(),
+                depth: node.depth,
+                drawn: drawn.contains(node.id.as_str()),
+                outer: node.id == outer_id,
+            });
+            for child in node.children.iter().rev() {
+                stack.push(child.clone());
+            }
+        }
+        Some(NestingView { species_id: species_id.to_string(), outer_id, custom: nesting.is_some(), rows })
+    }
+
+    /// `setCompartmentNesting(speciesId, nesting, label)`: save a nesting on
+    /// a drawn cell and redraw the cell to match, as one undoable edit.
+    /// `nesting` names a parent for every compartment of the species, or is
+    /// `None` to go back to the automatic nesting.
+    ///
+    /// A drawn compartment that now has another parent moves into it with
+    /// its contents, and a parent that is not drawn yet is drawn around it;
+    /// reactions that cross a different membrane now are drawn on that one.
+    /// When a compartment does not fit in its new parent nothing changes.
+    pub fn set_compartment_nesting(&mut self, species_id: &str, nesting: Option<&Nesting>, label: &str) -> Option<ShellReport> {
+        let _ = self.assert_map_operation("setCompartmentNesting");
+        let community = self.community.clone()?;
+        let (model, cell) = self.nesting_target(species_id)?;
+        let names = model.compartment_names.clone();
+        let ids = model.compartment_ids();
+        let outer_id = cell.outer_compartment.clone().unwrap_or_default();
+
+        if let Some(nesting) = nesting {
+            if let Some(problem) = nesting_problem(&ids, &outer_id, nesting) {
+                self.set_status_message(StatusState::Warn, problem);
+                self.emit("status");
+                return None;
+            }
+        }
+
+        let map = self.map.as_mut().expect("nesting_target found the map");
+        let before = map.to_json();
+        map.set_cell_nesting(species_id, nesting);
+        let cell_ids = IndexSet::from([species_id.to_string()]);
+        let report = reconcile_compartments(map, &community, Some(&cell_ids));
+
+        if let Some(left) = report.left.first() {
+            // Nothing is kept of a change that could not be drawn in full.
+            self.map = EditableMap::from_json(&before).ok();
+            let into = cell_compartment_name(left.into.as_deref().unwrap_or(""), &names, "en");
+            let id = cell_compartment_name(&left.id, &names, "en");
+            self.set_status_message(StatusState::Warn, format!("No room for {id} inside {into}. Enlarge {into} first."));
+            self.emit("map");
+            return None;
+        }
+
+        if self.record_map(&before, label) {
+            self.emit("map");
+        }
+        Some(report)
+    }
+
+    /// `setCompartmentParent(speciesId, compartmentId, parentId)`: put one
+    /// compartment inside another, as one undoable edit.
+    pub fn set_compartment_parent(&mut self, species_id: &str, compartment_id: &str, parent_id: &str) -> Option<ShellReport> {
+        let _ = self.assert_map_operation("setCompartmentParent");
+        let (model, cell) = self.nesting_target(species_id)?;
+        let outer_id = cell.outer_compartment.clone().unwrap_or_default();
+        let mut nesting = tree_nesting(&model.compartment_tree(cell.nesting().as_ref()), &outer_id);
+        let current = nesting.get(compartment_id)?;
+        if current.as_deref() == Some(parent_id) {
+            return None;
+        }
+        nesting.insert(compartment_id.to_string(), Some(parent_id.to_string()));
+        let label = format!("Nest {compartment_id} in {parent_id}");
+        self.set_compartment_nesting(species_id, Some(&nesting), &label)
+    }
+
+    /// `nestCompartment(speciesId, compartmentId, direction)`: Tab and
+    /// Shift+Tab in the nesting tree. `"in"` puts a compartment inside the
+    /// sibling listed just above it; `"out"` moves it up beside its parent.
+    /// Nothing moves out of the outer compartment, which stays outermost.
+    pub fn nest_compartment(&mut self, species_id: &str, compartment_id: &str, direction: &str) -> Option<ShellReport> {
+        let _ = self.assert_map_operation("nestCompartment");
+        let view = self.compartment_nesting(species_id)?;
+        let row = view.rows.iter().find(|r| r.id == compartment_id)?;
+        if row.outer {
+            return None;
+        }
+
+        let parent_id = if direction == "out" {
+            let parent = view.rows.iter().find(|r| Some(&r.id) == row.parent_id.as_ref())?;
+            if parent.outer {
+                return None;
+            }
+            parent.parent_id.clone()?
+        } else {
+            let siblings: Vec<&NestingRow> = view.rows.iter().filter(|r| r.parent_id == row.parent_id).collect();
+            let index = siblings.iter().position(|r| r.id == row.id)?;
+            if index == 0 {
+                return None;
+            }
+            siblings[index - 1].id.clone()
+        };
+        self.set_compartment_parent(species_id, compartment_id, &parent_id)
+    }
+
+    /// `applyNestingPreset(speciesId, preset)`: start a cell's nesting over
+    /// from Automatic, Yeast9, BiGG or Empty, as one undoable edit.
+    pub fn apply_nesting_preset(&mut self, species_id: &str, preset: &str) -> Option<ShellReport> {
+        let _ = self.assert_map_operation("applyNestingPreset");
+        let (model, cell) = self.nesting_target(species_id)?;
+        if !NESTING_PRESETS.contains(&preset) {
+            return None;
+        }
+        if preset == "auto" {
+            return self.set_compartment_nesting(species_id, None, "Automatic nesting");
+        }
+        let outer_id = cell.outer_compartment.clone().unwrap_or_default();
+        let nesting = preset_nesting(&model.compartment_ids(), &outer_id, preset);
+        self.set_compartment_nesting(species_id, Some(&nesting), &format!("Nesting from {preset}"))
     }
 
     /// `previewCanvasSize(width, height)`: what `set_map_canvas_size` would
@@ -1541,7 +1716,8 @@ impl Store {
             return true;
         }
         let before = map.to_json();
-        let opts = layout_engine_options(&(&self.layout_settings).into());
+        let mut opts = layout_engine_options(&(&self.layout_settings).into());
+        opts.nesting = Some(map.cell_nesting());
         let next = if drawn.is_empty() {
             // Only the shell is drawn, so only the shell is laid out.
             EditableMap::empty_from_community(&community, &opts)
@@ -3442,5 +3618,216 @@ mod canvas_transaction_tests {
         assert_eq!(store.model_editor_model().expect("model").to_json(), biology);
         assert_eq!(store.problem.as_ref().expect("problem").snapshot_bounds(), bounds);
         assert!(Arc::ptr_eq(store.solution.as_ref().expect("solution"), &solution));
+    }
+}
+
+#[cfg(test)]
+mod nesting_tests {
+    use super::*;
+    use coxeter_core::boundaries::{community_reaction_places, map_subtrees, reaction_boundary_keys};
+    use coxeter_core::mapdata::{MAP_DOCUMENT_VERSION, MapCompartment};
+    use coxeter_map::map_document::parse_map_document;
+
+    /// A store over one bundled scenario's species, with a blank map and the
+    /// cell drawn.
+    fn with_cell(scenario: &str, species_id: &str) -> Store {
+        let mut store = Store::with_dir(coxeter_core::testkit::repo_root());
+        store.init().expect("bundled files");
+        store.use_scenario(scenario).expect("scenario");
+        store.show_empty_map();
+        store.set_map_canvas_size(Some(1300.0), Some(900.0), 0.0, 0.0);
+        store.add_map_cell(species_id, Some(Rect::new(40.0, 40.0, 1180.0, 800.0))).expect("the cell is drawn");
+        store
+    }
+
+    fn compartment(store: &Store, id: &str) -> Option<MapCompartment> {
+        store.map.as_ref().expect("map").cells()[0].compartments.iter().find(|c| c.id == id).cloned()
+    }
+
+    fn inside(inner: &Rect, outer: &Rect) -> bool {
+        inner.x >= outer.x && inner.y >= outer.y && inner.x + inner.w <= outer.x + outer.w && inner.y + inner.h <= outer.y + outer.h
+    }
+
+    fn overlap(a: &Rect, b: &Rect) -> bool {
+        !(a.x + a.w <= b.x || b.x + b.w <= a.x || a.y + a.h <= b.y || b.y + b.h <= a.y)
+    }
+
+    fn nesting_of(pairs: &[(&str, Option<&str>)]) -> Nesting {
+        pairs.iter().map(|(id, parent)| (id.to_string(), parent.map(str::to_string))).collect()
+    }
+
+    fn parents(store: &Store, species_id: &str) -> IndexMap<String, Option<String>> {
+        let view = store.compartment_nesting(species_id).expect("a drawn cell");
+        view.rows.into_iter().map(|r| (r.id, r.parent_id)).collect()
+    }
+
+    fn map_text(store: &Store) -> String {
+        serde_json::to_string(&store.map.as_ref().expect("map").to_json()).expect("json")
+    }
+
+    #[test]
+    fn a_cells_saved_nesting_overrides_the_models_tree_for_what_can_be_drawn_and_where() {
+        let mut store = with_cell("solo-ecoli", "eco");
+        let available = |store: &Store| -> Vec<(String, Option<String>)> {
+            store.available_map_compartments().into_iter().map(|x| (x.compartment_id, x.parent_id)).collect()
+        };
+        assert_eq!(available(&store), [("p".to_string(), Some("e".to_string()))]);
+
+        store.apply_nesting_preset("eco", "empty");
+        let cell = store.map.as_ref().expect("map").cell("eco").expect("cell").clone();
+        assert_eq!(cell.nesting(), Some(nesting_of(&[("c", Some("e")), ("e", None), ("p", Some("e"))])));
+        assert_eq!(available(&store), [("c".to_string(), Some("e".to_string())), ("p".to_string(), Some("e".to_string()))]);
+        let view = store.compartment_nesting("eco").expect("view");
+        assert!(view.custom);
+        let rows: Vec<(String, Option<String>)> = view.rows.into_iter().map(|r| (r.id, r.parent_id)).collect();
+        assert_eq!(rows, nesting_of(&[("e", None), ("c", Some("e")), ("p", Some("e"))]).into_iter().collect::<Vec<_>>());
+
+        store.apply_nesting_preset("eco", "auto");
+        assert_eq!(store.map.as_ref().expect("map").cell("eco").expect("cell").nesting(), None);
+        assert!(!store.compartment_nesting("eco").expect("view").custom);
+    }
+
+    #[test]
+    fn moving_a_drawn_compartment_under_another_fits_it_inside_its_new_parent_and_moves_its_transporters_to_the_new_membrane() {
+        let mut store = with_cell("solo-levadura", "sce");
+        let community = store.community.clone().expect("community");
+        let model_before = community.active_species().next().expect("species").model.to_json();
+        store.add_map_compartment("sce", "c", Some(Rect::new(80.0, 80.0, 1100.0, 720.0))).expect("c");
+        store.add_map_compartment("sce", "im", Some(Rect::new(120.0, 120.0, 380.0, 320.0))).expect("im");
+        store.add_map_compartment("sce", "m", Some(Rect::new(170.0, 170.0, 280.0, 220.0))).expect("m");
+
+        // A transporter between the cytosol and the matrix.
+        let mut transporter = None;
+        for (id, reaction) in &community.merged.reactions {
+            let places: HashSet<String> = community_reaction_places(&community, reaction).into_iter().map(|p| p.compartment).collect();
+            if places.len() == 2 && places.contains("c") && places.contains("m") {
+                transporter = Some(id.clone());
+                break;
+            }
+        }
+        let transporter = transporter.expect("the yeast model moves something between cytosol and matrix");
+        store.map.as_mut().expect("map").add_reaction(&community, &transporter, &PlaceOptions::default()).expect("drawn");
+        assert_eq!(reaction_boundary_keys(&community, &transporter, None), ["sce/im", "sce/m"]);
+
+        assert!(store.set_compartment_parent("sce", "m", "c").is_some());
+        let m = compartment(&store, "m").expect("m");
+        assert_eq!(m.parent_id.as_deref(), Some("c"));
+        assert!(inside(&m.rect, &compartment(&store, "c").expect("c").rect), "the matrix is inside the cytosol");
+        assert!(!overlap(&m.rect, &compartment(&store, "im").expect("im").rect), "and beside the intermembrane space, not on it");
+
+        let map = store.map.as_ref().expect("map");
+        let mut subtrees = map_subtrees(&community, map.cells());
+        assert_eq!(reaction_boundary_keys(&community, &transporter, Some(&mut subtrees)), ["sce/m"], "cytosol to matrix now crosses one membrane");
+        let rxn = map.reaction(&transporter).expect("still drawn");
+        assert_eq!(rxn.boundary_id.as_deref(), Some("sce/m"));
+        assert!(rxn.on_membrane);
+        let community = store.community.clone().expect("community");
+        assert_eq!(community.active_species().next().expect("species").model.to_json(), model_before, "the model is not touched");
+    }
+
+    #[test]
+    fn nesting_a_drawn_compartment_under_an_undrawn_one_draws_the_parent_and_any_missing_ancestors_around_it() {
+        let mut store = with_cell("solo-ecoli", "eco");
+        store.apply_nesting_preset("eco", "empty");
+        store.add_map_compartment("eco", "c", Some(Rect::new(300.0, 250.0, 400.0, 300.0))).expect("c");
+
+        assert!(store.set_compartment_parent("eco", "c", "p").is_some());
+        let p = compartment(&store, "p").expect("the periplasm is drawn");
+        let c = compartment(&store, "c").expect("c");
+        assert_eq!(p.parent_id.as_deref(), Some("e"));
+        assert_eq!(c.parent_id.as_deref(), Some("p"));
+        assert!(inside(&c.rect, &p.rect));
+
+        let mut yeast = with_cell("solo-levadura", "sce");
+        yeast.apply_nesting_preset("sce", "empty");
+        yeast.add_map_compartment("sce", "m", Some(Rect::new(400.0, 300.0, 300.0, 220.0))).expect("m");
+        let nesting = nesting_of(&[("c", Some("e")), ("e", None), ("im", Some("c")), ("m", Some("im"))]);
+        assert!(yeast.set_compartment_nesting("sce", Some(&nesting), "Nest compartments").is_some());
+        let at = |id: &str| compartment(&yeast, id).expect("drawn");
+        let drawn_parents: Vec<Option<String>> = ["c", "im", "m"].iter().map(|id| at(id).parent_id).collect();
+        assert_eq!(drawn_parents, [Some("e".to_string()), Some("c".to_string()), Some("im".to_string())]);
+        assert!(inside(&at("m").rect, &at("im").rect));
+        assert!(inside(&at("im").rect, &at("c").rect));
+        assert!(inside(&at("c").rect, &at("e").rect));
+    }
+
+    #[test]
+    fn the_outer_compartment_cannot_move_and_a_compartment_cannot_go_inside_its_own_descendant() {
+        let mut store = with_cell("solo-levadura", "sce");
+        store.add_map_compartment("sce", "c", Some(Rect::new(80.0, 80.0, 1100.0, 720.0))).expect("c");
+        let before = map_text(&store);
+
+        assert_eq!(store.set_compartment_parent("sce", "e", "c"), None);
+        assert!(store.status().message.contains("stays outermost"));
+        assert_eq!(store.set_compartment_parent("sce", "c", "m"), None);
+        assert!(store.status().message.contains("cannot go inside itself"));
+        assert_eq!(store.nest_compartment("sce", "c", "out"), None, "nothing moves out of the outer compartment");
+        assert_eq!(map_text(&store), before);
+    }
+
+    #[test]
+    fn tab_nests_a_compartment_under_the_one_listed_above_it_and_shift_tab_moves_it_back_out() {
+        let mut store = with_cell("solo-levadura", "sce");
+        store.apply_nesting_preset("sce", "empty");
+
+        store.nest_compartment("sce", "im", "in");
+        assert_eq!(parents(&store, "sce")["im"].as_deref(), Some("c"));
+        store.nest_compartment("sce", "m", "in");
+        assert_eq!(parents(&store, "sce")["m"].as_deref(), Some("c"));
+        store.nest_compartment("sce", "m", "in");
+        assert_eq!(parents(&store, "sce")["m"].as_deref(), Some("im"));
+        store.nest_compartment("sce", "m", "out");
+        assert_eq!(parents(&store, "sce")["m"].as_deref(), Some("c"));
+    }
+
+    #[test]
+    fn a_nesting_change_is_one_undo_step_and_the_map_saves_and_loads_byte_identical_at_version_4() {
+        let mut store = with_cell("solo-levadura", "sce");
+        let community = store.community.clone().expect("community");
+        store.add_map_compartment("sce", "c", Some(Rect::new(80.0, 80.0, 1100.0, 720.0))).expect("c");
+        store.add_map_compartment("sce", "im", Some(Rect::new(120.0, 120.0, 380.0, 320.0))).expect("im");
+        store.add_map_compartment("sce", "m", Some(Rect::new(170.0, 170.0, 280.0, 220.0))).expect("m");
+        let before = map_text(&store);
+
+        store.set_compartment_parent("sce", "m", "c");
+        let after = map_text(&store);
+        store.undo_map();
+        assert_eq!(map_text(&store), before);
+        store.redo_map();
+        assert_eq!(map_text(&store), after);
+
+        let doc = store.map_document().expect("document");
+        assert_eq!(doc["version"], json!(MAP_DOCUMENT_VERSION));
+        assert_eq!(MAP_DOCUMENT_VERSION, 4);
+        let mut reopened = EditableMap::from_json(&parse_map_document(&doc).expect("parsed").map).expect("map");
+        let report = reconcile_compartments(&mut reopened, &community, None);
+        assert!(report.wrapped.is_empty() && report.moved.is_empty() && report.left.is_empty() && report.reseated.is_empty());
+        assert_eq!(serde_json::to_string(&reopened.to_json()).expect("json"), after, "loading keeps the nesting the user set");
+    }
+
+    #[test]
+    fn a_version_3_map_loads_with_automatic_nesting() {
+        let mut store = with_cell("solo-levadura", "sce");
+        let mut doc = store.map_document().expect("document");
+        doc["version"] = json!(3);
+        let parsed = parse_map_document(&doc).expect("parsed");
+        assert_eq!(parsed.version, 3.0);
+        store.map = Some(EditableMap::from_json(&parsed.map).expect("map"));
+        assert_eq!(store.map.as_ref().expect("map").cell("sce").expect("cell").nesting(), None);
+        assert!(!store.compartment_nesting("sce").expect("view").custom);
+        assert_eq!(parents(&store, "sce"), nesting_of(&[("e", None), ("c", Some("e")), ("im", Some("c")), ("m", Some("im"))]));
+    }
+
+    #[test]
+    fn re_laying_out_keeps_the_users_nesting() {
+        let mut store = with_cell("solo-levadura", "sce");
+        store.apply_nesting_preset("sce", "empty");
+        let nesting = store.map.as_ref().expect("map").cell("sce").expect("cell").nesting();
+
+        store.relayout_map("Re-layout");
+        let cell = store.map.as_ref().expect("map").cells()[0].clone();
+        assert_eq!(cell.nesting(), nesting);
+        let parent_of: IndexMap<String, Option<String>> = cell.compartments.iter().map(|c| (c.id.clone(), c.parent_id.clone())).collect();
+        assert_eq!(parent_of, nesting_of(&[("e", None), ("c", Some("e")), ("im", Some("e")), ("m", Some("e"))]));
     }
 }

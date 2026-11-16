@@ -112,7 +112,7 @@ test('map document v3 persists pathway manager data while older maps remain pars
   };
 
   const doc = createMapDocument(map, { pathwayManager: manager });
-  assert.equal(MAP_DOCUMENT_VERSION, 3);
+  assert.ok(MAP_DOCUMENT_VERSION >= 3, 'the pathway manager is saved from version 3 on');
   assert.deepEqual(parseMapDocument(doc).pathwayManager, manager);
 
   const legacy = parseMapDocument(map.toJSON());

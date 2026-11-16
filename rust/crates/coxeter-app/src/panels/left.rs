@@ -25,7 +25,7 @@ pub const TOOLS: [(Tool, &str, &str, &str); 8] = [
     (Tool::Reaction, "⌁", "Add Reaction", "Click a metabolite to add its reactions"),
     (Tool::Metabolite, "○", "Add Metabolite", ""),
     (Tool::Text, "T", "Text", ""),
-    (Tool::Compartment, "▣", "Add Compartment", "Draw a model compartment"),
+    (Tool::Compartment, "▣", "Edit Compartments", "Draw and nest model compartments"),
     (Tool::Cell, "⬡", "Add Cell", "Draw a model species as a cell"),
 ];
 
@@ -157,7 +157,14 @@ fn tool_button(ui: &mut Ui, icon: &str, label: &str, title: &str, active: bool, 
     let icon_pos = egui::pos2(rect.min.x + 14.0, rect.center().y);
     painter.text(icon_pos, egui::Align2::CENTER_CENTER, icon, egui::FontId::proportional(15.0), if active { p.accent } else { p.ink_2 });
     let font = egui::FontId::new(11.5, if active { bold() } else { egui::FontFamily::Proportional });
-    let galley = painter.layout(label.to_string(), font, ink, width - 32.0);
+    // A word is never split across lines, as in the browser: a label whose
+    // longest word is wider than the room left runs into the padding instead.
+    let mut wrap_width = width - 32.0;
+    for word in label.split(' ') {
+        let word_width = painter.layout_no_wrap(word.to_string(), font.clone(), ink).size().x;
+        wrap_width = wrap_width.max(word_width);
+    }
+    let galley = painter.layout(label.to_string(), font, ink, wrap_width);
     let text_pos = egui::pos2(rect.min.x + 27.0, rect.center().y - galley.size().y / 2.0);
     painter.galley(text_pos, galley, ink);
     aria_label(&r, label);
@@ -298,7 +305,7 @@ pub fn tool_help(tool: Tool) -> (&'static str, &'static str) {
         Tool::Reaction => ("Add Reaction mode", "Click a metabolite to add a reaction from it."),
         Tool::Metabolite => ("Add Metabolite mode", "Click a compartment, then pick a metabolite."),
         Tool::Text => ("Add map text", "Click the map, type, and press Enter."),
-        Tool::Compartment => ("Add Compartment", "Pick a compartment and a shape, then drag inside its highlighted parent."),
+        Tool::Compartment => ("Edit Compartments", "Pick a compartment and a shape, then drag inside its highlighted parent."),
         Tool::Cell => ("Add Cell", "Drag on the map to draw a cell."),
         Tool::Pan => ("Edit your map", "Choose an editing tool."),
     }

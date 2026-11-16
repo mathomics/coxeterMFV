@@ -21,7 +21,7 @@
 //! a time. Each keeps its own state as its controller does (`this.state`).
 
 use coxeter_canvas::{MapMenu, gestures::MenuRequest};
-use coxeter_core::boundaries::reactions_crossing;
+use coxeter_core::boundaries::{map_subtrees, reactions_crossing};
 use coxeter_core::mapdata::Point;
 use coxeter_map::place_reaction::PlaceOptions;
 use coxeter_state::{AvailableMetabolite, Store};
@@ -203,7 +203,8 @@ pub fn available_for_boundary(store: &Store, boundary_id: &str) -> Vec<String> {
     if boundary_id.is_empty() {
         return Vec::new();
     }
-    reactions_crossing(community, boundary_id).into_iter().filter(|r| !map.has_reaction(r)).collect()
+    let subtrees = map_subtrees(community, map.cells());
+    reactions_crossing(community, boundary_id, Some(subtrees)).into_iter().filter(|r| !map.has_reaction(r)).collect()
 }
 
 // Drawing

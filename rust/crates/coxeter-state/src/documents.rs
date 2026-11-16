@@ -808,7 +808,7 @@ impl Store {
             // What a switched-off species has drawn is kept, not taken as lost.
             let keep: HashSet<String> = self.species.iter().filter(|sp| !sp.enabled).map(|sp| sp.id.clone()).collect();
             let contents = prune_map_to_model(&mut next, &community, &keep);
-            let shell = reconcile_compartments(&mut next, &community);
+            let shell = reconcile_compartments(&mut next, &community, None);
             self.map_load_note = format!("{}{}", self.map_load_note, describe_reconciliation(Some(&contents), Some(&shell)));
         }
         self.map = Some(next);

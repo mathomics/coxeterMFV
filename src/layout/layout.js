@@ -85,6 +85,9 @@ function normaliseLayoutTuning(opts = {}) {
  *   metabolite nodes, no reaction markers, no segments. The shells come out
  *   identical to a full layout, because their sizes are derived from the model
  *   rather than from what happens to be drawn.
+ * @param {Object<string, Object<string,string|null>>} [opts.nesting] species id
+ *   -> the nesting a map cell carries, so laying a map out again keeps the
+ *   compartments where the user nested them
  * @returns {{width, height, environment, cells, medium, nodes: Map, reactions: Map, segments: object[]}}
  */
 export function layoutCommunity(community, opts = {}) {
@@ -132,6 +135,7 @@ export function layoutCommunity(community, opts = {}) {
       seed: seed + index * 977,
       contents,
       tuning,
+      nesting: opts.nesting?.[sp.id] ?? null,
     });
     cells.push(cell);
   });
@@ -160,10 +164,10 @@ export function layoutCommunity(community, opts = {}) {
 
 function layoutCell({
   community, species: sp, rect: cellRect, nodes, reactions, seed,
-  contents = 'all', tuning = normaliseLayoutTuning(),
+  contents = 'all', tuning = normaliseLayoutTuning(), nesting = null,
 }) {
   const model = sp.model;
-  const { roots, byId } = model.compartmentTree();
+  const { roots, byId } = model.compartmentTree(nesting);
   const layoutProfile = compartmentLayoutProfile(model.compartmentIds(), model.compartmentNames);
 
   // How much room each compartment needs
@@ -289,7 +293,7 @@ function layoutCell({
   // An empty map stops here: the cell, its membranes and the compartments
   // nested inside them are the whole drawing. Everything below this point
   // places contents, and contents are exactly what an empty map has none of.
-  if (contents === 'none') return describeCell(sp, cellRect, compartments);
+  if (contents === 'none') return describeCell(sp, cellRect, compartments, nesting);
 
   // Primary metabolites and single-compartment reactions
   const items = [];
@@ -527,12 +531,12 @@ function layoutCell({
     }
   }
 
-  return describeCell(sp, cellRect, compartments);
+  return describeCell(sp, cellRect, compartments, nesting);
 }
 
 /** The cell record the map is built from, identical for full and empty maps. */
-function describeCell(sp, cellRect, compartments) {
-  return {
+function describeCell(sp, cellRect, compartments, nesting) {
+  const cell = {
     id: sp.id,
     name: sp.model.cell.name,
     organism: sp.model.cell.organism,
@@ -543,6 +547,10 @@ function describeCell(sp, cellRect, compartments) {
     compartments,
     outerCompartment: compartments.find((c) => c.parentId === null)?.id ?? 'e',
   };
+  if (nesting) {
+    cell.nesting = { ...nesting };
+  }
+  return cell;
 }
 
 // Medium

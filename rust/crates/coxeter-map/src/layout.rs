@@ -23,7 +23,7 @@ use coxeter_core::community::{
     shared_metabolite,
 };
 use coxeter_core::compartments::{
-    Names, cell_compartment_name, cell_compartment_visual_id, compartment_layout_profile, compartment_name,
+    Names, Nesting, cell_compartment_name, cell_compartment_visual_id, compartment_layout_profile, compartment_name,
     membrane_style,
 };
 use coxeter_core::geometry::{
@@ -77,6 +77,9 @@ pub struct LayoutOptions {
     pub cell_area_multiplier: Option<f64>,
     /// `fromLayout`/`fromCommunity`: keep only these reaction ids.
     pub reactions: Option<Vec<String>>,
+    /// Species id to the nesting a map cell carries, so laying a map out
+    /// again keeps the compartments where the user nested them.
+    pub nesting: Option<IndexMap<String, Nesting>>,
 }
 
 /// The clamped tuning the layout works with (`normaliseLayoutTuning`).
@@ -163,6 +166,7 @@ pub fn layout_community(community: &CommunityModel, opts: &LayoutOptions) -> Lay
             seed + index as f64 * 977.0,
             contents,
             &tuning,
+            opts.nesting.as_ref().and_then(|n| n.get(&sp.id)),
         );
         cells.push(cell);
     }
@@ -236,9 +240,10 @@ fn layout_cell(
     seed: f64,
     contents: Contents,
     tuning: &Tuning,
+    nesting: Option<&Nesting>,
 ) -> MapCell {
     let model: &Model = &sp.model;
-    let tree = model.compartment_tree();
+    let tree = model.compartment_tree(nesting);
     let names = &model.compartment_names;
     let layout_profile = compartment_layout_profile(&model.compartment_ids(), names);
     let ns = tuning.node_spacing;
@@ -420,7 +425,7 @@ fn layout_cell(
     // nested inside them are the whole drawing. Everything below this point
     // places contents, and contents are exactly what an empty map has none of.
     if contents == Contents::None {
-        return describe_cell(sp, cell_rect, compartments);
+        return describe_cell(sp, cell_rect, compartments, nesting);
     }
 
     // Primary metabolites and single-compartment reactions
@@ -644,7 +649,7 @@ fn layout_cell(
         }
     }
 
-    describe_cell(sp, cell_rect, compartments)
+    describe_cell(sp, cell_rect, compartments, nesting)
 }
 
 struct ItemCtx<'r> {
@@ -748,9 +753,9 @@ fn layout_field(layout: Option<&Value>, key: &str) -> f64 {
 }
 
 /// The cell record the map is built from; identical for full and empty maps.
-fn describe_cell(sp: &SpeciesEntry, cell_rect: Rect, compartments: Vec<MapCompartment>) -> MapCell {
+fn describe_cell(sp: &SpeciesEntry, cell_rect: Rect, compartments: Vec<MapCompartment>, nesting: Option<&Nesting>) -> MapCell {
     let outer = compartments.iter().find(|c| c.parent_id.is_none()).map(|c| c.id.clone()).unwrap_or_else(|| "e".into());
-    MapCell {
+    let mut cell = MapCell {
         id: sp.id.clone(),
         name: sp.model.cell.name.clone(),
         organism: Some(sp.model.cell.organism.clone()),
@@ -763,7 +768,11 @@ fn describe_cell(sp: &SpeciesEntry, cell_rect: Rect, compartments: Vec<MapCompar
         stroke: None,
         manually_drawn: None,
         extra: Map::new(),
+    };
+    if nesting.is_some() {
+        cell.set_nesting(nesting);
     }
+    cell
 }
 
 // Medium

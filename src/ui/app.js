@@ -26,6 +26,7 @@ import {
 import { BoundaryMenuController } from './boundary-menu.js';
 import { MetaboliteMenuController } from './metabolite-menu.js';
 import { CompartmentMenuController } from './compartment-menu.js';
+import { NestingWindowController } from './nesting-window.js';
 import { MetaboliteAddMenuController } from './metabolite-add-menu.js';
 import { renderMap, rotationArm, frameLabelScale, geometryHandleSide } from '../render/mapview.js';
 import { formatFlux } from '../render/theme.js';
@@ -67,6 +68,7 @@ const els = {
   results: document.getElementById('results-content'),
   resultsResize: document.querySelector('.results-resize'),
   stage: document.getElementById('stage'),
+  nestingLayer: document.getElementById('nesting-window'),
   modelName: document.getElementById('model-name'),
   modelKind: document.getElementById('model-kind'),
   saveState: document.getElementById('save-state'),
@@ -149,6 +151,9 @@ const metaboliteAddMenu = new MetaboliteAddMenuController({
   screenToMap: (x,y)=>screenToMap(x,y),
   onChange: ()=>paintMap(),
 });
+
+// The Edit compartments window, beside the map and outside the stage.
+const nestingWindow = new NestingWindowController({ layer: els.nestingLayer, store });
 
 // Rendering
 
@@ -977,6 +982,8 @@ function paintShell() {
     button.classList.toggle('is-active', button.dataset.tool === ui.tool);
     button.setAttribute('aria-pressed', String(button.dataset.tool === ui.tool));
   });
+  // Every tool change and every store change passes through here.
+  nestingWindow.follow(ui.tool === 'compartment', store.selectedGeometry?.cellId ?? null);
 }
 
 /** Once the drag is over, bring the panels that were only patched up to date. */
@@ -4549,6 +4556,7 @@ async function onSidebarClick(event) {
       ui.leftTab = 'build';
       paintShell();
       break;
+    case 'open-nesting-window': nestingWindow.open(store.selectedGeometry?.cellId ?? null); break;
     case 'open-crossfeeding-explorer': openWorkspace('crossfeeding', button); store.setCrossFeedingExplorer({enabled:true}); break;
     case 'close-crossfeeding-explorer': store.setCrossFeedingExplorer({enabled:false,selectedId:null}); break;
     case 'select-crossfeeding-event': store.crossFeedingExplorer.selectedAt = null; store.selectCrossFeedingEvent(button.dataset.crossfeedId); break;

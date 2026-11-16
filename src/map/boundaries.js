@@ -71,6 +71,27 @@ export function compartmentSubtrees(tree) {
   return out;
 }
 
+/**
+ * Every active species' subtrees, nested the way a map draws its cells.
+ *
+ * A drawn cell may carry its own `nesting`, set in the Edit compartments
+ * window, and that takes the place of the model's tree. The result is the
+ * `cache` that `reactionBoundaryKeys` takes, so the crossing test follows the
+ * map rather than the model. The map is only read for that one field.
+ *
+ * @param {import('../core/community.js').CommunityModel} community
+ * @param {{cells?: Array}|null} map
+ * @returns {Map<string, Map<string, Set<string>>>} species id -> subtrees
+ */
+export function mapSubtrees(community, map) {
+  const out = new Map();
+  for (const sp of community.activeSpecies ?? []) {
+    const cell = map?.cells?.find((c) => c.id === sp.id);
+    out.set(sp.id, compartmentSubtrees(sp.model.compartmentTree(cell?.nesting ?? null)));
+  }
+  return out;
+}
+
 // Places
 
 /**
@@ -280,15 +301,18 @@ export function reactionBoundaryKeys(community, reactionId, cache = null) {
  * membrane the user pointed at, the reactions the model makes available on it.
  * Boundaries with nothing on them are present with an empty list.
  *
+ * @param {import('../core/community.js').CommunityModel} community
+ * @param {Map<string, Map<string, Set<string>>>} [cache] species id -> subtrees,
+ *   as `mapSubtrees` gives them for a map whose cells carry their own nesting
  * @returns {Map<string, string[]>} boundary key -> merged reaction ids, sorted
  */
-export function reactionsByBoundary(community) {
+export function reactionsByBoundary(community, cache = null) {
   const out = new Map();
   for (const b of communityBoundaries(community)) out.set(b.id, []);
 
-  const cache = new Map();
+  const subtrees = cache ?? new Map();
   for (const id of community.merged.reactions.keys()) {
-    for (const key of reactionBoundaryKeys(community, id, cache)) {
+    for (const key of reactionBoundaryKeys(community, id, subtrees)) {
       if (!out.has(key)) out.set(key, []);
       out.get(key).push(id);
     }
@@ -297,7 +321,7 @@ export function reactionsByBoundary(community) {
   return out;
 }
 
-/** Reactions the model offers on one boundary, by key. */
-export function reactionsCrossing(community, key) {
-  return reactionsByBoundary(community).get(key) ?? [];
+/** Reactions the model offers on one boundary, by key, nested as `cache` says. */
+export function reactionsCrossing(community, key, cache = null) {
+  return reactionsByBoundary(community, cache).get(key) ?? [];
 }

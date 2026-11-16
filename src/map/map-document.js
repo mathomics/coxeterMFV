@@ -9,7 +9,14 @@
 import { normalizeAbsoluteFluxColors, normalizeFluxColorStops } from '../render/theme.js';
 
 export const MAP_DOCUMENT_FORMAT = 'EscherMCMCMap';
-export const MAP_DOCUMENT_VERSION = 3;
+
+/**
+ * The map document version this build writes. Version 2 introduced the
+ * envelope, 3 the pathway manager, and 4 a cell's own `nesting` of its
+ * compartments, set in the Edit compartments window. Every earlier version
+ * still loads: a cell without `nesting` is nested automatically, as before.
+ */
+export const MAP_DOCUMENT_VERSION = 4;
 
 /**
  * Wrap a map in the versioned envelope, ready for JSON.stringify.

@@ -333,6 +333,114 @@ export function buildCompartmentTree(ids, explicit = null, names = {}) {
   return { roots, byId };
 }
 
+/** The starting points the Edit compartments window offers for a cell's nesting. */
+export const NESTING_PRESETS = ['auto', 'yeast9', 'bigg', 'empty'];
+
+/**
+ * A complete nesting for one cell, taken from one of the built-in tables.
+ *
+ * The cell's outer compartment holds everything else, so no compartment is
+ * ever left outside the cell: one the table does not know, or that the table
+ * puts at the top, goes directly inside the outer compartment. A parent the
+ * model lacks is skipped over, as `buildCompartmentTree` does.
+ *
+ * @param {string[]} ids the model's compartment ids
+ * @param {string} outerId the cell's outer compartment, normally `e`
+ * @param {'yeast9'|'bigg'|'empty'} preset
+ * @returns {Object<string,string|null>} compartment id -> parent id
+ */
+export function presetNesting(ids, outerId, preset) {
+  const present = new Set(ids);
+  let table = null;
+  if (preset === 'yeast9') {
+    table = YEAST9_PARENT;
+  } else if (preset === 'bigg') {
+    table = DEFAULT_PARENT;
+  }
+  const hasOwn = (key) => table !== null && Object.prototype.hasOwnProperty.call(table, key);
+
+  const nesting = {};
+  for (const id of ids) {
+    if (id === outerId) {
+      nesting[id] = null;
+      continue;
+    }
+    let parent = hasOwn(id) ? table[id] : null;
+    const seen = new Set([id]);
+    while (parent && !present.has(parent)) {
+      if (seen.has(parent)) {
+        parent = null;
+        break;
+      }
+      seen.add(parent);
+      parent = hasOwn(parent) ? table[parent] : null;
+    }
+    nesting[id] = parent && parent !== id ? parent : outerId;
+  }
+  return nesting;
+}
+
+/**
+ * The nesting a built tree describes, ready to be edited and saved on a cell.
+ *
+ * The outer compartment stays outermost. Anything the tree leaves at the top
+ * beside it, which the map would draw outside the cell, goes inside it.
+ *
+ * @param {{byId: Map<string, {parent: string|null}>}} tree
+ * @param {string} outerId the cell's outer compartment
+ * @returns {Object<string,string|null>} compartment id -> parent id
+ */
+export function treeNesting(tree, outerId) {
+  const nesting = {};
+  for (const node of tree.byId.values()) {
+    if (node.id === outerId) {
+      nesting[node.id] = null;
+    } else {
+      nesting[node.id] = node.parent ?? outerId;
+    }
+  }
+  return nesting;
+}
+
+/**
+ * Why a nesting cannot be used, or null when it can.
+ *
+ * Every compartment of the model needs a parent among the model's
+ * compartments, except the outer one, which has none, and following the
+ * parents up from any compartment has to arrive at the outer one.
+ *
+ * @param {string[]} ids the model's compartment ids
+ * @param {string} outerId the cell's outer compartment
+ * @param {Object<string,string|null>} nesting compartment id -> parent id
+ * @returns {string|null}
+ */
+export function nestingProblem(ids, outerId, nesting) {
+  const present = new Set(ids);
+  if (!present.has(outerId)) return `The model has no compartment ${outerId}.`;
+  if ((nesting[outerId] ?? null) !== null) return `${outerId} is the outer compartment and stays outermost.`;
+  for (const id of ids) {
+    if (id === outerId) continue;
+    const parent = nesting[id] ?? null;
+    if (!parent || !present.has(parent)) return `${id} needs a parent inside the cell.`;
+    if (!nestingReachesOuter(nesting, id, outerId)) return `${id} cannot go inside itself.`;
+  }
+  return null;
+}
+
+/** Does following the parents up from `id` arrive at the outer compartment? */
+function nestingReachesOuter(nesting, id, outerId) {
+  const seen = new Set();
+  let at = id;
+  while (at !== outerId) {
+    if (seen.has(at)) return false;
+    seen.add(at);
+    const parent = nesting[at] ?? null;
+    if (!parent) return false;
+    at = parent;
+  }
+  return true;
+}
+
 /** All compartment ids known to the registry, in display order. */
 export function knownCompartmentIds() {
   return Object.keys(COMPARTMENTS);
