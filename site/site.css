@@ -1,0 +1,263 @@
+/*
+ * Styles of the Coxeter-MFV website: the home page and the help page. The app
+ * (app.html) keeps its own styles in assets/. The colours repeat the app's
+ * tokens so the site and the app look like one thing, in both themes.
+ */
+
+:root {
+  --bg: #f3f6fa;
+  --panel: #ffffff;
+  --ink: #0f172a;
+  --ink-2: #475569;
+  --line: #dde5ef;
+  --accent: #2563eb;
+  --accent-ink: #ffffff;
+  --accent-soft: #eaf2ff;
+  --code-bg: #eef2f7;
+  --shadow: 0 1px 2px rgba(15, 23, 42, .06), 0 8px 24px rgba(15, 23, 42, .06);
+  --radius: 12px;
+  color-scheme: light;
+}
+
+:root[data-theme="dark"] {
+  --bg: #0b1220;
+  --panel: #141d2d;
+  --ink: #ecf1f8;
+  --ink-2: #bac7d9;
+  --line: #334157;
+  --accent: #60a5fa;
+  --accent-ink: #0b1220;
+  --accent-soft: #1d3454;
+  --code-bg: #192435;
+  --shadow: 0 1px 2px rgba(0, 0, 0, .3), 0 8px 24px rgba(0, 0, 0, .3);
+  color-scheme: dark;
+}
+
+* { box-sizing: border-box; }
+
+html { scroll-padding-top: 72px; }
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--ink);
+  font: 16px/1.6 "Inter", "Segoe UI", system-ui, -apple-system, sans-serif;
+}
+
+a { color: var(--accent); }
+a:hover { text-decoration-thickness: 2px; }
+
+img { max-width: 100%; height: auto; display: block; }
+
+code {
+  font: .9em ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  background: var(--code-bg);
+  padding: .1em .35em;
+  border-radius: 4px;
+}
+
+.wrap {
+  max-width: 1080px;
+  margin: 0 auto;
+  padding: 0 16px;
+}
+
+/* Header */
+
+.site-header {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  background: var(--panel);
+  border-bottom: 1px solid var(--line);
+}
+
+.site-header .wrap {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  min-height: 60px;
+  flex-wrap: wrap;
+}
+
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: var(--ink);
+  text-decoration: none;
+  font-weight: 700;
+  font-size: 18px;
+}
+
+.brand svg { width: 30px; height: 30px; color: var(--accent); fill: currentColor; }
+
+.site-nav {
+  display: flex;
+  gap: 18px;
+  margin-left: auto;
+  flex-wrap: wrap;
+}
+
+.site-nav a { color: var(--ink-2); text-decoration: none; font-weight: 500; }
+.site-nav a:hover, .site-nav a[aria-current="page"] { color: var(--accent); }
+
+/* Buttons */
+
+.button {
+  display: inline-block;
+  padding: 10px 20px;
+  border-radius: 10px;
+  border: 1px solid var(--line);
+  background: var(--panel);
+  color: var(--ink);
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.button.primary {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--accent-ink);
+}
+
+.button:hover { filter: brightness(1.06); }
+
+/* Home page */
+
+.hero { padding: 48px 0 32px; }
+
+.hero .eyebrow {
+  margin: 0;
+  color: var(--ink-2);
+  font-weight: 600;
+  letter-spacing: .02em;
+}
+
+.hero h1 {
+  margin: 4px 0 12px;
+  font-size: clamp(34px, 6vw, 52px);
+  line-height: 1.1;
+}
+
+.hero .lead {
+  max-width: 720px;
+  margin: 0 0 24px;
+  font-size: 19px;
+  color: var(--ink-2);
+}
+
+.actions { display: flex; gap: 12px; flex-wrap: wrap; align-items: center; }
+
+.note { color: var(--ink-2); font-size: 15px; }
+
+.shot {
+  margin: 32px 0 0;
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  overflow: hidden;
+}
+
+.shot figcaption { padding: 10px 16px; color: var(--ink-2); font-size: 14px; border-top: 1px solid var(--line); }
+
+section { padding: 28px 0; }
+
+section h2 { margin: 0 0 8px; font-size: 26px; }
+
+section > .wrap > p.intro { margin: 0 0 20px; color: var(--ink-2); }
+
+.cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 16px;
+}
+
+.card {
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.card h3 { margin: 0; font-size: 18px; }
+.card p { margin: 0; color: var(--ink-2); font-size: 15px; }
+.card .source { font-size: 13px; }
+.card .button { align-self: flex-start; margin-top: auto; }
+
+.facts {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
+  gap: 16px;
+}
+
+.facts div {
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: 16px 18px;
+}
+
+.facts h3 { margin: 0 0 6px; font-size: 16px; }
+.facts p { margin: 0; color: var(--ink-2); font-size: 15px; }
+
+/* Help page */
+
+.doc {
+  display: grid;
+  grid-template-columns: 220px minmax(0, 1fr);
+  gap: 40px;
+  padding: 32px 16px 48px;
+}
+
+.toc { position: sticky; top: 84px; align-self: start; font-size: 15px; }
+.toc ol { list-style: none; margin: 0; padding: 0; }
+.toc li { margin: 0 0 8px; }
+.toc a { color: var(--ink-2); text-decoration: none; }
+.toc a:hover { color: var(--accent); }
+
+.doc main h1 { margin: 0 0 8px; font-size: 34px; }
+.doc main h2 { margin: 40px 0 8px; font-size: 24px; border-top: 1px solid var(--line); padding-top: 24px; }
+.doc main h3 { margin: 24px 0 6px; font-size: 18px; }
+.doc main p, .doc main li { max-width: 760px; }
+
+table {
+  width: 100%;
+  max-width: 760px;
+  border-collapse: collapse;
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  font-size: 15px;
+}
+
+th, td { text-align: left; vertical-align: top; padding: 9px 12px; border-bottom: 1px solid var(--line); }
+th { font-weight: 600; }
+tr:last-child td { border-bottom: 0; }
+
+.key { display: grid; grid-template-columns: 64px minmax(0, 1fr); gap: 10px 14px; align-items: center; max-width: 760px; }
+.key svg { width: 64px; height: 22px; }
+.key p { margin: 0; }
+
+/* Footer */
+
+.site-footer {
+  border-top: 1px solid var(--line);
+  background: var(--panel);
+  padding: 24px 0;
+  color: var(--ink-2);
+  font-size: 14px;
+}
+
+.site-footer p { margin: 4px 0; }
+
+@media (max-width: 760px) {
+  .doc { grid-template-columns: 1fr; gap: 16px; }
+  .toc { position: static; }
+  .site-nav { margin-left: 0; gap: 14px; }
+  .hero { padding-top: 32px; }
+}

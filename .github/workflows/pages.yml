@@ -1,0 +1,44 @@
+# Publish the website at https://mathomics.github.io/coxeterMFV/ on every push
+# to main. The home page and the help come from site/, and the app is served
+# as app.html next to the folders it reads, so the repository keeps index.html
+# as the app for the checks in tools/. Needs Settings, Pages, Source set to
+# "GitHub Actions".
+name: Publish website
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+      - name: Assemble the site
+        run: |
+          mkdir -p _site/app
+          cp -r assets src models examples data docs LICENSE LICENSES CITATION.cff _site/
+          cp index.html _site/app.html
+          cp app/coxeter_mfv.html _site/app/
+          cp site/index.html site/help.html site/site.css _site/
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: _site
+      - id: deployment
+        uses: actions/deploy-pages@v4
