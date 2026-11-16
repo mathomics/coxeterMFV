@@ -448,6 +448,12 @@ impl Solution {
         self.status == LpStatus::Optimal
     }
 
+    /// `solution.imported`: where flux values read from a file came from
+    /// (`{source, matched, unmatched, total}`), when the solution is theirs.
+    pub fn imported(&self) -> Option<&serde_json::Value> {
+        self.extra.as_ref().and_then(|extra| extra.get("imported"))
+    }
+
     /// The `{status, objectiveValue, fluxes, reducedCosts, scaledReducedCosts,
     /// shadowPrices}` the reproducibility replay compares.
     pub fn replay_json(&self) -> Value {
@@ -463,6 +469,15 @@ impl Solution {
             "shadowPrices": obj(self.result.as_ref().map(|r| &r.shadow_prices)),
         })
     }
+}
+
+/// What `importFluxData` returns: how many values found a reaction, the ids
+/// that found none, and how many the file held.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct FluxImport {
+    pub matched: usize,
+    pub unmatched: Vec<String>,
+    pub total: usize,
 }
 
 /// Which analysis `run_analysis` ran.

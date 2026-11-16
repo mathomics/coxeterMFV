@@ -110,6 +110,10 @@ fn shell(args: &Args, dialogs: Box<dyn FileDialogs>, remember: bool) -> Shell {
     let settings = assets::config_dir().join("settings.json");
     let dark = args.theme.or_else(|| Shell::saved_theme(&settings)).unwrap_or(false);
     shell.store.view.dark = dark;
+    // A scenario or files named on the command line are opened instead.
+    shell.ui.welcome_at_start = Shell::saved_welcome(&settings);
+    let opening_something = args.scenario.is_some() || !args.files.is_empty();
+    shell.ui.welcome_open = coxeter_app::panels::welcome::opens_at_start(shell.ui.welcome_at_start, opening_something);
     let (saved, libraries) = Shell::saved_solver(&settings);
     shell.solvers = Solvers::found(libraries);
     if let Some(kind) = args.solver.or(saved).filter(|k| *k != SolverKind::Highs) {

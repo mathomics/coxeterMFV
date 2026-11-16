@@ -44,6 +44,7 @@ import { reactionLabelPlacement } from '../map/reaction-label.js';
 import { compartmentKey } from '../map/multi-selection.js';
 import { createWheelNavigation, wheelPanDelta } from './wheel-navigation.js';
 import { saveFile } from './save-file.js';
+import { rememberWelcomeAtStart, scenarioFromAddress, welcomeMarkup, welcomeOpensAtStart } from './welcome.js';
 import { signLogPosition, signLogValue } from './reactions-explorer.js';
 import { RX_ROW_HEIGHT, formatBound, reactionColumns, renderReactionRows, renderReactionsRegion } from './reactions-panel.js';
 import { OBJECTIVES } from '../core/community.js';
@@ -51,6 +52,7 @@ import { isBinaryModelFile } from '../core/model-import.js';
 
 const els = {
   app: document.getElementById('app-shell'),
+  welcome: document.getElementById('welcome'),
   leftPanel: document.getElementById('left-panel'),
   sidebar: document.getElementById('sidebar'),
   taskPanel: document.getElementById('task-panel'),
@@ -78,6 +80,7 @@ const els = {
   omicsFileInput: document.getElementById('omics-file-input'),
   metatranscriptomicsFileInput: document.getElementById('metatranscriptomics-file-input'),
   reproducibilityFileInput: document.getElementById('reproducibility-file-input'),
+  fluxFileInput: document.getElementById('flux-file-input'),
   boundsFileInput: document.getElementById('bounds-file-input'),
 };
 
@@ -1259,6 +1262,9 @@ function paintRunSummary(optimal) {
   const run = store.lastRun;
   const notRun = store.solutionCleared ? 'Solution cleared' : 'Not run';
   let text = `${mode} · ${store.solution?.status || notRun}${optimal ? ` · ${formatFlux(store.solution.objectiveValue, 5)}` : ''}`;
+  if (store.solution?.imported) {
+    text = `Imported fluxes · ${store.solution.imported.matched} reactions`;
+  }
   let state = '';
   if (['error', 'warn'].includes(store.status?.state) && store.status.message) {
     text = store.status.message;
@@ -3914,6 +3920,9 @@ function onSidebarInput(event) {
     case 'zuniga-scenario':
       if (event.type === 'change') store.useZunigaScenario(el.value);
       break;
+    case 'welcome-at-start':
+      rememberWelcomeAtStart(browserStorage(), el.checked);
+      break;
     case 'zuniga-comparison':
       if (event.type === 'change') store.setZunigaComparison(el.value);
       break;
@@ -4818,6 +4827,18 @@ async function onSidebarClick(event) {
     case 'crossfeed-choose': openWorkspace('crossfeeding', button); break;
     case 'toggle-dark':
     case 'toggle-theme': setTheme(!store.view.dark); break;
+    case 'open-welcome': openWelcome(); break;
+    case 'welcome-example':
+      els.welcome.close();
+      // Fit the new map once it has loaded, as returning from the Scenario page does.
+      await queueScenarioSelection(button.dataset.value);
+      camera.fitted = false;
+      paintMap();
+      break;
+    case 'welcome-import':
+      els.welcome.close();
+      els.modelFileInput.click();
+      break;
     case 'toggle-geometry-edit':
       closeMapMenus();
       cancelTextEditor();
@@ -4881,6 +4902,8 @@ async function onSidebarClick(event) {
     case 'export-methods-provenance': exportMethodsProvenance(); break;
     case 'import-reproducibility': els.reproducibilityFileInput.click(); break;
     case 'export-csv': exportFluxCSV(); break;
+    case 'export-flux-json': exportFluxJSON(); break;
+    case 'import-flux-data': els.fluxFileInput.click(); break;
     case 'export-state': saveScenario(); break;
     case 'import-state': els.fileInput.click(); break;
     default: break;
@@ -5130,6 +5153,20 @@ async function exportReproducibility() {
     store.emit('status');
   }
 }
+
+els.fluxFileInput?.addEventListener('change', () => {
+  const file = els.fluxFileInput.files?.[0];
+  if (!file) return;
+  queueContextLoad(async () => {
+    try {
+      store.importFluxData(await file.text(), file.name);
+    } catch (error) {
+      store.status = { ...store.status, state: 'error', message: `Could not import flux data: ${error.message}` };
+      store.emit('status');
+    }
+    els.fluxFileInput.value = '';
+  });
+});
 
 els.metatranscriptomicsFileInput?.addEventListener('change', () => {
   const file = els.metatranscriptomicsFileInput.files?.[0];
@@ -5514,6 +5551,23 @@ function setTheme(dark) {
   store.setView({ dark });
 }
 
+/** The page's local storage, or null where the browser refuses it (a sandboxed frame). */
+function browserStorage() {
+  try {
+    return window.localStorage;
+  } catch (_) {
+    return null;
+  }
+}
+
+/** Open the welcome page over the map, its "Show at startup" box as last left. */
+function openWelcome() {
+  els.welcome.innerHTML = welcomeMarkup(welcomeOpensAtStart(browserStorage()));
+  if (!els.welcome.open) {
+    els.welcome.showModal();
+  }
+}
+
 async function saveMap() {
   // Before a model has loaded there is no map; say so rather than throw.
   if (!store.map) {
@@ -5567,6 +5621,18 @@ async function exportFluxCSV() {
   const filename = await download(store.fileNameFor(EXPORT_SUFFIX.fluxes, 'csv'), () => store.fluxCSV(), 'text/csv');
   if (!filename) return;
   store.addLog('ok', `Flux table exported as ${filename}`);
+  store.emit('status');
+}
+
+async function exportFluxJSON() {
+  if (!store.fluxDataJSON()) {
+    store.status = { ...store.status, state: 'warn', message: 'There is no solution to export. Run an analysis first.' };
+    store.emit('status');
+    return;
+  }
+  const filename = await download(store.fileNameFor(EXPORT_SUFFIX.fluxes, 'json'), () => store.fluxDataJSON(), 'application/json');
+  if (!filename) return;
+  store.addLog('ok', `Flux data exported as ${filename}`);
   store.emit('status');
 }
 
@@ -5858,14 +5924,27 @@ store.subscribe((_, reason) => {
 queueContextLoad(async () => {
   try {
     await store.init();
-    const requested = new URLSearchParams(location.search).get('scenario');
-    await store.useScenario(requested || store.scenarios[0].id);
+    const requested = scenarioFromAddress(location.search);
+    if (requested?.kind === 'published') {
+      await store.usePublishedCommunity(requested.id);
+    } else {
+      await store.useScenario(requested?.id ?? store.scenarios[0].id);
+    }
+    // Fit the map once it has loaded, as an example opened from the welcome page is.
+    camera.fitted = false;
+    paintMap();
   } catch (error) {
     els.stage.innerHTML = `<p style="padding:30px;color:var(--danger)">${error.message}</p>`;
     els.statusText.textContent = error.message;
     els.status.classList.add('is-error');
   }
 });
+
+// The map's own shortcuts (Escape, Delete, Ctrl+Z) are not for the welcome page.
+els.welcome.addEventListener('keydown', (event) => event.stopPropagation());
+if (welcomeOpensAtStart(browserStorage(), location.search)) {
+  openWelcome();
+}
 
 // Small surface for the browser checks in tools/: the camera, the coordinate
 // conversion and which gesture is live are exactly what a drag test needs.

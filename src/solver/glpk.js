@@ -19,6 +19,14 @@
 
 import { LP_OPTIMAL, LP_INFEASIBLE, LP_UNBOUNDED, LP_ITERATION_LIMIT } from './simplex.js';
 
+/**
+ * Reduced costs smaller than this are rounding left on basic columns, whose
+ * true reduced cost is zero; simplex.js sets those to exactly zero. It sits
+ * near GLPK's default dual feasibility tolerance (1e-7), well below any reduced
+ * cost that marks a limiting reaction.
+ */
+const REDUCED_COST_ZERO = 1e-9;
+
 /** Resolved GLPK instance, or null when unavailable. */
 let glpk = null;
 let initPromise = null;
@@ -122,7 +130,8 @@ function mapStatus(code) {
  *                          column indices restricted to 0 or 1, which make it
  *                          a MILP solved by GLPK's branch and cut
  * @param {object} [names]  { rows: string[], cols: string[] } for readable duals
- * @returns {{status:string, objective:number, x:Float64Array|null, duals:Float64Array|null, message:string}}
+ * @returns {{status:string, objective:number, x:Float64Array|null, duals:Float64Array|null,
+ *   reducedCosts:Float64Array|null, message:string}}
  */
 export function solveWithGLPK(problem, names = {}) {
   if (!glpk) throw new Error(`GLPK backend not initialised: ${unavailableReason || 'call initGLPK() first'}`);
@@ -222,7 +231,7 @@ export function solveWithGLPK(problem, names = {}) {
   // A MILP stopped by its time limit keeps the best integer point it found.
   const incumbent = binaries.length > 0 && result?.result?.status === glpk.GLP_FEAS;
   if (status !== LP_OPTIMAL && !incumbent) {
-    return { status, objective: NaN, x: null, duals: null, message: `GLPK status ${result?.result?.status}` };
+    return { status, objective: NaN, x: null, duals: null, reducedCosts: null, message: `GLPK status ${result?.result?.status}` };
   }
 
   const vars = result.result.vars;
@@ -233,7 +242,24 @@ export function solveWithGLPK(problem, names = {}) {
   const duals = new Float64Array(m);
   for (let i = 0; i < m; i++) duals[i] = dualMap[rowNames[i]] ?? 0;
 
-  return { status, objective: result.result.z, x, duals, message: '' };
+  // glpk.js reports row duals only. The reduced cost of a column follows from
+  // them as c_j - sum_i a_ij y_i, which is what glp_get_col_dual reports and
+  // what simplex.js returns, in the sign of the objective as given. A MILP has
+  // no duals worth the name, so it gets none.
+  let reducedCosts = null;
+  if (!binaries.length) {
+    reducedCosts = new Float64Array(n);
+    for (let j = 0; j < n; j++) {
+      const col = problem.A.column(j);
+      let value = problem.c[j] || 0;
+      for (let k = 0; k < col.length; k += 2) {
+        value -= col[k + 1] * duals[col[k]];
+      }
+      reducedCosts[j] = Math.abs(value) < REDUCED_COST_ZERO ? 0 : value;
+    }
+  }
+
+  return { status, objective: result.result.z, x, duals, reducedCosts, message: '' };
 }
 
 /**

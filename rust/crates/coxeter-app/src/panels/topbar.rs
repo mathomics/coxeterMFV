@@ -1,7 +1,8 @@
 //! The header (`header.topbar` of `index.html`): the brand, the model's
 //! name and kind (`paintShell`, `modelKindLabel`), the save badge
 //! (`paintSaveState`), the status line (`paintStatus`), Find reaction, the
-//! theme button, the File and Simulate menus and Clear solution.
+//! welcome page's ? button, the theme button, the File and Simulate menus and
+//! Clear solution.
 
 use egui::{Color32, CornerRadius, Frame, Margin, RichText, Stroke, Ui, Vec2};
 
@@ -33,6 +34,7 @@ pub fn show(ui: &mut Ui, shell: &mut Shell) {
                     simulate_menu(ui, shell, &p);
                     file_menu(ui, shell, &p);
                     theme_button(ui, shell);
+                    welcome_button(ui, shell);
                     let find = Btn::new("⌕ Find").look(Look::Secondary).title("Find reactions (Ctrl+F)").aria("Find reaction").height(34.0).show(ui);
                     if find.clicked() {
                         shell.open_workspace_named("library");
@@ -174,6 +176,14 @@ fn theme_button(ui: &mut Ui, shell: &mut Shell) {
     }
 }
 
+/// `open-welcome`: the welcome page again, with its help links and license.
+fn welcome_button(ui: &mut Ui, shell: &mut Shell) {
+    let label = "Welcome, help and license";
+    if Btn::new("?").title(label).aria(label).height(34.0).show(ui).clicked() {
+        shell.ui.welcome_open = true;
+    }
+}
+
 /// One item of a header menu: `<button data-action>`.
 fn menu_item(ui: &mut Ui, label: &str, aria: &str, enabled: bool, title: &str) -> bool {
     let p = Palette::current(ui.ctx());
@@ -215,6 +225,9 @@ fn file_menu(ui: &mut Ui, shell: &mut Shell, p: &Palette) {
         if menu_item(ui, "Map JSON", "Import map JSON", true, "") {
             shell.map_load();
         }
+        if menu_item(ui, "Flux data (JSON / CSV)", "Import flux data (JSON / CSV)", true, "Escher reaction data JSON, or a CSV of reactions and fluxes") {
+            shell.import_flux_data();
+        }
         // A map opened before its model is offered for forgetting while it waits.
         if let Some(waiting) = shell.store.waiting_map.clone() {
             let label = match &waiting.name {
@@ -250,6 +263,9 @@ fn file_menu(ui: &mut Ui, shell: &mut Shell, p: &Palette) {
         }
         if menu_item(ui, "Flux table (CSV)", "Export flux table (CSV)", true, "") {
             shell.export_csv();
+        }
+        if menu_item(ui, "Flux data (JSON)", "Export flux data (JSON)", true, "Escher reaction data: reaction ids and fluxes") {
+            shell.export_flux_json();
         }
         if menu_item(ui, "Scenario", "Export scenario", true, "") {
             shell.export_state();

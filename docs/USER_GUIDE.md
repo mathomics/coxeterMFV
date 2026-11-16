@@ -4,7 +4,7 @@ Coxeter-MFV displays metabolic models inside explicit cell and compartment bound
 
 ## Start the application
 
-Download `app/coxeter_mfv.html` and open it in a current browser, or run `app/coxeter-mfv.exe` on 64-bit Windows. The browser file contains the application, GLPK and bundled teaching models. No account is required.
+Open https://mathomics.github.io/coxeterMFV/ and choose **Open the app**. To work offline, download `app/coxeter_mfv.html` and open it in a current browser, or run `app/coxeter-mfv.exe` on 64-bit Windows. The browser file contains the application, GLPK and bundled teaching models. No account is required.
 
 The normal editing and solving workflow runs locally. Downloads of external models, including the Zuñiga source models and the optional Yeast9 model, require an internet connection. Following external database or reference links also connects to those services. Save outputs explicitly before closing the application.
 
@@ -52,6 +52,17 @@ The browser uses GLPK when initialized. The desktop application includes HiGHS a
 Select a literature community in **Edit Model > Scenario & objective**. The Stolyar and SteadyCom cases include the community inputs. The Zuñiga case downloads pinned MATLAB sources on demand and checks their SHA-256 values; it cannot be reproduced from the initial offline download alone.
 
 Use the original source references when interpreting a result. A teaching core model, a preview map and a complete literature reconstruction serve different purposes. See [the example catalogue](../examples/README.md) and [the reproducibility guide](REPRODUCIBILITY.md).
+
+## Read the map
+
+The [help page](https://mathomics.github.io/coxeterMFV/help.html#reading-the-map) explains a solved map in full. In short:
+
+- Each organism is a cell whose name plate shows its growth rate, μ, in h⁻¹ after an analysis. Colored regions are compartments, nested as in the cell; the Legend under Map options lists them.
+- Line color shows the size of the flux, from gray near zero through blue and violet to red, on a compressed scale whose values are in the Legend. With **Width by flux** on, width follows the flux too. Arrows show the direction in the current solution.
+- Gray dashed lines carry no flux. Pink dashed lines are closed, with both bounds at 0, for example after a knockout.
+- With FVA on, each drawn reaction shows `[minimum, maximum]`; the bounds of different reactions need not occur in the same solution.
+- In a community, **Cross-feeding** draws each metabolite passing between cells through the shared medium. A solution gives each cell's secretion and uptake, and the app splits each transfer among producers and consumers in proportion to them. After SteadyCom, reaction lines are per gDW of that species and cross-feeding lines per gDW of the community.
+- Every analysis solves the complete model; the **Not on map** filter lists reactions that carry flux but are not drawn.
 
 ## Save and share
 

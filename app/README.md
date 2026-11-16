@@ -4,7 +4,7 @@ Both applications open the same maps, models and scenario files, so work can mov
 
 ## Web application
 
-[`coxeter_mfv.html`](coxeter_mfv.html) is the complete application in one file, with the bundled models and examples built in.
+[`coxeter_mfv.html`](coxeter_mfv.html) is the complete application in one file, with the bundled models and examples built in. The same application runs online at https://mathomics.github.io/coxeterMFV/.
 
 - Open it in a recent version of Chrome, Edge, Firefox or Safari, on a computer or a phone.
 - Editing and solving run in the browser. External model downloads, including the Zuñiga sources and optional Yeast9 download, require internet access.

@@ -40,6 +40,7 @@ const PAGE_COLUMNS = [
   { id: 'flux', width: 76, label: 'Flux', sort: 'flux' },
   { id: 'fva', width: 132, label: 'FVA min–max', sort: 'fva', when: 'fva' },
   { id: 'rc', width: 88, label: 'Reduced cost', sort: 'rc', when: 'rc' },
+  { id: 'src', width: 88, label: 'Scaled RC', sort: 'src', when: 'rc' },
   { id: 'objective', width: 70, label: 'Objective', sort: 'objective' },
   { id: 'status', width: 110, label: 'Status', sort: 'status' },
   { id: 'actions', width: 114 },
@@ -54,6 +55,7 @@ const COMPACT_COLUMNS = [
   { id: 'flux', width: 84, label: 'Flux', sort: 'flux' },
   { id: 'fva', width: 136, label: 'FVA min–max', sort: 'fva', when: 'fva' },
   { id: 'rc', width: 92, label: 'Reduced cost', sort: 'rc', when: 'rc' },
+  { id: 'src', width: 92, label: 'Scaled RC', sort: 'src', when: 'rc' },
   { id: 'status', width: 112, label: 'Status', sort: 'status' },
   { id: 'actions', width: 80 },
 ];
@@ -438,6 +440,8 @@ function reactionCell(column, row, { mode, locked, selection, store }) {
       return `<td class="rx-c-fva">${fvaCell(row)}</td>`;
     case 'rc':
       return `<td class="rx-c-rc number">${Number.isFinite(row.reducedCost) ? esc(formatFlux(row.reducedCost, 5)) : '—'}</td>`;
+    case 'src':
+      return `<td class="rx-c-src number" title="Reduced cost divided by the largest absolute reduced cost">${Number.isFinite(row.scaledReducedCost) ? esc(formatFlux(row.scaledReducedCost, 5)) : '—'}</td>`;
     case 'objective':
       return `<td class="rx-c-objective"><input type="number" step="any" class="rx-objective-input" data-action="rx-objective" data-rid="${id}"
         value="${row.objective ? esc(formatBound(row.objective)) : ''}" placeholder="0" aria-label="Objective coefficient of ${esc(row.label)}"${locked ? ' disabled' : ''}></td>`;

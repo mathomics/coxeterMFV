@@ -68,7 +68,7 @@ jobs:
       - name: Check container serves the packaged application
         run: |
           docker run --detach --name coxeter-check -p 127.0.0.1:8080:8080 coxeter-mfv
-          curl --retry 10 --retry-connrefused --retry-delay 1 --fail http://127.0.0.1:8080/ -o /tmp/coxeter-served.html
+          curl --retry 10 --retry-all-errors --retry-delay 1 --fail http://127.0.0.1:8080/ -o /tmp/coxeter-served.html
           cmp app/coxeter_mfv.html /tmp/coxeter-served.html
       - name: Stop container
         if: always()

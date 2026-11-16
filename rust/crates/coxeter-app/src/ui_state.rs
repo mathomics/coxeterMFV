@@ -319,6 +319,10 @@ pub struct UiState {
     pub view_open: bool,
     /// The Reactions page and the dock's Table view (`ui.rx`).
     pub rx: ReactionsUi,
+    /// `dialog#welcome[open]`: the welcome page over the map.
+    pub welcome_open: bool,
+    /// Its "Show at startup" box, kept in the settings file.
+    pub welcome_at_start: bool,
 }
 
 impl Default for UiState {
@@ -350,6 +354,8 @@ impl Default for UiState {
             focus_lower_bound: false,
             view_open: false,
             rx: ReactionsUi::default(),
+            welcome_open: false,
+            welcome_at_start: true,
         }
     }
 }

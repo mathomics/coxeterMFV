@@ -23,7 +23,7 @@ This checklist supports submission preparation. It does not claim that the appli
 - [ ] Archive the case studies in `paper/` with the exact application release or link their permanent dataset records.
 - [ ] Complete the platform and public-download validation matrix beyond the Windows and Chromium/Firefox smoke checks already recorded in [VALIDATION.md](VALIDATION.md). Record actual results and resource requirements. Test the container on a host with Docker or Podman.
 - [ ] Choose the target journal and submission route. Confirm its current requirements with the editors where the application does not fit a conventional web server.
-- [ ] Provide a stable, freely accessible application URL if submitting as a web resource. A download link alone should not be represented as a hosted, tested service.
+- [x] Provide a stable, freely accessible application URL if submitting as a web resource. A download link alone should not be represented as a hosted, tested service. The application, a home page and a help page are published at https://mathomics.github.io/coxeterMFV/ by `.github/workflows/pages.yml`.
 - [ ] Agree responsibility and resources for maintaining access and functionality for at least five years if submitting to NAR.
 - [ ] Enable the intended public support and private vulnerability-reporting channels on GitHub.
 - [ ] Create a versioned release, archive the exact source and required data with a permanent DOI, and verify that reviewers can access it. NAR's current detailed software instructions specifically request Figshare archiving; confirm the applicable policy before choosing another service.

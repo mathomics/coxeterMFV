@@ -29,6 +29,7 @@ import { OPERATION_DOMAIN, assertOperationDomain, operationDomain } from './oper
 import { toSBML } from '../core/sbml-write.js';
 import { compareArchivedSolution, createReproducibilityBundle, methodsProvenanceReport, softwareIdentity, solverName, verifyReproducibilityBundle } from '../core/reproducibility.js';
 import { parseModelJSON, prepareImportedModels, prepareModelUploads } from '../core/model-import.js';
+import { fluxDataJSON, matchFluxData, parseFluxData } from '../core/flux-data.js';
 import {
   compareReactionScores, deserializeOmicsDataset, divergingOmicsColors, parseOmicsCSV,
   reactionOmicsScores, sequentialOmicsColors, serializeOmicsDataset,
@@ -794,6 +795,42 @@ export class Store {
   /** Backwards-compatible alias for callers from pre-SBML releases. */
   async importModelJSONFiles(files) { return this.importModelFiles(files); }
 
+  // Flux data
+
+  /**
+   * Show flux values read from a file (Escher reaction data JSON, or a CSV
+   * with reaction and flux columns) as the solution of the current model. Ids
+   * are matched as matchFluxData describes; reactions without a value are drawn
+   * as zero flux. The model is left alone, and the next analysis replaces the
+   * imported values. Nothing changes when no id matches.
+   *
+   * @returns {{ matched: number, unmatched: string[], total: number }}
+   */
+  importFluxData(text, source = 'flux data') {
+    if (!this.community) throw new Error('Open a model before importing flux data.');
+    const data = parseFluxData(text);
+    const { fluxes, unmatched } = matchFluxData(data, this.community.merged.reactions.keys());
+    if (!fluxes.size) {
+      throw new Error(`None of the ${data.size} reactions in ${source} is in this model.`);
+    }
+    const steadyCom = Boolean(this.solution?.steadyCom);
+    this.cancelSteadyCom({ silent: true });
+    const imported = { source, matched: fluxes.size, unmatched: unmatched.length, total: data.size };
+    this.applySolution({ status: 'optimal', objectiveValue: NaN, fluxes, method: 'Imported flux data', imported }, { allowFVA: false });
+    // As clearSolution: a fixed-µ SteadyCom solution had replaced the community's own LP.
+    if (steadyCom) this.refreshCompositionProblem();
+    this.lastRun = null;
+    let message = `Imported ${fluxes.size} fluxes from ${source}.`;
+    if (unmatched.length) {
+      const examples = unmatched.slice(0, 3).join(', ') + (unmatched.length > 3 ? ', …' : '');
+      message += ` ${unmatched.length} ids are not in this model (${examples}).`;
+    }
+    this.status = { ...this.status, state: unmatched.length ? 'warn' : 'ok', message };
+    this.addLog(unmatched.length ? 'warn' : 'ok', message, { kind: 'solve' });
+    this.emit('solution');
+    return { matched: fluxes.size, unmatched, total: data.size };
+  }
+
   // Community omics / metatranscriptomics
 
   /** Read a metatranscriptomics CSV, map it onto the community's GPR rules and show it. Returns the parsed data with its mapping report. */
@@ -1059,6 +1096,7 @@ export class Store {
       throw new Error('Wait for the current analysis to finish before exporting a reproducibility bundle.');
     }
     if (this.solution?.steadyCom) throw new Error('Reproducibility bundles cover ordinary FBA only; save a SteadyCom solution as Scenario JSON.');
+    if (this.solution?.imported) throw new Error('imported flux data has no analysis to replay. Export it as flux data instead.');
     return createReproducibilityBundle(this);
   }
 
@@ -3697,7 +3735,7 @@ export class Store {
 
   /**
    * Every reaction as a table row: the catalogue entry with its bounds in force
-   * and as opened, flux, FVA range, reduced cost, objective coefficient,
+   * and as opened, flux, FVA range, reduced cost and its scaled value, objective coefficient,
    * whether it is drawn, the knocked-out genes that close it, and its status
    * ('culprit', 'knocked-out', 'modified', 'blocked' or 'original', in that
    * order of precedence).
@@ -3709,6 +3747,7 @@ export class Store {
     const fluxes = solved ? this.solution.fluxes : null;
     const ranges = this.fvaRanges?.size ? this.fvaRanges : null;
     const costs = this.reducedCostsAvailable() ? this.solution.reducedCosts : null;
+    const scaledCosts = costs ? this.solution.scaledReducedCosts : null;
     const objective = this.objectiveCoefficients();
     const culprits = this.constraintCulprits?.ids ?? null;
     const heldOut = new Set(this.species.filter((sp) => this.speciesHeldOut(sp.id)).map((sp) => sp.id));
@@ -3729,6 +3768,7 @@ export class Store {
         flux: fluxes ? fluxes.get(entry.id) ?? 0 : NaN,
         fvaMin: range ? range.min : NaN, fvaMax: range ? range.max : NaN,
         reducedCost: costs?.get(entry.id) ?? NaN,
+        scaledReducedCost: scaledCosts?.get(entry.id) ?? NaN,
         objective: objective[entry.id] ?? 0,
         onMap: Boolean(this.map?.hasReaction?.(entry.id)),
         heldOut: Boolean(entry.speciesId) && heldOut.has(entry.speciesId),
@@ -6694,10 +6734,20 @@ export class Store {
 
   // Exports
 
-  /** The solution as CSV, one row per reaction with its flux and bounds. Only the header when there is no optimal solution. */
+  /** The solution's fluxes as Escher reaction data JSON (`{"PGI": 4.86, …}`), or null without an optimal solution. */
+  fluxDataJSON() {
+    if (this.solution?.status !== 'optimal') return null;
+    return fluxDataJSON(this.solution.fluxes);
+  }
+
+  /** The solution as CSV, one row per reaction with its flux, bounds and reduced costs. Only the header when there is no optimal solution. */
   fluxCSV() {
-    const rows = ['reaction,species,local_id,name,subsystem,flux,lower_bound,upper_bound'];
+    const rows = ['reaction,species,local_id,name,subsystem,flux,lower_bound,upper_bound,reduced_cost,scaled_reduced_cost'];
     if (!this.solution || this.solution.status !== 'optimal') return rows.join('\n');
+    // Reduced costs are left empty where the solution has none (loopless FBA, imported fluxes).
+    const costs = this.reducedCostsAvailable() ? this.solution.reducedCosts : null;
+    const scaledCosts = costs ? this.solution.scaledReducedCosts : null;
+    const number = (value) => (Number.isFinite(value) ? String(value) : '');
     for (const [rid, v] of this.solution.fluxes) {
       const owner = this.community.reactionOwner.get(rid) || {};
       const rxn = this.community.merged.reactions.get(rid);
@@ -6709,6 +6759,7 @@ export class Store {
         csv(rid), csv(owner.speciesId ?? ''), csv(owner.originalId ?? ''),
         csv(rxn?.name ?? ''), csv(rxn?.subsystem ?? ''),
         v.toFixed(6), b.lower, b.upper,
+        number(costs?.get(rid)), number(scaledCosts?.get(rid)),
       ].join(','));
     }
     return rows.join('\n');

@@ -23,3 +23,42 @@ test('FluxProblem maps duals to metabolites and reduced costs to reactions',()=>
  const maxAbs=Math.max(...[...r.reducedCosts.values()].map(Math.abs));assert.equal(r.reducedCostScale,maxAbs);
  if(maxAbs>0)assert.ok(Math.abs(Math.max(...[...r.scaledReducedCosts.values()].map(Math.abs))-1)<1e-12);
 });
+
+test('GLPK reports a reduced cost for every reaction, and each meets the optimality conditions as the simplex ones do', async () => {
+  const { readFile } = await import('node:fs/promises');
+  // The vendored build the browser runs, handed over as the single-file build does.
+  const vendored = await import('../assets/vendor/glpk.js');
+  globalThis.__GLPK_FACTORY__ = vendored.default ?? vendored;
+  globalThis.__GLPK_WASM__ = (await readFile(new URL('../assets/vendor/glpk.wasm', import.meta.url))).buffer;
+  const { initGLPK } = await import('../src/solver/glpk.js');
+  assert.ok(await initGLPK(), 'GLPK loads');
+  const model = new Model(JSON.parse(await readFile(new URL('../models/ecoli_core_mc.json', import.meta.url), 'utf8')));
+  for (const backend of ['glpk', 'simplex']) {
+    const problem = new FluxProblem(model);
+    problem.backendChoice = backend;
+    const result = problem.optimize();
+    assert.equal(result.solver, backend);
+    assert.equal(result.reducedCosts.size, problem.rxnIds.length);
+    // A maximum: a reaction held at its lower bound may only lose by rising
+    // (rc <= 0), one at its upper bound only by falling (rc >= 0), and one
+    // strictly between its bounds has rc = 0.
+    let limiting = 0;
+    problem.rxnIds.forEach((rid, j) => {
+      const flux = result.fluxes.get(rid);
+      const rc = result.reducedCosts.get(rid);
+      const atLower = Math.abs(flux - problem.lb[j]) < 1e-6;
+      const atUpper = Math.abs(flux - problem.ub[j]) < 1e-6;
+      if (atLower && atUpper) return;
+      if (atLower) {
+        assert.ok(rc <= 1e-6, `${backend} ${rid} at its lower bound has rc ${rc}`);
+      } else if (atUpper) {
+        assert.ok(rc >= -1e-6, `${backend} ${rid} at its upper bound has rc ${rc}`);
+      } else {
+        assert.ok(Math.abs(rc) <= 1e-6, `${backend} ${rid} between its bounds has rc ${rc}`);
+      }
+      if (Math.abs(rc) > 1e-6) limiting += 1;
+    });
+    assert.ok(limiting > 0, `${backend} finds limiting reactions`);
+    assert.ok([...result.scaledReducedCosts.values()].some((value) => Math.abs(Math.abs(value) - 1) < 1e-12));
+  }
+});

@@ -193,8 +193,14 @@ impl Shell {
             self.canvas_column(ui);
         });
         panels::menus::show(&ctx, self);
+        // The map's own shortcuts (Escape, Delete, Ctrl+Z) are not for the
+        // welcome page, nor the Escape that closes it.
+        let welcome_was_open = self.ui.welcome_open;
+        panels::welcome::show(&ctx, self);
 
-        self.keys(&ctx, keyboard_in_field);
+        if !welcome_was_open {
+            self.keys(&ctx, keyboard_in_field);
+        }
         // Files dropped on the window open as what they are (as the command line).
         let dropped: Vec<PathBuf> = ctx.input(|i| i.raw.dropped_files.iter().map(|f| f.path().to_path_buf()).filter(|p| !p.as_os_str().is_empty()).collect());
         if !dropped.is_empty() {

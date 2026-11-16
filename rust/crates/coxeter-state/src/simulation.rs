@@ -11,6 +11,7 @@ use coxeter_analysis::community_view::CommunityView;
 use coxeter_core::community::{CrossFeeding, community_exchange, split_id};
 use coxeter_core::js;
 use coxeter_solver::backends::{Solver, SolverKind};
+use coxeter_solver::lp::LpStatus;
 use coxeter_solver::fba::{CycleFreeOptions, FluxProblem, FluxResult, FvaOptions, FvaProgress as SolverFvaProgress, LooplessOptions, PfbaOptions, DEFAULT_PFVA_FACTOR};
 use indexmap::IndexMap;
 use serde_json::json;
@@ -22,6 +23,7 @@ use crate::steadycom::steady_com_cross_feeding;
 use crate::store::{AUTO_DRAW_METABOLITE_LIMIT, AUTO_DRAW_REACTION_LIMIT, Store};
 use crate::types::*;
 use crate::util::{csv, describe_status, format_duration, normalize_pfba_percent};
+use coxeter_io::flux_data::{flux_data_json, match_flux_data, parse_flux_data};
 
 /// How a solve is posed: plain FBA, pFBA at a biomass percentage,
 /// CycleFreeFlux or the loopless MILP, and whether the problem holds a
@@ -118,7 +120,9 @@ impl Store {
     pub fn apply_solution_arc(&mut self, res: Arc<Solution>, allow_fva: bool) -> Arc<Solution> {
         self.reproducibility_replay = None;
         self.solution = Some(res.clone());
-        let method = if res.steady_com.is_some() {
+        let method = if res.imported().is_some() {
+            "Imported flux data"
+        } else if res.steady_com.is_some() {
             "SteadyCom fixed µ"
         } else if res.zuniga.is_some() {
             "Stationary source-model FBA"
@@ -1123,13 +1127,83 @@ impl Store {
         Ok(())
     }
 
+    // Flux data
+
+    /// `importFluxData(text, source)`: show flux values read from a file
+    /// (Escher reaction data JSON, or a CSV with reaction and flux columns) as
+    /// the solution of the current model. Ids are matched as
+    /// [`match_flux_data`] describes; reactions without a value are drawn as
+    /// zero flux. The model is left alone, and the next analysis replaces the
+    /// imported values. Nothing changes when no id matches.
+    pub fn import_flux_data(&mut self, text: &str, source: &str) -> Result<FluxImport> {
+        let Some(community) = self.community.as_ref() else {
+            return Err(StoreError::msg("Open a model before importing flux data."));
+        };
+        let data = parse_flux_data(text).map_err(|error| StoreError::msg(error.message))?;
+        let found = match_flux_data(&data, community.merged.reactions.keys().map(String::as_str));
+        if found.fluxes.is_empty() {
+            return Err(StoreError::msg(format!("None of the {} reactions in {source} is in this model.", data.len())));
+        }
+        let steady_com = self.solution.as_ref().is_some_and(|s| s.steady_com.is_some());
+        self.cancel_steady_com(true);
+        // A solve still running in the background would put its own solution back.
+        self.jobs_solve_generation_bump();
+        let matched = found.fluxes.len();
+        let imported = json!({"source": source, "matched": matched, "unmatched": found.unmatched.len(), "total": data.len()});
+        let solution = Solution {
+            status: LpStatus::Optimal,
+            objective_value: f64::NAN,
+            fluxes: found.fluxes,
+            message: String::new(),
+            solver: String::new(),
+            result: None,
+            steady_com: None,
+            extra: Some(json!({"imported": imported})),
+            zuniga: None,
+        };
+        self.apply_solution(solution, false);
+        // As clear_solution: a fixed-mu SteadyCom solution had replaced the community's own LP.
+        if steady_com {
+            if let Err(error) = self.refresh_composition_problem() {
+                self.set_status_message(StatusState::Error, error.to_string());
+            }
+        }
+        self.last_run = None;
+        let mut message = format!("Imported {matched} fluxes from {source}.");
+        if !found.unmatched.is_empty() {
+            let mut examples = found.unmatched.iter().take(3).cloned().collect::<Vec<_>>().join(", ");
+            if found.unmatched.len() > 3 {
+                examples.push_str(", …");
+            }
+            message.push_str(&format!(" {} ids are not in this model ({examples}).", found.unmatched.len()));
+        }
+        let state = if found.unmatched.is_empty() { StatusState::Ok } else { StatusState::Warn };
+        self.set_status_message(state, message.clone());
+        self.add_log(state, &message, LogKind::Solve);
+        self.emit("solution");
+        Ok(FluxImport { matched, unmatched: found.unmatched, total: data.len() })
+    }
+
+    /// `fluxDataJSON()`: the solution's fluxes as Escher reaction data JSON
+    /// (`{"PGI": 4.86, …}`), or None without an optimal solution.
+    pub fn flux_data_json(&self) -> Option<String> {
+        let solution = self.solution.as_ref().filter(|s| s.is_optimal())?;
+        Some(flux_data_json(&solution.fluxes))
+    }
+
     // Export
 
     /// `fluxCSV()`.
     pub fn flux_csv(&self) -> String {
-        let mut rows = vec!["reaction,species,local_id,name,subsystem,flux,lower_bound,upper_bound".to_string()];
+        let mut rows = vec!["reaction,species,local_id,name,subsystem,flux,lower_bound,upper_bound,reduced_cost,scaled_reduced_cost".to_string()];
         let Some(solution) = self.solution.as_ref().filter(|s| s.is_optimal()) else { return rows.join("\n") };
         let Some(community) = self.community.as_ref() else { return rows.join("\n") };
+        // Reduced costs are left empty where the solution has none (loopless FBA, imported fluxes).
+        let result = if self.reduced_costs_available() { solution.result.as_ref() } else { None };
+        let number = |value: Option<&f64>| match value {
+            Some(v) if v.is_finite() => js::number_to_string(*v),
+            _ => String::new(),
+        };
         for (rid, v) in &solution.fluxes {
             let owner = community.reaction_owner.get(rid);
             let rxn = community.merged.reactions.get(rid);
@@ -1159,6 +1233,8 @@ impl Store {
                     js::to_fixed(*v, 6),
                     lower,
                     upper,
+                    number(result.and_then(|r| r.reduced_costs.get(rid))),
+                    number(result.and_then(|r| r.scaled_reduced_costs.get(rid))),
                 ]
                 .join(","),
             );
@@ -1595,5 +1671,83 @@ mod objective_fraction_tests {
             assert!(result.message.contains("pFBA objective fraction must be between 0 and 1"));
             assert_eq!(problem.snapshot_bounds(), before);
         }
+    }
+}
+
+#[cfg(test)]
+mod flux_data_tests {
+    use super::*;
+    use coxeter_core::model::Model;
+
+    /// A one-cell store on a three-reaction model, solved by use_scenario.
+    fn make_store() -> Store {
+        let model = json!({
+            "id": "demo", "compartments": {"c": "Cytosol", "e": "Extracellular"},
+            "metabolites": [{"id": "a_e", "compartment": "e"}, {"id": "a_c", "compartment": "c"}],
+            "reactions": [
+                {"id": "EX_a_e", "metabolites": {"a_e": -1}, "lower_bound": -10, "upper_bound": 1000},
+                {"id": "At", "metabolites": {"a_e": -1, "a_c": 1}, "lower_bound": 0, "upper_bound": 1000},
+                {"id": "BIOMASS", "metabolites": {"a_c": -1}, "lower_bound": 0, "upper_bound": 1000, "objective_coefficient": 1},
+            ],
+        });
+        let mut store = Store::with_dir(coxeter_core::testkit::repo_root());
+        store.models.insert("demo", Model::from_value(&model).expect("model"));
+        store.scenarios = vec![json!({
+            "id": "demo", "name": "Demo", "objective": "equal-growth",
+            "species": [{"id": "demo", "model": "demo", "abundance": 1}], "medium": {"a": 10},
+        })];
+        store.use_scenario("demo").expect("scenario");
+        store.wait_for_jobs(Duration::from_secs(20));
+        store
+    }
+
+    #[test]
+    fn exported_flux_data_imports_back_onto_the_same_model_as_the_same_fluxes_without_reduced_costs_or_a_replayable_bundle() {
+        let mut store = make_store();
+        let solved = store.solution.as_ref().filter(|s| s.is_optimal()).expect("optimal solution").fluxes.clone();
+        let exported = store.flux_data_json().expect("flux data");
+        assert_eq!(exported, flux_data_json(&solved));
+
+        let report = store.import_flux_data(&exported, "demo_fluxes.json").expect("import");
+        assert_eq!(report.matched, solved.len());
+        assert!(report.unmatched.is_empty());
+        let solution = store.solution.clone().expect("imported solution");
+        assert_eq!(solution.fluxes, solved);
+        assert_eq!(solution.imported().expect("imported")["source"], "demo_fluxes.json");
+        assert!(!store.reduced_costs_available());
+        assert!(store.reproducibility_bundle().unwrap_err().to_string().contains("imported flux data has no analysis to replay"));
+
+        // Escher data keyed by the model's own ids lands on the cell's copies.
+        store.import_flux_data(r#"{"BIOMASS": 2.5, "ZZZ": 1}"#, "escher.json").expect("partial import");
+        let solution = store.solution.clone().expect("imported solution");
+        assert_eq!(solution.fluxes.get("demo@BIOMASS"), Some(&2.5));
+        assert_eq!(solution.fluxes.len(), 1);
+        assert_eq!(store.status().state, StatusState::Warn);
+        assert!(store.status().message.contains("1 ids are not in this model (ZZZ)"));
+
+        let error = store.import_flux_data(r#"{"NOPE": 1}"#, "other.json").unwrap_err();
+        assert!(error.to_string().contains("None of the 1 reactions in other.json is in this model"));
+        assert!(Arc::ptr_eq(&solution, store.solution.as_ref().expect("kept")));
+    }
+
+    #[test]
+    fn the_reactions_table_shows_the_scaled_reduced_cost_beside_the_reduced_cost_and_the_flux_table_exports_both() {
+        let store = make_store();
+        let model = store.reaction_table_model();
+        assert!(model.columns.rc);
+        // The uptake bound limits growth. The cell's exchange and the community's
+        // carry it in series, so a solver may put the reduced cost on either.
+        let limiting: Vec<_> = model.rows.iter().filter(|row| row.reduced_cost.is_finite() && row.reduced_cost != 0.0).collect();
+        assert_eq!(limiting.len(), 1);
+        assert!(["EX_a_s", "demo@EX_a_e"].contains(&limiting[0].entry.id.as_str()));
+        assert_eq!(limiting[0].reduced_cost, -1.0);
+        assert_eq!(limiting[0].scaled_reduced_cost, -1.0);
+
+        let csv = store.flux_csv();
+        let mut lines = csv.lines();
+        assert!(lines.next().expect("header").ends_with(",reduced_cost,scaled_reduced_cost"));
+        let prefix = format!("\"{}\",", limiting[0].entry.id);
+        let line: Vec<&str> = lines.find(|line| line.starts_with(&prefix)).expect("limiting line").split(',').collect();
+        assert_eq!(&line[line.len() - 2..], ["-1", "-1"]);
     }
 }

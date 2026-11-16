@@ -165,6 +165,10 @@ pub fn run_summary_text(shell: &Shell) -> (String, &'static str) {
     let status = store.solution.as_ref().map_or_else(|| not_run.to_string(), |s| s.status.as_str().to_string());
     let objective = if optimal { format!(" · {}", format_flux(store.solution.as_ref().map(|s| s.objective_value), 5)) } else { String::new() };
     let mut text = format!("{mode} · {status}{objective}");
+    if let Some(imported) = store.solution.as_ref().and_then(|s| s.imported()) {
+        let matched = imported.get("matched").and_then(|m| m.as_u64()).unwrap_or(0);
+        text = format!("Imported fluxes · {matched} reactions");
+    }
     let mut state = "";
     if let Some(run) = &store.last_run {
         if run.phase == RunPhase::Running {

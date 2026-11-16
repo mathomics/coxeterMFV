@@ -18,6 +18,12 @@ import { dirname, join, relative, resolve, sep } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { setTimeout as delay } from 'node:timers/promises';
 
+/**
+ * How many times, 250 ms apart, to ask Chromium for its first page: 30 s in all.
+ * A cold Chromium on a shared CI runner has taken more than 10 s to open it.
+ */
+const CHROME_START_POLLS = 120;
+
 const CHROME_CANDIDATES = [
   process.env.CHROME_PATH,
   process.env.EDGE_PATH,
@@ -126,7 +132,7 @@ console.log(failures ? `\n${failures} comprobación(es) fallaron` : '\nTodas las
 process.exit(failures ? 1 : 0);
 
 async function openTarget(debugPort) {
-  for (let i = 0; i < 40; i++) {
+  for (let i = 0; i < CHROME_START_POLLS; i++) {
     try {
       const res = await fetch(`http://127.0.0.1:${debugPort}/json/list`);
       const list = await res.json();

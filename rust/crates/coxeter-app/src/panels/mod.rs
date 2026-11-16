@@ -19,6 +19,7 @@
 //! | [`cross_feeding`] | `crossFeedingCard`, `crossFeedingTopControl`, `crossFeedingMetabolitePicker`, `renderCrossFeedingEvents` |
 //! | [`menus`] | `metabolite-menu.js`, `compartment-menu.js`, `boundary-menu.js`, `metabolite-add-menu.js` |
 //! | [`add_reaction`] | `add-reaction-panel.js` |
+//! | [`welcome`] | `src/ui/welcome.js`, `dialog#welcome` of index.html |
 
 pub mod add_reaction;
 pub mod cross_feeding;
@@ -33,6 +34,7 @@ pub mod right;
 pub mod scenario;
 pub mod toolbar;
 pub mod topbar;
+pub mod welcome;
 pub mod workspace;
 
 /// A card of a workspace page: what `panels.js` renders as one `<section class="card">`.

@@ -950,13 +950,15 @@ impl Store {
 
     /// `reactionTableRows()`: every reaction as a table row: the catalogue
     /// entry with its bounds in force and as opened, flux, FVA range,
-    /// reduced cost, objective coefficient, whether it is drawn, the
+    /// reduced cost and its scaled value, objective coefficient, whether it is drawn, the
     /// knocked-out genes that close it, and its status (culprit, knocked out,
     /// modified, blocked or original, in that order of precedence).
     pub fn reaction_table_rows(&self) -> Vec<ReactionRow> {
         let catalog = self.reaction_catalog();
         let fluxes = self.solution.as_ref().filter(|s| s.is_optimal()).map(|s| &s.fluxes);
-        let costs = self.reduced_costs_available().then(|| self.solution.as_ref().and_then(|s| s.result.as_ref())).flatten().map(|r| &r.reduced_costs);
+        let result = self.reduced_costs_available().then(|| self.solution.as_ref().and_then(|s| s.result.as_ref())).flatten();
+        let costs = result.map(|r| &r.reduced_costs);
+        let scaled_costs = result.map(|r| &r.scaled_reduced_costs);
         let objective = self.objective_coefficients();
         let culprits = self.constraint_culprits.as_ref().map(|c| &c.ids);
         let held_out: HashSet<&str> = self.species.iter().filter(|sp| self.species_held_out(&sp.id)).map(|sp| sp.id.as_str()).collect();
@@ -997,6 +999,7 @@ impl Store {
                     fva_min: range.map_or(f64::NAN, |r| r.min),
                     fva_max: range.map_or(f64::NAN, |r| r.max),
                     reduced_cost: costs.and_then(|c| c.get(id).copied()).unwrap_or(f64::NAN),
+                    scaled_reduced_cost: scaled_costs.and_then(|c| c.get(id).copied()).unwrap_or(f64::NAN),
                     objective: objective.get(id).copied().unwrap_or(0.0),
                     on_map: self.map.as_ref().is_some_and(|m| m.has_reaction(id)),
                     held_out: entry.species_id.as_deref().is_some_and(|sp| held_out.contains(sp)),

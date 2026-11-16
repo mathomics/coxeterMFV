@@ -255,6 +255,7 @@ export const REACTION_SORT_KEYS = {
   flux: { number: (row) => row.flux },
   fva: { number: (row) => row.fvaMax - row.fvaMin },
   rc: { number: (row) => row.reducedCost },
+  src: { number: (row) => row.scaledReducedCost },
   objective: { number: (row) => row.objective },
   status: { number: (row) => STATUS_ORDER.get(row.status) ?? 99 },
 };

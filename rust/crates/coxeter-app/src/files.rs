@@ -25,6 +25,8 @@ pub mod filter {
     pub const SBML: Filter = Filter { name: "SBML", extensions: &["xml", "sbml"] };
     pub const CSV: Filter = Filter { name: "CSV", extensions: &["csv"] };
     pub const TABLE: Filter = Filter { name: "CSV or TSV", extensions: &["csv", "tsv", "txt"] };
+    /// `#flux-file-input`: Escher reaction data JSON, or a table of reactions and fluxes.
+    pub const FLUX_DATA: Filter = Filter { name: "Flux data (JSON, CSV or TSV)", extensions: &["json", "csv", "tsv", "txt"] };
     pub const SVG: Filter = Filter { name: "SVG image", extensions: &["svg"] };
     pub const PNG: Filter = Filter { name: "PNG image", extensions: &["png"] };
     pub const MARKDOWN: Filter = Filter { name: "Markdown", extensions: &["md"] };

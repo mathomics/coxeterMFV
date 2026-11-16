@@ -149,7 +149,7 @@ const PAGE_HELPERS = `(() => {
 
 let exitCode = 0;
 try {
-  const target = await openTarget(`${base}/`);
+  const target = await openTarget(`${base}/?scenario=consorcio-anaerobio`);
   const cdp = await connect(target.webSocketDebuggerUrl);
   await cdp.send('Runtime.enable');
   await cdp.send('Performance.enable');

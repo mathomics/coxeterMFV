@@ -38,6 +38,7 @@ try {
     </div>
 
     <button class="header-search" data-action="open-workspace" data-workspace="library" title="Find reactions (Ctrl+F)">⌕ <span>Find</span></button>
+    <button class="theme-button" data-action="open-welcome" aria-label="Welcome, help and license" title="Welcome, help and license">?</button>
     <button class="theme-button" data-action="toggle-theme" aria-label="Switch to dark theme" title="Switch to dark theme">◐</button>
     <details class="top-menu file-menu">
       <summary>File <span>⌄</span></summary>
@@ -46,6 +47,7 @@ try {
         <button data-action="import-models">Model (JSON / SBML / MAT / XLSX)</button>
         <button data-action="import-metatranscriptomics">Metatranscriptomics (CSV / TSV)</button>
         <button data-action="map-load">Map JSON</button>
+        <button data-action="import-flux-data" title="Escher reaction data JSON, or a CSV of reactions and fluxes">Flux data (JSON / CSV)</button>
         <button data-action="discard-waiting-map" id="waiting-map-item" hidden>Forget waiting map</button>
         <button data-action="import-state">Scenario</button>
         <button data-action="import-reproducibility">Reproducibility bundle</button>
@@ -56,6 +58,7 @@ try {
         <button data-action="export-svg">SVG map</button>
         <button data-action="export-png">PNG map</button>
         <button data-action="export-csv">Flux table (CSV)</button>
+        <button data-action="export-flux-json" title="Escher reaction data: reaction ids and fluxes">Flux data (JSON)</button>
         <button data-action="export-state">Scenario</button>
         <button data-action="export-reproducibility">Reproducibility bundle</button>
         <button data-action="export-methods-provenance">Methods / provenance report</button>
@@ -157,6 +160,7 @@ try {
       <div class="inspector" id="inspector"></div>
     </aside>
   </div>
+  <dialog class="welcome" id="welcome" aria-labelledby="welcome-title"></dialog>
 </div>
 
 <input type="file" id="file-input" accept="application/json" hidden>
@@ -165,6 +169,7 @@ try {
 <input type="file" id="model-file-input" accept="application/json,application/xml,text/xml,.json,.xml,.sbml,.mat,.xlsx" multiple hidden>
 <input type="file" id="metatranscriptomics-file-input" accept=".csv,.tsv,text/csv,text/tab-separated-values" hidden>
 <input type="file" id="reproducibility-file-input" accept="application/json,.json" hidden>
+<input type="file" id="flux-file-input" accept="application/json,.json,.csv,.tsv,.txt,text/csv,text/tab-separated-values" hidden>
 <input type="file" id="bounds-file-input" accept=".csv,.tsv,.txt,text/csv,text/tab-separated-values" hidden>
 <script>
 window.__COXETER_BUILD__ = window.__COXETER_BUILD__ || {

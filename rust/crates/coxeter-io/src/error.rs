@@ -25,6 +25,8 @@ pub enum ErrorKind {
     Xlsx,
     /// A reproducibility bundle was refused.
     Reproducibility,
+    /// A flux data file could not be read.
+    FluxData,
     /// Reading a file from disk failed.
     Io,
 }

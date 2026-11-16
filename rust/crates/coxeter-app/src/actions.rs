@@ -255,8 +255,17 @@ impl Shell {
         }
     }
 
-    /// Write what is remembered between sessions: the theme, the solver and
-    /// the solver libraries located by hand.
+    /// The welcome page's "Show at startup" box (`welcomeOpensAtStart`): on
+    /// unless it was turned off; a missing or unreadable file counts as on.
+    pub fn saved_welcome(path: &Path) -> bool {
+        let Some(v) = std::fs::read_to_string(path).ok().and_then(|text| serde_json::from_str::<Value>(&text).ok()) else {
+            return true;
+        };
+        v.get("welcomeAtStart").and_then(Value::as_bool).unwrap_or(true)
+    }
+
+    /// Write what is remembered between sessions: the theme, the solver, the
+    /// solver libraries located by hand and the welcome page's startup box.
     pub fn save_settings(&self) {
         let Some(path) = &self.settings_path else { return };
         if let Some(dir) = path.parent() {
@@ -270,6 +279,7 @@ impl Shell {
             "theme": if self.store.view.dark { "dark" } else { "light" },
             "solver": solver.id(),
             "solverLibraries": libraries,
+            "welcomeAtStart": self.ui.welcome_at_start,
         });
         let _ = std::fs::write(path, settings.to_string());
     }
@@ -732,6 +742,24 @@ impl Shell {
         }
     }
 
+    /// `import-flux-data`: the flux file input's `change`.
+    pub fn import_flux_data(&mut self) {
+        let Some((name, text)) = self.pick_texts("Import flux data", &[filter::FLUX_DATA], false).into_iter().next() else {
+            return;
+        };
+        self.import_flux_data_text(&name, text);
+    }
+
+    /// Show the flux data file `name`, already read, as the solution; an
+    /// error goes to the status line.
+    pub fn import_flux_data_text(&mut self, name: &str, text: Result<String, String>) {
+        self.flush_deferred();
+        let result = text.and_then(|t| self.store.import_flux_data(&t, name).map(|_| ()).map_err(|e| e.to_string()));
+        if let Err(e) = result {
+            self.status_error(format!("Could not import flux data: {e}"));
+        }
+    }
+
     /// `import-reproducibility`.
     pub fn import_reproducibility(&mut self) {
         let Some((_, text)) = self.pick_texts("Open reproducibility bundle", &[filter::JSON], false).into_iter().next() else {
@@ -883,6 +911,23 @@ impl Shell {
         let csv = self.store.flux_csv();
         if let Some(path) = self.save_file("Export flux table", &name, &[filter::CSV], csv.as_bytes()) {
             self.log_ok(&format!("Flux table exported as {}", files::display_name(&path)));
+        }
+    }
+
+    /// `export-flux-json`: the solution as Escher reaction data.
+    pub fn export_flux_json(&mut self) {
+        self.flush_deferred();
+        if !self.export_context_ready() {
+            return;
+        }
+        let Some(json) = self.store.flux_data_json() else {
+            self.store.set_status_message(StatusState::Warn, "There is no solution to export. Run an analysis first.");
+            self.store.emit("status");
+            return;
+        };
+        let name = self.store.file_name_for(export_suffix::FLUXES, "json");
+        if let Some(path) = self.save_file("Export flux data", &name, &[filter::JSON], json.as_bytes()) {
+            self.log_ok(&format!("Flux data exported as {}", files::display_name(&path)));
         }
     }
 

@@ -14,6 +14,7 @@
 //! | [`xlsx`] | `src/core/xlsx.js` |
 //! | [`mat5`] | `src/import/mat5.js` |
 //! | [`file_names`] | `src/ui/file-names.js` |
+//! | [`flux_data`] | `src/core/flux-data.js` |
 //!
 //! Every reader returns the same model, byte for byte once serialised, as the
 //! JS reader given the same file. The parity tests under `tests/` prove it on
@@ -36,6 +37,7 @@
 
 pub mod error;
 pub mod file_names;
+pub mod flux_data;
 pub mod gene_rules;
 mod jscompat;
 pub mod mat5;
@@ -73,6 +75,9 @@ pub use model_edit::{MetaboliteSpec, ReactionSpec, add_metabolite_to_model, add_
 
 /// Database links and identifiers.org annotations.
 pub use provenance::{AnnotationLink, annotation_links, extract_identifiers_org, normalize_annotations};
+
+/// Flux data files: Escher reaction data JSON and flux CSVs, read and matched to a model.
+pub use flux_data::{FluxMatch, flux_data_json, match_flux_data, parse_flux_data};
 
 /// Reproducibility bundles and the methods report.
 pub use reproducibility::{

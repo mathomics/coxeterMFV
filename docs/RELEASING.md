@@ -56,6 +56,10 @@ node tools/release-manifest.mjs
 
 Replace `FULL_WORKING_COMMIT` with the full 40-character identifier. Writing the manifest records hashes; it does not prove that the binaries were built from the source. The build and validation record supplies that evidence. Never regenerate hashes merely to hide an unexplained difference.
 
+## Website
+
+`.github/workflows/pages.yml` publishes https://mathomics.github.io/coxeterMFV/ on every push to `main`: `site/index.html` and `site/help.html` at the root, and the promoted `index.html` as `app.html` next to the folders it reads. Settings > Pages > Source must be GitHub Actions. When the interface changes, check that `site/help.html` still describes it, and open the case-study links on the home page.
+
 ## Publish and archive
 
 Complete [the publication checklist](PUBLICATION.md), including the manuscript-specific reproducibility materials and rights review. Create the version tag from the reviewed official commit. Attach the browser HTML, Windows executable, licence notices, corresponding third-party source and `release-manifest.json` to the release. Keep the source archive and original model references accessible alongside the downloads.

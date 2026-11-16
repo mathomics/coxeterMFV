@@ -298,6 +298,7 @@ enum Col {
     Flux,
     Fva,
     Rc,
+    ScaledRc,
     Objective,
     Status,
     Actions,
@@ -329,6 +330,7 @@ fn columns(available: TableColumns, compact: bool) -> Vec<Column> {
             col(Col::Flux, 84.0, "Flux", Some(SortKey::Flux)),
             col(Col::Fva, 136.0, "FVA min–max", Some(SortKey::Fva)),
             col(Col::Rc, 92.0, "Reduced cost", Some(SortKey::Rc)),
+            col(Col::ScaledRc, 92.0, "Scaled RC", Some(SortKey::ScaledRc)),
             col(Col::Status, 112.0, "Status", Some(SortKey::Status)),
             col(Col::Actions, 78.0, "", None),
         ]
@@ -345,6 +347,7 @@ fn columns(available: TableColumns, compact: bool) -> Vec<Column> {
             col(Col::Flux, 76.0, "Flux", Some(SortKey::Flux)),
             col(Col::Fva, 132.0, "FVA min–max", Some(SortKey::Fva)),
             col(Col::Rc, 88.0, "Reduced cost", Some(SortKey::Rc)),
+            col(Col::ScaledRc, 88.0, "Scaled RC", Some(SortKey::ScaledRc)),
             col(Col::Objective, 74.0, "Objective", Some(SortKey::Objective)),
             col(Col::Status, 110.0, "Status", Some(SortKey::Status)),
             col(Col::Actions, 104.0, "", None),
@@ -354,7 +357,7 @@ fn columns(available: TableColumns, compact: bool) -> Vec<Column> {
         .copied()
         .filter(|c| match c.id {
             Col::Fva => available.fva,
-            Col::Rc => available.rc,
+            Col::Rc | Col::ScaledRc => available.rc,
             _ => true,
         })
         .collect()
@@ -1327,6 +1330,12 @@ fn reaction_row(ui: &mut Ui, rect: Rect, geo: &Geometry, row: &ReactionRow, ctx:
                 let text = if row.reduced_cost.is_finite() { format_flux(Some(row.reduced_cost), 5) } else { "—".into() };
                 ui.with_layout(Layout::right_to_left(Align::Center), |ui| ui.label(RichText::new(text).size(11.5)));
             }
+            Col::ScaledRc => {
+                let text = if row.scaled_reduced_cost.is_finite() { format_flux(Some(row.scaled_reduced_cost), 5) } else { "—".into() };
+                ui.with_layout(Layout::right_to_left(Align::Center), |ui| {
+                    ui.label(RichText::new(text).size(11.5)).on_hover_text("Reduced cost divided by the largest absolute reduced cost");
+                });
+            }
             Col::Objective => {
                 let shown = if row.objective != 0.0 { format_bound(row.objective) } else { String::new() };
                 let invalid_id = cell_id.with("aria-invalid");
@@ -1489,4 +1498,20 @@ pub fn table_view(ui: &mut Ui, shell: &mut Shell, shadow: impl FnOnce(&mut Ui, &
     });
     ui.allocate_rect(rect, Sense::hover());
     apply(shell, acts);
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn the_reactions_table_shows_the_scaled_reduced_cost_beside_the_reduced_cost() {
+        for compact in [false, true] {
+            let ids: Vec<Col> = columns(TableColumns { fva: false, rc: true }, compact).iter().map(|c| c.id).collect();
+            let rc = ids.iter().position(|id| *id == Col::Rc).expect("reduced cost column");
+            assert_eq!(ids[rc + 1], Col::ScaledRc);
+            let without: Vec<Col> = columns(TableColumns { fva: false, rc: false }, compact).iter().map(|c| c.id).collect();
+            assert!(!without.contains(&Col::Rc) && !without.contains(&Col::ScaledRc));
+        }
+    }
 }

@@ -2366,6 +2366,26 @@ button.pc-dl { font-family: inherit; }
 .save-dialog-check { display: flex; align-items: center; gap: 8px; margin-top: 12px; }
 .save-dialog-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 16px; }
 
+/* ----------------------------------------------------------- Welcome page */
+/* What the app is, its examples, help links and license, over the map at start. */
+.welcome {
+  width: min(520px, calc(100vw - 32px));
+  padding: 22px 22px 18px;
+  background: var(--panel); color: var(--ink);
+  border: 1px solid var(--line); border-radius: var(--radius);
+  box-shadow: var(--float-shadow);
+}
+.welcome::backdrop { background: rgb(15 23 42 / .35); }
+.welcome h2 { margin: 0; font-size: 18px; }
+.welcome h3 { margin: 16px 0 6px; font-size: 12px; text-transform: uppercase; letter-spacing: .04em; color: var(--ink-2); }
+.welcome a { color: var(--accent); }
+.welcome-lead { margin: 4px 0 12px; line-height: 1.5; color: var(--ink-2); }
+.welcome-links { display: flex; flex-wrap: wrap; gap: 6px 18px; }
+.welcome-examples { display: flex; flex-wrap: wrap; gap: 8px; }
+.welcome-license { margin: 18px 0 0; font-size: 12px; line-height: 1.5; color: var(--ink-3); }
+.welcome-foot { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-top: 14px; }
+.welcome-foot label { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; }
+
 /* ------------------------------------------------------ Compartment shape */
 .compartment-tool-controls { display: flex; flex-direction: column; gap: 6px; margin-top: 10px; }
 .compartment-tool-controls label { font-weight: 600; }

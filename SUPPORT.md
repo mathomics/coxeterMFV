@@ -2,7 +2,7 @@
 
 Report bugs and ask usage questions through the [issue tracker](https://github.com/mathomics/coxeterMFV/issues). Include the version, platform, solver, and a minimal example where possible. This is research software; no response time or service-level agreement is promised.
 
-Start with the [user guide](docs/USER_GUIDE.md), [reproducibility guide](docs/REPRODUCIBILITY.md) and [examples](examples/README.md).
+Start with the [help page](https://mathomics.github.io/coxeterMFV/help.html), the [user guide](docs/USER_GUIDE.md), [reproducibility guide](docs/REPRODUCIBILITY.md) and [examples](examples/README.md).
 
 ## Common problems
 

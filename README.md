@@ -6,6 +6,7 @@
 
 Metabolic maps with explicit cells and subcellular compartments, and flux balance analysis of single organisms and microbial communities.
 
+[![Website](https://img.shields.io/badge/online-web%20app-2563eb.svg)](https://mathomics.github.io/coxeterMFV/)
 [![License: MIT](https://img.shields.io/badge/code-MIT-blue.svg)](LICENSE)
 [![Documentation](https://img.shields.io/badge/docs-user%20guide-brightgreen.svg)](docs/USER_GUIDE.md)
 [![Web app](https://img.shields.io/badge/web-single%20HTML%20file-orange.svg)](app/coxeter_mfv.html)
@@ -20,6 +21,8 @@ Metabolic maps with explicit cells and subcellular compartments, and flux balanc
 ## About
 
 This is the official source and distribution repository for Coxeter-MFV. Application development takes place in EscherMultiCellMultiCompartment, and reviewed source snapshots and matching builds are promoted here. The current software version is **0.1.0**, in preparation for publication; an article reference and permanent release DOI have not yet been assigned in this repository.
+
+Use Coxeter-MFV online at **https://mathomics.github.io/coxeterMFV/**. It runs in the browser with no installation or login, and the [help page](https://mathomics.github.io/coxeterMFV/help.html) explains the analyses and how to read a solved map. The website is built from `site/` by `.github/workflows/pages.yml`.
 
 Start with the [user guide](docs/USER_GUIDE.md), [reproducibility instructions](docs/REPRODUCIBILITY.md), or [support guide](SUPPORT.md). Maintainers should follow the [release procedure](docs/RELEASING.md) and [publication checklist](docs/PUBLICATION.md).
 

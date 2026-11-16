@@ -1199,6 +1199,9 @@ impl Store {
         if self.solution.as_ref().is_some_and(|s| s.steady_com.is_some()) {
             return Err(StoreError::msg("Reproducibility bundles cover ordinary FBA only; save a SteadyCom solution as Scenario JSON."));
         }
+        if self.solution.as_ref().is_some_and(|s| s.imported().is_some()) {
+            return Err(StoreError::msg("imported flux data has no analysis to replay. Export it as flux data instead."));
+        }
         for species in &self.species {
             if self.models.get(&species.file).is_none() {
                 return Err(StoreError::msg(format!("The bundle model for \"{}\" is not loaded.", species.id)));

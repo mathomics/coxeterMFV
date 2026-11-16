@@ -41,7 +41,7 @@ cargo run --release -p coxeter-app      # the application
 | Crate | What it does | Ported from |
 |---|---|---|
 | `coxeter-core` | Models, communities, compartments, labels, map data, geometry, JS-compatible numerics | `src/core/*`, `src/layout/geometry.js`, `src/map/boundaries.js`, `src/map/metabolite-label.js` |
-| `coxeter-io` | SBML / JSON / MAT / XLSX in and out, model editing, provenance, reproducibility | `src/core/sbml*.js`, `model-import.js`, `model-edit.js`, `provenance.js`, `reproducibility.js`, `xlsx.js`, `src/import/mat5.js` |
+| `coxeter-io` | SBML / JSON / MAT / XLSX in and out, flux data files, model editing, provenance, reproducibility | `src/core/sbml*.js`, `model-import.js`, `flux-data.js`, `model-edit.js`, `provenance.js`, `reproducibility.js`, `xlsx.js`, `src/import/mat5.js` |
 | `coxeter-solver` | FBA, pFBA, loopless FBA, parallel FVA, duals, SteadyCom on HiGHS, Gurobi or CPLEX | `src/solver/*`, `src/core/steadycom.js`, `src/communities/steadycom-*.js` |
 | `coxeter-map` | Automatic layout, reaction placement, map editing, history, reconciliation, map documents | `src/layout/*`, `src/map/*` |
 | `coxeter-render` | The map's SVG, styles, flux colours, cross-feeding routes; SVG/PNG export | `src/render/*` |

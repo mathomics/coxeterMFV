@@ -10,6 +10,9 @@ Changes to published releases are recorded here. Version numbers refer to the so
 - Correct Node dependency installation and native compiler requirements, align native provenance with the release version, and record known browser integration failures.
 - Promote application source from working revision `79d9167656a4457809fd92098a5b46481dedbd5a`, which validates imported scenarios, bundles and bounds, keeps stale or cancelled work from replacing newer results, gives every map presentation edit an undo step, spaces out the Zuñiga map and routes the auxotroph cross-feeding lines along the outer sides of the cells.
 - Move the source of both applications to the repository root, put both applications in `app/`, and add the case studies of the article (scripts, models, results and figures) in `paper/`.
+- Promote application source from working revision `5fe032526bc617d79d572c61045709691f2fd4b7`, which opens on a welcome page with the three case studies, help and license, imports and exports flux data, shows scaled reduced costs, opens a case study from a link (`app.html?scenario=pub:<id>`) and fits the map to the window when a link opens it. Rebuild the browser application from it. The Windows executable is still the build from revision `79d9167656a4457809fd92098a5b46481dedbd5a` and will be rebuilt for the tagged release.
+- Retry the container check on any connection error, and give Chromium 30 s to start in the browser application check.
+- Publish the website at https://mathomics.github.io/coxeterMFV/, with a home page and a help page that explains how to read a solved map, built by `.github/workflows/pages.yml`.
 
 ## 0.1.0
 

@@ -434,6 +434,8 @@ pub struct ReactionRow {
     pub fva_min: f64,
     pub fva_max: f64,
     pub reduced_cost: f64,
+    /// The reduced cost divided by the largest absolute one (`scaledReducedCost`).
+    pub scaled_reduced_cost: f64,
     pub objective: f64,
     pub on_map: bool,
     pub held_out: bool,
@@ -572,6 +574,7 @@ pub enum SortKey {
     Flux,
     Fva,
     Rc,
+    ScaledRc,
     Objective,
     Status,
 }
@@ -596,6 +599,7 @@ impl SortKey {
             SortKey::Flux => row.flux,
             SortKey::Fva => row.fva_max - row.fva_min,
             SortKey::Rc => row.reduced_cost,
+            SortKey::ScaledRc => row.scaled_reduced_cost,
             SortKey::Objective => row.objective,
             SortKey::Status => row.status.order() as f64,
             _ => f64::NAN,
