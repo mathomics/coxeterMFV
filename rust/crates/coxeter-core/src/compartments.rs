@@ -75,7 +75,6 @@ impl Membrane {
 pub struct CompartmentInfo {
     pub id: String,
     pub name: String,
-    pub es: String,
     pub membrane: Membrane,
     pub theme: CompartmentTheme,
 }
@@ -83,7 +82,6 @@ pub struct CompartmentInfo {
 struct Canonical {
     id: &'static str,
     name: &'static str,
-    es: &'static str,
     membrane: Membrane,
     theme: CompartmentTheme,
 }
@@ -92,27 +90,27 @@ use Membrane::{Bilayer, Open, Wall};
 
 /// Canonical compartments, in display order.
 const COMPARTMENTS: [Canonical; 19] = [
-    Canonical { id: "e", name: "Extracellular", es: "Extracelular", membrane: Open, theme: t("#f1f5f9", "#1e293b", "#94a3b8", "#64748b", "#475569", "#cbd5e1") },
-    Canonical { id: "s", name: "Shared medium", es: "Medio compartido", membrane: Open, theme: t("#f8fafc", "#0f172a", "#cbd5e1", "#475569", "#64748b", "#94a3b8") },
-    Canonical { id: "w", name: "Cell wall", es: "Pared celular", membrane: Wall, theme: t("#f5f5f4", "#292524", "#a8a29e", "#78716c", "#57534e", "#d6d3d1") },
-    Canonical { id: "p", name: "Periplasm", es: "Periplasma", membrane: Bilayer, theme: t("#fef3c7", "#422006", "#d97706", "#b45309", "#92400e", "#fcd34d") },
-    Canonical { id: "c", name: "Cytosol", es: "Citosol", membrane: Bilayer, theme: t("#e0f2fe", "#082f49", "#0284c7", "#0369a1", "#075985", "#7dd3fc") },
-    Canonical { id: "im", name: "Intermembrane space", es: "Espacio intermembrana", membrane: Bilayer, theme: t("#ffe4e6", "#4c0519", "#fb7185", "#e11d48", "#9f1239", "#fda4af") },
-    Canonical { id: "m", name: "Mitochondrial matrix", es: "Matriz mitocondrial", membrane: Bilayer, theme: t("#fee2e2", "#450a0a", "#dc2626", "#b91c1c", "#991b1b", "#fca5a5") },
-    Canonical { id: "h", name: "Chloroplast stroma", es: "Estroma del cloroplasto", membrane: Bilayer, theme: t("#dcfce7", "#052e16", "#16a34a", "#15803d", "#166534", "#86efac") },
-    Canonical { id: "u", name: "Thylakoid lumen", es: "Lumen tilacoidal", membrane: Bilayer, theme: t("#d1fae5", "#022c22", "#059669", "#047857", "#065f46", "#6ee7b7") },
-    Canonical { id: "n", name: "Nucleus", es: "Núcleo", membrane: Bilayer, theme: t("#ede9fe", "#2e1065", "#7c3aed", "#6d28d9", "#5b21b6", "#c4b5fd") },
-    Canonical { id: "x", name: "Peroxisome", es: "Peroxisoma", membrane: Bilayer, theme: t("#ffedd5", "#431407", "#ea580c", "#c2410c", "#9a3412", "#fdba74") },
-    Canonical { id: "r", name: "Endoplasmic reticulum", es: "Retículo endoplásmico", membrane: Bilayer, theme: t("#fae8ff", "#4a044e", "#c026d3", "#a21caf", "#86198f", "#f0abfc") },
-    Canonical { id: "g", name: "Golgi apparatus", es: "Aparato de Golgi", membrane: Bilayer, theme: t("#fce7f3", "#500724", "#db2777", "#be185d", "#9d174d", "#f9a8d4") },
-    Canonical { id: "v", name: "Vacuole", es: "Vacuola", membrane: Bilayer, theme: t("#cffafe", "#083344", "#0891b2", "#0e7490", "#155e75", "#67e8f9") },
-    Canonical { id: "l", name: "Lysosome", es: "Lisosoma", membrane: Bilayer, theme: t("#ecfccb", "#1a2e05", "#65a30d", "#4d7c0f", "#3f6212", "#bef264") },
-    Canonical { id: "cx", name: "Carboxysome", es: "Carboxisoma", membrane: Bilayer, theme: t("#e0e7ff", "#1e1b4b", "#4f46e5", "#4338ca", "#3730a3", "#a5b4fc") },
-    Canonical { id: "f", name: "Flagellum", es: "Flagelo", membrane: Open, theme: t("#f0fdfa", "#042f2e", "#14b8a6", "#0d9488", "#0f766e", "#5eead4") },
-    Canonical { id: "lp", name: "Lipid particle", es: "Partícula lipídica", membrane: Bilayer, theme: t("#fef9c3", "#422006", "#ca8a04", "#a16207", "#854d0e", "#fde047") },
+    Canonical { id: "e", name: "Extracellular", membrane: Open, theme: t("#f1f5f9", "#1e293b", "#94a3b8", "#64748b", "#475569", "#cbd5e1") },
+    Canonical { id: "s", name: "Shared medium", membrane: Open, theme: t("#f8fafc", "#0f172a", "#cbd5e1", "#475569", "#64748b", "#94a3b8") },
+    Canonical { id: "w", name: "Cell wall", membrane: Wall, theme: t("#f5f5f4", "#292524", "#a8a29e", "#78716c", "#57534e", "#d6d3d1") },
+    Canonical { id: "p", name: "Periplasm", membrane: Bilayer, theme: t("#fef3c7", "#422006", "#d97706", "#b45309", "#92400e", "#fcd34d") },
+    Canonical { id: "c", name: "Cytosol", membrane: Bilayer, theme: t("#e0f2fe", "#082f49", "#0284c7", "#0369a1", "#075985", "#7dd3fc") },
+    Canonical { id: "im", name: "Intermembrane space", membrane: Bilayer, theme: t("#ffe4e6", "#4c0519", "#fb7185", "#e11d48", "#9f1239", "#fda4af") },
+    Canonical { id: "m", name: "Mitochondrial matrix", membrane: Bilayer, theme: t("#fee2e2", "#450a0a", "#dc2626", "#b91c1c", "#991b1b", "#fca5a5") },
+    Canonical { id: "h", name: "Chloroplast stroma", membrane: Bilayer, theme: t("#dcfce7", "#052e16", "#16a34a", "#15803d", "#166534", "#86efac") },
+    Canonical { id: "u", name: "Thylakoid lumen", membrane: Bilayer, theme: t("#d1fae5", "#022c22", "#059669", "#047857", "#065f46", "#6ee7b7") },
+    Canonical { id: "n", name: "Nucleus", membrane: Bilayer, theme: t("#ede9fe", "#2e1065", "#7c3aed", "#6d28d9", "#5b21b6", "#c4b5fd") },
+    Canonical { id: "x", name: "Peroxisome", membrane: Bilayer, theme: t("#ffedd5", "#431407", "#ea580c", "#c2410c", "#9a3412", "#fdba74") },
+    Canonical { id: "r", name: "Endoplasmic reticulum", membrane: Bilayer, theme: t("#fae8ff", "#4a044e", "#c026d3", "#a21caf", "#86198f", "#f0abfc") },
+    Canonical { id: "g", name: "Golgi apparatus", membrane: Bilayer, theme: t("#fce7f3", "#500724", "#db2777", "#be185d", "#9d174d", "#f9a8d4") },
+    Canonical { id: "v", name: "Vacuole", membrane: Bilayer, theme: t("#cffafe", "#083344", "#0891b2", "#0e7490", "#155e75", "#67e8f9") },
+    Canonical { id: "l", name: "Lysosome", membrane: Bilayer, theme: t("#ecfccb", "#1a2e05", "#65a30d", "#4d7c0f", "#3f6212", "#bef264") },
+    Canonical { id: "cx", name: "Carboxysome", membrane: Bilayer, theme: t("#e0e7ff", "#1e1b4b", "#4f46e5", "#4338ca", "#3730a3", "#a5b4fc") },
+    Canonical { id: "f", name: "Flagellum", membrane: Open, theme: t("#f0fdfa", "#042f2e", "#14b8a6", "#0d9488", "#0f766e", "#5eead4") },
+    Canonical { id: "lp", name: "Lipid particle", membrane: Bilayer, theme: t("#fef9c3", "#422006", "#ca8a04", "#a16207", "#854d0e", "#fde047") },
     // BiGG writes the eyespot as `s`, which between cells is the shared medium.
     // Inside a cell it is drawn under this id (see cell_compartment_visual_id()).
-    Canonical { id: "es", name: "Eyespot", es: "Mancha ocular", membrane: Bilayer, theme: t("#ffe4d6", "#431407", "#f97316", "#c2410c", "#9a3412", "#fdba74") },
+    Canonical { id: "es", name: "Eyespot", membrane: Bilayer, theme: t("#ffe4d6", "#431407", "#f97316", "#c2410c", "#9a3412", "#fdba74") },
 ];
 
 /// Fallback hues for compartment ids that are not in the canonical table.
@@ -249,6 +247,8 @@ pub fn cell_compartment_visual_id(id: &str, names: &Names) -> String {
 
 /// Does this set of names call `s` the shared medium? The merged community
 /// model is the one model that really contains it, and it says so by name.
+/// Merged models written by the first builds call it "Medio compartido", and
+/// those files still open.
 fn names_shared_medium(names: &Names) -> bool {
     let label = normalise_compartment_label(name_of(names, "s"));
     label.contains("shared medium") || label.contains("medio compartido")
@@ -301,7 +301,6 @@ pub fn compartment_info(id: &str) -> CompartmentInfo {
         return CompartmentInfo {
             id: c.id.into(),
             name: c.name.into(),
-            es: c.es.into(),
             membrane: c.membrane,
             theme: c.theme,
         };
@@ -314,7 +313,6 @@ pub fn compartment_info(id: &str) -> CompartmentInfo {
     CompartmentInfo {
         id: id.into(),
         name: id.into(),
-        es: id.into(),
         membrane: Membrane::Bilayer,
         theme: EXTRA_PALETTE[(h as usize) % EXTRA_PALETTE.len()],
     }
@@ -329,23 +327,22 @@ fn supplied_name<'a>(id: &str, names: &'a Names) -> Option<&'a str> {
     (!trimmed.is_empty() && trimmed != id).then_some(name.as_str())
 }
 
-fn registry_name(visual_id: &str, locale: &str) -> String {
-    let info = compartment_info(visual_id);
-    if locale == "es" { info.es } else { info.name }
+fn registry_name(visual_id: &str) -> String {
+    compartment_info(visual_id).name
 }
 
-/// Human readable compartment name in the requested locale (`"en"`/`"es"`).
-pub fn compartment_name(id: &str, names: &Names, locale: &str) -> String {
+/// Human readable compartment name.
+pub fn compartment_name(id: &str, names: &Names) -> String {
     supplied_name(id, names)
         .map(str::to_string)
-        .unwrap_or_else(|| registry_name(&compartment_visual_id(id, names), locale))
+        .unwrap_or_else(|| registry_name(&compartment_visual_id(id, names)))
 }
 
 /// Human readable name of a compartment that belongs to a cell.
-pub fn cell_compartment_name(id: &str, names: &Names, locale: &str) -> String {
+pub fn cell_compartment_name(id: &str, names: &Names) -> String {
     supplied_name(id, names)
         .map(str::to_string)
-        .unwrap_or_else(|| registry_name(&cell_compartment_visual_id(id, names), locale))
+        .unwrap_or_else(|| registry_name(&cell_compartment_visual_id(id, names)))
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -682,8 +679,8 @@ mod tests {
     fn eyespot_versus_medium() {
         assert_eq!(cell_compartment_visual_id("s", &Names::new()), "es");
         assert_eq!(cell_compartment_visual_id("s", &names(&[("s", "Shared medium")])), "s");
-        assert_eq!(compartment_name("c", &names(&[("c", "c")]), "en"), "Cytosol");
-        assert_eq!(compartment_name("c", &names(&[("c", "cytoplasm")]), "en"), "cytoplasm");
+        assert_eq!(compartment_name("c", &names(&[("c", "c")])), "Cytosol");
+        assert_eq!(compartment_name("c", &names(&[("c", "cytoplasm")])), "cytoplasm");
     }
 
     #[test]

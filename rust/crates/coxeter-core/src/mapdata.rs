@@ -776,7 +776,7 @@ impl MapGraph {
         Environment {
             rect: Rect::new(0.0, 0.0, canvas.width, canvas.height),
             id: crate::community::SHARED_COMPARTMENT.into(),
-            label: crate::compartments::compartment_name(crate::community::SHARED_COMPARTMENT, &names, "en"),
+            label: crate::compartments::compartment_name(crate::community::SHARED_COMPARTMENT, &names),
             hidden: None,
             extra: Map::new(),
         }

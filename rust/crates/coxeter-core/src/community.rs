@@ -425,7 +425,7 @@ impl CommunityModel {
         }
 
         // Shared medium metabolites and community boundary exchanges
-        compartments.insert(SHARED_COMPARTMENT.into(), json!("Medio compartido"));
+        compartments.insert(SHARED_COMPARTMENT.into(), json!("Shared medium"));
         for info in medium_pool.values() {
             let id = shared_metabolite(&info.base);
             metabolites.push(json!({

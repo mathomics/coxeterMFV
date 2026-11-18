@@ -388,7 +388,7 @@
     },
     {
       "id": "HEX1",
-      "name": "Hexoquinasa",
+      "name": "Hexokinase",
       "metabolites": {
         "atp_c": -1,
         "glc__D_c": -1,
@@ -764,7 +764,7 @@
     },
     {
       "id": "PTAr",
-      "name": "Fosfotransacetilasa",
+      "name": "Phosphotransacetylase",
       "metabolites": {
         "accoa_c": -1,
         "pi_c": -1,
@@ -858,7 +858,7 @@
     },
     {
       "id": "L_LACt2r",
-      "name": "Simporte L-lactato/H+",
+      "name": "L-lactate/H+ symporter",
       "metabolites": {
         "lac__L_e": -1,
         "h_e": -1,
@@ -876,7 +876,7 @@
     },
     {
       "id": "ACt2r",
-      "name": "Simporte acetato/H+",
+      "name": "Acetate/H+ symporter",
       "metabolites": {
         "ac_e": -1,
         "h_e": -1,
@@ -894,7 +894,7 @@
     },
     {
       "id": "FORt",
-      "name": "Formiato canal",
+      "name": "Formate channel",
       "metabolites": {
         "for_c": -1,
         "for_e": 1
@@ -958,7 +958,7 @@
     },
     {
       "id": "PIt2r",
-      "name": "Simporte fosfato/H+",
+      "name": "Phosphate/H+ symporter",
       "metabolites": {
         "h_e": -1,
         "pi_e": -1,
@@ -976,7 +976,7 @@
     },
     {
       "id": "H2Ot",
-      "name": "Agua",
+      "name": "Water",
       "metabolites": {
         "h2o_e": -1,
         "h2o_c": 1

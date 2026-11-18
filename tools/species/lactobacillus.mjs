@@ -28,7 +28,7 @@ export const spec = {
   primary: ['accoa', 'coa', 'lac__L'],
   reactions: [
     r('GLCt1', 'glc__D_e <=> glc__D_c', { name: 'Glucose transport', sub: TRA, rank: 0, lane: 0 }),
-    r('HEX1', 'atp_c + glc__D_c --> adp_c + g6p_c + h_c', { name: 'Hexoquinasa', sub: 'Glycolysis', rank: 1, lane: 0 }),
+    r('HEX1', 'atp_c + glc__D_c --> adp_c + g6p_c + h_c', { name: 'Hexokinase', sub: 'Glycolysis', rank: 1, lane: 0 }),
     ...glycolysis({ comp: 'c', lane: 0, rank0: 2, includeFBP: false }),
     ...pentosePhosphate({ comp: 'c', lane: -3, rank0: 2 }),
 
@@ -40,7 +40,7 @@ export const spec = {
     // recover the unconstrained mixed-acid optimum.
     r('PFL', 'coa_c + pyr_c --> accoa_c + for_c', { name: 'Pyruvate formate lyase', sub: FER, lb: 0, ub: 4.0, rank: 11, lane: 1 }),
     r('PDH', 'coa_c + nad_c + pyr_c --> accoa_c + co2_c + nadh_c', { name: 'Pyruvate dehydrogenase', sub: FER, rank: 11, lane: 2 }),
-    r('PTAr', 'accoa_c + pi_c <=> actp_c + coa_c', { name: 'Fosfotransacetilasa', sub: FER, rank: 12, lane: 1 }),
+    r('PTAr', 'accoa_c + pi_c <=> actp_c + coa_c', { name: 'Phosphotransacetylase', sub: FER, rank: 12, lane: 1 }),
     r('ACKr', 'ac_c + atp_c <=> actp_c + adp_c', { name: 'Acetate kinase', sub: FER, rank: 13, lane: 1 }),
     // Homolactic fermentation is exactly redox neutral, so without a reduced
     // overflow product there is no spare NADH to divert carbon into biomass.
@@ -49,14 +49,14 @@ export const spec = {
     r('ALCD2x', 'etoh_c + nad_c <=> acald_c + h_c + nadh_c', { name: 'Alcohol dehydrogenase', sub: FER, rank: 13, lane: 3 }),
     r('ATPM', 'atp_c + h2o_c --> adp_c + h_c + pi_c', { name: 'Non-growth-associated maintenance', sub: FER, lb: 1.5, ub: 1000, rank: 14, lane: 4 }),
 
-    r('L_LACt2r', 'lac__L_e + h_e <=> lac__L_c + h_c', { name: 'Simporte L-lactato/H+', sub: TRA, rank: 12, lane: -1 }),
-    r('ACt2r', 'ac_e + h_e <=> ac_c + h_c', { name: 'Simporte acetato/H+', sub: TRA, rank: 14, lane: 1 }),
-    r('FORt', 'for_c <=> for_e', { name: 'Formiato canal', sub: TRA, rank: 12, lane: 2 }),
+    r('L_LACt2r', 'lac__L_e + h_e <=> lac__L_c + h_c', { name: 'L-lactate/H+ symporter', sub: TRA, rank: 12, lane: -1 }),
+    r('ACt2r', 'ac_e + h_e <=> ac_c + h_c', { name: 'Acetate/H+ symporter', sub: TRA, rank: 14, lane: 1 }),
+    r('FORt', 'for_c <=> for_e', { name: 'Formate channel', sub: TRA, rank: 12, lane: 2 }),
     r('ETOHt', 'etoh_e <=> etoh_c', { name: 'Ethanol diffusion', sub: TRA, rank: 14, lane: 3 }),
     r('CO2t', 'co2_e <=> co2_c', { name: 'CO2 diffusion', sub: TRA, rank: 12, lane: 3 }),
     r('NH4t', 'nh4_e <=> nh4_c', { name: 'Amonio', sub: TRA, rank: 13, lane: -3 }),
-    r('PIt2r', 'h_e + pi_e <=> h_c + pi_c', { name: 'Simporte fosfato/H+', sub: TRA, rank: 5, lane: 4 }),
-    r('H2Ot', 'h2o_e <=> h2o_c', { name: 'Agua', sub: TRA, rank: 6, lane: 4 }),
+    r('PIt2r', 'h_e + pi_e <=> h_c + pi_c', { name: 'Phosphate/H+ symporter', sub: TRA, rank: 5, lane: 4 }),
+    r('H2Ot', 'h2o_e <=> h2o_c', { name: 'Water', sub: TRA, rank: 6, lane: 4 }),
     r('Ht', 'h_e <=> h_c', { name: 'Proton', sub: TRA, rank: 7, lane: 4 }),
 
     ex('glc__D', { lb: -10, rank: 0, lane: 0 }),

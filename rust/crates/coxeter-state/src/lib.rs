@@ -6,7 +6,7 @@
 //! use coxeter_state::Store;
 //! let mut store = Store::with_dir(".");          // the folder holding models/
 //! store.init().unwrap();
-//! store.use_scenario("aerobio-mixto").unwrap();
+//! store.use_scenario("aerobic-coculture").unwrap();
 //! for reason in store.take_events() { /* rebuild what `reason` touched */ }
 //! store.run_analysis("fva").unwrap();             // background work…
 //! let finished = store.poll_jobs();               // …applied once per frame

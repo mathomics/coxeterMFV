@@ -199,10 +199,10 @@ def main(cell, src, out, log_path):
     print(f'{cell}: removed {removed} internal reactions and {dropped} nodes; drew {len(ok)}, failed {len(bad)}')
     for r, p in bad:
         print('  ', r, '; '.join(p[:3]))
-    write_log(log_path, f'Fase 7: {cell} redibujado desde los sustratos',
-              f'Se quitaron las {removed} reacciones internas de {cell} y se dibujó su metabolismo central '
-              'desde los transportadores de sus sustratos. Cada reacción se comparó con el GEM y con lo ya dibujado.',
-              log, closing='\n'.join(f'- No se dibujó {r}: {"; ".join(p)}' for r, p in bad))
+    write_log(log_path, f'Phase 7: {cell} redrawn from the substrates',
+              f'The {removed} internal reactions of {cell} were removed and its central metabolism was drawn '
+              'from the transporters of its substrates. Each reaction was compared with the GEM and with what was already drawn.',
+              log, closing='\n'.join(f'- Not drawn {r}: {"; ".join(p)}' for r, p in bad))
     return bad
 
 

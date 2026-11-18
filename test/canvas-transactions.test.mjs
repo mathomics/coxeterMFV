@@ -19,7 +19,7 @@ async function fixture() {
   const raw = JSON.parse(await readFile(new URL('../models/ecoli_core_mc.json', import.meta.url), 'utf8'));
   store.models.set('ecoli_core_mc', new Model(raw));
   store.scenarios = JSON.parse(await readFile(new URL('../models/scenarios.json', import.meta.url), 'utf8')).scenarios;
-  await store.useScenario('solo-ecoli');
+  await store.useScenario('single-ecoli');
   store.map = EditableMap.emptyFromCommunity(store.community);
   store.addMapReaction('eco@PGI');
   store.mapHistory.clear();
@@ -52,7 +52,7 @@ test('a canvas transaction cannot record against a replacement full map', async 
 test('a canvas transaction cannot record against a reloaded scenario history', async () => {
   const { store } = await fixture();
   const transaction = store.beginMapEdit('Move metabolite');
-  await store.useScenario('solo-ecoli');
+  await store.useScenario('single-ecoli');
   const before = store.map.toJSON();
   const solution = store.solution;
   const version = store.mapHistory.version;

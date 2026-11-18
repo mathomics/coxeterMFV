@@ -1,11 +1,11 @@
 {
   "scenarios": [
     {
-      "id": "consorcio-anaerobio",
+      "id": "anaerobic-consortium",
       "name": "Anaerobic consortium (4 species)",
       "description": "The lactic acid bacterium, E. coli and the yeast each ferment the glucose. The acetate of the first two and the H2 that E. coli releases feed the methanogen, which turns them into methane; lactate, formate, ethanol and glycerol leave in the medium.",
       "objective": "equal-growth",
-      "map": "maps/consorcio-anaerobio.json",
+      "map": "maps/anaerobic-consortium.json",
       "species": [
         {
           "id": "lla",
@@ -39,11 +39,11 @@
       }
     },
     {
-      "id": "aerobio-mixto",
+      "id": "aerobic-coculture",
       "name": "Aerobic co-culture (E. coli + yeast)",
       "description": "Two heterotrophs with limited oxygen compete for glucose. As O2 falls, acetate and ethanol appear: both switch to fermentation rather than give up growth.",
       "objective": "equal-growth",
-      "map": "maps/aerobio-mixto.json",
+      "map": "maps/aerobic-coculture.json",
       "species": [
         {
           "id": "eco",
@@ -67,11 +67,11 @@
       }
     },
     {
-      "id": "fototrofo-heterotrofo",
+      "id": "phototroph-heterotroph",
       "name": "Phototroph-heterotroph mutualism",
       "description": "The cyanobacterium fixes CO2 in the light and releases O2; the heterotrophs consume that O2 and give back CO2. The only oxygen in the system is the one the light produces.",
       "objective": "equal-growth",
-      "map": "maps/fototrofo-heterotrofo.json",
+      "map": "maps/phototroph-heterotroph.json",
       "species": [
         {
           "id": "syn",
@@ -102,11 +102,11 @@
       }
     },
     {
-      "id": "metanogenesis",
+      "id": "methanogen-digester",
       "name": "Digester: E. coli + methanogen",
       "description": "A minimal syntrophic pair. E. coli ferments glucose to formate, which formate hydrogen lyase converts into H2 and CO2; the methanogen consumes both and releases methane.",
       "objective": "equal-growth",
-      "map": "maps/metanogenesis.json",
+      "map": "maps/methanogen-digester.json",
       "species": [
         {
           "id": "eco",
@@ -130,11 +130,11 @@
       }
     },
     {
-      "id": "todas",
+      "id": "all-species",
       "name": "All five species",
       "description": "Every organism in the catalogue in one medium, with light and no external oxygen: the only O2 available is what the cyanobacterium produces.",
       "objective": "equal-growth",
-      "map": "maps/todas.json",
+      "map": "maps/all-species.json",
       "species": [
         {
           "id": "lla",
@@ -175,38 +175,15 @@
       }
     },
     {
-      "id": "solo-ecoli",
+      "id": "single-ecoli",
       "name": "A single cell: E. coli",
       "description": "One organism on its own, to see the three boundaries of a Gram-negative bacterium clearly: outer membrane, periplasm and plasma membrane.",
       "objective": "sum-biomass",
-      "map": "maps/solo-ecoli.json",
+      "map": "maps/single-ecoli.json",
       "species": [
         {
           "id": "eco",
           "model": "ecoli_core_mc",
-          "abundance": 1
-        }
-      ],
-      "medium": {
-        "glc__D": 10,
-        "o2": 1000,
-        "nh4": 1000,
-        "pi": 1000,
-        "h2o": 1000,
-        "h": 1000,
-        "co2": 1000
-      }
-    },
-    {
-      "id": "solo-levadura",
-      "name": "A single cell: yeast",
-      "description": "A eukaryote with a mitochondrion: cytosol, intermembrane space and matrix, each with its own boundary and its own transporters.",
-      "objective": "sum-biomass",
-      "map": "maps/solo-levadura.json",
-      "species": [
-        {
-          "id": "sce",
-          "model": "yeast_core_mc",
           "abundance": 1
         }
       ],

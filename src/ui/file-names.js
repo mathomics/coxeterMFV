@@ -1,13 +1,14 @@
 /**
  * Names for exported files: what they are of, then a short suffix for what they
  * are (`yeastGEM_v9.1.1_map.json`, `yeastGEM_v9.1.1_model.json`,
- * `consorcio-anaerobio_scenario.json`), so the files saved from one model sort
+ * `anaerobic-consortium_scenario.json`), so the files saved from one model sort
  * together and say at a glance which is the map and which the model.
  */
 
 export const EXPORT_SUFFIX = {
   map: 'map',            // Map JSON, SVG and PNG
   model: 'model',        // model JSON and SBML
+  mergedModel: 'merged-model', // the whole community as one model JSON
   scenario: 'scenario',
   fluxes: 'fluxes',
   bounds: 'bounds',      // reaction bounds (CSV)

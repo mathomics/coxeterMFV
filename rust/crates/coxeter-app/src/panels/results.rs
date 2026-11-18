@@ -858,7 +858,7 @@ mod tests {
             }
         }
         store.models.insert("ecoli_core_mc", Model::from_value(&raw).expect("annotated model"));
-        store.use_scenario("solo-ecoli").expect("scenario");
+        store.use_scenario("single-ecoli").expect("scenario");
         store.import_metatranscriptomics("MAG,gene,condition,TPM\neco,test_gap,Control,1\n", "test-genes.csv").expect("expression");
         store.run_community_gimme(CommunityOmicsPatch::default()).expect("GIMME");
         let mut shell = Shell::new(store, Box::new(ScriptedDialogs::new()));
@@ -871,7 +871,7 @@ mod tests {
     fn a_secondary_optimization_failure_stays_visible_in_the_results_bar() {
         let mut store = coxeter_state::Store::with_dir(coxeter_core::testkit::repo_root());
         store.init().expect("bundled models");
-        store.use_scenario("solo-ecoli").expect("scenario");
+        store.use_scenario("single-ecoli").expect("scenario");
         store.set_reaction_bounds("eco@BIOMASS_Ec_core", 0.5, 0.5).expect("fixed biomass");
         store.set_pfba_biomass_percent(90.0).expect("target");
         store.set_parsimonious(true).expect("pFBA");
@@ -895,7 +895,7 @@ mod archive_outcome_ui_tests {
     fn make_shell() -> Shell {
         let mut store = coxeter_state::Store::with_dir(coxeter_core::testkit::repo_root());
         store.init().expect("bundled models");
-        store.use_scenario("solo-ecoli").expect("scenario");
+        store.use_scenario("single-ecoli").expect("scenario");
         Shell::new(store, Box::new(ScriptedDialogs::new()))
     }
 

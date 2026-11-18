@@ -4,24 +4,24 @@
   "status": "pre-publication",
   "sourcePromotion": {
     "repository": "EscherMultiCellMultiCompartment",
-    "commit": "522a150d1614873eb423b27bed1470fb2c51c36b",
+    "commit": "bd2ffb52e8be65e17a195a0f8a86d2db89f780e9",
     "scope": "Application source, tests, assets and model inputs; official packaging and documentation maintained here"
   },
   "source": {
-    "sha256": "460dfc62d18f9338835cd76a2343a32414e6aa27cd4825685f02577dac9e9eb5",
-    "files": 586,
+    "sha256": "5ebc2a8ff0b51f38c783041c32ac17969c5d8b3d4fd2a4e28133bf510bca6cf8",
+    "files": 556,
     "normalization": "UTF-8 text line endings normalized to LF; paths sorted; NUL-separated path and content"
   },
   "applications": [
     {
       "path": "app/coxeter_mfv.html",
-      "bytes": 18353354,
-      "sha256": "77510dc3e893e1a3ba325c790ba2bed96857c2dd8013f44671e3a7452c906876"
+      "bytes": 18137867,
+      "sha256": "d18f213a874923395c425a4af6ca9dcbac3934df889fc930e3bb32bf8f38382e"
     },
     {
       "path": "app/coxeter-mfv.exe",
-      "bytes": 59095040,
-      "sha256": "c65958d8844b159b23576734a6f39af998a688e66f2d8ba5c6275ab62b7cf980"
+      "bytes": 59145728,
+      "sha256": "c5cfc7d23c8308524c40b4fc58270e678b0fabaeb974d918a2ed75e5153c5660"
     }
   ]
 }

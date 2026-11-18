@@ -120,8 +120,8 @@ mod tests {
 
     #[test]
     fn helpers_match_the_javascript() {
-        assert_eq!(normalize_search("  Glucosa-6-fosfato Isomerása "), "glucosa-6-fosfato isomerasa");
-        assert_eq!(unique_pathway_id("Glicólisis superior!", |_| false), "glicolisis-superior");
+        assert_eq!(normalize_search("  Glucose-6-phosphate Isomérase "), "glucose-6-phosphate isomerase");
+        assert_eq!(unique_pathway_id("Upper glycolysìs!", |_| false), "upper-glycolysis");
         assert_eq!(unique_pathway_id("***", |_| false), "pathway");
         assert_eq!(unique_pathway_id("A", |id| id == "a" || id == "a-2"), "a-3");
         assert_eq!(format_duration(850.4), "850 ms");

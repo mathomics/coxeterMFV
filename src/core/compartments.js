@@ -24,27 +24,27 @@ const T = (fill, fillDark, stroke, strokeDark, text, textDark) => ({
  *   - `open`     : dashed stroke, used for spaces that are not membrane-bound
  */
 export const COMPARTMENTS = {
-  e:  { id: 'e',  name: 'Extracellular',            es: 'Extracelular',              membrane: 'open',    theme: T('#f1f5f9', '#1e293b', '#94a3b8', '#64748b', '#475569', '#cbd5e1') },
-  s:  { id: 's',  name: 'Shared medium',            es: 'Medio compartido',          membrane: 'open',    theme: T('#f8fafc', '#0f172a', '#cbd5e1', '#475569', '#64748b', '#94a3b8') },
-  w:  { id: 'w',  name: 'Cell wall',                es: 'Pared celular',             membrane: 'wall',    theme: T('#f5f5f4', '#292524', '#a8a29e', '#78716c', '#57534e', '#d6d3d1') },
-  p:  { id: 'p',  name: 'Periplasm',                es: 'Periplasma',                membrane: 'bilayer', theme: T('#fef3c7', '#422006', '#d97706', '#b45309', '#92400e', '#fcd34d') },
-  c:  { id: 'c',  name: 'Cytosol',                  es: 'Citosol',                   membrane: 'bilayer', theme: T('#e0f2fe', '#082f49', '#0284c7', '#0369a1', '#075985', '#7dd3fc') },
-  im: { id: 'im', name: 'Intermembrane space',      es: 'Espacio intermembrana',     membrane: 'bilayer', theme: T('#ffe4e6', '#4c0519', '#fb7185', '#e11d48', '#9f1239', '#fda4af') },
-  m:  { id: 'm',  name: 'Mitochondrial matrix',     es: 'Matriz mitocondrial',       membrane: 'bilayer', theme: T('#fee2e2', '#450a0a', '#dc2626', '#b91c1c', '#991b1b', '#fca5a5') },
-  h:  { id: 'h',  name: 'Chloroplast stroma',       es: 'Estroma del cloroplasto',   membrane: 'bilayer', theme: T('#dcfce7', '#052e16', '#16a34a', '#15803d', '#166534', '#86efac') },
-  u:  { id: 'u',  name: 'Thylakoid lumen',          es: 'Lumen tilacoidal',          membrane: 'bilayer', theme: T('#d1fae5', '#022c22', '#059669', '#047857', '#065f46', '#6ee7b7') },
-  n:  { id: 'n',  name: 'Nucleus',                  es: 'Núcleo',                    membrane: 'bilayer', theme: T('#ede9fe', '#2e1065', '#7c3aed', '#6d28d9', '#5b21b6', '#c4b5fd') },
-  x:  { id: 'x',  name: 'Peroxisome',               es: 'Peroxisoma',                membrane: 'bilayer', theme: T('#ffedd5', '#431407', '#ea580c', '#c2410c', '#9a3412', '#fdba74') },
-  r:  { id: 'r',  name: 'Endoplasmic reticulum',    es: 'Retículo endoplásmico',     membrane: 'bilayer', theme: T('#fae8ff', '#4a044e', '#c026d3', '#a21caf', '#86198f', '#f0abfc') },
-  g:  { id: 'g',  name: 'Golgi apparatus',          es: 'Aparato de Golgi',          membrane: 'bilayer', theme: T('#fce7f3', '#500724', '#db2777', '#be185d', '#9d174d', '#f9a8d4') },
-  v:  { id: 'v',  name: 'Vacuole',                  es: 'Vacuola',                   membrane: 'bilayer', theme: T('#cffafe', '#083344', '#0891b2', '#0e7490', '#155e75', '#67e8f9') },
-  l:  { id: 'l',  name: 'Lysosome',                 es: 'Lisosoma',                  membrane: 'bilayer', theme: T('#ecfccb', '#1a2e05', '#65a30d', '#4d7c0f', '#3f6212', '#bef264') },
-  cx: { id: 'cx', name: 'Carboxysome',              es: 'Carboxisoma',               membrane: 'bilayer', theme: T('#e0e7ff', '#1e1b4b', '#4f46e5', '#4338ca', '#3730a3', '#a5b4fc') },
-  f:  { id: 'f',  name: 'Flagellum',                es: 'Flagelo',                   membrane: 'open',    theme: T('#f0fdfa', '#042f2e', '#14b8a6', '#0d9488', '#0f766e', '#5eead4') },
-  lp: { id: 'lp', name: 'Lipid particle',            es: 'Partícula lipídica',        membrane: 'bilayer', theme: T('#fef9c3', '#422006', '#ca8a04', '#a16207', '#854d0e', '#fde047') },
+  e:  { id: 'e',  name: 'Extracellular',            membrane: 'open',    theme: T('#f1f5f9', '#1e293b', '#94a3b8', '#64748b', '#475569', '#cbd5e1') },
+  s:  { id: 's',  name: 'Shared medium',            membrane: 'open',    theme: T('#f8fafc', '#0f172a', '#cbd5e1', '#475569', '#64748b', '#94a3b8') },
+  w:  { id: 'w',  name: 'Cell wall',                membrane: 'wall',    theme: T('#f5f5f4', '#292524', '#a8a29e', '#78716c', '#57534e', '#d6d3d1') },
+  p:  { id: 'p',  name: 'Periplasm',                membrane: 'bilayer', theme: T('#fef3c7', '#422006', '#d97706', '#b45309', '#92400e', '#fcd34d') },
+  c:  { id: 'c',  name: 'Cytosol',                  membrane: 'bilayer', theme: T('#e0f2fe', '#082f49', '#0284c7', '#0369a1', '#075985', '#7dd3fc') },
+  im: { id: 'im', name: 'Intermembrane space',      membrane: 'bilayer', theme: T('#ffe4e6', '#4c0519', '#fb7185', '#e11d48', '#9f1239', '#fda4af') },
+  m:  { id: 'm',  name: 'Mitochondrial matrix',     membrane: 'bilayer', theme: T('#fee2e2', '#450a0a', '#dc2626', '#b91c1c', '#991b1b', '#fca5a5') },
+  h:  { id: 'h',  name: 'Chloroplast stroma',       membrane: 'bilayer', theme: T('#dcfce7', '#052e16', '#16a34a', '#15803d', '#166534', '#86efac') },
+  u:  { id: 'u',  name: 'Thylakoid lumen',          membrane: 'bilayer', theme: T('#d1fae5', '#022c22', '#059669', '#047857', '#065f46', '#6ee7b7') },
+  n:  { id: 'n',  name: 'Nucleus',                  membrane: 'bilayer', theme: T('#ede9fe', '#2e1065', '#7c3aed', '#6d28d9', '#5b21b6', '#c4b5fd') },
+  x:  { id: 'x',  name: 'Peroxisome',               membrane: 'bilayer', theme: T('#ffedd5', '#431407', '#ea580c', '#c2410c', '#9a3412', '#fdba74') },
+  r:  { id: 'r',  name: 'Endoplasmic reticulum',    membrane: 'bilayer', theme: T('#fae8ff', '#4a044e', '#c026d3', '#a21caf', '#86198f', '#f0abfc') },
+  g:  { id: 'g',  name: 'Golgi apparatus',          membrane: 'bilayer', theme: T('#fce7f3', '#500724', '#db2777', '#be185d', '#9d174d', '#f9a8d4') },
+  v:  { id: 'v',  name: 'Vacuole',                  membrane: 'bilayer', theme: T('#cffafe', '#083344', '#0891b2', '#0e7490', '#155e75', '#67e8f9') },
+  l:  { id: 'l',  name: 'Lysosome',                 membrane: 'bilayer', theme: T('#ecfccb', '#1a2e05', '#65a30d', '#4d7c0f', '#3f6212', '#bef264') },
+  cx: { id: 'cx', name: 'Carboxysome',              membrane: 'bilayer', theme: T('#e0e7ff', '#1e1b4b', '#4f46e5', '#4338ca', '#3730a3', '#a5b4fc') },
+  f:  { id: 'f',  name: 'Flagellum',                membrane: 'open',    theme: T('#f0fdfa', '#042f2e', '#14b8a6', '#0d9488', '#0f766e', '#5eead4') },
+  lp: { id: 'lp', name: 'Lipid particle',            membrane: 'bilayer', theme: T('#fef9c3', '#422006', '#ca8a04', '#a16207', '#854d0e', '#fde047') },
   // BiGG writes the eyespot as `s`, which between cells is the shared medium.
   // Inside a cell it is drawn under this id; see cellCompartmentVisualId().
-  es: { id: 'es', name: 'Eyespot',                  es: 'Mancha ocular',             membrane: 'bilayer', theme: T('#ffe4d6', '#431407', '#f97316', '#c2410c', '#9a3412', '#fdba74') },
+  es: { id: 'es', name: 'Eyespot',                  membrane: 'bilayer', theme: T('#ffe4d6', '#431407', '#f97316', '#c2410c', '#9a3412', '#fdba74') },
 };
 
 /** Fallback hues for compartment ids that are not in the canonical table. */
@@ -161,7 +161,9 @@ export function cellCompartmentVisualId(id, names = {}) {
  * Does this set of names call `s` the shared medium?
  *
  * The merged community model is the one model that really contains it, and it
- * says so by name. Everything else that has an `s` has an organelle.
+ * says so by name. Everything else that has an `s` has an organelle. Merged
+ * models written by the first builds call it "Medio compartido", and those
+ * files still open.
  */
 function namesSharedMedium(names = {}) {
   const label = normaliseCompartmentLabel(names?.s ?? '');
@@ -216,7 +218,6 @@ export function compartmentInfo(id) {
   return {
     id,
     name: id,
-    es: id,
     membrane: 'bilayer',
     theme: extraAssignments.get(id),
   };
@@ -234,19 +235,18 @@ function suppliedName(id, names) {
   return typeof name === 'string' && name.trim() && name.trim() !== id ? name : null;
 }
 
-function registryName(visualId, locale) {
-  const info = compartmentInfo(visualId);
-  return locale === 'es' ? info.es : info.name;
+function registryName(visualId) {
+  return compartmentInfo(visualId).name;
 }
 
-/** Human readable compartment name in the requested locale. */
-export function compartmentName(id, names = {}, locale = 'en') {
-  return suppliedName(id, names) ?? registryName(compartmentVisualId(id, names), locale);
+/** Human readable compartment name. */
+export function compartmentName(id, names = {}) {
+  return suppliedName(id, names) ?? registryName(compartmentVisualId(id, names));
 }
 
 /** Human readable name of a compartment that belongs to a cell. */
-export function cellCompartmentName(id, names = {}, locale = 'en') {
-  return suppliedName(id, names) ?? registryName(cellCompartmentVisualId(id, names), locale);
+export function cellCompartmentName(id, names = {}) {
+  return suppliedName(id, names) ?? registryName(cellCompartmentVisualId(id, names));
 }
 
 /** Pick the theme colours for the active colour scheme. */

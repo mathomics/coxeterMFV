@@ -20,7 +20,7 @@ async function makeStore() {
   const store = new Store('.');
   store.models.set('ecoli_core_mc', new Model(raw));
   store.scenarios = JSON.parse(await readFile(new URL('../models/scenarios.json', import.meta.url), 'utf8')).scenarios;
-  await store.useScenario('solo-ecoli');
+  await store.useScenario('single-ecoli');
   return store;
 }
 

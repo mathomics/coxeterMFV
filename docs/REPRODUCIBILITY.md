@@ -40,7 +40,7 @@ npm run check:standalone -- --file=app/coxeter_mfv.html
 
 The tests in `test/` cover model import/export, solver behaviour, map editing, reproducibility bundles and published-community adapters. They provide validation of implemented behaviour; they do not independently reproduce every result or figure in an unpublished manuscript.
 
-The broader `npm run check:browser` harness needs a running source server (`npm run serve` in another terminal). It has known failures in this snapshot. See [VALIDATION.md](VALIDATION.md) for the actual results, baseline comparison and limitations of the distribution CI.
+The broader `npm run check:browser` harness needs a running source server (`npm run serve` in another terminal). All of its checks pass in this snapshot, see [VALIDATION.md](VALIDATION.md).
 
 ## Literature examples
 
@@ -62,4 +62,4 @@ Check both steady-state residuals and bound violations before interpreting a res
 
 ## Case studies of the article
 
-The scripts, parameters, inputs and outputs behind each figure and table of the article are in [`paper`](../paper), whose README maps every figure to the scripts that produce it. They must be archived with the exact release before submission; the [publication checklist](PUBLICATION.md) tracks this separately from the general application tests.
+The scripts, parameters, inputs and outputs behind each figure and table of the article are in [`paper`](../paper), whose README maps every figure to the scripts that produce it. They are archived with each tagged release, separately from the general application tests.

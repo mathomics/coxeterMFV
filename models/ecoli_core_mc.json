@@ -1523,7 +1523,7 @@
     },
     {
       "id": "NADTRHD",
-      "name": "Transhidrogenasa soluble",
+      "name": "Soluble transhydrogenase",
       "metabolites": {
         "nad_c": -1,
         "nadph_c": -1,
@@ -1891,7 +1891,7 @@
     },
     {
       "id": "PIt2rpp",
-      "name": "Simporte fosfato/H+",
+      "name": "Phosphate/H+ symporter",
       "metabolites": {
         "h_p": -1,
         "pi_p": -1,
@@ -1909,7 +1909,7 @@
     },
     {
       "id": "ACt2rpp",
-      "name": "Simporte acetato/H+",
+      "name": "Acetate/H+ symporter",
       "metabolites": {
         "ac_p": -1,
         "h_p": -1,
@@ -1943,7 +1943,7 @@
     },
     {
       "id": "FORt2pp",
-      "name": "Formiato simporte (entrada)",
+      "name": "Formate symporter (uptake)",
       "metabolites": {
         "for_p": -1,
         "h_p": -1,
@@ -1961,7 +1961,7 @@
     },
     {
       "id": "FORtppi",
-      "name": "Formiato canal (salida)",
+      "name": "Formate channel (efflux)",
       "metabolites": {
         "for_c": -1,
         "for_p": 1
@@ -1977,7 +1977,7 @@
     },
     {
       "id": "D_LACt2pp",
-      "name": "Simporte D-lactato/H+",
+      "name": "D-lactate/H+ symporter",
       "metabolites": {
         "h_p": -1,
         "lac__D_p": -1,
@@ -1995,7 +1995,7 @@
     },
     {
       "id": "L_LACt2pp",
-      "name": "Simporte L-lactato/H+",
+      "name": "L-lactate/H+ symporter",
       "metabolites": {
         "h_p": -1,
         "lac__L_p": -1,
@@ -2029,7 +2029,7 @@
     },
     {
       "id": "SUCCt2rpp",
-      "name": "Simporte succinato/H+",
+      "name": "Succinate/H+ symporter",
       "metabolites": {
         "h_p": -1,
         "succ_p": -1,

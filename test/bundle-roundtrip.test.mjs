@@ -15,7 +15,7 @@ async function makeStore() {
   const store = new Store('.');
   store.models.set('ecoli_core_mc', new Model(raw));
   store.scenarios = scenarios.scenarios;
-  await store.useScenario('solo-ecoli');
+  await store.useScenario('single-ecoli');
   return store;
 }
 
@@ -125,7 +125,7 @@ test('a bundle export captures its state before another community starts loading
   const bundle = await pending;
   await switching;
   assert.equal(bundle.community.species[0].id, 'eco');
-  assert.equal(bundle.community.scenario, 'solo-ecoli');
+  assert.equal(bundle.community.scenario, 'single-ecoli');
   assert.deepEqual(Object.keys(bundle.models), ['eco']);
   assert.equal((await verifyReproducibilityBundle(bundle)).valid, true);
 });

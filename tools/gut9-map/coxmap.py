@@ -625,7 +625,7 @@ def write_log(path, title, intro, entries, closing='', append=False):
     with open(path, 'a' if append else 'w', encoding='utf-8') as f:
         if not append:
             f.write(f'# {title}\n\n{intro}\n\n')
-        f.write('| # | Especie | Reacción | Ecuación del GEM | Flujo | Tipo | Nota |\n|---|---|---|---|---|---|---|\n')
+        f.write('| # | Species | Reaction | GEM equation | Flux | Kind | Note |\n|---|---|---|---|---|---|---|\n')
         for i, e in enumerate(entries, 1):
             f.write(f'| {i} | {e["species"]} | {e["reaction"]} | `{e["equation"]}` | {e["flux"]:.4g} | {e["kind"]} | {e["note"]} |\n')
         if closing:

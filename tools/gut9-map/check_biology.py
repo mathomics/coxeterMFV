@@ -71,39 +71,39 @@ def pct(x):
 
 def checklist(d):
     X, ex = d['X'], d['ex']
-    rows = [('Composición', ', '.join(f'{k} {pct(v)}' for k, v in sorted(X.items(), key=lambda kv: -kv[1]) if v > 5e-5)),
+    rows = [('Composition', ', '.join(f'{k} {pct(v)}' for k, v in sorted(X.items(), key=lambda kv: -kv[1]) if v > 5e-5)),
             ('μ (h⁻¹)', f'{d["mu"]:.5f}'),
             ('St + Ef', pct(X['St'] + X['Ef'])),
             ('Bt + Fp + Er', pct(X['Bt'] + X['Fp'] + X['Er'])),
-            ('Ba presente', f'sí ({pct(X["Ba"])})' if X['Ba'] > 1e-6 else 'no')]
+            ('Ba present', f'yes ({pct(X["Ba"])})' if X['Ba'] > 1e-6 else 'no')]
     ac = max(produced(d, 'ac') - consumed(d, 'ac'), 0)
     ppa, but = produced(d, 'ppa'), produced(d, 'but')
     total = ac + ppa + but
-    rows.append(('Acetato:propionato:butirato (neto)',
+    rows.append(('Acetate:propionate:butyrate (net)',
                  f'{100 * ac / total:.0f} : {100 * ppa / total:.0f} : {100 * but / total:.0f}' if total > 0 else '—'))
-    rows.append(('Productores de butirato (mmol·h⁻¹)',
-                 ', '.join(f'{sp} {community(d, sp, "but"):.3f}' for sp in SPECIES if community(d, sp, 'but') > 1e-5) or 'ninguno'))
-    rows.append(('Fp: acetato → butirato (/gDW)',
-                 f'acetato {-ex["Fp"].get("ac", 0):.3g}, butirato {ex["Fp"].get("but", 0):.3g}' if X['Fp'] > 1e-9 else 'ausente'))
+    rows.append(('Butyrate producers (mmol·h⁻¹)',
+                 ', '.join(f'{sp} {community(d, sp, "but"):.3f}' for sp in SPECIES if community(d, sp, 'but') > 1e-5) or 'none'))
+    rows.append(('Fp: acetate → butyrate (/gDW)',
+                 f'acetate {-ex["Fp"].get("ac", 0):.3g}, butyrate {ex["Fp"].get("but", 0):.3g}' if X['Fp'] > 1e-9 else 'absent'))
     for sp in ['Er', 'Bt']:
         lactate = -ex[sp].get('lac-L', 0) - ex[sp].get('lac-D', 0)
-        rows.append((f'{sp} usa lactato (no debería, /gDW)',
-                     (f'{lactate:.3g}' if lactate > 1e-6 else 'no') if X[sp] > 1e-9 else 'ausente'))
+        rows.append((f'{sp} uses lactate (should not, /gDW)',
+                     (f'{lactate:.3g}' if lactate > 1e-6 else 'no') if X[sp] > 1e-9 else 'absent'))
     for sp in ['St', 'Ef', 'Lc', 'Ba']:
         if X[sp] > 1e-9:
             lactate = ex[sp].get('lac-L', 0) + ex[sp].get('lac-D', 0)
-            rows.append((f'{sp} produce lactato (/gDW)', f'{lactate:.3g}' if lactate > 1e-6 else 'no'))
+            rows.append((f'{sp} produces lactate (/gDW)', f'{lactate:.3g}' if lactate > 1e-6 else 'no'))
     o2 = [(sp, ex[sp].get('o2', 0)) for sp in SPECIES if ex[sp].get('o2', 0) > 1e-6]
-    rows.append(('Alguna especie libera O₂ (/gDW)', ', '.join(f'{sp} {v:.3g}' for sp, v in o2) or 'no'))
-    rows.append(('H₂ liberado (mmol·h⁻¹)', f'{produced(d, "h2"):.3f}'))
+    rows.append(('A species releases O₂ (/gDW)', ', '.join(f'{sp} {v:.3g}' for sp, v in o2) or 'no'))
+    rows.append(('H₂ released (mmol·h⁻¹)', f'{produced(d, "h2"):.3f}'))
     at_bound = defaultdict(int)
     for k, v in d['flux'].items():
         if '@' in k and abs(v) >= 999:
             at_bound[k.split('@')[0]] += 1
-    rows.append(('Flujos ≥ 999 /gDW', ', '.join(f'{sp} {n}' for sp, n in sorted(at_bound.items())) or 'ninguno'))
-    rows.append(('Flujo total Σ X·|v|', f'{sum(X[k.split("@")[0]] * abs(v) for k, v in d["flux"].items() if "@" in k):.1f}'))
-    rows.append(('Ciclo glutamato/citrato', f'{min(produced(d, "cit"), consumed(d, "cit")):.3f}'))
-    rows.append(('Ciclo lactato/piruvato', f'{min(produced(d, "pyr"), consumed(d, "pyr")):.3f}'))
+    rows.append(('Fluxes ≥ 999 /gDW', ', '.join(f'{sp} {n}' for sp, n in sorted(at_bound.items())) or 'none'))
+    rows.append(('Total flux Σ X·|v|', f'{sum(X[k.split("@")[0]] * abs(v) for k, v in d["flux"].items() if "@" in k):.1f}'))
+    rows.append(('Glutamate/citrate cycle', f'{min(produced(d, "cit"), consumed(d, "cit")):.3f}'))
+    rows.append(('Lactate/pyruvate cycle', f'{min(produced(d, "pyr"), consumed(d, "pyr")):.3f}'))
     return rows
 
 
@@ -111,25 +111,25 @@ def exchanges(d):
     lines = []
     for sp in SPECIES:
         if d['X'][sp] <= 1e-9:
-            lines.append(f'- {sp}: ausente')
+            lines.append(f'- {sp}: absent')
             continue
         e = d['ex'][sp]
         size = lambda kv: -abs(kv[1])
         taken = sorted(((b, v) for b, v in e.items() if v < 0 and b not in ('h', 'h2o')), key=size)[:8]
         given = sorted(((b, v) for b, v in e.items() if v > 0 and b not in ('h', 'h2o') and not b.startswith('biomass')), key=size)[:8]
-        lines.append(f'- {sp} ({pct(d["X"][sp])}): toma ' + ', '.join(f'{b} {-v:.3g}' for b, v in taken)
-                     + ' | libera ' + ', '.join(f'{b} {v:.3g}' for b, v in given))
+        lines.append(f'- {sp} ({pct(d["X"][sp])}): takes ' + ', '.join(f'{b} {-v:.3g}' for b, v in taken)
+                     + ' | releases ' + ', '.join(f'{b} {v:.3g}' for b, v in given))
     return lines
 
 
 def main(args):
     runs = [(label, load(path)) for label, path in (a.rsplit('=', 1) for a in args)]
     tables = [checklist(d) for _, d in runs]
-    out = ['| Criterio | ' + ' | '.join(label for label, _ in runs) + ' |', '|---' * (len(runs) + 1) + '|']
+    out = ['| Criterion | ' + ' | '.join(label for label, _ in runs) + ' |', '|---' * (len(runs) + 1) + '|']
     for i, (name, _) in enumerate(tables[0]):
         out.append(f'| {name} | ' + ' | '.join(t[i][1] for t in tables) + ' |')
     for label, d in runs:
-        out += ['', f'**{label}** (por gramo de cada especie):', ''] + exchanges(d)
+        out += ['', f'**{label}** (per gram of each species):', ''] + exchanges(d)
     sys.stdout.buffer.write(('\n'.join(out) + '\n').encode('utf-8'))
 
 

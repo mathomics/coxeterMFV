@@ -514,7 +514,7 @@ function layoutCell({
         id: mergedId,
         localId: rxn.id,
         name: rxn.name,
-        subsystem: item.transfer ? 'Intercambio con el medio' : rxn.subsystem,
+        subsystem: item.transfer ? 'Exchange with the medium' : rxn.subsystem,
         cellId: sp.id,
         kind: item.transfer ? 'transfer' : rxn.kind,
         compartments: source.compartments,

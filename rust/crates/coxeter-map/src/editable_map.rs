@@ -808,7 +808,7 @@ impl EditableMap {
             rect,
             depth: 0.0,
             parent_id: None,
-            label: cell_compartment_name(&outer_id, &names, "en"),
+            label: cell_compartment_name(&outer_id, &names),
             membrane: non_empty(spec.outer_membrane.as_deref())
                 .map(str::to_string)
                 .unwrap_or_else(|| membrane_style(&outer_visual, &Names::new()).as_str().into()),
@@ -902,7 +902,7 @@ impl EditableMap {
             rect,
             depth,
             parent_id: parent_id.clone(),
-            label: cell_compartment_name(&compartment_id, &names, "en"),
+            label: cell_compartment_name(&compartment_id, &names),
             membrane: non_empty(spec.membrane.as_deref())
                 .map(str::to_string)
                 .unwrap_or_else(|| membrane_style(&visual_id, &Names::new()).as_str().into()),
@@ -1937,7 +1937,7 @@ pub(crate) fn name_cell_compartments(cells: &mut [MapCell]) {
                 comp.visual_id = resolved;
             }
             if comp.label.is_empty() || comp.label == comp.id {
-                comp.label = cell_compartment_name(&comp.id, &names, "en");
+                comp.label = cell_compartment_name(&comp.id, &names);
             }
         }
     }
@@ -2206,7 +2206,7 @@ pub fn derive_boundaries(g: &MapGraph) -> Vec<Boundary> {
 pub fn default_environment_label() -> String {
     let mut names = Names::new();
     names.insert(SHARED_COMPARTMENT.into(), "Shared medium".into());
-    compartment_name(SHARED_COMPARTMENT, &names, "en")
+    compartment_name(SHARED_COMPARTMENT, &names)
 }
 
 /// `isSecondaryNode` over the map's own node record.

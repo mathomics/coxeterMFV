@@ -17,6 +17,7 @@ import { mkdir, mkdtemp, rm } from 'node:fs/promises';
 import { dirname, join, relative, resolve, sep } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { setTimeout as delay } from 'node:timers/promises';
+import { closeBrowser } from './lib/chromium.mjs';
 
 /**
  * How many times, 250 ms apart, to ask Chromium for its first page: 30 s in all.
@@ -78,45 +79,46 @@ try {
   const target = await openTarget(port);
   const result = await drive(target.webSocketDebuggerUrl, pathToFileURL(file).href);
 
-  check('el archivo único arranca la aplicación', result.started,
-    result.started ? `${result.nodes} nodos, µ = ${result.growth}` : result.error ?? 'agotó el tiempo');
+  check('the single file starts the application', result.started,
+    result.started ? `${result.nodes} nodes, µ = ${result.growth}` : result.error ?? 'timed out');
   if (!result.started) {
     for (const line of result.pageLog.slice(0, 6)) console.log(`      ${line}`);
   }
-  check('resuelve sin servidor, con GLPK embebido', result.status === 'optimal' && result.backend === 'glpk',
-    `backend ${result.backend}, estado ${result.status}`);
-  check('la tarjeta única ofrece Scenario y Objective', result.mergedCard,
-    result.mergedCard ? 'dos columnas' : 'no se encontró .sc-grid con ambas columnas');
-  check('trae las cuatro comunidades publicadas', result.publishedCount === 4,
+  check('it solves without a server, with the embedded GLPK', result.status === 'optimal' && result.backend === 'glpk',
+    `backend ${result.backend}, status ${result.status}`);
+  check('the single card offers Scenario and Objective', result.mergedCard,
+    result.mergedCard ? 'two columns' : 'no .sc-grid with both columns');
+  check('it bundles the four published communities', result.publishedCount === 4,
     `${result.publishedCount}`);
-  check('las publicadas encabezan la lista de comunidades', result.publishedFirst,
+  check('the case studies head the scenario list', result.caseStudiesFirst,
     result.optionGroups);
-  check('muestra el µ reproducido de SteadyCom', result.showsGrowthRate, '0.73599');
+  check('it shows the reproduced SteadyCom µ', result.showsGrowthRate, '0.73599');
   // The single-file build embeds each member's map excerpt. If that embedding is
   // missing the detail still renders and only the map is empty, so it is checked
   // separately from the text.
-  check('dibuja el mapa de la comunidad publicada desde los extractos embebidos',
-    result.publishedNodes > 0, `${result.publishedNodes} nodos`);
+  check('it draws the published community map from the embedded excerpts',
+    result.publishedNodes > 0, `${result.publishedNodes} nodes`);
   // The model buttons must be enabled in this build too, or nothing can be
   // downloaded from the single file at all.
   const modelPath = result.modelHref.startsWith('file://')
     ? fileURLToPath(result.modelHref) : '';
-  check('las descargas JSON usan los modelos completos embebidos',
+  check('the JSON downloads use the complete embedded models',
     result.jsonButtons === result.speciesCount && result.fullModels === 13,
-    `${result.jsonButtons} botones, ${result.fullModels} modelos completos`);
-  check('incluye los CSV y el Worker SteadyCom para uso offline',
+    `${result.jsonButtons} buttons, ${result.fullModels} complete models`);
+  check('it includes the CSV files and the SteadyCom worker for offline use',
     result.textInputs === 6 && result.workerEmbedded && result.csvButtons === 2,
-    `${result.textInputs} CSV, ${result.csvButtons} descargas`);
-  check('cada especie ofrece además su modelo en SBML',
+    `${result.textInputs} CSV, ${result.csvButtons} downloads`);
+  check('each species also offers its model in SBML',
     result.sbmlButtons > 0 && result.sbmlButtons === result.speciesCount,
-    `${result.sbmlButtons} botones para ${result.speciesCount} especies`);
-  check('Scenario → Return to map conserva la comunidad seleccionada',
+    `${result.sbmlButtons} buttons for ${result.speciesCount} species`);
+  check('Scenario → Return to map keeps the selected community',
     result.returnedToMap && result.returnedScenario && result.returnedNodes > 0,
     `returned=${result.returnedToMap}, scenario=${result.returnedScenario}, nodes=${result.returnedNodes}`);
 } catch (error) {
   failures += 1;
-  console.error(`EXCEPCIÓN: ${error.message}`);
+  console.error(`EXCEPTION: ${error.message}`);
 } finally {
+  await closeBrowser(port);
   browser.kill();
   await Promise.race([
     browser.exitCode !== null ? Promise.resolve() : new Promise(done => browser.once('exit', done)),
@@ -128,7 +130,7 @@ try {
   }
 }
 
-console.log(failures ? `\n${failures} comprobación(es) fallaron` : '\nTodas las comprobaciones pasaron');
+console.log(failures ? `\n${failures} check(s) failed` : '\nAll checks passed');
 process.exit(failures ? 1 : 0);
 
 async function openTarget(debugPort) {
@@ -228,7 +230,7 @@ function probeSource() {
   const nodes = store.layout.nodes.size;
   const growth = store.solution?.objectiveValue?.toFixed(5) ?? null;
   const status = store.solution?.status ?? null;
-  const backend = store.problem?.backend?.() ?? 'desconocido';
+  const backend = store.problem?.backend?.() ?? 'unknown';
 
   const card = () => document.querySelector('.card.sc-card');
   const select = () => card()?.querySelector('select[data-action="scenario"]');
@@ -290,7 +292,7 @@ function probeSource() {
     backend,
     mergedCard,
     publishedCount: store.publishedCommunities?.length ?? 0,
-    publishedFirst: groups[0] === 'Published communities',
+    caseStudiesFirst: groups[0] === 'Explore Coxeter’s capabilities',
     optionGroups: groups.join(' | '),
     showsGrowthRate,
     publishedNodes,

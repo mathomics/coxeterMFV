@@ -41,4 +41,4 @@ On Windows, the Microsoft C++ Build Tools provide the compiler, and CMake and li
 
 The release build compiles the bundled models into the program. External model downloads remain separate. Use `cargo build --locked --release -p coxeter-app` for the desktop build, and `cargo test --locked --workspace --lib` for the library tests. Missing optional parity fixtures limit what those tests verify.
 
-The crates and their relation to the web application are described in [`rust/README.md`](../rust/README.md). Official promotion and packaging instructions are in [RELEASING.md](RELEASING.md); usage and numerical validation are covered in the [user guide](USER_GUIDE.md) and [reproducibility guide](REPRODUCIBILITY.md).
+The crates and their relation to the web application are described in [`rust/README.md`](../rust/README.md). Usage is covered in the [help page](https://mathomics.github.io/coxeterMFV/help.html) and numerical validation in the [reproducibility guide](REPRODUCIBILITY.md).

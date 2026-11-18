@@ -41,24 +41,24 @@ export const spec = {
   reactions: [
     // Plasma membrane
     r('GLCt1', 'glc__D_e <=> glc__D_c', { name: 'Glucose transport (Hxt, facilitated diffusion)', sub: TPM, rank: 0, lane: 0 }),
-    r('HEX1', 'atp_c + glc__D_c --> adp_c + g6p_c + h_c', { name: 'Hexoquinasa', sub: 'Glycolysis', rank: 0, lane: 0 }),
+    r('HEX1', 'atp_c + glc__D_c --> adp_c + g6p_c + h_c', { name: 'Hexokinase', sub: 'Glycolysis', rank: 0, lane: 0 }),
     r('PMA1', 'atp_c + h2o_c --> adp_c + pi_c + h_e', { name: 'Plasma-membrane H+-ATPase (generates the proton-motive force)', sub: TPM, rank: 2, lane: 7 }),
     r('O2t', 'o2_e <=> o2_c', { name: 'O2 diffusion', sub: TPM, rank: 4, lane: 6 }),
     r('CO2t', 'co2_e <=> co2_c', { name: 'CO2 diffusion', sub: TPM, rank: 12, lane: 5 }),
     r('ETOHt', 'etoh_e <=> etoh_c', { name: 'Ethanol diffusion', sub: TPM, rank: 14, lane: -2 }),
-    r('ACt2r', 'ac_e + h_e <=> ac_c + h_c', { name: 'Simporte acetato/H+', sub: TPM, rank: 13, lane: -1 }),
+    r('ACt2r', 'ac_e + h_e <=> ac_c + h_c', { name: 'Acetate/H+ symporter', sub: TPM, rank: 13, lane: -1 }),
     r('GLYCt', 'glyc_e <=> glyc_c', { name: 'Glycerol facilitated diffusion', sub: TPM, rank: 6, lane: 3 }),
-    r('PYRt2', 'h_e + pyr_e <=> h_c + pyr_c', { name: 'Simporte piruvato/H+', sub: TPM, rank: 10, lane: 2 }),
+    r('PYRt2', 'h_e + pyr_e <=> h_c + pyr_c', { name: 'Pyruvate/H+ symporter', sub: TPM, rank: 10, lane: 2 }),
     r('NH4t', 'nh4_e <=> nh4_c', { name: 'Amonio', sub: TPM, rank: 16, lane: -5 }),
-    r('PIt2r', 'h_e + pi_e <=> h_c + pi_c', { name: 'Simporte fosfato/H+', sub: TPM, rank: 3, lane: 7 }),
-    r('H2Ot', 'h2o_e <=> h2o_c', { name: 'Agua (acuaporina)', sub: TPM, rank: 5, lane: 7 }),
+    r('PIt2r', 'h_e + pi_e <=> h_c + pi_c', { name: 'Phosphate/H+ symporter', sub: TPM, rank: 3, lane: 7 }),
+    r('H2Ot', 'h2o_e <=> h2o_c', { name: 'Water (aquaporin)', sub: TPM, rank: 5, lane: 7 }),
 
     // Cytosol
     ...glycolysis({ comp: 'c', lane: 0, rank0: 1 }),
     ...pentosePhosphate({ comp: 'c', lane: -3, rank0: 1 }),
 
     // Alcoholic fermentation
-    r('PDC', 'h_c + pyr_c --> acald_c + co2_c', { name: 'Piruvato descarboxilasa', sub: FER, rank: 11, lane: -2 }),
+    r('PDC', 'h_c + pyr_c --> acald_c + co2_c', { name: 'Pyruvate decarboxylase', sub: FER, rank: 11, lane: -2 }),
     r('ALCD2x', 'etoh_c + nad_c <=> acald_c + h_c + nadh_c', { name: 'Alcohol dehydrogenase', sub: FER, rank: 13, lane: -2 }),
     r('ALDD2y', 'acald_c + h2o_c + nadp_c --> ac_c + 2.0 h_c + nadph_c', { name: 'Acetaldehyde dehydrogenase (NADP)', sub: FER, rank: 12, lane: -1 }),
     // Yeast carries both cofactor specificities (Ald6 is NADP-linked and a major
@@ -83,22 +83,22 @@ export const spec = {
     r('ACONT_c', 'cit_c <=> icit_c', { name: 'Cytosolic aconitase', sub: ANA, rank: 15, lane: 4 }),
     r('ICL', 'icit_c --> glx_c + succ_c', { name: 'Isocitrate lyase (Icl1)', sub: ANA, rank: 16, lane: 4 }),
     r('MALS', 'accoa_c + glx_c + h2o_c --> coa_c + h_c + mal__L_c', { name: 'Malate synthase (Mls1)', sub: ANA, rank: 17, lane: 4 }),
-    r('PPCK', 'atp_c + oaa_c --> adp_c + co2_c + pep_c', { name: 'PEP carboxiquinasa (Pck1)', sub: ANA, rank: 13, lane: 4 }),
+    r('PPCK', 'atp_c + oaa_c --> adp_c + co2_c + pep_c', { name: 'PEP carboxykinase (Pck1)', sub: ANA, rank: 13, lane: 4 }),
     r('SUCCtm', 'succ_c + mal__L_m <=> succ_m + mal__L_c', { name: 'Succinate/malate antiport (dicarboxylate carrier)', sub: TMM, rank: 18, lane: 4 }),
 
     // Nitrogen
     r('GLUDy', 'glu__L_c + h2o_c + nadp_c <=> akg_c + h_c + nadph_c + nh4_c', { name: 'Glutamate dehydrogenase (NADP)', sub: NIT, rank: 16, lane: -4 }),
-    r('GLNS', 'atp_c + glu__L_c + nh4_c --> adp_c + gln__L_c + h_c + pi_c', { name: 'Glutamina sintetasa', sub: NIT, rank: 17, lane: -4 }),
+    r('GLNS', 'atp_c + glu__L_c + nh4_c --> adp_c + gln__L_c + h_c + pi_c', { name: 'Glutamine synthetase', sub: NIT, rank: 17, lane: -4 }),
     r('ATPM', 'atp_c + h2o_c --> adp_c + h_c + pi_c', { name: 'Non-growth-associated maintenance', sub: OXP, lb: 1.0, ub: 1000, rank: 8, lane: 4 }),
 
     // Mitochondrial transport (inner membrane)
     r('PYRt2m', 'h_c + pyr_c --> h_m + pyr_m', { name: 'Mitochondrial pyruvate carrier (MPC)', sub: TMM, rank: 10, lane: 0 }),
     r('O2tm', 'o2_c <=> o2_m', { name: 'O2 diffusion (mitochondrion)', sub: TMM, rank: 4, lane: 5 }),
     r('CO2tm', 'co2_m <=> co2_c', { name: 'CO2 diffusion (mitochondrion)', sub: TMM, rank: 12, lane: 4 }),
-    r('H2Otm', 'h2o_c <=> h2o_m', { name: 'Agua (mitocondria)', sub: TMM, rank: 5, lane: 5 }),
-    r('PIt2m', 'h_c + pi_c --> h_m + pi_m', { name: 'Simporte fosfato/H+ (mitocondria)', sub: TMM, rank: 6, lane: 5 }),
-    r('ATPtm', 'adp_c + atp_m --> adp_m + atp_c', { name: 'Translocasa ADP/ATP (ANT)', sub: TMM, rank: 7, lane: 5 }),
-    r('AKGMALtm', 'akg_m + mal__L_c <=> akg_c + mal__L_m', { name: 'Antiporte 2-oxoglutarato/malato', sub: TMM, rank: 15, lane: 2 }),
+    r('H2Otm', 'h2o_c <=> h2o_m', { name: 'Water (mitochondrion)', sub: TMM, rank: 5, lane: 5 }),
+    r('PIt2m', 'h_c + pi_c --> h_m + pi_m', { name: 'Phosphate/H+ symporter (mitochondrion)', sub: TMM, rank: 6, lane: 5 }),
+    r('ATPtm', 'adp_c + atp_m --> adp_m + atp_c', { name: 'ADP/ATP translocase (ANT)', sub: TMM, rank: 7, lane: 5 }),
+    r('AKGMALtm', 'akg_m + mal__L_c <=> akg_c + mal__L_m', { name: '2-oxoglutarate/malate antiporter', sub: TMM, rank: 15, lane: 2 }),
     r('ACALDtm', 'acald_c <=> acald_m', { name: 'Acetaldehyde diffusion (mitochondrion)', sub: TMM, rank: 11, lane: -1 }),
     r('ETOHtm', 'etoh_c <=> etoh_m', { name: 'Ethanol diffusion (mitochondrion)', sub: TMM, rank: 13, lane: -1 }),
 

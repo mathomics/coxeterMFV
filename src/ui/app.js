@@ -4554,6 +4554,10 @@ async function onSidebarClick(event) {
       closeWorkspace({ restoreFocus: false });
       activateTool(action === 'tool-cell' ? 'cell' : 'compartment');
       ui.leftTab = 'build';
+      // Its button brings the nesting window back, even after it was closed.
+      if (action === 'tool-compartment') {
+        nestingWindow.open(store.selectedGeometry?.cellId ?? null);
+      }
       paintShell();
       break;
     case 'open-nesting-window': nestingWindow.open(store.selectedGeometry?.cellId ?? null); break;
@@ -4695,6 +4699,7 @@ async function onSidebarClick(event) {
       break;
     case 'export-model-json': saveEditedModel('json'); break;
     case 'export-model-sbml': saveEditedModel('xml'); break;
+    case 'export-merged-model': saveMergedModel(); break;
     case 'map-empty': {
       closeWorkspace({ restoreFocus: false });
       closeMapMenus();
@@ -5622,6 +5627,27 @@ async function saveEditedModel(ext) {
   if (!filename) return;
   store.markModelSaved(snapshot.model, snapshot.revision);
   store.addLog('ok', `Model ${speciesId} saved as ${filename}`);
+  store.emit('status');
+}
+
+async function saveMergedModel() {
+  if (!store.community) {
+    store.status = { ...store.status, state: 'warn', message: 'There is no model to save yet.' };
+    store.emit('status');
+    return;
+  }
+  // The file holds every active species' model, so each counts as saved.
+  let snapshots = [];
+  const filename = await download(store.fileNameFor(EXPORT_SUFFIX.mergedModel, 'json'), () => {
+    const content = store.mergedModelJSON();
+    snapshots = store.community.activeSpecies.map((sp) => store.modelSaveSnapshot(sp.model));
+    return content;
+  }, 'application/json');
+  if (!filename) return;
+  for (const snapshot of snapshots) {
+    store.markModelSaved(snapshot.model, snapshot.revision);
+  }
+  store.addLog('ok', `Merged model saved as ${filename}`);
   store.emit('status');
 }
 

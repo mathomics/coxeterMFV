@@ -20,7 +20,7 @@ async function makeStore() {
     store.models.set(id, new Model(raw));
   }
   store.scenarios = JSON.parse(await readFile(new URL('../models/scenarios.json', import.meta.url), 'utf8')).scenarios;
-  await store.useScenario('aerobio-mixto');
+  await store.useScenario('aerobic-coculture');
   return store;
 }
 
@@ -74,7 +74,7 @@ test('a scenario opened at fixed growth is saved after its composition is recalc
 
 test('changing fixed growth marks the scenario unsaved even when composition stays the same', async () => {
   const store = await makeStore();
-  await store.useScenario('solo-ecoli');
+  await store.useScenario('single-ecoli');
   await store.solveSteadyComAt(0.1);
   store.markScenarioSaved();
   const composition = store.species.map(species => species.abundance);

@@ -81,7 +81,7 @@ try {
     <table>
       <tr><th>File, Import</th><th>Reads</th></tr>
       <tr><td>Model</td><td>SBML Level 3 with FBC, COBRA JSON, COBRA Toolbox MAT or Excel. Several files make a
-        community, one cell per model.</td></tr>
+        community, one cell per model. A merged model JSON opens as its species again.</td></tr>
       <tr><td>Metatranscriptomics</td><td>CSV or TSV with species or MAG, gene, condition and expression.</td></tr>
       <tr><td>Map JSON</td><td>A Coxeter-MFV map. Import its model first, or <b>Forget waiting map</b> to drop it.</td></tr>
       <tr><td>Flux data</td><td>Escher reaction data JSON, or a CSV of reactions and fluxes.</td></tr>
@@ -107,7 +107,7 @@ try {
       <tr><td>Add Reaction</td><td>Click a metabolite, a compartment or a membrane, choose a reaction, then a direction.</td></tr>
       <tr><td>Add Metabolite</td><td>Click a compartment to place one of its metabolites.</td></tr>
       <tr><td>Text</td><td>Place a text label.</td></tr>
-      <tr><td>Edit Compartments</td><td>Draw a model compartment not yet on the map, and set which compartment is inside
+      <tr><td>Edit Comps</td><td>Draw a model compartment not yet on the map, and set which compartment is inside
         which. The nesting is saved with the map.</td></tr>
       <tr><td>Add Cell</td><td>Draw a species as a cell.</td></tr>
     </table>
@@ -241,6 +241,8 @@ try {
       <tr><th>File, Export</th><th>Contains</th></tr>
       <tr><td>Map JSON</td><td>Layout and drawing.</td></tr>
       <tr><td>Model JSON or SBML</td><td>The network.</td></tr>
+      <tr><td>Merged model JSON</td><td>Every species of a community in one COBRA JSON, with the shared medium and the
+        compartment hierarchy.</td></tr>
       <tr><td>SVG or PNG map</td><td>A figure, also under <b>Image</b>.</td></tr>
       <tr><td>Flux table (CSV)</td><td>Reaction fluxes.</td></tr>
       <tr><td>Flux data (JSON)</td><td>Fluxes as Escher reaction data, for Escher and COBRApy.</td></tr>

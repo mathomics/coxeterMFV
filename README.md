@@ -8,7 +8,7 @@ Metabolic maps with explicit cells and subcellular compartments, and flux balanc
 
 [![Website](https://img.shields.io/badge/online-web%20app-2563eb.svg)](https://mathomics.github.io/coxeterMFV/)
 [![License: MIT](https://img.shields.io/badge/code-MIT-blue.svg)](LICENSE)
-[![Documentation](https://img.shields.io/badge/docs-user%20guide-brightgreen.svg)](docs/USER_GUIDE.md)
+[![Documentation](https://img.shields.io/badge/docs-help-brightgreen.svg)](https://mathomics.github.io/coxeterMFV/help.html)
 [![Web app](https://img.shields.io/badge/web-single%20HTML%20file-orange.svg)](app/coxeter_mfv.html)
 [![Windows](https://img.shields.io/badge/desktop-Windows%20x64-0078D6.svg)](app/coxeter-mfv.exe)
 
@@ -24,9 +24,9 @@ This is the official source and distribution repository for Coxeter-MFV. Applica
 
 Use Coxeter-MFV online at **https://mathomics.github.io/coxeterMFV/**. It runs in the browser with no installation or login, and the [help page](https://mathomics.github.io/coxeterMFV/help.html) explains the analyses and how to read a solved map. The website is built from `site/` by `.github/workflows/pages.yml`.
 
-Start with the [user guide](docs/USER_GUIDE.md), [reproducibility instructions](docs/REPRODUCIBILITY.md), or [support guide](SUPPORT.md). Maintainers should follow the [release procedure](docs/RELEASING.md) and [publication checklist](docs/PUBLICATION.md).
+Start with the [help page](https://mathomics.github.io/coxeterMFV/help.html) or the [reproducibility instructions](docs/REPRODUCIBILITY.md).
 
-The [validation record](docs/VALIDATION.md) lists the checks performed and known limitations, including unresolved failures in the broader source-browser integration harness.
+The [validation record](docs/VALIDATION.md) lists the checks performed and those that still need another environment.
 
 Coxeter-MFV draws metabolic networks the way cells are built. Every cell is a closed container with its own membrane, every compartment sits inside the one that holds it, and every transport reaction is placed on the membrane it crosses. Several organisms can share one map, each inside its own boundary and connected through a shared medium that is itself a drawn compartment.
 
@@ -129,7 +129,7 @@ coxeterMFV/
 ├── examples/     example maps and models from the literature
 ├── paper/        case studies of the article: scripts, results and figures
 ├── data/         original source data and its provenance
-├── docs/         user guide, building, reproducibility and release notes
+├── docs/         building, reproducibility and validation
 └── LICENSES/     licence texts of the bundled third-party components
 ```
 
@@ -151,9 +151,9 @@ Models and datasets keep the licences of their original authors. Their sources a
 
 Full third-party notices, GPL corresponding source and native dependency licences are indexed in [`THIRD_PARTY_NOTICES.md`](THIRD_PARTY_NOTICES.md). Some literature-derived data still need their redistribution terms confirmed before the publication release.
 
-## Support and contributions
+## Support
 
-Use the [issue tracker](https://github.com/mathomics/coxeterMFV/issues) for reproducible bugs, usage questions and feature requests. See [SUPPORT.md](SUPPORT.md) for troubleshooting, [CONTRIBUTING.md](CONTRIBUTING.md) for the source promotion workflow and [SECURITY.md](SECURITY.md) for vulnerability reporting. Changes between releases are recorded in [CHANGELOG.md](CHANGELOG.md).
+Use the [issue tracker](https://github.com/mathomics/coxeterMFV/issues) for reproducible bugs, usage questions and feature requests. The [help page](https://mathomics.github.io/coxeterMFV/help.html) lists common problems and their fixes.
 
 ## Acknowledgements
 

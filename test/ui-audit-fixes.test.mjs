@@ -654,7 +654,7 @@ test('member, community-data and dated exports keep their context in the name', 
   assert.equal(communityDataFileName('steadycom-gut-nine', 'media.csv'), 'steadycom-gut-nine_media.csv');
   assert.equal(communityDataFileName('x', 'bounds'), 'x_bounds.csv', 'a file without extension stays a CSV');
   const when = new Date(2026, 9, 10, 15, 7);
-  assert.equal(timestampedFileName('consorcio-anaerobio', 'repro', 'json', when), 'consorcio-anaerobio_repro_20261010-1507.json');
+  assert.equal(timestampedFileName('anaerobic-consortium', 'repro', 'json', when), 'anaerobic-consortium_repro_20261010-1507.json');
   assert.equal(timestampedFileName('yeastGEM_v9.1.1', 'methods', 'md', when), 'yeastGEM_v9.1.1_methods_20261010-1507.md');
   assert.equal(exportFileName('iML1515+yeastGEM', 'map', 'json'), 'iML1515+yeastGEM_map.json', 'the + joining uploads survives');
 });

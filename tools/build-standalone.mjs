@@ -13,7 +13,7 @@
  * It is not a general-purpose bundler and will complain loudly rather than
  * guess if it meets a form it does not recognise.
  *
- * Usage: node tools/build-standalone.mjs [salida.html]
+ * Usage: node tools/build-standalone.mjs [output.html]
  */
 import { readFile, writeFile, readdir } from 'node:fs/promises';
 import { execFileSync } from 'node:child_process';
@@ -266,7 +266,7 @@ ${body}
 
 <script>
 window.__COXETER_BUILD__ = ${scriptJSON(buildIdentity)};
-/* Modelos y escenarios incrustados: fetch() no funciona sobre file://. */
+/* Embedded models and scenarios: fetch() does not work over file://. */
 window.__ESCHER_MCMC_DATA__ = ${scriptJSON(data)};
 window.__ESCHER_MCMC_TEXT__ = ${scriptJSON(text)};
 globalThis.__COXETER_MODULE_BASE__ = document.baseURI;
@@ -277,8 +277,8 @@ globalThis.__COXETER_STEADYCOM_WORKER_SOURCE__ = ${scriptJSON(workerSource)};
 <script>
 ${glpkBootstrap}
 /*
- * Registro de módulos mínimo. Cada módulo del proyecto se define abajo tal cual
- * está en src/, con sus import/export reescritos por tools/build-standalone.mjs.
+ * A minimal module registry. Each project module is defined below as it is in
+ * src/, with its imports and exports rewritten by tools/build-standalone.mjs.
  */
 (function () {
   'use strict';

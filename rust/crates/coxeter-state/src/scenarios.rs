@@ -1111,7 +1111,7 @@ mod download_order_tests {
     fn make_store(status: u16) -> Store {
         let mut store = Store::with_dir(coxeter_core::testkit::repo_root());
         store.init().expect("bundled models");
-        store.use_scenario("solo-ecoli").expect("ordinary scenario");
+        store.use_scenario("single-ecoli").expect("ordinary scenario");
         let model = store.models.get("ecoli_core_mc").expect("bundled core model");
         let xml = to_sbml(model, &SbmlWriteOptions::default()).expect("core fixture SBML");
         store.fetcher = Arc::new(FixtureFetcher { xml, status });
@@ -1144,7 +1144,7 @@ mod download_order_tests {
     fn a_late_model_download_cannot_replace_a_newer_scenario() {
         let mut store = make_store(200);
         store.start_yeast9_scenario(fixture_scenario("download-fixture"));
-        store.use_scenario("aerobio-mixto").expect("newer scenario");
+        store.use_scenario("aerobic-coculture").expect("newer scenario");
         let scenario = store.scenario.clone();
         let solution = store.solution.as_ref().expect("newer solution").objective_value;
         let map = store.map.as_ref().expect("newer drawing").to_json();
@@ -1168,7 +1168,7 @@ mod download_order_tests {
         store.load_state(&document.to_string()).expect("newer Scenario file");
         let solution = store.solution.as_ref().expect("newer solution").objective_value;
         let outcomes = store.wait_for_jobs(Duration::from_secs(10));
-        assert_eq!(store.scenario_id().as_deref(), Some("solo-ecoli"));
+        assert_eq!(store.scenario_id().as_deref(), Some("single-ecoli"));
         assert_eq!(store.medium["glc__D"], 3.0);
         assert_eq!(store.solution.as_ref().expect("retained solution").objective_value, solution);
         assert!(outcomes.iter().any(|outcome| outcome.result.as_ref().is_err_and(|error| error.is_abort())));
@@ -1194,7 +1194,7 @@ mod download_order_tests {
         for status_code in [503, 0] {
             let mut store = make_store(status_code);
             store.start_yeast9_scenario(fixture_scenario("download-fixture"));
-            store.use_scenario("aerobio-mixto").expect("newer scenario");
+            store.use_scenario("aerobic-coculture").expect("newer scenario");
             let status = store.status().clone();
             let outcomes = store.wait_for_jobs(Duration::from_secs(10));
             assert_eq!(store.status(), &status);
@@ -1252,7 +1252,7 @@ mod download_order_tests {
         assert!(export.is_ok(), "a cancelled download blocked export");
         assert_eq!(status.state, StatusState::Ok);
         assert!(status.message.to_lowercase().contains("cancelled"));
-        assert_eq!(store.scenario_id().as_deref(), Some("solo-ecoli"));
+        assert_eq!(store.scenario_id().as_deref(), Some("single-ecoli"));
         assert_eq!(store.map.as_ref().expect("retained drawing").to_json(), map);
         assert_eq!(store.solution.as_ref().expect("retained solution").objective_value, solution);
     }

@@ -27,4 +27,4 @@ The root MIT licence does not grant rights to third-party reconstructions. Attri
 
 The Yeast9 upstream licence is preserved in [`yeast-GEM-9.1.1/LICENSE.md`](yeast-GEM-9.1.1/LICENSE.md). Its [example README](../examples/yeast9-cytosol-mitochondria-peroxisome/README.md) records the model and map files. The literature manifests in `models/published/` describe member files, medium, bounds and selected source revisions. The corresponding files in `examples/` provide ready-to-import copies.
 
-Before publishing, preserve each source URL, release or commit identifier, applicable licence or written permission, download checksum and conversion procedure in the dataset record. The publication checklist in [`docs/PUBLICATION.md`](../docs/PUBLICATION.md) includes this rights review.
+Before publishing, preserve each source URL, release or commit identifier, applicable licence or written permission, download checksum and conversion procedure in the dataset record.

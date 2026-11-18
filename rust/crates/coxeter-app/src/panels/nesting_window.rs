@@ -575,10 +575,10 @@ mod tests {
     use indexmap::IndexMap;
 
     #[test]
-    fn the_window_opens_with_the_tool_beside_the_tool_column_and_tab_nests_the_selected_compartment() {
+    fn the_window_opens_with_the_tool_beside_the_tool_column_tab_nests_the_selected_compartment_and_the_tool_reopens_it() {
         let mut store = Store::with_dir(coxeter_core::testkit::repo_root());
         store.init().expect("bundled models");
-        store.use_scenario("solo-levadura").expect("scenario");
+        store.use_scenario("aerobic-coculture").expect("scenario");
         store.show_empty_map();
         store.add_map_cell("sce", Some(MapRect::new(40.0, 40.0, 1180.0, 800.0))).expect("the cell is drawn");
         store.apply_nesting_preset("sce", "empty");
@@ -610,5 +610,12 @@ mod tests {
         harness.run_steps(4);
         assert_eq!(parents(&harness)["im"].as_deref(), Some("e"), "Shift+Tab moves it back out");
         assert!(harness.state().nesting.is_open(), "the keys stay in the window");
+
+        harness.key_press(egui::Key::Escape);
+        harness.run_steps(4);
+        assert!(!harness.state().nesting.is_open(), "Escape closes it");
+        harness.get_by_label("Edit Comps").click();
+        harness.run_steps(4);
+        assert!(harness.state().nesting.is_open(), "the tool's button opens it again");
     }
 }

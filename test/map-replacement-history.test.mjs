@@ -14,7 +14,7 @@ async function makeStore() {
   const store = new Store('.');
   store.models.set('ecoli_core_mc', new Model(raw));
   store.scenarios = scenarios.scenarios;
-  await store.useScenario('solo-ecoli');
+  await store.useScenario('single-ecoli');
   return store;
 }
 
@@ -120,7 +120,7 @@ test('opening a normal scenario clears old selections and the overview mode', as
   const store = await makeStore();
   store.showCoreMetabolismOverview();
   selectObjects(store);
-  await store.useScenario('solo-ecoli');
+  await store.useScenario('single-ecoli');
   assertNoSelection(store);
   assert.equal(store.mapMode, 'full');
   store.setLayoutPreset('compact');

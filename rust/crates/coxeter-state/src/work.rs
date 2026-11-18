@@ -261,7 +261,7 @@ mod save_timing_tests {
     fn make_store() -> Store {
         let mut store = Store::with_dir(coxeter_core::testkit::repo_root());
         store.init().expect("bundled models");
-        store.use_scenario("solo-ecoli").expect("scenario");
+        store.use_scenario("single-ecoli").expect("scenario");
         store
     }
 
@@ -325,7 +325,7 @@ mod save_timing_tests {
         let mut store = make_store();
         store.add_map_text("Previous context", 200.0, 200.0, None).expect("written annotation");
         let snapshot = store.work_snapshot();
-        store.use_scenario("solo-ecoli").expect("replacement context");
+        store.use_scenario("single-ecoli").expect("replacement context");
         store.add_map_text("Replacement context", 250.0, 250.0, None).expect("later annotation");
         store.mark_map_snapshot_saved(&snapshot);
         assert!(store.unsaved_work().map);
@@ -361,7 +361,7 @@ mod save_timing_tests {
     #[test]
     fn a_model_save_records_the_serialized_model_even_when_the_editor_selects_another_species() {
         let mut store = make_store();
-        store.use_scenario("aerobio-mixto").expect("two-species scenario");
+        store.use_scenario("aerobic-coculture").expect("two-species scenario");
         let first = store.species[0].id.clone();
         let second = store.species[1].id.clone();
         store.set_model_editor_species(&first).expect("first member");

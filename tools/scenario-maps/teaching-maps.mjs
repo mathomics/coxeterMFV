@@ -47,13 +47,12 @@ const TEMPLATES = {
 // Columns of cells, left to right, each listed top to bottom, in the order
 // the scenario's story runs.
 const ARRANGEMENT = {
-  'consorcio-anaerobio': [['lla', 'mba'], ['eco'], ['sce']],
-  'aerobio-mixto': [['eco'], ['sce']],
-  'fototrofo-heterotrofo': [['syn'], ['eco'], ['sce']],
-  metanogenesis: [['eco'], ['mba']],
-  todas: [['lla', 'mba'], ['eco', 'syn'], ['sce']],
-  'solo-ecoli': [['eco']],
-  'solo-levadura': [['sce']],
+  'anaerobic-consortium': [['lla', 'mba'], ['eco'], ['sce']],
+  'aerobic-coculture': [['eco'], ['sce']],
+  'phototroph-heterotroph': [['syn'], ['eco'], ['sce']],
+  'methanogen-digester': [['eco'], ['mba']],
+  'all-species': [['lla', 'mba'], ['eco', 'syn'], ['sce']],
+  'single-ecoli': [['eco']],
 };
 // Medium between two cells: room for both cells' medium nodes and a corridor
 // for the cross-feeding lines. Their router works on squares of four grid

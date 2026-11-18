@@ -102,7 +102,7 @@ export const spec = {
     r('CYTBD', '2.0 h_c + 0.5 o2_c + q8h2_c --> h2o_c + 2.0 h_p + q8_c', { name: 'Cytochrome bd oxidase', sub: OXP, rank: 5, lane: 5 }),
     r('ATPS4rpp', 'adp_c + 4.0 h_p + pi_c <=> atp_c + h2o_c + 3.0 h_c', { name: 'ATP synthase (proton-motive force)', sub: OXP, rank: 6, lane: 5 }),
     r('ATPM', 'atp_c + h2o_c --> adp_c + h_c + pi_c', { name: 'Non-growth-associated maintenance', sub: OXP, lb: 8.39, ub: 1000, rank: 7, lane: 5 }),
-    r('NADTRHD', 'nad_c + nadph_c --> nadh_c + nadp_c', { name: 'Transhidrogenasa soluble', sub: OXP, rank: 8, lane: 5 }),
+    r('NADTRHD', 'nad_c + nadph_c --> nadh_c + nadp_c', { name: 'Soluble transhydrogenase', sub: OXP, rank: 8, lane: 5 }),
     r('THD2pp', '2.0 h_p + nadh_c + nadp_c --> 2.0 h_c + nad_c + nadph_c', { name: 'Membrane transhydrogenase', sub: OXP, rank: 9, lane: 5 }),
 
     // Nitrogen
@@ -130,15 +130,15 @@ export const spec = {
     r('CO2tpp', 'co2_p <=> co2_c', { name: 'CO2 diffusion (inner membrane)', sub: TIM, rank: 12, lane: 3 }),
     r('H2Otpp', 'h2o_p <=> h2o_c', { name: 'Water diffusion (inner membrane)', sub: TIM, rank: 7, lane: 4 }),
     r('NH4tpp', 'nh4_p <=> nh4_c', { name: 'Ammonium (inner membrane)', sub: TIM, rank: 16, lane: -5 }),
-    r('PIt2rpp', 'h_p + pi_p <=> h_c + pi_c', { name: 'Simporte fosfato/H+', sub: TIM, rank: 6, lane: 4 }),
-    r('ACt2rpp', 'ac_p + h_p <=> ac_c + h_c', { name: 'Simporte acetato/H+', sub: TIM, rank: 15, lane: -1 }),
+    r('PIt2rpp', 'h_p + pi_p <=> h_c + pi_c', { name: 'Phosphate/H+ symporter', sub: TIM, rank: 6, lane: 4 }),
+    r('ACt2rpp', 'ac_p + h_p <=> ac_c + h_c', { name: 'Acetate/H+ symporter', sub: TIM, rank: 15, lane: -1 }),
     r('ETOHtrpp', 'etoh_p <=> etoh_c', { name: 'Ethanol facilitated diffusion', sub: TIM, rank: 15, lane: -2 }),
-    r('FORt2pp', 'for_p + h_p --> for_c + h_c', { name: 'Formiato simporte (entrada)', sub: TIM, rank: 12, lane: -2 }),
-    r('FORtppi', 'for_c --> for_p', { name: 'Formiato canal (salida)', sub: TIM, rank: 12, lane: -3 }),
-    r('D_LACt2pp', 'h_p + lac__D_p <=> h_c + lac__D_c', { name: 'Simporte D-lactato/H+', sub: TIM, rank: 9, lane: -2 }),
-    r('L_LACt2pp', 'h_p + lac__L_p <=> h_c + lac__L_c', { name: 'Simporte L-lactato/H+', sub: TIM, rank: 9, lane: -3 }),
+    r('FORt2pp', 'for_p + h_p --> for_c + h_c', { name: 'Formate symporter (uptake)', sub: TIM, rank: 12, lane: -2 }),
+    r('FORtppi', 'for_c --> for_p', { name: 'Formate channel (efflux)', sub: TIM, rank: 12, lane: -3 }),
+    r('D_LACt2pp', 'h_p + lac__D_p <=> h_c + lac__D_c', { name: 'D-lactate/H+ symporter', sub: TIM, rank: 9, lane: -2 }),
+    r('L_LACt2pp', 'h_p + lac__L_p <=> h_c + lac__L_c', { name: 'L-lactate/H+ symporter', sub: TIM, rank: 9, lane: -3 }),
     r('H2tpp', 'h2_p <=> h2_c', { name: 'H2 diffusion', sub: TIM, rank: 12, lane: -4 }),
-    r('SUCCt2rpp', 'h_p + succ_p <=> h_c + succ_c', { name: 'Simporte succinato/H+', sub: TIM, rank: 18, lane: 1 }),
+    r('SUCCt2rpp', 'h_p + succ_p <=> h_c + succ_c', { name: 'Succinate/H+ symporter', sub: TIM, rank: 18, lane: 1 }),
 
     // Exchanges
     // Uptake is only opened for the substrates this organism is meant to live on.

@@ -2,7 +2,7 @@
 <html lang="es">
 <head>
 <meta charset="utf-8">
-<title>Comprobación en navegador</title>
+<title>Browser check</title>
 <style>
   body { font: 13px/1.6 ui-monospace, Menlo, Consolas, monospace; margin: 24px; background: #0b1220; color: #e2e8f0; }
   .pass { color: #4ade80; } .fail { color: #fb7185; } .info { color: #94a3b8; }
@@ -10,8 +10,8 @@
 </style>
 </head>
 <body>
-<h1>Escher MCMC — comprobación en navegador</h1>
-<div id="out">ejecutando…</div>
+<h1>Escher MCMC — browser check</h1>
+<div id="out">running…</div>
 <script type="module">
 /*
  * Exercises the parts that only exist in a browser: fetch of the model
@@ -63,24 +63,24 @@ async function waitFor(fn, timeoutMs) {
 try {
   const store = new Store('..');
   await store.init();
-  check('catálogo cargado', store.catalog.length >= 5, `${store.catalog.length} modelos`);
+  check('catalogue loaded', store.catalog.length >= 5, `${store.catalog.length} models`);
   const { glpkAvailable, glpkUnavailableReason } = await import('../src/solver/glpk.js');
-  check('GLPK carga en el navegador', glpkAvailable(),
-    glpkAvailable() ? 'backend disperso activo' : `fallback al símplex: ${glpkUnavailableReason()}`);
-  check('escenarios cargados', store.scenarios.length >= 5, `${store.scenarios.length}`);
+  check('GLPK loads in the browser', glpkAvailable(),
+    glpkAvailable() ? 'sparse backend active' : `simplex fallback: ${glpkUnavailableReason()}`);
+  check('scenarios loaded', store.scenarios.length >= 5, `${store.scenarios.length}`);
 
-  await store.useScenario('consorcio-anaerobio');
-  check('la comunidad se construyó', Boolean(store.community));
-  check('la solución es óptima', store.solution?.status === 'optimal', store.solution?.status);
+  await store.useScenario('anaerobic-consortium');
+  check('the community was built', Boolean(store.community));
+  check('the solution is optimal', store.solution?.status === 'optimal', store.solution?.status);
   // Headless Chrome with --virtual-time-budget freezes performance.now(), so
   // these read 0 there and only carry a real number in a live browser.
-  check('el tiempo de LP se registra', Number.isFinite(store.status.solveMs), `${store.status.solveMs} ms`);
-  check('el tiempo de layout se registra', Number.isFinite(store.status.layoutMs), `${store.status.layoutMs} ms`);
-  log('info', `    µ comunidad = ${store.solution.objectiveValue.toFixed(5)}`);
-  log('info', `    ${store.community.merged.reactions.size} reacciones, ${store.layout.nodes.size} nodos`);
+  check('the LP time is recorded', Number.isFinite(store.status.solveMs), `${store.status.solveMs} ms`);
+  check('the layout time is recorded', Number.isFinite(store.status.layoutMs), `${store.status.layoutMs} ms`);
+  log('info', `    community µ = ${store.solution.objectiveValue.toFixed(5)}`);
+  log('info', `    ${store.community.merged.reactions.size} reactions, ${store.layout.nodes.size} nodes`);
 
   const rates = [...store.growth.values()];
-  check('todas las especies crecen igual', Math.max(...rates) - Math.min(...rates) < 1e-6, rates.map((r) => r.toFixed(4)).join(' '));
+  check('every species grows at the same rate', Math.max(...rates) - Math.min(...rates) < 1e-6, rates.map((r) => r.toFixed(4)).join(' '));
 
   // --- rendering ---
   const t0 = performance.now();
@@ -89,16 +89,16 @@ try {
     growth: store.growth, crossFeeding: store.crossFeeding,
   });
   const renderMs = Math.round(performance.now() - t0);
-  check('el SVG se genera', svg.startsWith('<svg') && svg.endsWith('</svg>'), `${renderMs} ms, ${Math.round(svg.length / 1024)} KB`);
+  check('the SVG is generated', svg.startsWith('<svg') && svg.endsWith('</svg>'), `${renderMs} ms, ${Math.round(svg.length / 1024)} KB`);
   const host = document.createElement('div');
   host.innerHTML = svg;
-  check('el navegador lo analiza sin error', host.querySelector('svg') !== null,
+  check('the browser parses it without error', host.querySelector('svg') !== null,
     `${host.querySelectorAll('[data-rxn]').length} elementos interactivos`);
 
   // --- interaction: tightening a bound must change the answer ---
   const before = store.solution.objectiveValue;
   const glucose = [...store.community.merged.reactions.keys()].find((r) => r.endsWith('@EX_glc__D_e') && r.startsWith('eco'));
-  check('se encontró la transferencia de glucosa de E. coli', Boolean(glucose), glucose);
+  check('the E. coli glucose transfer was found', Boolean(glucose), glucose);
   store.setReactionBounds(glucose, 0, 0);
   store.solve({ parsimonious: false });
   const after = store.solution.objectiveValue;
@@ -106,24 +106,24 @@ try {
   // way to meet its maintenance ATP demand, so the LP becomes infeasible rather
   // than returning a lower rate. Either answer is a change; a silent identical
   // optimum would not be.
-  check('anular la captación de glucosa cambia el resultado',
+  check('closing glucose uptake changes the result',
     store.solution.status !== 'optimal' || after < before - 1e-9,
     `${before.toFixed(5)} → ${store.solution.status === 'optimal' ? after.toFixed(5) : store.solution.status}`);
-  check('el estado infactible se explica al usuario',
+  check('the infeasible state is explained to the user',
     store.solution.status === 'optimal' || Boolean(store.status.message), store.status.message);
   store.resetReaction(glucose);
-  check('restaurar recupera el óptimo', Math.abs(store.solution.objectiveValue - before) < 1e-6,
+  check('restoring brings the optimum back', Math.abs(store.solution.objectiveValue - before) < 1e-6,
     store.solution.objectiveValue.toFixed(5));
 
   // --- interaction: medium supply ---
   store.setMediumLimit('glc__D', 2);
   const lean = store.solution.objectiveValue;
-  check('menos glucosa, menos crecimiento', lean < before - 1e-9, `${before.toFixed(5)} → ${lean.toFixed(5)}`);
+  check('less glucose, less growth', lean < before - 1e-9, `${before.toFixed(5)} → ${lean.toFixed(5)}`);
   store.setMediumLimit('glc__D', 10);
 
   // --- interaction: disabling a species ---
   await store.setSpeciesEnabled('mba', false);
-  check('desactivar una especie la quita del modelo',
+  check('turning a species off removes it from the model',
     ![...store.community.merged.reactions.keys()].some((r) => r.startsWith('mba@')),
     `${store.community.activeSpecies.length} activas`);
   await store.setSpeciesEnabled('mba', true);
@@ -131,18 +131,18 @@ try {
   // --- flux variability ---
   const ranges = store.problem.variability([glucose], { fraction: 0.999 });
   const range = ranges.get(glucose);
-  check('la variabilidad de flujo devuelve un rango', Number.isFinite(range?.min) && Number.isFinite(range?.max),
+  check('flux variability returns a range', Number.isFinite(range?.min) && Number.isFinite(range?.max),
     `[${range?.min?.toFixed(3)}, ${range?.max?.toFixed(3)}]`);
 
   // --- the real application, driven through the DOM ---
   log('info', '');
   const frame = document.createElement('iframe');
-  frame.src = '../index.html?scenario=consorcio-anaerobio';
+  frame.src = '../index.html?scenario=anaerobic-consortium';
   frame.style.cssText = 'width:1200px;height:800px;border:1px solid #1e293b;border-radius:8px;margin-top:12px';
   document.body.appendChild(frame);
 
   const app = await waitFor(() => frame.contentWindow?.escherMCMC?.store?.layout && frame.contentWindow, 30000);
-  check('la aplicación arranca', Boolean(app), app ? `${app.escherMCMC.store.layout.nodes.size} nodos` : 'agotó el tiempo');
+  check('the application starts', Boolean(app), app ? `${app.escherMCMC.store.layout.nodes.size} nodes` : 'timed out');
 
   if (app) {
     const doc = app.document;
@@ -218,12 +218,12 @@ try {
       doc.querySelector('[data-action="close-workspace"]')?.click();
       appStore.clearMultiSelection();
       appStore.setView({ multiSelect: false });
-      await appStore.useScenario('consorcio-anaerobio');
+      await appStore.useScenario('anaerobic-consortium');
       await tick(2);
     }
     {
       const appStore = app.escherMCMC.store;
-      await appStore.useScenario('solo-ecoli');
+      await appStore.useScenario('single-ecoli');
       appStore.setView({ pathwayRibbonMode: 'pathway', showCrossFeeding: true, showCurrency: false });
       const originalDrawing = JSON.stringify(appStore.map.toJSON());
       const originalCommunity = appStore.community;
@@ -269,14 +269,14 @@ try {
         appStore.community === originalCommunity && appStore.solution === originalSolution);
       appStore.selectGeometry('eco', 'c');
       appStore.toggleMultiSelection('reaction', 'eco@PGI');
-      await appStore.useScenario('consorcio-anaerobio');
+      await appStore.useScenario('anaerobic-consortium');
       check('opening a scenario drops old selections and the overview mode',
         appStore.mapMode === 'full' && appStore.selectedGeometry === null && appStore.multiSelectionSize === 0);
       appStore.setView({ pathwayRibbonMode: 'off', showCrossFeeding: false, showCurrency: true });
       await tick(2);
     }
     const marker = await waitFor(() => doc.querySelector('.emc-marker[data-rxn]'), 15000);
-    check('hay marcadores de reacción en el DOM', Boolean(marker), marker?.dataset?.rxn);
+    check('the DOM has reaction markers', Boolean(marker), marker?.dataset?.rxn);
 
     if (marker) {
       // Click it the way a user would. This is the path that broke when the
@@ -289,24 +289,24 @@ try {
       marker.dispatchEvent(new app.PointerEvent('pointerup', { bubbles: true, pointerId: 1, ...at }));
       await tick();
 
-      check('un clic selecciona la reacción', app.escherMCMC.store.selectedReaction === id,
-        `${app.escherMCMC.store.selectedReaction ?? 'ninguna'} (esperada ${id})`);
+      check('a click selects the reaction', app.escherMCMC.store.selectedReaction === id,
+        `${app.escherMCMC.store.selectedReaction ?? 'none'} (expected ${id})`);
 
       const inspector = doc.querySelector('[data-action="knockout"]');
-      check('el inspector aparece en la barra lateral', Boolean(inspector),
+      check('the inspector appears in the sidebar', Boolean(inspector),
         doc.querySelector('.equation')?.textContent?.trim().slice(0, 48));
 
       // And the bound sliders must actually be wired to the solver.
       const slider = doc.querySelector('input[data-action="bound-upper"]');
-      check('el inspector trae deslizadores de límite', Boolean(slider));
+      check('the inspector has bound sliders', Boolean(slider));
       if (slider) {
         const previous = app.escherMCMC.store.solution.objectiveValue;
         slider.value = '0';
         slider.dispatchEvent(new app.Event('input', { bubbles: true }));
         await tick(2);
         const bounds = app.escherMCMC.store.currentReactionBounds(id);
-        check('mover el deslizador cambia el límite', Math.abs(bounds.upper) < 1e-9, JSON.stringify(bounds));
-        check('el óptimo se recalcula',
+        check('moving the slider changes the bound', Math.abs(bounds.upper) < 1e-9, JSON.stringify(bounds));
+        check('the optimum is recalculated',
           Number.isFinite(previous) && app.escherMCMC.store.solution !== null,
           `${previous.toFixed(5)} → ${app.escherMCMC.store.solution.status === 'optimal'
             ? app.escherMCMC.store.solution.objectiveValue.toFixed(5) : app.escherMCMC.store.solution.status}`);
@@ -317,13 +317,13 @@ try {
       stage.dispatchEvent(new app.PointerEvent('pointerdown', { bubbles: true, pointerId: 2, clientX: 5, clientY: 5 }));
       stage.dispatchEvent(new app.PointerEvent('pointerup', { bubbles: true, pointerId: 2, clientX: 5, clientY: 5 }));
       await tick();
-      check('clic en vacío deselecciona', app.escherMCMC.store.selectedReaction === null,
+      check('a click on empty space deselects', app.escherMCMC.store.selectedReaction === null,
         String(app.escherMCMC.store.selectedReaction));
       app.escherMCMC.store.resetReaction(id);
       await tick(2);
     }
 
-    // --- shell rediseñado -------------------------------------------------
+    // --- redesigned shell -------------------------------------------------
     const shell = doc.getElementById('app-shell');
     doc.querySelector('[data-action="left-tab"][data-tab="analysis"]')?.click();
     await tick();
@@ -333,19 +333,19 @@ try {
       && app.escherMCMC.store.solution?.status === 'optimal');
     doc.querySelector('#task-panel [data-action="run-fba"]')?.click();
     await tick(3);
-    check('Run Analysis vuelve a FBA', !app.escherMCMC.store.parsimonious
+    check('Run Analysis goes back to FBA', !app.escherMCMC.store.parsimonious
       && !app.escherMCMC.store.loopless && app.escherMCMC.store.solution?.status === 'optimal');
 
     doc.querySelector('[data-action="toggle-left"]')?.click();
-    check('el panel Build se puede colapsar', shell.classList.contains('is-left-collapsed'));
+    check('the Build panel can collapse', shell.classList.contains('is-left-collapsed'));
     doc.querySelector('[data-action="toggle-left"]')?.click();
-    check('el panel Build se puede restaurar', !shell.classList.contains('is-left-collapsed'));
+    check('the Build panel can be restored', !shell.classList.contains('is-left-collapsed'));
 
     doc.querySelector('[data-action="results-tab"][data-tab="table"]')?.click();
-    check('Table view activa la tabla de resultados', doc.getElementById('results-panel')?.dataset.tab === 'table');
+    check('Table view turns on the results table', doc.getElementById('results-panel')?.dataset.tab === 'table');
     doc.querySelector('[data-action="results-tab"][data-tab="analysis"]')?.click();
 
-    // --- arrastrar metabolitos -------------------------------------------
+    // --- drag metabolites --------------------------------------------------
     // The point of these checks is the coordinate conversion. The map is drawn
     // at full canvas resolution and scaled by the camera, so a node that follows
     // the pointer in the fitted view can still be wrong by a factor of the zoom.
@@ -395,9 +395,9 @@ try {
       const dragging = Boolean(gestures.node);
       const panning = Boolean(gestures.pan);
       // Which gesture did take the press, when it was not the node's: the
-      // answer is the diagnosis, and "nodo=false" on its own is not.
+      // answer is the diagnosis, and "node gesture=false" on its own is not.
       const claimedBy = Object.entries(gestures)
-        .filter(([, v]) => v && typeof v === 'object').map(([k]) => k).join(',') || 'ninguno';
+        .filter(([, v]) => v && typeof v === 'object').map(([k]) => k).join(',') || 'none';
       pointer('pointermove', stage, pointerId, to);
       await tick(2);
       const viewportAfter = stage.getBoundingClientRect();
@@ -424,7 +424,7 @@ try {
     };
 
     const target = roomyNode(90);
-    check('hay un metabolito con espacio para moverse', Boolean(target), target?.id);
+    check('there is a metabolite with room to move', Boolean(target), target?.id);
 
     if (target) {
       const id = target.id;
@@ -449,57 +449,57 @@ try {
       const first = await dragNode(id, 60, -40, 11);
       store.solve = realSolve;
 
-      check('al pulsar sobre un metabolito empieza un arrastre de nodo (' + first.claimedBy + ', herramienta ' + first.tool + ')',
+      check('pressing a metabolite starts a node drag (' + first.claimedBy + ', tool ' + first.tool + ')',
         Boolean(first?.dragging) && !first?.panning,
-        'nodo=' + first?.dragging + ' panorámica=' + first?.panning);
-      check('el nodo se mueve a donde apunta el puntero',
+        'node=' + first?.dragging + ' pan=' + first?.panning);
+      check('the node moves to where the pointer points',
         first && Math.abs(first.after.x - first.expected.x) < 0.6
           && Math.abs(first.after.y - first.expected.y) < 0.6,
-        first ? first.after.x.toFixed(2) + ',' + first.after.y.toFixed(2) + ' esperado '
+        first ? first.after.x.toFixed(2) + ',' + first.after.y.toFixed(2) + ' expected '
           + first.expected.x.toFixed(2) + ',' + first.expected.y.toFixed(2)
-          + ' (escala ' + camera.scale.toFixed(3) + ')' : 'sin arrastre');
-      check('el gesto termina limpiamente', Boolean(first?.settled));
-      check('la cámara no se desplaza al arrastrar un nodo', first && !first.cameraMoved,
+          + ' (scale ' + camera.scale.toFixed(3) + ')' : 'no drag');
+      check('the gesture ends cleanly', Boolean(first?.settled));
+      check('the camera does not pan while a node is dragged', first && !first.cameraMoved,
         `unexpected camera shift ${first.cameraDelta.x.toFixed(3)}, ${first.cameraDelta.y.toFixed(3)} px`);
-      check('arrastrar un nodo no vuelve a resolver el FBA', solves === 0,
-        solves + ' llamadas a solve()');
-      check('arrastrar un nodo no recalcula el layout',
+      check('dragging a node does not solve the FBA again', solves === 0,
+        solves + ' calls to solve()');
+      check('dragging a node does not recompute the layout',
         store.layout === layoutBefore && witness.x === witnessAt.x && witness.y === witnessAt.y,
-        store.layout === layoutBefore ? 'los demás nodos no se movieron' : 'el layout se rehízo');
-      check('arrastrar un nodo no cambia la selección', store.selectedReaction === null,
+        store.layout === layoutBefore ? 'the other nodes did not move' : 'the layout was redone');
+      check('dragging a node does not change the selection', store.selectedReaction === null,
         String(store.selectedReaction));
 
       // The circle in the repainted SVG has to agree with the layout.
       const node = store.layout.nodes.get(id);
       const redrawn = circleFor(id);
-      check('el círculo redibujado está en la nueva posición',
+      check('the redrawn circle is at the new position',
         redrawn && Math.abs(Number(redrawn.getAttribute('cx')) - node.x) < 0.02
           && Math.abs(Number(redrawn.getAttribute('cy')) - node.y) < 0.02,
         redrawn ? 'cx=' + redrawn.getAttribute('cx') + ' cy=' + redrawn.getAttribute('cy')
-          : 'no se redibujó');
+          : 'not redrawn');
 
       // The label is placed from the node's coordinates, so it moved too.
       const labels = [...doc.querySelectorAll('[data-metabolite-label]')]
         .filter((el) => el.dataset.metaboliteLabel === id);
-      check('la etiqueta sigue al metabolito',
+      check('the label follows the metabolite',
         labelAt && labels.some((el) => Math.abs(Number(el.getAttribute('x')) - labelAt.x - 60) < 0.02
           && Math.abs(Number(el.getAttribute('y')) - labelAt.y + 40) < 0.02),
-        labels.length + ' etiqueta(s) "' + node.base + '"');
+        labels.length + ' label(s) "' + node.base + '"');
 
       // And so did the reaction curves attached to it.
       const pathAfter = segFor(id)?.getAttribute('d') ?? null;
-      check('las curvas de reacción conectadas se redibujan',
+      check('the connected reaction curves are redrawn',
         Boolean(pathBefore) && Boolean(pathAfter) && pathBefore !== pathAfter,
-        pathAfter ? attached.length + ' segmento(s)' : 'sin segmento');
+        pathAfter ? attached.length + ' segment(s)' : 'no segment');
       const gaps = store.layout.segments
         .filter((seg) => seg.nodeId === id)
         .map((seg) => {
           const end = seg.side === 'substrate' ? seg.from : seg.to;
           return Math.hypot(end.x - node.x, end.y - node.y);
         });
-      check('todos los extremos conectados coinciden con el nodo',
+      check('every connected end meets the node',
         gaps.length > 0 && gaps.every((d) => d < 1e-6),
-        'máx ' + Math.max(0, ...gaps).toExponential(1) + ' px');
+        'max ' + Math.max(0, ...gaps).toExponential(1) + ' px');
 
       // --- the same drag, zoomed in ---------------------------------------
       const fitted = camera.scale;
@@ -511,17 +511,17 @@ try {
           clientX: middle.x, clientY: middle.y,
         }));
       }
-      check('la rueda sigue acercando', camera.scale > fitted * 2,
+      check('the wheel still zooms in', camera.scale > fitted * 2,
         fitted.toFixed(3) + ' → ' + camera.scale.toFixed(3));
 
       const zoomed = await dragNode(id, -30, 20, 12);
-      check('el arrastre sigue siendo exacto con zoom',
+      check('dragging stays exact when zoomed',
         zoomed && Math.abs(zoomed.after.x - zoomed.expected.x) < 0.6
           && Math.abs(zoomed.after.y - zoomed.expected.y) < 0.6,
-        zoomed ? zoomed.after.x.toFixed(2) + ',' + zoomed.after.y.toFixed(2) + ' esperado '
+        zoomed ? zoomed.after.x.toFixed(2) + ',' + zoomed.after.y.toFixed(2) + ' expected '
           + zoomed.expected.x.toFixed(2) + ',' + zoomed.expected.y.toFixed(2)
-          + ' (escala ' + camera.scale.toFixed(3) + ')' : 'sin arrastre');
-      check('la cámara tampoco se desplaza con zoom', zoomed && !zoomed.cameraMoved);
+          + ' (scale ' + camera.scale.toFixed(3) + ')' : 'no drag');
+      check('the camera does not pan when zoomed either', zoomed && !zoomed.cameraMoved);
 
       // --- normal panning still works, and drag still works after it -------
       const panFrom = { x: camera.x, y: camera.y };
@@ -529,17 +529,17 @@ try {
       pointer('pointermove', stage, 13, { x: box.x + 130, y: box.y + 75 });
       pointer('pointerup', stage, 13, { x: box.x + 130, y: box.y + 75 });
       await tick();
-      check('arrastrar el fondo sigue desplazando el mapa',
+      check('dragging the background still pans the map',
         Math.abs(camera.x - (panFrom.x + 100)) < 0.6 && Math.abs(camera.y - (panFrom.y + 45)) < 0.6,
         panFrom.x.toFixed(1) + ',' + panFrom.y.toFixed(1) + ' → '
           + camera.x.toFixed(1) + ',' + camera.y.toFixed(1));
 
       const panned = await dragNode(id, 25, 25, 14);
-      check('el arrastre sigue siendo exacto tras desplazar',
+      check('dragging stays exact after panning',
         panned && Math.abs(panned.after.x - panned.expected.x) < 0.6
           && Math.abs(panned.after.y - panned.expected.y) < 0.6,
-        panned ? panned.after.x.toFixed(2) + ',' + panned.after.y.toFixed(2) + ' esperado '
-          + panned.expected.x.toFixed(2) + ',' + panned.expected.y.toFixed(2) : 'sin arrastre');
+        panned ? panned.after.x.toFixed(2) + ',' + panned.after.y.toFixed(2) + ' expected '
+          + panned.expected.x.toFixed(2) + ',' + panned.expected.y.toFixed(2) : 'no drag');
     }
 
     // --- cofactor satellites move like any other metabolite ---------------
@@ -560,142 +560,142 @@ try {
       await tick();
       pointer('pointerup', stage, 15, to);
       await tick();
-      check('un satélite de cofactor se arrastra como cualquier metabolito',
+      check('a cofactor satellite drags like any metabolite',
         asNode && (satellite.x !== was.x || satellite.y !== was.y),
-        'gesto de nodo=' + asNode + ', Δ ' + (satellite.x - was.x).toFixed(1)
+        'node gesture=' + asNode + ', Δ ' + (satellite.x - was.x).toFixed(1)
           + ',' + (satellite.y - was.y).toFixed(1));
     }
 
-    // --- el mapa editable -------------------------------------------------
+    // --- the editable map -------------------------------------------------
     // The store now owns an EditableMap rather than a raw layout. The class
     // itself cannot be compared across the iframe boundary — the page and the
     // application load their own copy of every module — so the map is checked by
     // what it can do, which is the part that matters anyway.
     const theMap = store.map;
-    check('el store expone un mapa editable',
+    check('the store exposes an editable map',
       Boolean(theMap) && typeof theMap.hasReaction === 'function'
         && typeof theMap.moveNode === 'function' && Array.isArray(theMap.boundaries),
-      theMap ? Object.keys(theMap.stats()).length + ' métricas' : 'sin mapa');
-    check('layout sigue siendo un alias del mapa', store.layout === store.map);
-    check('el lienzo pertenece al mapa',
+      theMap ? Object.keys(theMap.stats()).length + ' metrics' : 'no map');
+    check('layout is still an alias of the map', store.layout === store.map);
+    check('the canvas belongs to the map',
       theMap.canvas.width === theMap.width && theMap.canvas.height === theMap.height
         && theMap.width > 0,
       theMap.width + '×' + theMap.height);
 
     const expectedBoundaries = 1 + store.layout.cells
       .reduce((sum, cell) => sum + cell.compartments.length, 0);
-    check('cada compartimento tiene su frontera, más el entorno',
+    check('each compartment has its boundary, plus the surroundings',
       theMap.boundaries.length === expectedBoundaries,
       theMap.boundaries.length + ' de ' + expectedBoundaries);
-    check('las fronteras identifican célula, vecinos y geometría',
+    check('boundaries name their cell, neighbours and geometry',
       theMap.boundaries.every((b) => 'cellId' in b && b.inside && b.rect
         && (b.outside !== undefined) && b.id),
       theMap.boundaries.slice(0, 3).map((b) => b.id + '(' + b.inside + '|' + b.outside + ')').join(' '));
 
-    // --- un mapa vacío ----------------------------------------------------
+    // --- an empty map ----------------------------------------------------
     const objectiveBefore = store.solution.objectiveValue;
     const reactionsInModel = store.community.merged.reactions.size;
     const empty = store.emptyMap();
-    check('se puede crear un mapa vacío desde las especies cargadas',
-      Boolean(empty) && empty.isEmpty(), empty ? JSON.stringify(empty.stats()) : 'ninguno');
+    check('an empty map can be made from the loaded species',
+      Boolean(empty) && empty.isEmpty(), empty ? JSON.stringify(empty.stats()) : 'none');
 
     if (empty) {
-      // V2.5 made "Mapa vacío" mean what it says: no cells, no compartments, no
+      // V2.5 made "Empty map" mean what it says: no cells, no compartments, no
       // shared-medium decoration, only the white canvas. These checks used to
       // assert the older structural shell, which is still reachable through
       // EditableMap.emptyFromCommunity() and is covered separately below.
-      check('el mapa vacío no tiene geometría biológica',
+      check('the empty map has no biological geometry',
         empty.cells.length === 0 && empty.nodes.size === 0 && empty.reactions.size === 0,
-        empty.cells.length + ' células, ' + empty.nodes.size + ' nodos');
+        empty.cells.length + ' cells, ' + empty.nodes.size + ' nodes');
       // The one boundary is the drawing canvas frame, which is flagged hidden.
-      check('el mapa vacío conserva el lienzo y oculta su marco',
+      check('the empty map keeps the canvas and hides its frame',
         empty.boundaries.length === 1 && empty.environment.hidden === true
           && empty.canvas.width === store.layout.canvas.width
           && empty.canvas.height === store.layout.canvas.height,
         empty.canvas.width + '×' + empty.canvas.height
-          + ', ' + empty.boundaries.length + ' frontera oculta');
+          + ', ' + empty.boundaries.length + ' hidden boundary');
 
       store.setMap(empty);
       await tick(2);
 
-      check('el mapa vacío no dibuja células ni compartimentos',
+      check('the empty map draws no cells or compartments',
         doc.querySelectorAll('[data-cell]').length === 0
           && doc.querySelectorAll('[data-compartment]').length === 0,
-        doc.querySelectorAll('[data-cell]').length + ' células, '
-          + doc.querySelectorAll('[data-compartment]').length + ' compartimentos');
-      check('el mapa vacío no dibuja el medio compartido',
+        doc.querySelectorAll('[data-cell]').length + ' cells, '
+          + doc.querySelectorAll('[data-compartment]').length + ' compartments');
+      check('the empty map does not draw the shared medium',
         doc.querySelector('.emc-layer-env') === null);
-      check('el mapa vacío sigue dibujando el lienzo', doc.querySelector('svg') !== null);
-      check('el mapa vacío no dibuja ninguna reacción',
+      check('the empty map still draws the canvas', doc.querySelector('svg') !== null);
+      check('the empty map draws no reaction',
         doc.querySelectorAll('[data-rxn]').length === 0,
         doc.querySelectorAll('[data-rxn]').length + ' marcadores');
-      check('el mapa vacío no dibuja ningún metabolito',
+      check('the empty map draws no metabolite',
         doc.querySelectorAll('[data-node]').length === 0,
-        doc.querySelectorAll('[data-node]').length + ' nodos');
+        doc.querySelectorAll('[data-node]').length + ' nodes');
 
-      // --- y el armazón estructural, que V2.5 conservó como API interna ----
+      // --- and the structural shell, which V2.5 kept as an internal API ----
       const shell = EditableMap.emptyFromCommunity(store.community);
       // Against the full map captured earlier, not store.layout — by this point
       // the store is showing the blank map, which has no cells to compare with.
-      check('el armazón conserva células y compartimentos',
+      check('the shell keeps cells and compartments',
         shell.cells.length === theMap.cells.length
           && shell.boundaries.length === expectedBoundaries,
-        shell.cells.length + ' células, ' + shell.boundaries.length + ' fronteras');
+        shell.cells.length + ' cells, ' + shell.boundaries.length + ' boundaries');
       store.setMap(shell);
       await tick(2);
-      check('el armazón dibuja las células y sus compartimentos',
+      check('the shell draws the cells and their compartments',
         doc.querySelectorAll('.emc-cell[data-cell]').length === shell.cells.length
           && doc.querySelectorAll('[data-compartment]').length >= 4,
-        doc.querySelectorAll('.emc-cell[data-cell]').length + ' células, '
-          + doc.querySelectorAll('[data-compartment]').length + ' compartimentos');
-      check('el armazón dibuja el medio compartido',
+        doc.querySelectorAll('.emc-cell[data-cell]').length + ' cells, '
+          + doc.querySelectorAll('[data-compartment]').length + ' compartments');
+      check('the shell draws the shared medium',
         doc.querySelector('.emc-layer-env') !== null);
-      check('el armazón no dibuja reacciones ni metabolitos',
+      check('the shell draws no reactions or metabolites',
         doc.querySelectorAll('[data-rxn]').length === 0
           && doc.querySelectorAll('[data-node]').length === 0,
         doc.querySelectorAll('[data-rxn]').length + ' marcadores, '
-          + doc.querySelectorAll('[data-node]').length + ' nodos');
+          + doc.querySelectorAll('[data-node]').length + ' nodes');
 
       // The model and the simulation are untouched by what is drawn.
-      check('vaciar el mapa no cambia el modelo',
+      check('emptying the map does not change the model',
         store.community.merged.reactions.size === reactionsInModel,
-        store.community.merged.reactions.size + ' reacciones siguen en el modelo');
-      check('vaciar el mapa no cambia el óptimo',
+        store.community.merged.reactions.size + ' reactions remain in the model');
+      check('emptying the map does not change the optimum',
         store.solution.objectiveValue === objectiveBefore,
         objectiveBefore.toFixed(5) + ' → ' + store.solution.objectiveValue.toFixed(5));
 
-      // --- un mapa parcial ------------------------------------------------
+      // --- a partial map ------------------------------------------------
       const someIds = theMap.reactionIds().slice(0, 8);
       const partial = theMap.subsetByReactions(someIds);
       store.setMap(partial);
       await tick(2);
       const drawnRxns = new Set([...doc.querySelectorAll('[data-rxn]')].map((el) => el.dataset.rxn));
-      check('un mapa parcial dibuja solo sus reacciones',
+      check('a partial map draws only its reactions',
         someIds.every((id) => drawnRxns.has(id)) && drawnRxns.size === someIds.length,
         drawnRxns.size + ' de ' + someIds.length);
-      check('un mapa parcial sigue siendo coherente',
+      check('a partial map stays consistent',
         partial.segments.every((seg) => partial.hasReaction(seg.reactionId)
           && (!seg.nodeId || partial.hasNode(seg.nodeId))),
         partial.segments.length + ' segmentos');
-      check('un mapa parcial no cambia el óptimo',
+      check('a partial map does not change the optimum',
         store.solution.objectiveValue === objectiveBefore,
         store.solution.objectiveValue.toFixed(5));
 
-      // --- y se vuelve al mapa completo -----------------------------------
+      // --- and back to the full map -----------------------------------
       store.setMap(theMap);
       await tick(2);
-      check('se puede volver al mapa completo',
+      check('the full map can be restored',
         doc.querySelectorAll('[data-rxn]').length > 100,
-        doc.querySelectorAll('[data-rxn]').length + ' elementos con reacción');
+        doc.querySelectorAll('[data-rxn]').length + ' elements with a reaction');
 
       if (target) {
         const restored = await dragNode(target.id, 18, 12, 21);
-        check('arrastrar sigue funcionando tras cambiar de mapa',
+        check('dragging still works after the map changes',
           restored && Math.abs(restored.after.x - restored.expected.x) < 0.6
             && Math.abs(restored.after.y - restored.expected.y) < 0.6,
           restored ? restored.after.x.toFixed(2) + ',' + restored.after.y.toFixed(2)
-            + ' esperado ' + restored.expected.x.toFixed(2) + ',' + restored.expected.y.toFixed(2)
-            : 'sin arrastre');
+            + ' expected ' + restored.expected.x.toFixed(2) + ',' + restored.expected.y.toFixed(2)
+            : 'no drag');
       }
     }
 
@@ -717,13 +717,13 @@ try {
       await tick(2);
       const panButton = doc.querySelector('.toolbox [data-action="tool-pan"]');
       const selectButton = doc.querySelector('.toolbox [data-action="tool-select"]');
-      check('Edit Map ofrece un botón Pan Mode',
+      check('Edit Map offers a Pan Mode button',
         Boolean(panButton) && panButton.textContent.includes('Pan Mode'),
-        panButton ? panButton.textContent.trim() : 'no está');
+        panButton ? panButton.textContent.trim() : 'missing');
 
       panButton.click();
       await tick(2);
-      check('activar Pan Mode lo deja como herramienta en curso',
+      check('turning Pan Mode on leaves it as the current tool',
         stage.dataset.tool === 'pan' && panButton.classList.contains('is-active')
           && !selectButton.classList.contains('is-active'),
         'stage=' + stage.dataset.tool);
@@ -731,7 +731,7 @@ try {
       // Structural, not just guarded in script: with the map taking no pointer
       // events there is nothing to hover and nothing to click.
       const svg = stage.querySelector('svg');
-      check('en Pan Mode el mapa no recibe eventos de puntero',
+      check('in Pan Mode the map gets no pointer events',
         app.getComputedStyle(svg).pointerEvents === 'none',
         app.getComputedStyle(svg).pointerEvents);
 
@@ -743,7 +743,7 @@ try {
       pointer('pointermove', stage, 77, at(start.x + 80, start.y + 40));
       pointer('pointerup', stage, 77, at(start.x + 80, start.y + 40));
       await tick(2);
-      check('arrastrar en Pan Mode mueve el mapa',
+      check('dragging in Pan Mode moves the map',
         Math.abs((camera.x - before.x) - 80) < 1 && Math.abs((camera.y - before.y) - 40) < 1,
         'Δ ' + (camera.x - before.x).toFixed(1) + ', ' + (camera.y - before.y).toFixed(1));
 
@@ -751,7 +751,7 @@ try {
       // not reach: this is the script guard, checked separately from the CSS.
       const circle = doc.querySelector('.emc-node[data-node]');
       const nodeId = circle?.dataset.node ?? null;
-      check('hay un metabolito dibujado sobre el que probar', Boolean(circle));
+      check('there is a drawn metabolite to test on', Boolean(circle));
       const selectionBefore = JSON.stringify(store.selectedEntity ?? null);
       const centre = (() => {
         const b = circle.getBoundingClientRect();
@@ -760,18 +760,18 @@ try {
       pointer('pointerdown', circle, 78, centre);
       pointer('pointerup', circle, 78, centre);
       await tick(2);
-      check('en Pan Mode pulsar un metabolito no selecciona nada',
+      check('in Pan Mode pressing a metabolite selects nothing',
         JSON.stringify(store.selectedEntity ?? null) === selectionBefore,
-        'selección ' + JSON.stringify(store.selectedEntity ?? null));
+        'selection ' + JSON.stringify(store.selectedEntity ?? null));
 
-      check('el modo sigue activo después de arrastrar y de pulsar',
+      check('the mode stays on after dragging and pressing',
         stage.dataset.tool === 'pan' && panButton.classList.contains('is-active'),
         stage.dataset.tool);
 
       // And it is left the way the user was told it is left.
       selectButton.click();
       await tick(2);
-      check('elegir Select sale de Pan Mode y devuelve la selección',
+      check('choosing Select leaves Pan Mode and brings selection back',
         stage.dataset.tool === 'select'
           && app.getComputedStyle(stage.querySelector('svg')).pointerEvents !== 'none',
         'stage=' + stage.dataset.tool);
@@ -784,7 +784,7 @@ try {
       pointer('pointerdown', again, 79, againAt);
       pointer('pointerup', again, 79, againAt);
       await tick(2);
-      check('tras salir, volver a pulsar sí selecciona',
+      check('after leaving, pressing again selects',
         store.selectedEntity?.id === nodeId,
         JSON.stringify(store.selectedEntity ?? null));
     }
@@ -816,7 +816,7 @@ try {
       await tick(2);
 
       const hitReaction = doc.querySelector('.emc-hit-reaction[data-rxn]');
-      check('el mapa dibuja un blanco ampliado por reacción', Boolean(hitReaction));
+      check('the map draws an enlarged hit target per reaction', Boolean(hitReaction));
       if (hitReaction) {
         const rid = hitReaction.dataset.rxn;
         store.select(null);
@@ -828,9 +828,9 @@ try {
         pointer('pointerdown', target, 101, at);
         pointer('pointerup', target, 101, at);
         await tick(2);
-        check('pulsar el blanco ampliado selecciona su reacción',
+        check('pressing the enlarged target selects its reaction',
           store.selectedReaction === rid,
-          'esperaba ' + rid + ', quedó ' + String(store.selectedReaction));
+          'expected ' + rid + ', got ' + String(store.selectedReaction));
       }
 
       const hitNode = doc.querySelector('.emc-hit-node[data-node]');
@@ -846,9 +846,9 @@ try {
         await tick(2);
         pointer('pointerup', stage, 102, to);
         await tick(2);
-        check('pulsar el blanco ampliado de un metabolito lo arrastra',
+        check('pressing a metabolite enlarged target drags it',
           dragging && (node.x !== was.x || node.y !== was.y),
-          'gesto=' + dragging);
+          'gesture=' + dragging);
       }
 
       // The inside of a compartment is no longer a grab target: a press there
@@ -864,9 +864,9 @@ try {
         const sweeping = Boolean(gestures.selection);
         pointer('pointerup', space, 103, at);
         await tick(2);
-        check('el interior del compartimento ya no lo agarra',
+        check('the compartment interior no longer grabs it',
           !grabbed && sweeping,
-          'geometría=' + grabbed + ', rectángulo=' + sweeping);
+          'geometry=' + grabbed + ', rectangle=' + sweeping);
       }
 
       // It still moves — from its membrane, then from its centre handle, which
@@ -879,7 +879,7 @@ try {
             const b = store.layout.boundary(el.dataset.boundary);
             return b?.cellId && b?.compartmentId;
           });
-        check('hay una membrana de compartimento sobre la que probar', Boolean(membrane));
+        check('there is a compartment membrane to test on', Boolean(membrane));
 
         /*
          * Measured in screen pixels, which is the only size that matters to a
@@ -891,7 +891,7 @@ try {
          */
         if (membrane) {
           const band = Number(membrane.getAttribute('stroke-width')) * camera.scale;
-          check('la membrana es un objetivo real en pantalla, no de dos píxeles',
+          check('the membrane is a real on-screen target, not two pixels wide',
             Math.round(band) >= 24, band.toFixed(1) + ' px a escala ' + camera.scale.toFixed(3));
 
           /*
@@ -904,10 +904,10 @@ try {
            * move what is being aimed at.
            */
           const glow = membrane.nextElementSibling;
-          check('el destello del hover es un elemento aparte, sin eventos',
+          check('the hover glow is a separate element with no events',
             Boolean(glow) && glow.classList.contains('emc-boundary-glow')
               && app.getComputedStyle(glow).pointerEvents === 'none',
-            glow ? glow.getAttribute('class') : 'no hay hermano');
+            glow ? glow.getAttribute('class') : 'no sibling');
 
           // What a hand would actually hit: the topmost element at a point on
           // the membrane, with no event dispatched at anything.
@@ -923,11 +923,11 @@ try {
           ].filter(inside);
           const reached = candidates.find((p) => doc.elementFromPoint(p.x, p.y)
             ?.closest?.('[data-boundary]'));
-          check('un puntero real alcanza la membrana sobre el mapa',
+          check('a real pointer reaches the membrane on the map',
             Boolean(reached) || candidates.length === 0,
             candidates.length === 0
-              ? 'la membrana queda fuera del área visible en este arnés'
-              : (reached ? 'alcanzada' : 'ninguno de ' + candidates.length + ' puntos la alcanza'));
+              ? 'the membrane is outside the visible area in this harness'
+              : (reached ? 'reached' : 'none of ' + candidates.length + ' points reaches it'));
         }
         if (membrane) {
           const b = membrane.getBoundingClientRect();
@@ -936,18 +936,18 @@ try {
           pointer('pointerup', membrane, 104, edge);
           await tick(3);
           const handles = doc.querySelectorAll('.emc-geometry-handle').length;
-          check('pulsar la membrana selecciona el compartimento y muestra sus tiradores',
+          check('pressing the membrane selects the compartment and shows its handles',
             handles === 11,
-            handles + ' tiradores · ' + JSON.stringify(store.selectedGeometry ?? null));
+            handles + ' handles · ' + JSON.stringify(store.selectedGeometry ?? null));
 
           // The app has to say how, where the hand already is.
-          check('los tiradores dicen para qué sirven',
+          check('the handles say what they do',
             doc.querySelector('[data-geometry-handle="move"] title')?.textContent
               ?.includes('move') === true
             && doc.querySelector('[data-geometry-handle="nw"] title')?.textContent
               ?.includes('resize') === true,
-            doc.querySelector('[data-geometry-handle="move"] title')?.textContent ?? 'sin título');
-          check('el inspector explica cómo mover el compartimento',
+            doc.querySelector('[data-geometry-handle="move"] title')?.textContent ?? 'no title');
+          check('the inspector explains how to move the compartment',
             (doc.querySelector('.compartment-move-hint')?.textContent ?? '')
               .includes('centre'),
             doc.querySelector('.compartment-move-hint') ? 'presente' : 'ausente');
@@ -955,11 +955,11 @@ try {
           const mover = doc.querySelector('[data-geometry-handle="move"]');
           if (mover) {
             const diameter = Number(mover.getAttribute('r')) * 2 * camera.scale;
-            check('el tirador central también es un objetivo real',
+            check('the centre handle is a real target too',
               Math.round(diameter) >= 24, diameter.toFixed(1) + ' px');
             const corner = doc.querySelector('[data-geometry-handle="nw"]');
             const cornerPx = Number(corner.getAttribute('width')) * camera.scale;
-            check('y las esquinas igual', Math.round(cornerPx) >= 24, cornerPx.toFixed(1) + ' px');
+            check('and so are the corners', Math.round(cornerPx) >= 24, cornerPx.toFixed(1) + ' px');
             const sel = store.selectedGeometry;
             const target = store.map.geometryTarget(sel.cellId, sel.compartmentId);
             const was = { ...target.compartment.rect };
@@ -972,7 +972,7 @@ try {
             pointer('pointerup', stage, 105, to);
             await tick(2);
             const now = store.map.geometryTarget(sel.cellId, sel.compartmentId).compartment.rect;
-            check('el tirador central mueve el compartimento',
+            check('the centre handle moves the compartment',
               Math.abs(now.x - was.x) > 1 || Math.abs(now.y - was.y) > 1,
               'Δ ' + (now.x - was.x).toFixed(1) + ',' + (now.y - was.y).toFixed(1));
           }
@@ -999,7 +999,7 @@ try {
       await tick(2);
 
       for (const edge of ['left', 'top', 'right', 'bottom']) {
-        check('el lienzo ofrece un borde para agarrar: ' + edge,
+        check('the canvas offers an edge to grab: ' + edge,
           Boolean(doc.querySelector('[data-canvas-resize="' + edge + '"]')));
       }
 
@@ -1019,11 +1019,11 @@ try {
       await tick(2);
 
       const widened = store.layout.width - before.w;
-      check('arrastrar el borde izquierdo ensancha el lienzo',
-        Math.abs(widened - grow) < 2, 'Δancho ' + widened.toFixed(1));
-      check('y el dibujo se mueve con él, no se queda atrás',
+      check('dragging the left edge widens the canvas',
+        Math.abs(widened - grow) < 2, 'Δwidth ' + widened.toFixed(1));
+      check('and the drawing moves with it rather than staying behind',
         Math.abs((witness.x - before.x) - widened) < 2,
-        'Δnodo ' + (witness.x - before.x).toFixed(1) + ' vs Δancho ' + widened.toFixed(1));
+        'Δnode ' + (witness.x - before.x).toFixed(1) + ' vs Δwidth ' + widened.toFixed(1));
 
       const topEdge = doc.querySelector('[data-canvas-resize="top"]');
       const tbox = topEdge.getBoundingClientRect();
@@ -1037,9 +1037,9 @@ try {
       pointer('pointerup', stage, 96, tTo);
       await tick(2);
       const heightened = store.layout.height - hBefore;
-      check('arrastrar el borde superior estira el lienzo y arrastra el dibujo',
+      check('dragging the top edge stretches the canvas and carries the drawing',
         Math.abs(heightened - grow) < 2 && Math.abs((witness.y - yBefore) - heightened) < 2,
-        'Δalto ' + heightened.toFixed(1) + ', Δnodo ' + (witness.y - yBefore).toFixed(1));
+        'Δheight ' + heightened.toFixed(1) + ', Δnode ' + (witness.y - yBefore).toFixed(1));
     }
 
     // --- the shared medium boundary moves like a compartment ---------------
@@ -1057,7 +1057,7 @@ try {
       await tick(2);
 
       const membrane = doc.querySelector('.emc-environment-boundary');
-      check('el medio compartido dibuja una membrana que se puede agarrar', Boolean(membrane));
+      check('the shared medium draws a membrane that can be grabbed', Boolean(membrane));
       if (membrane) {
         const rect = { ...store.layout.environment.rect };
         // Press the middle of its right edge and pull it outwards.
@@ -1071,13 +1071,13 @@ try {
         pointer('pointerup', stage, 97, to);
         await tick(2);
         const now = store.layout.environment.rect;
-        check('en Select se puede arrastrar el borde del medio compartido',
+        check('in Select the shared medium edge can be dragged',
           grabbed && (Math.abs(now.w - rect.w) > 1 || Math.abs(now.x - rect.x) > 1),
-          'gesto=' + grabbed + ', Δancho ' + (now.w - rect.w).toFixed(1)
+          'gesture=' + grabbed + ', Δwidth ' + (now.w - rect.w).toFixed(1)
             + ', Δx ' + (now.x - rect.x).toFixed(1));
-        check('seleccionarlo muestra sus nueve tiradores',
+        check('selecting it shows its nine handles',
           doc.querySelectorAll('.emc-geometry-handle').length === 9,
-          doc.querySelectorAll('.emc-geometry-handle').length + ' tiradores');
+          doc.querySelectorAll('.emc-geometry-handle').length + ' handles');
       }
     }
 
@@ -1099,7 +1099,7 @@ try {
       await tick(2);
       doc.querySelector('.toolbox [data-action="tool-metabolite"]')?.click();
       await tick(2);
-      check('Add Metabolite queda como herramienta en curso',
+      check('Add Metabolite stays the current tool',
         stage.dataset.tool === 'metabolite', stage.dataset.tool);
 
       const space = doc.querySelector('[data-compartment-space]');
@@ -1112,23 +1112,23 @@ try {
       await tick(3);
 
       const menu = doc.querySelector('.add-metabolite-menu');
-      check('clicar un compartimento abre el menú de metabolitos',
+      check('clicking a compartment opens the metabolite menu',
         Boolean(menu),
-        menu ? 'abierto' : 'no abrió sobre ' + (space.dataset.compartmentSpace ?? '?')
+        menu ? 'open' : 'did not open on ' + (space.dataset.compartmentSpace ?? '?')
           + ' de ' + (space.dataset.cellSpace ?? '?')
-          + ' · la celda tiene [' + (store.map.cells.find((c) => c.id === space.dataset.cellSpace)
-            ?.compartments.map((c) => c.id).join(',') ?? 'ninguna') + ']'
-          + ' · menús presentes [' + [...doc.querySelectorAll('[class*="add-"],[class*="menu"]')]
+          + ' · the cell has [' + (store.map.cells.find((c) => c.id === space.dataset.cellSpace)
+            ?.compartments.map((c) => c.id).join(',') ?? 'none') + ']'
+          + ' · menus present [' + [...doc.querySelectorAll('[class*="add-"],[class*="menu"]')]
             .map((el) => el.className).join('|') + ']');
       const choices = menu ? menu.querySelectorAll('.add-metabolite-choice').length : 0;
-      check('el menú lista los metabolitos del compartimento', choices > 0,
-        choices + ' opciones');
+      check('the menu lists the compartment metabolites', choices > 0,
+        choices + ' options');
 
       if (menu && choices) {
         const before = store.map.nodes.size;
         menu.querySelector('.add-metabolite-choice').click();
         await tick(3);
-        check('elegir uno lo añade al mapa', store.map.nodes.size === before + 1,
+        check('choosing one adds it to the map', store.map.nodes.size === before + 1,
           before + ' -> ' + store.map.nodes.size);
       }
       doc.querySelector('.toolbox [data-action="tool-select"]')?.click();
@@ -1150,13 +1150,13 @@ try {
 
       const saved = store.mapJSON();
       const parsed = JSON.parse(saved);
-      check('el mapa guardado anota las especies y su modelo',
+      check('the saved map records the species and their models',
         parsed.metadata?.species?.length === store.species.length,
-        (parsed.metadata?.species ?? []).length + ' especies');
+        (parsed.metadata?.species ?? []).length + ' species');
 
       let reloaded = 'ok';
       try { store.loadMapJSON(saved); } catch (error) { reloaded = error.message; }
-      check('el mapa recién guardado se vuelve a cargar', reloaded === 'ok', reloaded);
+      check('the map just saved loads again', reloaded === 'ok', reloaded);
 
       // The same drawing as the single-file build would have written it: the
       // runtime there resolves each member to its map excerpt, not its model.
@@ -1168,18 +1168,18 @@ try {
       let crossBuild = 'ok';
       try { store.loadMapJSON(JSON.stringify(asStandalone)); }
       catch (error) { crossBuild = error.message; }
-      check('un mapa guardado en el archivo único se carga en la app servida',
+      check('a map saved in the single file loads in the served app',
         crossBuild === 'ok', crossBuild);
 
       // And a map from another community is still refused.
       const foreign = JSON.parse(saved);
       foreign.metadata.species = foreign.metadata.species.map((sp) => ({
-        ...sp, model: String(sp.model).replace(reproduced.id, 'otra-comunidad'),
+        ...sp, model: String(sp.model).replace(reproduced.id, 'another-community'),
       }));
-      let refused = 'se aceptó, y no debía';
+      let refused = 'accepted, and it should not have been';
       try { store.loadMapJSON(JSON.stringify(foreign)); }
-      catch (error) { refused = 'rechazado'; }
-      check('un mapa de otra comunidad sigue rechazándose', refused === 'rechazado', refused);
+      catch (error) { refused = 'refused'; }
+      check('a map of another community is still refused', refused === 'refused', refused);
     }
 
     // The central Scenario workspace is the public route to the catalogue.
@@ -1190,7 +1190,7 @@ try {
     // --- scenario & objective: one card, one list -------------------------
     const scCard = [...doc.querySelectorAll('.card')]
       .find((el) => el.querySelector('.sc-scenario h2')?.textContent.trim() === 'Scenario');
-    check('Scenario y Objective viven en una sola tarjeta', Boolean(scCard)
+    check('Scenario and Objective share one card', Boolean(scCard)
       && scCard.querySelector('.sc-objective h2')?.textContent.trim() === 'Objective');
 
     if (scCard) {
@@ -1304,12 +1304,12 @@ try {
 
       const select = scCard.querySelector('select[data-action="scenario"]');
       const groups = [...select.querySelectorAll('optgroup')].map((g) => g.label);
-      check('una sola lista con las publicadas primero y las de juguete después',
-        groups[0] === 'Published communities' && groups[1] === 'Teaching scenarios',
+      check('one list with the case studies first and the example drafts after',
+        groups[0] === 'Explore Coxeter’s capabilities' && groups[1] === 'Example drafts',
         groups.join(' | '));
-      check('la lista contiene todas las comunidades',
+      check('the list holds every community',
         select.options.length === registry.length + app.escherMCMC.store.scenarios.length,
-        select.options.length + ' opciones');
+        select.options.length + ' options');
 
       /*
        * Every reproduced community, not the first one found. The two differ in
@@ -1321,29 +1321,29 @@ try {
       for (const reproduced of registry.filter((c) => c.reproduction.status === 'reproduced'
         && c.computed?.sweep?.length)) {
       const text = await choose('pub:' + reproduced.id);
-      check(reproduced.id + ': carga en un tiempo razonable',
+      check(reproduced.id + ': loads in a reasonable time',
         app.__chooseMs < 40000, app.__chooseMs + ' ms');
-      check(reproduced.id + ': muestra su paper y su µ calculado',
+      check(reproduced.id + ': shows its paper and its computed µ',
         text.includes(reproduced.paper.title.slice(0, 40))
           && text.includes('Reproduced'),
         reproduced.id);
-      check('mantiene las etiquetas de framework y estado',
+      check('it keeps the framework and status tags',
         scNow().querySelectorAll('.pc-head .chip').length === 2);
       {
         const listText = scNow().querySelector('.pc-species-list')?.textContent ?? '';
         const missing = reproduced.species.filter((sp) => !listText.includes(sp.organism));
         const abbreviated = reproduced.species
           .filter((sp) => sp.organism !== sp.name && listText.includes(sp.name));
-        check('lista cada especie por su nombre completo, una sola vez',
+        check('it lists each species by its full name, once',
           missing.length === 0 && abbreviated.length === 0,
-          missing.length ? 'falta ' + missing.map((s) => s.organism).join(', ')
-            : (abbreviated.length ? 'abreviado ' + abbreviated.map((s) => s.name).join(', ')
-              : reproduced.species.length + ' especies'));
+          missing.length ? 'missing ' + missing.map((s) => s.organism).join(', ')
+            : (abbreviated.length ? 'abbreviated ' + abbreviated.map((s) => s.name).join(', ')
+              : reproduced.species.length + ' species'));
       }
-      check('no repite el nombre ni arrastra la descripción de cada especie',
+      check('it does not repeat the name or carry each species description',
         scNow().querySelectorAll('.pc-species .pc-organism').length === 0
           && scNow().querySelectorAll('.pc-species .pc-role').length === 0);
-      check('cada especie ofrece su modelo en JSON y en SBML',
+      check('each species offers its model in JSON and SBML',
         scNow().querySelectorAll('.pc-species a.pc-dl[download]').length === reproduced.species.length
           && scNow().querySelectorAll('.pc-species button[data-action="download-member-sbml"]').length
             === reproduced.species.length,
@@ -1355,46 +1355,46 @@ try {
         const link = scNow().querySelector('.pc-species a.pc-dl[download]');
         const href = new URL(link.getAttribute('href'), doc.baseURI).href;
         const res = await fetch(href);
-        check('el enlace de descarga del modelo responde de verdad',
+        check('the model download link really answers',
           res.ok && (await res.json()).reactions?.length > 0,
           new URL(href).pathname + ' ' + res.status);
       }
       // Scoped to the species rows: "Model provenance" names the source file
       // legitimately, and the instruction was about the chip beside each species.
-      check('ya no muestra el identificador del archivo de modelo junto a cada especie',
+      check('it no longer shows the model file id beside each species',
         !(scNow().querySelector('.pc-species-list')?.textContent ?? '').includes('model9'),
-        'sin "model9" en la lista de especies');
-      check('ofrece medio y bounds como descarga',
+        'no "model9" in the species list');
+      check('it offers medium and bounds as downloads',
         scNow().querySelectorAll('.pc-downloads a.pc-dl[download]').length === 2);
       // Scoped to Conditions: those four were prose copies of the bounds file.
       // The findings below may still state the total biomass the paper fixes.
-      check('Conditions ya no lista maintenance, secretion, total biomass ni figure 4',
+      check('Conditions no longer lists maintenance, secretion, total biomass or figure 4',
         !/Maintenance|Secretion|Total biomass|Figure 4 experiment/
           .test(scNow().querySelector('.pc-downloads')?.textContent ?? ''));
-      check('ya no hay sección de metabolitos intercambiados',
+      check('there is no exchanged metabolites section any more',
         !text.includes('Exchanged metabolites'));
-      check('los resultados traen la figura del barrido, no sólo texto',
+      check('the results bring the sweep figure, not only text',
         scNow().querySelectorAll('.pc-figure svg').length === 2
           && scNow().querySelector('.pc-legend') !== null,
         scNow().querySelectorAll('.pc-figure svg').length + ' paneles');
-      check('la figura conserva la tabla como vista alternativa',
+      check('the figure keeps the table as an alternative view',
         scNow().querySelector('.pc-figure-table table.pc-sweep') !== null);
-      check('los hallazgos y la procedencia siguen presentes',
+      check('the findings and the provenance are still there',
         text.includes('Reproduced paper findings')
           && text.includes('Adaptations and assumptions')
           && text.includes('Model provenance'));
-      check('los hallazgos se pueden descargar',
+      check('the findings can be downloaded',
         scNow().querySelector('button.pc-dl[data-action="download-findings"]') !== null);
 
       // Selecting a published community has to load its map, not just its text.
       const store = app.escherMCMC.store;
-      check('seleccionar una comunidad publicada carga su mapa',
+      check('selecting a published community loads its map',
         store.species.length === reproduced.species.length
           && store.layout?.cells?.length === reproduced.species.length,
-        store.species.length + ' especies, ' + (store.layout?.cells?.length ?? 0) + ' células'
-          + ' · estado ' + store.status.state + ': ' + store.status.message
-          + (app.__rebuildError ? ' · RECHAZO ' + app.__rebuildError.slice(0, 220) : '')
-          + ' · archivos ' + store.species.map((sp) => sp.file.split('/').pop()).join(','));
+        store.species.length + ' species, ' + (store.layout?.cells?.length ?? 0) + ' cells'
+          + ' · status ' + store.status.state + ': ' + store.status.message
+          + (app.__rebuildError ? ' · REFUSED ' + app.__rebuildError.slice(0, 220) : '')
+          + ' · files ' + store.species.map((sp) => sp.file.split('/').pop()).join(','));
       // A map excerpt must leave the complete biological models available.
       {
         const manifest = await store.publishedManifest(reproduced.id);
@@ -1410,14 +1410,14 @@ try {
       const unverified = registry.find((c) => c.paper.doiVerifiedFrom === null);
       if (unverified) {
         await choose('pub:' + unverified.id);
-        check('una cita sin verificar se marca como tal',
+        check('an unverified citation is marked as such',
           scNow().querySelector('.pc-unverified') !== null, unverified.paper.doi);
       }
 
       // And the teaching scenarios still load from the same list.
       const teaching = app.escherMCMC.store.scenarios[0];
       await choose('sc:' + teaching.id);
-      check('un escenario de juguete sigue cargando desde la misma lista',
+      check('an example draft still loads from the same list',
         app.escherMCMC.store.scenario?.id === teaching.id
           && app.escherMCMC.store.solution?.status === 'optimal',
         teaching.name + ' · µ = ' + app.escherMCMC.store.solution?.objectiveValue?.toFixed(5));
@@ -1482,7 +1482,7 @@ try {
     await new Promise((done) => setTimeout(done, 250));
     const lightSample = sample();
     const darkToggle = doc.querySelector('[data-action="toggle-theme"]');
-    check('la interfaz ofrece un conmutador de tema', Boolean(darkToggle));
+    check('the interface offers a theme switch', Boolean(darkToggle));
 
     if (darkToggle) {
       darkToggle.click();
@@ -1499,12 +1499,12 @@ try {
       await tick(2);
       await new Promise((done) => setTimeout(done, 250));
       await tick(2);
-      check('el tema oscuro queda activo en <html>',
+      check('the dark theme is set on <html>',
         doc.documentElement.dataset.theme === 'dark', doc.documentElement.dataset.theme);
 
       const darkSample = sample();
       const missing = darkSample.filter((x) => x.missing).map((x) => x.sel);
-      check('todas las partes de la cáscara están en el DOM', missing.length === 0, missing.join(' '));
+      check('every part of the shell is in the DOM', missing.length === 0, missing.join(' '));
 
       // Every surface has to actually change: one that stayed put is one still
       // painted with a light-theme literal.
@@ -1512,39 +1512,39 @@ try {
       // worst-contrast one may not be the same element in both.
       const unchanged = darkSample.filter((d, i) => !d.missing && !lightSample[i].missing
         && d.first.bg === lightSample[i].first.bg).map((d) => d.sel);
-      check('cada superficie cambia de color al oscuro', unchanged.length === 0,
-        unchanged.length ? 'sin cambiar: ' + unchanged.join(' ') : 'las ' + darkSample.length + ' cambian');
+      check('each surface changes colour in dark mode', unchanged.length === 0,
+        unchanged.length ? 'unchanged: ' + unchanged.join(' ') : 'all ' + darkSample.length + ' change');
 
       const poor = darkSample.filter((d) => !d.missing && contrast(d.fg, d.bg) < d.min)
         .map((d) => `${d.sel} ${contrast(d.fg, d.bg).toFixed(2)}:1 < ${d.min}`
-          + ` (${d.fg} on ${d.bg}) peor de ${d.count}: ${d.what}`);
+          + ` (${d.fg} on ${d.bg}) worst of ${d.count}: ${d.what}`);
       // On success this reports the thinnest margin rather than "all fine": a part
       // sitting at 3.02:1 passes, and whoever reads the log should see that it is
       // one rounding away from not passing.
       const margins = darkSample.filter((d) => !d.missing)
         .map((d) => ({ sel: d.sel, what: d.what, over: contrast(d.fg, d.bg) / d.min }))
         .sort((a, b) => a.over - b.over);
-      check('el contraste en oscuro cumple el mínimo en cada parte', poor.length === 0,
+      check('dark mode contrast meets the minimum everywhere', poor.length === 0,
         poor.length ? poor.join(' · ')
-          : `${darkSample.length} selectores, el margen más justo ${margins[0].sel}`
+          : `${darkSample.length} selectors, tightest margin ${margins[0].sel}`
             + ` ×${margins[0].over.toFixed(2)} (${margins[0].what})`);
 
       // The analyses have to keep working with the theme flipped, since the map
       // renderer takes `dark` and recolours from it.
       await store.useScenario(store.scenarios[0].id);
-      check('el análisis sigue resolviendo en oscuro',
+      check('the analysis still solves in dark mode',
         store.solution?.status === 'optimal',
         'µ = ' + store.solution?.objectiveValue?.toFixed(5));
-      check('el mapa se redibuja en oscuro',
+      check('the map is redrawn in dark mode',
         doc.querySelector('svg.emc-map.emc-dark') !== null
           || doc.querySelectorAll('[data-rxn]').length > 0,
-        doc.querySelectorAll('[data-rxn]').length + ' reacciones dibujadas');
+        doc.querySelectorAll('[data-rxn]').length + ' reactions drawn');
 
       // Reloading the scenario above re-rendered the sidebar, so the handle taken
       // before it is detached and clicking it does nothing. Look it up again.
       doc.querySelector('[data-action="toggle-theme"]')?.click();
       await tick(2);
-      check('se puede volver al tema claro',
+      check('the light theme can be restored',
         doc.documentElement.dataset.theme === 'light', doc.documentElement.dataset.theme);
     }
 
@@ -1565,10 +1565,10 @@ try {
       let opened = 'ok';
       try { await appStore.loadMapDocument(saved); } catch (error) { opened = error.message; }
       await tick(2);
-      check('un mapa guardado en otro escenario se abre volviendo a él',
+      check('a map saved in another scenario opens by going back to it',
         opened === 'ok' && appStore.scenario.id === `published:${reproduced.id}`
           && appStore.map.reactions.size === drawn,
-        `${opened} · ${appStore.scenario.id} · ${appStore.map.reactions.size}/${drawn} reacciones`);
+        `${opened} · ${appStore.scenario.id} · ${appStore.map.reactions.size}/${drawn} reactions`);
 
       // A map whose context is absent waits for its model without replacing the drawing.
       const gone = JSON.parse(saved);
@@ -1589,35 +1589,35 @@ try {
         .find((c) => c.id === 'steadycom-ecoli-auxotrophs');
       await appStore.usePublishedCommunity(curated.id);
       await tick(3);
-      check('el resumen curado rotula los metabolitos con anotaciones',
-        appStore.map.texts.size > 0, `${appStore.map.texts.size} anotaciones`);
+      check('the curated overview labels metabolites with annotations',
+        appStore.map.texts.size > 0, `${appStore.map.texts.size} annotations`);
 
       const cell = appStore.map.cells[0];
       const r = cell.compartments[0].rect;
       const rect = { x1: r.x - 200, y1: r.y - 200, x2: r.x + r.w + 200, y2: r.y + r.h + 200 };
       const selection = appStore.selectInRect(rect);
       await tick(2);
-      check('el rectángulo de selección atrapa las anotaciones',
+      check('the selection rectangle catches the annotations',
         selection.texts.size > 0,
-        `${selection.reactions.size} reacciones, ${selection.nodes.size} metabolitos, ${selection.texts.size} nombres`);
-      check('y se ven seleccionadas en el mapa',
+        `${selection.reactions.size} reactions, ${selection.nodes.size} metabolites, ${selection.texts.size} names`);
+      check('and they show as selected on the map',
         doc.querySelectorAll('.emc-map-text-selected').length === selection.texts.size,
-        `${doc.querySelectorAll('.emc-map-text-selected').length} resaltadas`);
+        `${doc.querySelectorAll('.emc-map-text-selected').length} highlighted`);
 
       const textsBefore = appStore.map.texts.size;
       const caught = selection.texts.size;
       doc.body.dispatchEvent(new app.KeyboardEvent('keydown', { key: 'Delete', bubbles: true }));
       await tick(3);
-      check('Suprimir borra los nombres junto con la vía',
+      check('Delete removes the names along with the pathway',
         appStore.map.texts.size === textsBefore - caught,
-        `quedaban ${textsBefore}, quedan ${appStore.map.texts.size}, esperadas ${textsBefore - caught}`);
-      check('y ya no quedan rótulos huérfanos en el DOM',
+        `${textsBefore} before, ${appStore.map.texts.size} left, ${textsBefore - caught} expected`);
+      check('and no orphan labels are left in the DOM',
         doc.querySelectorAll('[data-map-text]').length === appStore.map.texts.size,
-        `${doc.querySelectorAll('[data-map-text]').length} en pantalla`);
+        `${doc.querySelectorAll('[data-map-text]').length} on screen`);
 
       appStore.undoMap();
       await tick(2);
-      check('deshacer devuelve los nombres', appStore.map.texts.size === textsBefore,
+      check('undo brings the names back', appStore.map.texts.size === textsBefore,
         `${appStore.map.texts.size}`);
     }
 
@@ -1627,11 +1627,11 @@ try {
       await appStore.usePublishedCommunity('steadycom-ecoli-auxotrophs');
       await tick(2);
       const support = appStore.steadyComSupport();
-      check('la comunidad SteadyCom se puede resolver aquí', support.supported, support.reason);
+      check('the SteadyCom community can be solved here', support.supported, support.reason);
 
       if (support.supported) {
         const range = await appStore.steadyComRange();
-        check('el rango admisible de µ llega al valor del paper',
+        check('the admissible µ range reaches the paper value',
           Math.abs(range.max - 0.73599) < 1e-4,
           `0 .. ${range.max} (${range.source})`);
 
@@ -1640,17 +1640,17 @@ try {
         const mu = range.max / 2;
         const t0 = Date.now();
         const state = await appStore.solveSteadyComAt(mu);
-        check('se resuelve a un µ fijo dentro del rango', state.feasible === true,
-          `µ = ${mu.toFixed(5)} en ${Date.now() - t0} ms`);
+        check('it solves at a fixed µ inside the range', state.feasible === true,
+          `µ = ${mu.toFixed(5)} in ${Date.now() - t0} ms`);
 
         // The invariant the map is labelled with: V/X back to the chosen rate.
         const rates = [...appStore.community.biomassIds]
           .map(([sp, rid]) => [sp, appStore.solution?.fluxes?.get(rid) ?? 0]);
-        check('cada miembro crece exactamente al µ elegido',
+        check('each member grows at exactly the chosen µ',
           rates.every(([, v]) => Math.abs(v - mu) < 1e-6),
           rates.map(([sp, v]) => `${sp}=${v.toFixed(5)}`).join(' '));
 
-        check('las abundancias salen del solver, no de un deslizador',
+        check('the abundances come from the solver, not a slider',
           state.abundances.size === 4
             && Math.abs([...state.abundances.values()].reduce((a, b) => a + b, 0) - 1) < 1e-6,
           [...state.abundances].map(([k, v]) => `${k} ${(100 * v).toFixed(1)}%`).join(' '));
@@ -1658,9 +1658,9 @@ try {
         // And the composition at this rate is not the one recorded at the top.
         const recorded = (appStore.publishedCommunities ?? [])
           .find((c) => c.id === 'steadycom-ecoli-auxotrophs')?.computed?.abundances ?? {};
-        check('a otro µ, otra composición',
+        check('another µ gives another composition',
           [...state.abundances].some(([id, x]) => Math.abs(x - (recorded[id] ?? 0)) > 0.01),
-          `Ec1 ${(100 * state.abundances.get('Ec1')).toFixed(1)}% frente a ${(100 * (recorded.Ec1 ?? 0)).toFixed(1)}% en el máximo`);
+          `Ec1 ${(100 * state.abundances.get('Ec1')).toFixed(1)}% against ${(100 * (recorded.Ec1 ?? 0)).toFixed(1)}% at the maximum`);
 
         // The control, in the Scenario workspace where the card lives.
         doc.querySelector('[data-action="left-tab"][data-tab="model"]')?.click();
@@ -1670,10 +1670,10 @@ try {
         const card = doc.querySelector('.pc-detail');
         const slider = doc.querySelector('[data-action="steadycom-mu"]');
         const box = doc.querySelector('[data-action="steadycom-mu-number"]');
-        check('la ficha trae el control de µ', Boolean(slider && box)
+        check('the panel has the µ control', Boolean(slider && box)
           && Math.abs(Number(slider?.max) - range.max) < 1e-9,
           `deslizador 0 .. ${slider?.max}`);
-        check('la ficha dice el rango y la composición obtenida',
+        check('the panel states the range and the composition found',
           /Calculated µ range/.test(card?.textContent ?? '') && /Composition at/.test(card?.textContent ?? ''),
           (card?.textContent ?? '').replace(/\s+/g, ' ').match(/Calculated µ range[^·]*/)?.[0]?.slice(0, 60));
 
@@ -1681,7 +1681,7 @@ try {
         slider.value = String(range.max / 4);
         slider.dispatchEvent(new app.Event('input', { bubbles: true }));
         await tick();
-        check('el deslizador y la casilla van juntos',
+        check('the slider and the box move together',
           Math.abs(Number(box.value) - range.max / 4) < 1e-5, `${box.value}`);
 
         doc.querySelector('[data-action="close-workspace"]')?.click();
@@ -1695,10 +1695,10 @@ try {
       const text = await (await fetch('../models/ecoli_core_mc.json')).text();
       await appStore.importModelFiles([{ name: 'ecoli_core_mc.json', text }]);
       await tick(3);
-      check('subir un modelo lo dibuja, no deja la célula vacía',
+      check('uploading a model draws it rather than leaving the cell empty',
         appStore.map.reactions.size > 50 && doc.querySelectorAll('[data-rxn]').length > 0,
-        `${appStore.map.reactions.size} reacciones, ${doc.querySelectorAll('[data-rxn]').length} en el DOM`);
-      check('con el modelo dibujado no aparece el cartel de lienzo vacío',
+        `${appStore.map.reactions.size} reactions, ${doc.querySelectorAll('[data-rxn]').length} in the DOM`);
+      check('with the model drawn the empty canvas notice does not show',
         doc.querySelector('.stage-empty') === null);
 
       // Too big to lay out: the drawing shell is all there is, and that is the
@@ -1714,14 +1714,14 @@ try {
       }
       reactions.push({ id: 'BIOMASS', name: 'Biomass', metabolites: { m599_c: -1 },
         lower_bound: 0, upper_bound: 1000, objective_coefficient: 1 });
-      await appStore.importModelFiles([{ name: 'grande.json',
-        text: JSON.stringify({ id: 'grande', compartments: { c: 'Cytosol' }, metabolites, reactions }) }]);
+      await appStore.importModelFiles([{ name: 'large.json',
+        text: JSON.stringify({ id: 'large', compartments: { c: 'Cytosol' }, metabolites, reactions }) }]);
       await tick(3);
       const card = doc.querySelector('.stage-empty');
-      check('una cáscara sin nada dentro explica qué hacer',
+      check('an empty shell explains what to do',
         Boolean(card) && appStore.map.cells.length > 0 && appStore.map.reactions.size === 0,
-        card ? card.querySelector('h2')?.textContent : 'sin cartel');
-      check('y el estado dice por qué quedó vacío',
+        card ? card.querySelector('h2')?.textContent : 'no card');
+      check('and the status says why it is empty',
         /too large to lay out/.test(appStore.status.message), appStore.status.message.slice(-80));
 
       const uploads = [];
@@ -1754,8 +1754,8 @@ try {
       // A machine with no route to it cannot run that check, and saying so is
       // not the same as the scenario being broken — but it is also not a pass,
       // so it is reported rather than skipped silently.
-      log('info', `escenario "${scenario.name}": no se pudo cargar (${error.message}).`
-        + ' Si descarga su modelo de la red, este entorno no la alcanza.');
+      log('info', `scenario "${scenario.name}": could not load (${error.message}).`
+        + ' If it downloads its model from the network, this environment cannot reach it.');
       continue;
     }
     if (scenario.loader === 'yeast9') {
@@ -1763,7 +1763,7 @@ try {
         Boolean(store.problem) && store.solution === null && store.map?.reactions.size > 0,
         `${store.community?.merged.reactions.size} reactions, ${store.map?.reactions.size} drawn`);
     } else {
-      check(`escenario "${scenario.name}"`, store.solution?.status === 'optimal',
+      check(`scenario "${scenario.name}"`, store.solution?.status === 'optimal',
         `µ = ${store.solution?.objectiveValue?.toFixed(5)}, LP ${store.status.solveMs} ms, layout ${store.status.layoutMs} ms`);
     }
   }
@@ -1771,11 +1771,11 @@ try {
 } catch (error) {
   failures += 1;
   totalChecks += 1;
-  log('fail', `EXCEPCIÓN: ${error.message}`);
+  log('fail', `EXCEPTION: ${error.message}`);
   log('info', String(error.stack).split('\n').slice(0, 6).join('<br>'));
 }
 
-log(failures ? 'fail' : 'pass', `\n${failures ? `${failures} comprobaciones fallaron` : 'todas las comprobaciones pasaron'}`);
+log(failures ? 'fail' : 'pass', `\n${failures ? `${failures} checks failed` : 'all checks passed'}`);
 document.title = failures ? `FAIL (${failures})` : 'PASS';
 
 // Hand the result to tools/browser-run.mjs, which drives this page over the

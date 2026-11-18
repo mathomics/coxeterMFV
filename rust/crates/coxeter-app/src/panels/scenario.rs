@@ -226,29 +226,66 @@ pub fn scenario_card(ui: &mut Ui, shell: &mut Shell) {
     });
 }
 
+/// The scenario list (`SCENARIO_MENU`), as `(value, label)` pairs in two
+/// groups. The first holds the paper's case studies, which show what
+/// Coxeter-MFV can do, and the second smaller drafts to start from. Each group
+/// runs from the least to the most complex: one cell first, then communities
+/// of more members, and among communities of the same size the one with fewer
+/// reactions first. A value is `sc:<scenario id>` or `pub:<published community
+/// id>`, the same values the welcome page and `?scenario=` links use. Labels
+/// stay short enough for the list's width on a phone.
+const SCENARIO_MENU: [(&str, &[(&str, &str)]); 2] = [
+    ("Explore Coxeter’s capabilities", &[
+        ("sc:yeast9-9-1-1", "Explore Yeast9 9.1.1 nested compartments"),
+        ("pub:zuniga-2020-phea-rescue", "Explore a 2-species phenylalanine rescue"),
+        ("pub:steadycom-ecoli-auxotrophs", "Explore 4 auxotrophic E. coli strains"),
+        ("pub:steadycom-gut-nine", "Explore a 9-species gut community"),
+    ]),
+    ("Example drafts", &[
+        ("sc:single-ecoli", "Example: a single E. coli cell"),
+        ("sc:methanogen-digester", "Example: E. coli + methanogen digester"),
+        ("sc:aerobic-coculture", "Example: E. coli + yeast, low oxygen"),
+        ("pub:stolyar-2007-syntrophy", "Example: Methanococcus mutualism"),
+        ("sc:phototroph-heterotroph", "Example: phototroph + 2 heterotrophs"),
+        ("sc:anaerobic-consortium", "Example: 4-species anaerobic consortium"),
+        ("sc:all-species", "Example: all 5 species in one medium"),
+    ]),
+];
+
 /// The catalogue choices, including the current imported model when it is unlisted.
 fn scenario_groups(store: &Store, active: &str) -> Vec<(String, Vec<(String, String)>)> {
-    let published: Vec<(String, String)> = store
-        .published_communities
-        .iter()
-        .map(|c| {
-            let reproduced = c.pointer("/reproduction/status").and_then(Value::as_str) == Some("reproduced");
-            let mark = if reproduced { "✓" } else { "—" };
-            (format!("pub:{}", text_of(c.get("id"))), format!("{mark} {}", text_of(c.get("name"))))
-        })
-        .collect();
-    let teaching: Vec<(String, String)> =
-        store.scenarios.iter().map(|sc| (format!("sc:{}", text_of(sc.get("id"))), text_of(sc.get("name")))).collect();
-    let listed = published.iter().any(|(value, _)| value == active) || teaching.iter().any(|(value, _)| value == active);
+    // The menu entries whose scenario is in the catalogue
+    let available = |value: &str| {
+        if let Some(id) = value.strip_prefix("pub:") {
+            store.published_communities.iter().any(|c| text_of(c.get("id")) == id)
+        } else {
+            let id = value.strip_prefix("sc:").unwrap_or(value);
+            store.scenarios.iter().any(|sc| text_of(sc.get("id")) == id)
+        }
+    };
+    let mut listed = false;
+    let mut menu = Vec::new();
+    for (label, entries) in SCENARIO_MENU {
+        let mut options = Vec::new();
+        for (value, text) in entries {
+            if !available(value) {
+                continue;
+            }
+            if *value == active {
+                listed = true;
+            }
+            options.push((value.to_string(), text.to_string()));
+        }
+        if !options.is_empty() {
+            menu.push((label.to_string(), options));
+        }
+    }
     let mut groups = Vec::new();
     if !active.is_empty() && !listed {
         let name = store.scenario_str("name").unwrap_or_else(|| "Current model".into());
         groups.push(("Current model".to_string(), vec![(active.to_string(), name)]));
     }
-    if !published.is_empty() {
-        groups.push(("Published communities".to_string(), published));
-    }
-    groups.push(("Teaching scenarios".to_string(), teaching));
+    groups.extend(menu);
     groups
 }
 
@@ -1513,7 +1550,7 @@ mod fva_progress_tests {
     fn a_partial_variability_count_is_labelled_incomplete_in_the_scenario_workspace() {
         let mut store = Store::with_dir(coxeter_core::testkit::repo_root());
         store.init().expect("bundled models");
-        store.use_scenario("solo-ecoli").expect("scenario");
+        store.use_scenario("single-ecoli").expect("scenario");
         store.run_analysis_blocking("fva", std::time::Duration::from_secs(20)).expect("complete ranges");
         store.fva_ranges.truncate(20);
         store.fva_progress.done = 20;
@@ -1547,7 +1584,7 @@ mod tests {
     fn the_scenario_chooser_selects_an_imported_bundle_that_has_no_catalogue_entry() {
         let mut store = Store::with_dir(coxeter_core::testkit::repo_root());
         store.init().expect("bundled models");
-        store.use_scenario("solo-ecoli").expect("scenario");
+        store.use_scenario("single-ecoli").expect("scenario");
         let bundle = store.reproducibility_bundle().expect("bundle");
         store.import_reproducibility_bundle(&bundle).expect("import bundle");
         let mut shell = Shell::new(store, Box::new(ScriptedDialogs::new()));
@@ -1562,5 +1599,45 @@ mod tests {
         shell.close_workspace();
         assert_eq!(shell.store.state_value(), before);
         assert!(std::sync::Arc::ptr_eq(shell.store.solution.as_ref().expect("solution"), &solution));
+    }
+
+    #[test]
+    fn the_scenario_list_shows_the_case_studies_then_the_drafts_each_from_one_cell_to_the_largest_community() {
+        let mut store = Store::with_dir(coxeter_core::testkit::repo_root());
+        store.init().expect("bundled models");
+        store.use_scenario("single-ecoli").expect("scenario");
+        let groups = scenario_groups(&store, "sc:single-ecoli");
+        let labels: Vec<&str> = groups.iter().map(|(label, _)| label.as_str()).collect();
+        assert_eq!(labels, ["Explore Coxeter’s capabilities", "Example drafts"]);
+        let mut values = Vec::new();
+        for (_, options) in &groups {
+            for (value, _) in options {
+                values.push(value.clone());
+            }
+        }
+        assert_eq!(values, [
+            "sc:yeast9-9-1-1",
+            "pub:zuniga-2020-phea-rescue",
+            "pub:steadycom-ecoli-auxotrophs",
+            "pub:steadycom-gut-nine",
+            "sc:single-ecoli",
+            "sc:methanogen-digester",
+            "sc:aerobic-coculture",
+            "pub:stolyar-2007-syntrophy",
+            "sc:phototroph-heterotroph",
+            "sc:anaerobic-consortium",
+            "sc:all-species",
+        ]);
+        let mut catalogued = Vec::new();
+        for scenario in &store.scenarios {
+            catalogued.push(format!("sc:{}", text_of(scenario.get("id"))));
+        }
+        for community in &store.published_communities {
+            catalogued.push(format!("pub:{}", text_of(community.get("id"))));
+        }
+        catalogued.sort();
+        values.sort();
+        assert_eq!(values, catalogued);
+        assert_eq!(groups[1].1[0], ("sc:single-ecoli".to_string(), "Example: a single E. coli cell".to_string()));
     }
 }

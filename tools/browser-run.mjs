@@ -15,6 +15,7 @@ import { mkdir, mkdtemp, rm } from 'node:fs/promises';
 import { dirname, join, resolve, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { setTimeout as delay } from 'node:timers/promises';
+import { closeBrowser } from './lib/chromium.mjs';
 
 const CHROME_CANDIDATES = [
   process.env.CHROME_PATH,
@@ -60,8 +61,8 @@ try {
   const probe = await fetch(`${base}/models/index.json`, { signal: AbortSignal.timeout(4000) });
   if (!probe.ok) throw new Error(`HTTP ${probe.status}`);
 } catch (error) {
-  console.error(`No se pudo alcanzar ${base} (${error.message}).`);
-  console.error('Arranca el servidor primero:  node tools/serve.mjs');
+  console.error(`Could not reach ${base} (${error.message}).`);
+  console.error('Start the server first:  node tools/serve.mjs');
   process.exit(2);
 }
 
@@ -99,6 +100,7 @@ try {
   exitCode = 2;
 } finally {
   if (!args.keep) {
+    await closeBrowser(port);
     browser.kill('SIGTERM');
     // Windows may release the profile files a little after the process exits.
     await Promise.race([
@@ -119,7 +121,11 @@ async function openTarget(url) {
   // Wait for the debugging endpoint to come up.
   for (let attempt = 0; attempt < 100; attempt++) {
     if (launchError) throw launchError;
-    if (browser.exitCode !== null) throw new Error(`Browser exited before opening its debugging port (${browser.exitCode}).`);
+    // On Windows the launcher exits with 0 once it has handed over to the
+    // browser, so only a failed exit means the browser is gone.
+    if (browser.exitCode !== null && browser.exitCode !== 0) {
+      throw new Error(`Browser exited before opening its debugging port (${browser.exitCode}).`);
+    }
     try {
       const res = await fetch(`http://127.0.0.1:${port}/json/new?${encodeURIComponent(url)}`, {
         method: 'PUT',
@@ -209,9 +215,9 @@ function drive(wsUrl) {
         value.total += 1;
         if (consoleErrors.length) {
           value.failures += 1;
-          value.lines.push(`FAIL  consola del navegador sin errores  — ${consoleErrors.join(' | ')}`);
+          value.lines.push(`FAIL  no errors in the browser console  — ${consoleErrors.join(' | ')}`);
         } else {
-          value.lines.push('OK    consola del navegador sin errores');
+          value.lines.push('OK    no errors in the browser console');
         }
         resolve(value);
       } catch (error) {

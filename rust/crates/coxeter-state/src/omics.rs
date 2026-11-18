@@ -821,7 +821,7 @@ mod analysis_transition_tests {
             }
         }
         store.models.insert("ecoli_core_mc", Model::from_value(&raw).expect("annotated model"));
-        store.use_scenario("solo-ecoli").expect("scenario");
+        store.use_scenario("single-ecoli").expect("scenario");
         store.import_metatranscriptomics(
             "MAG,gene,condition,TPM\neco,test_gap,Control,1\neco,test_pgi,Control,8\neco,test_gap,Treatment,8\neco,test_pgi,Treatment,1\n", "test-genes.csv",
         ).expect("expression");

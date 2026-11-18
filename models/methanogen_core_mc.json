@@ -214,7 +214,7 @@
     },
     {
       "id": "PTAr",
-      "name": "Fosfotransacetilasa",
+      "name": "Phosphotransacetylase",
       "metabolites": {
         "accoa_c": -1,
         "pi_c": -1,
@@ -337,7 +337,7 @@
     },
     {
       "id": "ACt",
-      "name": "Simporte acetato/H+",
+      "name": "Acetate/H+ symporter",
       "metabolites": {
         "ac_e": -1,
         "h_e": -1,
@@ -403,7 +403,7 @@
     },
     {
       "id": "H2Ot",
-      "name": "Agua",
+      "name": "Water",
       "metabolites": {
         "h2o_e": -1,
         "h2o_c": 1
@@ -435,7 +435,7 @@
     },
     {
       "id": "PIt",
-      "name": "Fosfato",
+      "name": "Phosphate",
       "metabolites": {
         "pi_e": -1,
         "pi_c": 1

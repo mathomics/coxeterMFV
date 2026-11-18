@@ -911,7 +911,7 @@ mod private_context_tests {
         assets.insert(format!("models/published/{ZUNIGA_ID}/map.json"), map.to_string().into_bytes());
         let mut store = Store::new(assets);
         store.init().expect("bundled models");
-        store.use_scenario("solo-ecoli").expect("ordinary scenario");
+        store.use_scenario("single-ecoli").expect("ordinary scenario");
         store.published_manifests.insert(ZUNIGA_ID.into(), Some(study.manifest));
         store
     }
@@ -995,7 +995,7 @@ mod private_context_tests {
         }
         assert!(Arc::ptr_eq(store.solution.as_ref().expect("retained result"), &solution));
         assert!(!store.status().message.contains("Late private"));
-        assert_eq!(store.scenario_id().as_deref(), Some("solo-ecoli"));
+        assert_eq!(store.scenario_id().as_deref(), Some("single-ecoli"));
         assert!(!active, "a retired private download remained active");
         assert!(export.is_ok(), "a retired private download blocked export of the ordinary context");
     }
@@ -1014,7 +1014,7 @@ mod private_context_tests {
             assert!(store.load_state(&state.to_string()).is_err());
             assert_eq!(downloads.load(Ordering::SeqCst), 0);
             assert!(Arc::ptr_eq(store.solution.as_ref().expect("retained result"), &solution));
-            assert_eq!(store.scenario_id().as_deref(), Some("solo-ecoli"));
+            assert_eq!(store.scenario_id().as_deref(), Some("single-ecoli"));
         }
     }
 
@@ -1055,7 +1055,7 @@ mod private_context_tests {
             assert!(store.import_reproducibility_bundle(&bundle).is_err());
             assert!(Arc::ptr_eq(store.solution.as_ref().expect("retained result"), &solution));
             assert_eq!(store.map.as_ref().expect("retained map").to_json(), drawing);
-            assert_eq!(store.scenario_id().as_deref(), Some("solo-ecoli"));
+            assert_eq!(store.scenario_id().as_deref(), Some("single-ecoli"));
         }
     }
 
@@ -1072,7 +1072,7 @@ mod private_context_tests {
         assert_eq!(store.zuniga.comparison, "difference");
         store.load_state(&ordinary).expect("ordinary file");
         assert!(store.solution.as_ref().expect("ordinary result").is_optimal());
-        assert_eq!(store.scenario_id().as_deref(), Some("solo-ecoli"));
+        assert_eq!(store.scenario_id().as_deref(), Some("single-ecoli"));
     }
 
     #[test]
@@ -1114,7 +1114,7 @@ mod private_context_tests {
         let failure = store.import_reproducibility_bundle(&bundle).expect_err("infeasible source LP");
         assert!(Arc::ptr_eq(store.solution.as_ref().expect("retained result"), &solution));
         assert_eq!(store.map.as_ref().expect("retained map").to_json(), drawing);
-        assert_eq!(store.scenario_id().as_deref(), Some("solo-ecoli"));
+        assert_eq!(store.scenario_id().as_deref(), Some("single-ecoli"));
         assert!(failure.to_string().contains("infeasible"));
     }
 }

@@ -12,9 +12,9 @@ import { buildScenarioMap } from '../tools/scenario-maps/teaching-maps.mjs';
 const catalog = JSON.parse(await readFile(new URL('../models/scenarios.json', import.meta.url), 'utf8'));
 const teaching = catalog.scenarios.filter((s) => s.species?.every((sp) => /_core_mc$/.test(sp.model)));
 
-test('there are seven teaching scenarios, each with its own map', () => {
+test('there are six teaching scenarios, each with its own map', () => {
   assert.deepEqual(teaching.map((s) => s.map), teaching.map((s) => `maps/${s.id}.json`));
-  assert.equal(teaching.length, 7);
+  assert.equal(teaching.length, 6);
 });
 
 for (const scenario of teaching) {

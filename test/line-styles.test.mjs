@@ -242,12 +242,12 @@ test('on a real map, gaps are drawn without adding or losing a line', async () =
     store.models.set(entry.file.replace(/\.json$/, ''), new Model(JSON.parse(await readFile(join(root, 'models', entry.file), 'utf8'))));
   }
   store.scenarios = JSON.parse(await readFile(join(root, 'models/scenarios.json'), 'utf8')).scenarios;
-  await store.useScenario('solo-levadura');
+  await store.useScenario('aerobic-coculture');
   const count = (svg) => (svg.match(/<path class="emc-seg/g) ?? []).length;
   const plain = renderMap(store.map, stateFor(store));
   const hopped = renderMap(store.map, stateFor(store, { lineHops: true }));
   assert.equal(count(hopped), count(plain));
-  assert.ok((hopped.match(/<path class="emc-seg[^>]* d="M [^"]* M /g) ?? []).length > 0, 'the yeast core map has crossings');
+  assert.ok((hopped.match(/<path class="emc-seg[^>]* d="M [^"]* M /g) ?? []).length > 0, 'the co-culture map has crossings');
 });
 
 // SVG export

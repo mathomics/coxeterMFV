@@ -12,7 +12,7 @@ async function makeStore() {
     store.models.set(id, new Model(raw));
   }
   store.scenarios = JSON.parse(await readFile(new URL('../models/scenarios.json', import.meta.url), 'utf8')).scenarios;
-  await store.useScenario('solo-ecoli');
+  await store.useScenario('single-ecoli');
   return store;
 }
 
@@ -71,7 +71,7 @@ test('a completed old Map save cannot save a replacement context drawing', async
   const store = await makeStore();
   store.addMapText('Previous context', 200, 200);
   const snapshot = store.workSnapshot();
-  await store.useScenario('solo-ecoli');
+  await store.useScenario('single-ecoli');
   store.addMapText('Replacement context', 250, 250);
   store.markMapSaved(snapshot);
   assert.equal(store.unsavedWork().map, true);
@@ -104,7 +104,7 @@ test('model save completion records only the biological edits serialized into th
 
 test('a model save records the serialized model even when the editor selects another species', async () => {
   const store = await makeStore();
-  await store.useScenario('aerobio-mixto');
+  await store.useScenario('aerobic-coculture');
   store.setModelEditorSpecies(store.species[0].id);
   await store.createModelMetabolite({ id: 'written_c', name: 'Written member', compartment: 'c' });
   const snapshot = store.modelSaveSnapshot();

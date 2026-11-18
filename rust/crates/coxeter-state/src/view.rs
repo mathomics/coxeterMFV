@@ -211,7 +211,7 @@ mod tests {
     fn scenario_and_map_files_carry_the_absolute_palette() {
         let mut store = Store::with_dir(coxeter_core::testkit::repo_root());
         store.init().expect("bundled files");
-        store.use_scenario("solo-ecoli").expect("scenario");
+        store.use_scenario("single-ecoli").expect("scenario");
         let patch = ViewPatch {
             reaction_color_mode: Some("absflux".into()),
             absolute_flux_color_stops: Some(Some(blue())),
@@ -233,7 +233,7 @@ mod tests {
 
         let mut restored = Store::with_dir(coxeter_core::testkit::repo_root());
         restored.init().expect("bundled files");
-        restored.use_scenario("solo-ecoli").expect("scenario");
+        restored.use_scenario("single-ecoli").expect("scenario");
         restored.load_state(&scenario.to_string()).expect("scenario file");
         assert_eq!((restored.view.absolute_flux_color_stops.clone(), restored.view.absolute_flux_log), (Some(blue()), true));
         scenario.as_object_mut().expect("object").remove("absoluteFluxColors");

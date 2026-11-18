@@ -487,7 +487,7 @@
       "lower_bound": 0,
       "upper_bound": 1000,
       "gene_reaction_rule": "",
-      "subsystem": "Reacciones luminosas",
+      "subsystem": "Light reactions",
       "layout": {
         "rank": 0,
         "lane": 4
@@ -508,7 +508,7 @@
       "lower_bound": 0,
       "upper_bound": 1000,
       "gene_reaction_rule": "",
-      "subsystem": "Reacciones luminosas",
+      "subsystem": "Light reactions",
       "layout": {
         "rank": 1,
         "lane": 4
@@ -516,7 +516,7 @@
     },
     {
       "id": "PSI_FNR",
-      "name": "Cit b6f + Fotosistema I + FNR (flujo lineal a NADPH)",
+      "name": "Cyt b6f + Photosystem I + FNR (linear flow to NADPH)",
       "metabolites": {
         "pqh2_c": -2,
         "nadp_c": -2,
@@ -529,7 +529,7 @@
       "lower_bound": 0,
       "upper_bound": 1000,
       "gene_reaction_rule": "",
-      "subsystem": "Reacciones luminosas",
+      "subsystem": "Light reactions",
       "layout": {
         "rank": 2,
         "lane": 4
@@ -546,7 +546,7 @@
       "lower_bound": 0,
       "upper_bound": 1000,
       "gene_reaction_rule": "",
-      "subsystem": "Reacciones luminosas",
+      "subsystem": "Light reactions",
       "layout": {
         "rank": 2,
         "lane": 5
@@ -566,7 +566,7 @@
       "lower_bound": 0,
       "upper_bound": 1000,
       "gene_reaction_rule": "",
-      "subsystem": "Reacciones luminosas",
+      "subsystem": "Light reactions",
       "layout": {
         "rank": 3,
         "lane": 4
@@ -652,7 +652,7 @@
     },
     {
       "id": "PRK",
-      "name": "Fosforribuloquinasa",
+      "name": "Phosphoribulokinase",
       "metabolites": {
         "atp_c": -1,
         "ru5p__D_c": -1,
@@ -1123,7 +1123,7 @@
     },
     {
       "id": "FUM",
-      "name": "Fumarasa",
+      "name": "Fumarase",
       "metabolites": {
         "fum_c": -1,
         "h2o_c": -1,
@@ -1161,7 +1161,7 @@
     },
     {
       "id": "GLNS",
-      "name": "Glutamina sintetasa",
+      "name": "Glutamine synthetase",
       "metabolites": {
         "atp_c": -1,
         "glu__L_c": -1,
@@ -1381,7 +1381,7 @@
     },
     {
       "id": "PIt2rpp",
-      "name": "Simporte fosfato/H+",
+      "name": "Phosphate/H+ symporter",
       "metabolites": {
         "h_p": -1,
         "pi_p": -1,
@@ -1399,7 +1399,7 @@
     },
     {
       "id": "H2Otpp",
-      "name": "Agua",
+      "name": "Water",
       "metabolites": {
         "h2o_p": -1,
         "h2o_c": 1

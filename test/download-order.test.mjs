@@ -14,7 +14,7 @@ async function makeStore() {
     store.models.set(id, new Model(raw));
   }
   store.scenarios = JSON.parse(await readFile(new URL('../models/scenarios.json', import.meta.url), 'utf8')).scenarios;
-  await store.useScenario('solo-ecoli');
+  await store.useScenario('single-ecoli');
   return store;
 }
 
@@ -106,7 +106,7 @@ for (const context of ['scenario', 'Scenario file', 'model file']) {
     try {
       const pending = download(store);
       if (context === 'scenario') {
-        await store.useScenario('aerobio-mixto');
+        await store.useScenario('aerobic-coculture');
       } else if (context === 'Scenario file') {
         const state = JSON.parse(store.stateJSON());
         state.medium.glc__D = 3;
@@ -138,7 +138,7 @@ test('a late download failure is superseded rather than reported against the new
   const held = holdDownload(store, 503);
   try {
     const pending = download(store);
-    await store.useScenario('aerobio-mixto');
+    await store.useScenario('aerobic-coculture');
     const status = { ...store.status };
     held.release();
     const outcome = await pending;
@@ -195,12 +195,12 @@ test('a late response body cannot install after its context was replaced', async
   try {
     const pending = download(store);
     await held.ready;
-    await store.useScenario('aerobio-mixto');
+    await store.useScenario('aerobic-coculture');
     const map = store.map;
     held.release();
     const outcome = await pending;
     assert.equal(outcome.error?.name, 'AbortError');
-    assert.equal(store.scenario.id, 'aerobio-mixto');
+    assert.equal(store.scenario.id, 'aerobic-coculture');
     assert.equal(store.map, map);
   } finally {
     held.restore();
@@ -212,7 +212,7 @@ test('a late transport failure is superseded without changing the newer status',
   const held = holdDownload(store, 0);
   try {
     const pending = download(store);
-    await store.useScenario('aerobio-mixto');
+    await store.useScenario('aerobic-coculture');
     const status = { ...store.status };
     held.release();
     const outcome = await pending;

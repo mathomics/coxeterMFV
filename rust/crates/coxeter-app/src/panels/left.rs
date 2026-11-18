@@ -25,7 +25,7 @@ pub const TOOLS: [(Tool, &str, &str, &str); 8] = [
     (Tool::Reaction, "⌁", "Add Reaction", "Click a metabolite to add its reactions"),
     (Tool::Metabolite, "○", "Add Metabolite", ""),
     (Tool::Text, "T", "Text", ""),
-    (Tool::Compartment, "▣", "Edit Compartments", "Draw and nest model compartments"),
+    (Tool::Compartment, "▣", "Edit Comps", "Draw and nest model compartments"),
     (Tool::Cell, "⬡", "Add Cell", "Draw a model species as a cell"),
 ];
 
@@ -136,6 +136,11 @@ fn toolbox(ui: &mut Ui, shell: &mut Shell, p: &Palette) {
                 for (tool, icon, label, title) in pair {
                     if tool_button(ui, icon, label, title, current == *tool, w, p).clicked() {
                         shell.activate_tool(*tool);
+                        // Its button brings the nesting window back, even after it was closed.
+                        if *tool == Tool::Compartment {
+                            let cell = shell.store.selected_geometry.as_ref().and_then(|g| g.cell_id.clone());
+                            shell.nesting.open(&shell.store, cell.as_deref());
+                        }
                     }
                 }
             });
@@ -285,7 +290,9 @@ pub fn render_task_panel(ui: &mut Ui, shell: &mut Shell, p: &Palette) {
             let help = if tool == Tool::Cell { cell_tool_help(&shell.store) } else { help.to_string() };
             task_context(ui, p, |ui| {
                 widgets::section_label(ui, title);
-                ui.add(egui::Label::new(RichText::new(help).size(11.5).color(p.ink_2)).wrap());
+                if !help.is_empty() {
+                    ui.add(egui::Label::new(RichText::new(help).size(11.5).color(p.ink_2)).wrap());
+                }
                 if tool == Tool::Compartment {
                     crate::panels::map_options::compartment_tool_controls(ui, shell);
                 }
@@ -305,7 +312,7 @@ pub fn tool_help(tool: Tool) -> (&'static str, &'static str) {
         Tool::Reaction => ("Add Reaction mode", "Click a metabolite to add a reaction from it."),
         Tool::Metabolite => ("Add Metabolite mode", "Click a compartment, then pick a metabolite."),
         Tool::Text => ("Add map text", "Click the map, type, and press Enter."),
-        Tool::Compartment => ("Edit Compartments", "Pick a compartment and a shape, then drag inside its highlighted parent."),
+        Tool::Compartment => ("Edit Compartments", ""),
         Tool::Cell => ("Add Cell", "Drag on the map to draw a cell."),
         Tool::Pan => ("Edit your map", "Choose an editing tool."),
     }

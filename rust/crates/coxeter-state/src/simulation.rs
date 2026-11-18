@@ -1259,7 +1259,7 @@ mod reaction_constraint_tests {
         let mut store = Store::with_dir(coxeter_core::testkit::repo_root());
         store.init().expect("bundled files");
         store.models.insert("ecoli_core_mc", Model::from_value(&raw).expect("annotated model"));
-        store.use_scenario("solo-ecoli").expect("scenario");
+        store.use_scenario("single-ecoli").expect("scenario");
         store
     }
 
@@ -1409,7 +1409,7 @@ mod run_report_tests {
     fn make_store() -> Store {
         let mut store = Store::with_dir(coxeter_core::testkit::repo_root());
         store.init().expect("bundled files");
-        store.use_scenario("solo-ecoli").expect("scenario");
+        store.use_scenario("single-ecoli").expect("scenario");
         store
     }
 
@@ -1432,7 +1432,7 @@ mod run_report_tests {
         let mut store = make_store();
         store.run_analysis_blocking("fba", Duration::from_secs(20)).expect("FBA");
         assert_eq!(store.last_run.as_ref().expect("run report").phase, RunPhase::Done);
-        store.use_scenario("solo-ecoli").expect("scenario");
+        store.use_scenario("single-ecoli").expect("scenario");
         assert!(store.last_run.is_none());
         assert!(store.solution.as_ref().expect("solution").is_optimal());
     }
@@ -1441,7 +1441,7 @@ mod run_report_tests {
     fn opening_a_scenario_cancels_an_analysis_that_is_still_waiting_to_start() {
         let mut store = make_store();
         store.run_analysis("pfba").expect("pFBA request");
-        store.use_scenario("solo-ecoli").expect("scenario");
+        store.use_scenario("single-ecoli").expect("scenario");
         store.wait_for_jobs(Duration::from_secs(20));
         assert!(store.last_run.is_none());
         assert!(!store.parsimonious);
@@ -1471,7 +1471,7 @@ mod objective_fraction_tests {
         let mut store = Store::with_dir(coxeter_core::testkit::repo_root());
         store.init().expect("bundled files");
         store.models.insert("ecoli_core_mc", model());
-        store.use_scenario("solo-ecoli").expect("scenario");
+        store.use_scenario("single-ecoli").expect("scenario");
         store
     }
 

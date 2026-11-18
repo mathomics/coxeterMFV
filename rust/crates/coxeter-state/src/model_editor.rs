@@ -118,7 +118,7 @@ mod creation_validation_tests {
     fn make_store() -> Store {
         let mut store = Store::with_dir(coxeter_core::testkit::repo_root());
         store.init().expect("bundled models");
-        store.use_scenario("solo-ecoli").expect("scenario");
+        store.use_scenario("single-ecoli").expect("scenario");
         store
     }
 
@@ -196,10 +196,20 @@ mod creation_validation_tests {
                     "id": "qa_metabolite_c", "name": "QA metabolite", "compartment": "c",
                 })).expect("new metabolite");
             }
-            store.use_scenario("solo-levadura").expect("another scenario");
+            // The co-culture's yeast on its own: a scenario without the E. coli model the creation went into
+            let mut yeast_only = store.scenarios.iter().find(|s| s["id"] == "aerobic-coculture").cloned().expect("co-culture");
+            let mut yeast = yeast_only["species"][1].clone();
+            assert_eq!(yeast["id"], "sce");
+            yeast["abundance"] = json!(1);
+            yeast_only["id"] = json!("yeast-only");
+            yeast_only["name"] = json!("Yeast");
+            yeast_only["map"] = Value::Null;
+            yeast_only["species"] = json!([yeast]);
+            store.scenarios.push(yeast_only);
+            store.use_scenario("yeast-only").expect("another scenario");
             assert!(store.problem.as_ref().expect("yeast problem").reaction_index("eco@QA_PGI").is_none());
             assert!(store.model_editor_model().expect("yeast model").reactions.get("QA_PGI").is_none());
-            store.use_scenario("solo-ecoli").expect("return to source");
+            store.use_scenario("single-ecoli").expect("return to source");
             let model = store.model_editor_model().expect("edited model");
             assert_eq!(model.reactions.contains_key("QA_PGI"), kind == "reaction");
             assert_eq!(model.metabolites.contains_key("qa_metabolite_c"), kind == "metabolite");
@@ -260,7 +270,7 @@ mod default_placement_tests {
     fn make_store() -> Store {
         let mut store = Store::with_dir(coxeter_core::testkit::repo_root());
         store.init().expect("bundled models");
-        store.use_scenario("solo-ecoli").expect("scenario");
+        store.use_scenario("single-ecoli").expect("scenario");
         store
     }
 
@@ -411,7 +421,7 @@ mod placement_region_tests {
     fn make_store() -> Store {
         let mut store = Store::with_dir(coxeter_core::testkit::repo_root());
         store.init().expect("bundled models");
-        store.use_scenario("solo-ecoli").expect("scenario");
+        store.use_scenario("single-ecoli").expect("scenario");
         let community = store.community.as_ref().expect("community");
         store.map = Some(EditableMap::empty_from_community(community, &LayoutOptions::default()));
         store.map_history.clear();

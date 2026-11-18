@@ -164,9 +164,9 @@ def main(src, out, log_path):
     print(report)
     for x in notes:
         print('  ', x)
-    write_log(log_path, 'Fase 7: espacio en la envoltura de Bt',
-              'Se ensanchó hacia afuera la banda extracelular izquierda de Bt y se dibujó la degradación de '
-              'fructanos que ocurre fuera de la célula.', log,
+    write_log(log_path, 'Phase 7: room in the Bt envelope',
+              'The left extracellular band of Bt was widened outwards and the fructan degradation '
+              'that happens outside the cell was drawn.', log,
               closing='\n'.join('- ' + x for x in [report] + notes), append=Path(log_path).exists())
 
 

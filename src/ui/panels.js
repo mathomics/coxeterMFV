@@ -140,12 +140,12 @@ export function renderTaskPanel(store, ui = {}) {
     reaction: ['Add Reaction mode', 'Click a metabolite to add a reaction from it.'],
     metabolite: ['Add Metabolite mode', 'Click a compartment, then pick a metabolite.'],
     text: ['Add map text', 'Click the map, type, and press Enter.'],
-    compartment: ['Edit Compartments', 'Pick a compartment and a shape, then drag inside its highlighted parent.'],
+    compartment: ['Edit Compartments', ''],
     cell: ['Add Cell', cellToolHelp(store)],
   }[tool] ?? ['Edit your map', 'Choose an editing tool.'];
 
   return `<section class="task-deck task-hub" data-task-hub="build">
-    <div class="tool-context task-context"><span class="section-label">${esc(help[0])}</span><p>${esc(help[1])}</p>${tool === 'compartment' ? compartmentToolControls(store) : ''}</div>
+    <div class="tool-context task-context"><span class="section-label">${esc(help[0])}</span>${help[1] ? `<p>${esc(help[1])}</p>` : ''}${tool === 'compartment' ? compartmentToolControls(store) : ''}</div>
     <nav class="task-links" aria-label="Map editors">
       ${link('library', '⌕', 'Reaction library')}
       ${link('structure', '⬡', 'Structure')}
@@ -670,10 +670,44 @@ export function renderLayoutSettings(store) {
 // Scenario
 
 /**
+ * The scenario list, as `[value, label]` pairs in two groups. The first holds
+ * the paper's case studies, which show what Coxeter-MFV can do, and the second
+ * smaller drafts to start from. Each group runs from the least to the most
+ * complex: one cell first, then communities of more members, and among
+ * communities of the same size the one with fewer reactions first. A value is
+ * `sc:<scenario id>` or `pub:<published community id>`, the same values the
+ * welcome page and `?scenario=` links use. Labels stay short enough for the
+ * list's width on a phone.
+ */
+const SCENARIO_MENU = [
+  {
+    label: 'Explore Coxeter’s capabilities',
+    options: [
+      ['sc:yeast9-9-1-1', 'Explore Yeast9 9.1.1 nested compartments'],
+      ['pub:zuniga-2020-phea-rescue', 'Explore a 2-species phenylalanine rescue'],
+      ['pub:steadycom-ecoli-auxotrophs', 'Explore 4 auxotrophic E. coli strains'],
+      ['pub:steadycom-gut-nine', 'Explore a 9-species gut community'],
+    ],
+  },
+  {
+    label: 'Example drafts',
+    options: [
+      ['sc:single-ecoli', 'Example: a single E. coli cell'],
+      ['sc:methanogen-digester', 'Example: E. coli + methanogen digester'],
+      ['sc:aerobic-coculture', 'Example: E. coli + yeast, low oxygen'],
+      ['pub:stolyar-2007-syntrophy', 'Example: Methanococcus mutualism'],
+      ['sc:phototroph-heterotroph', 'Example: phototroph + 2 heterotrophs'],
+      ['sc:anaerobic-consortium', 'Example: 4-species anaerobic consortium'],
+      ['sc:all-species', 'Example: all 5 species in one medium'],
+    ],
+  },
+];
+
+/**
  * Scenario on the left, objective on the right, in one card.
  *
- * One list holds every community the app can load (the published benchmarks
- * first, then the teaching scenarios), because from the reader's side they are
+ * One list holds every community the app can load, the published benchmarks
+ * and the bundled scenarios together, because from the reader's side they are
  * the same choice: which community am I looking at. What changes is how much
  * there is to say about it, and that is what the detail below the list carries.
  */
@@ -688,24 +722,34 @@ function scenarioCard(store, steadyComUI = {}) {
   } else if (store.scenario?.id) {
     activeValue = `sc:${store.scenario.id}`;
   }
-  const listed = published.some(community => `pub:${community.id}` === activeValue)
-    || store.scenarios.some(scenario => `sc:${scenario.id}` === activeValue);
+
+  // The menu entries whose scenario is in the catalogue
+  const available = (value) => {
+    if (value.startsWith('pub:')) {
+      return published.some((community) => `pub:${community.id}` === value);
+    }
+    return store.scenarios.some((scenario) => `sc:${scenario.id}` === value);
+  };
+  let listed = false;
+  let menuGroups = '';
+  for (const group of SCENARIO_MENU) {
+    let options = '';
+    for (const [value, label] of group.options) {
+      if (!available(value)) continue;
+      const on = value === activeValue;
+      if (on) {
+        listed = true;
+      }
+      options += `<option value="${esc(value)}"${on ? ' selected' : ''}>${esc(label)}</option>`;
+    }
+    if (options) {
+      menuGroups += `<optgroup label="${esc(group.label)}">${options}</optgroup>`;
+    }
+  }
   let currentOption = '';
   if (activeValue && !listed) {
     currentOption = `<optgroup label="Current model"><option value="${esc(activeValue)}" selected disabled>${esc(store.scenario.name || 'Current model')}</option></optgroup>`;
   }
-
-  const publishedOptions = published.map((c) => {
-    const mark = c.reproduction.status === 'reproduced' ? '✓' : '—';
-    const value = `pub:${c.id}`;
-    const on = activeValue === value;
-    return `<option value="${esc(value)}"${on ? ' selected' : ''}>${mark} ${esc(c.name)}</option>`;
-  }).join('');
-
-  const teachingOptions = store.scenarios.map((sc) => {
-    const on = activeValue === `sc:${sc.id}`;
-    return `<option value="${esc(`sc:${sc.id}`)}"${on ? ' selected' : ''}>${esc(sc.name)}</option>`;
-  }).join('');
 
   const detail = selectedPublished
     ? publishedCommunityDetail(selectedPublished, store, steadyComUI)
@@ -717,8 +761,7 @@ function scenarioCard(store, steadyComUI = {}) {
         <h2>Scenario</h2>
         <select data-action="scenario" aria-label="Community">
           ${currentOption}
-          ${publishedOptions ? `<optgroup label="Published communities">${publishedOptions}</optgroup>` : ''}
-          <optgroup label="Teaching scenarios">${teachingOptions}</optgroup>
+          ${menuGroups}
         </select>
         ${detail}
       </div>
@@ -1358,7 +1401,7 @@ function compartmentPlacementControls(store, idPrefix) {
   const shapes = ['auto', ...Object.keys(COMPARTMENT_SHAPES)].map((name) =>
     `<option value="${name}"${(store.compartmentShapePreset ?? 'auto') === name ? ' selected' : ''}${name === 'auto' ? ' title="Its usual shape; organelles are round"' : ''}>${SHAPE_LABELS[name]}</option>`
   ).join('');
-  return `<label for="${idPrefix}-compartment-select">Compartment to draw</label>
+  return `<label for="${idPrefix}-compartment-select">Compartment</label>
     <select id="${idPrefix}-compartment-select" data-action="compartment-placement"
       aria-label="Compartment to add"${choices.length ? '' : ' disabled'}>${groups}</select>
     <label for="${idPrefix}-compartment-shape">Shape</label>
@@ -1366,18 +1409,14 @@ function compartmentPlacementControls(store, idPrefix) {
       aria-label="Shape of the new compartment">${shapes}</select>`;
 }
 
-/* The left panel while Edit Compartments is the tool: choose, then drag; the nesting has a window of its own. */
+/*
+ * The left panel while Edit Compartments is the tool: what to draw and its
+ * shape, drawn by a drag inside the parent highlighted on the map; the
+ * nesting has a window of its own.
+ */
 function compartmentToolControls(store) {
-  const current = store.currentCompartmentPlacement?.() ?? null;
-  const parent = current
-    ? store.mapCompartmentChoices?.().find((item) =>
-      item.speciesId === current.speciesId && item.compartmentId === current.compartmentId)?.parentName
-    : null;
   return `<div class="compartment-tool-controls">
     ${compartmentPlacementControls(store, 'tool')}
-    <p class="hint">${current
-      ? `Drag inside <strong>${esc(parent ?? current.parentId)}</strong>, highlighted on the map.`
-      : 'Nothing can be drawn yet.'}</p>
     <button type="button" data-action="open-nesting-window" title="Set which compartment is inside which">Nesting</button>
   </div>`;
 }

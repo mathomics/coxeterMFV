@@ -20,7 +20,7 @@ async function replayedStore(gimme = false) {
   const store = new Store('.');
   store.models.set('ecoli_core_mc', new Model(raw));
   store.scenarios = JSON.parse(await readFile(new URL('../models/scenarios.json', import.meta.url), 'utf8')).scenarios;
-  await store.useScenario('solo-ecoli');
+  await store.useScenario('single-ecoli');
   if (gimme) {
     store.importMetatranscriptomics('MAG,gene,condition,TPM\neco,test_gap,Control,1\neco,test_gap,Treatment,10\n');
     store.runCommunityGIMME({ gimmeThreshold: 5, gimmeObjectiveFraction: 0.8 });
@@ -74,7 +74,7 @@ test('starting another analysis retires the verdict before the run finishes', as
 
 test('replacing the model retires the imported verdict during the rebuild', async () => {
   const store = await replayedStore();
-  const pending = store.useScenario('solo-ecoli');
+  const pending = store.useScenario('single-ecoli');
   try {
     retired(store);
   } finally {

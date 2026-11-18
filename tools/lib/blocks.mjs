@@ -86,8 +86,8 @@ export function calvin({ comp = 'c', lane = -5, rank0 = 1, suffix = '_h' } = {})
   const x = (id) => s(id, comp);
   const n = (id) => `${id}${suffix}`;
   return [
-    r(n('RBPC'), `${x('co2')} + ${x('h2o')} + ${x('rb15bp')} --> 2.0 ${x('3pg')} + 2.0 ${x('h')}`, { name: 'RuBisCO (carboxilación)', sub: 'Calvin cycle', rank: rank0, lane }),
-    r(n('PRK'), `${x('atp')} + ${x('ru5p__D')} --> ${x('adp')} + ${x('h')} + ${x('rb15bp')}`, { name: 'Fosforribuloquinasa', sub: 'Calvin cycle', rank: rank0 + 7, lane }),
-    r(n('GAPDHn'), `${x('g3p')} + ${x('nadp')} + ${x('pi')} <=> ${x('13dpg')} + ${x('h')} + ${x('nadph')}`, { name: 'GAPDH dependiente de NADPH', sub: 'Calvin cycle', rank: rank0 + 2, lane }),
+    r(n('RBPC'), `${x('co2')} + ${x('h2o')} + ${x('rb15bp')} --> 2.0 ${x('3pg')} + 2.0 ${x('h')}`, { name: 'RuBisCO (carboxylation)', sub: 'Calvin cycle', rank: rank0, lane }),
+    r(n('PRK'), `${x('atp')} + ${x('ru5p__D')} --> ${x('adp')} + ${x('h')} + ${x('rb15bp')}`, { name: 'Phosphoribulokinase', sub: 'Calvin cycle', rank: rank0 + 7, lane }),
+    r(n('GAPDHn'), `${x('g3p')} + ${x('nadp')} + ${x('pi')} <=> ${x('13dpg')} + ${x('h')} + ${x('nadph')}`, { name: 'NADPH-dependent GAPDH', sub: 'Calvin cycle', rank: rank0 + 2, lane }),
   ];
 }

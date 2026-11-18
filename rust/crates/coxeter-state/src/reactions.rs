@@ -941,7 +941,7 @@ impl Store {
                 Some(id) => species_names.get(id).cloned().unwrap_or_else(|| id.to_string()),
                 None => "Community (shared medium)".to_string(),
             }),
-            compartment: Box::new(|sp, cid| cell_compartment_name(cid, sp.and_then(|s| compartment_names.get(s)).unwrap_or(&empty), "en")),
+            compartment: Box::new(|sp, cid| cell_compartment_name(cid, sp.and_then(|s| compartment_names.get(s)).unwrap_or(&empty))),
         };
         let rows: Arc<Vec<Arc<CatalogEntry>>> = Arc::new(build_reaction_catalog(community, &names).into_iter().map(Arc::new).collect());
         *cache = Some((self.problem_serial, label_source, rows.clone()));

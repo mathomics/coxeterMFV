@@ -30,4 +30,4 @@ The executable is unsigned. Windows may display an unknown-publisher warning. Ve
 
 To build the desktop application for Linux or macOS, follow [`../docs/BUILDING.md`](../docs/BUILDING.md).
 
-For a complete example workflow, see the [user guide](../docs/USER_GUIDE.md). To verify the distributed files, run `node tools/release-manifest.mjs` from the repository root. Exact build commands and source provenance are recorded in the [release procedure](../docs/RELEASING.md) and `../release-manifest.json`.
+For a complete example workflow, see the [help page](https://mathomics.github.io/coxeterMFV/help.html). To verify the distributed files, run `node tools/release-manifest.mjs` from the repository root. The source revision and checksums of both applications are recorded in [`release-manifest.json`](../release-manifest.json).

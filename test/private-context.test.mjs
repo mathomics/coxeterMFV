@@ -21,7 +21,7 @@ async function ordinaryStore() {
   const store = new Store('.');
   store.models.set('ecoli_core_mc', new Model(raw));
   store.scenarios = JSON.parse(await readFile(new URL('../models/scenarios.json', import.meta.url), 'utf8')).scenarios;
-  await store.useScenario('solo-ecoli');
+  await store.useScenario('single-ecoli');
   return store;
 }
 
@@ -91,7 +91,7 @@ test('an ordinary Scenario supersedes a pending private load and its late progre
   await assert.rejects(pending, { name: 'AbortError' });
   assert.equal(store.solution, solution);
   assert.equal(store.status.message, message);
-  assert.equal(store.scenario.id, 'solo-ecoli');
+  assert.equal(store.scenario.id, 'single-ecoli');
 });
 
 test('invalid private Scenario metadata is refused before downloading or replacing ordinary work', async () => {
@@ -110,7 +110,7 @@ test('invalid private Scenario metadata is refused before downloading or replaci
     await assert.rejects(store.loadState(state));
     assert.equal(downloads, 0);
     assert.equal(store.solution, solution);
-    assert.equal(store.scenario.id, 'solo-ecoli');
+    assert.equal(store.scenario.id, 'single-ecoli');
   }
 });
 
@@ -149,7 +149,7 @@ test('a private bundle with an unusable source LP is refused before replacing or
     await assert.rejects(store.importReproducibilityBundle(bundle), /PPNDH knockout/);
     assert.equal(store.solution, solution);
     assert.equal(store.map, drawing);
-    assert.equal(store.scenario.id, 'solo-ecoli');
+    assert.equal(store.scenario.id, 'single-ecoli');
   }
 });
 
@@ -165,7 +165,7 @@ test('valid private bundles restore their exact source LP and permit a later ord
   assert.equal(store.zunigaComparison, 'difference');
   await store.loadState(ordinary);
   assert.equal(store.solution.status, 'optimal');
-  assert.equal(store.scenario.id, 'solo-ecoli');
+  assert.equal(store.scenario.id, 'single-ecoli');
 });
 
 test('valid private Scenario and Map metadata load from an ordinary context', async () => {
@@ -215,6 +215,6 @@ test('a private source LP that is infeasible is refused before replacing ordinar
   assert.ok(failure);
   assert.equal(store.solution, solution);
   assert.equal(store.map, drawing);
-  assert.equal(store.scenario.id, 'solo-ecoli');
+  assert.equal(store.scenario.id, 'single-ecoli');
   assert.match(failure.message, /infeasible/);
 });

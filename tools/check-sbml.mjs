@@ -102,17 +102,17 @@ try {
   raw = execFileSync('python3', [script, ...written.map((w) => w.out)],
     { encoding: 'utf8', maxBuffer: 64 * 1024 * 1024 });
 } catch (error) {
-  console.log('No se pudo ejecutar python3, así que libSBML no validó nada.');
+  console.log('python3 could not be run, so libSBML validated nothing.');
   console.log(`  ${error.message.split('\n')[0]}`);
-  console.log('  Los tests de ida y vuelta (npm test) sí corren sin esto.');
+  console.log('  The round-trip tests (npm test) run without it.');
   process.exit(0);
 }
 
 const report = JSON.parse(raw);
 if (report.missing) {
-  console.log('libSBML no está instalado, así que no se validó nada contra el estándar.');
+  console.log('libSBML is not installed, so nothing was validated against the standard.');
   console.log('  pip install python-libsbml');
-  console.log('  Los tests de ida y vuelta (npm test) sí corren sin esto.');
+  console.log('  The round-trip tests (npm test) run without it.');
   process.exit(0);
 }
 
@@ -129,6 +129,6 @@ for (const [i, result] of report.entries()) {
   for (const line of [...result.readErrors, ...result.details]) console.log(`        ${line}`);
 }
 
-console.log(`\n${report.length} archivos, ${failures} con errores, `
-  + `${warnings} avisos (unidades y cantidades iniciales, los mismos que trae un archivo FBC publicado).`);
+console.log(`\n${report.length} files, ${failures} with errors, `
+  + `${warnings} warnings (units and initial amounts, the same ones a published FBC file has).`);
 process.exit(failures ? 1 : 0);

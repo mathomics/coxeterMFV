@@ -506,7 +506,7 @@ impl Store {
                     .and_then(|sp| self.models.get(&sp.file))
                     .map(|m| m.compartment_names.clone())
                     .unwrap_or_default();
-                lines.push(format!("Compartment: {}", coxeter_core::compartments::cell_compartment_name(compartment, &names, "en")));
+                lines.push(format!("Compartment: {}", coxeter_core::compartments::cell_compartment_name(compartment, &names)));
             }
             out.nodes.insert(node.id.clone(), lines.join("\n"));
         }
@@ -1510,7 +1510,7 @@ mod tests {
     fn make_store() -> Store {
         let mut store = Store::with_dir(coxeter_core::testkit::repo_root());
         store.init().expect("bundled files");
-        store.use_scenario("solo-ecoli").expect("scenario");
+        store.use_scenario("single-ecoli").expect("scenario");
         assert!(store.remove_map_reaction("eco@ATPM").is_some());
         store.clear_solution();
         store
@@ -1622,7 +1622,7 @@ mod bundle_tests {
     fn make_store() -> Store {
         let mut store = Store::with_dir(coxeter_core::testkit::repo_root());
         store.init().expect("bundled files");
-        store.use_scenario("solo-ecoli").expect("scenario");
+        store.use_scenario("single-ecoli").expect("scenario");
         store
     }
 
@@ -1741,9 +1741,9 @@ mod bundle_tests {
     fn a_bundle_export_keeps_its_snapshot_when_another_community_loads() {
         let mut source = make_store();
         let bundle = source.reproducibility_bundle().expect("bundle");
-        source.use_scenario("consorcio-anaerobio").expect("another community");
+        source.use_scenario("anaerobic-consortium").expect("another community");
         assert_eq!(bundle["community"]["species"][0]["id"], "eco");
-        assert_eq!(bundle["community"]["scenario"], "solo-ecoli");
+        assert_eq!(bundle["community"]["scenario"], "single-ecoli");
         assert_eq!(bundle["models"].as_object().expect("models").keys().collect::<Vec<_>>(), vec!["eco"]);
         assert!(verify_reproducibility_bundle(&bundle).expect("integrity").valid);
     }
@@ -1914,7 +1914,7 @@ mod export_provenance_tests {
             }
         }
         store.models.insert("ecoli_core_mc", Model::from_value(&raw).expect("annotated model"));
-        store.use_scenario("solo-ecoli").expect("scenario");
+        store.use_scenario("single-ecoli").expect("scenario");
         store
     }
 
@@ -2070,7 +2070,7 @@ mod archive_outcome_tests {
             }
         }
         store.models.insert("ecoli_core_mc", Model::from_value(&raw).expect("annotated model"));
-        store.use_scenario("solo-ecoli").expect("scenario");
+        store.use_scenario("single-ecoli").expect("scenario");
         store
     }
 
@@ -2216,7 +2216,7 @@ mod replay_lifecycle_tests {
     fn replayed_store() -> Store {
         let mut store = Store::with_dir(coxeter_core::testkit::repo_root());
         store.init().expect("bundled models");
-        store.use_scenario("solo-ecoli").expect("scenario");
+        store.use_scenario("single-ecoli").expect("scenario");
         let bundle = store.reproducibility_bundle().expect("bundle");
         store.import_reproducibility_bundle(&bundle).expect("verified replay");
         assert_eq!(store.reproducibility_replay.as_ref().expect("report")["replay"]["pass"], true);
@@ -2261,7 +2261,7 @@ mod replay_lifecycle_tests {
     #[test]
     fn replacing_the_model_retires_the_imported_verdict() {
         let mut store = replayed_store();
-        store.use_scenario("solo-ecoli").expect("new context");
+        store.use_scenario("single-ecoli").expect("new context");
         assert!(store.reproducibility_replay.is_none());
     }
 
@@ -2340,7 +2340,7 @@ mod replay_lifecycle_tests {
             }
         }
         store.models.insert("ecoli_core_mc", Model::from_value(&raw).expect("annotated model"));
-        store.use_scenario("solo-ecoli").expect("annotated scenario");
+        store.use_scenario("single-ecoli").expect("annotated scenario");
         store.import_metatranscriptomics("MAG,gene,condition,TPM\neco,test_gap,Control,1\n", "expression.csv").expect("expression");
         store.run_community_gimme(CommunityOmicsPatch::default()).expect("GIMME");
         let bundle = store.reproducibility_bundle().expect("bundle");
@@ -2363,7 +2363,7 @@ mod steadycom_persistence_tests {
     fn make_store() -> Store {
         let mut store = Store::with_dir(coxeter_core::testkit::repo_root());
         store.init().expect("bundled models");
-        store.use_scenario("aerobio-mixto").expect("two bundled members");
+        store.use_scenario("aerobic-coculture").expect("two bundled members");
         store
     }
 
@@ -2391,7 +2391,7 @@ mod steadycom_persistence_tests {
     #[test]
     fn changing_fixed_growth_marks_the_scenario_unsaved_even_when_composition_stays_the_same() {
         let mut store = make_store();
-        store.use_scenario("solo-ecoli").expect("single member");
+        store.use_scenario("single-ecoli").expect("single member");
         store.solve_steady_com_at(0.1).expect("fixed growth");
         finish(&mut store);
         store.mark_scenario_saved();

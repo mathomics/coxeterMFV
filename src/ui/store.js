@@ -27,6 +27,7 @@ import { Model } from '../core/model.js';
 import { labelSourceName, objectLabel, objectLabelSources } from '../core/label-sources.js';
 import { OPERATION_DOMAIN, assertOperationDomain, operationDomain } from './operation-boundary.js';
 import { toSBML } from '../core/sbml-write.js';
+import { communityModelDocument } from '../core/community-json.js';
 import { compareArchivedSolution, createReproducibilityBundle, methodsProvenanceReport, softwareIdentity, solverName, verifyReproducibilityBundle } from '../core/reproducibility.js';
 import { parseModelJSON, prepareImportedModels, prepareModelUploads } from '../core/model-import.js';
 import { fluxDataJSON, matchFluxData, parseFluxData } from '../core/flux-data.js';
@@ -613,15 +614,25 @@ export class Store {
       this.uploadedModelKeys.add(entry.modelKey);
     }
 
+    // A merged community model comes back with the name, objective and medium
+    // it was saved with.
+    const saved = prepared.community;
+    let name = 'Imported community';
+    let description = `${prepared.entries.length} models loaded from files`;
+    if (saved) {
+      name = saved.name;
+      description = `${prepared.entries.length} models loaded from ${saved.filename}`;
+    } else if (prepared.entries.length === 1) {
+      name = prepared.entries[0].model.name;
+      description = `Model loaded from ${prepared.entries[0].filename}`;
+    }
+    const objective = saved?.objective ?? OBJECTIVES.EQUAL_GROWTH;
+    const productTarget = saved?.productTarget ?? null;
     const scenario = {
       id: 'uploaded-models',
-      name: prepared.entries.length === 1
-        ? prepared.entries[0].model.name
-        : 'Imported community',
-      description: prepared.entries.length === 1
-        ? `Model loaded from ${prepared.entries[0].filename}`
-        : `${prepared.entries.length} models loaded from files`,
-      objective: OBJECTIVES.EQUAL_GROWTH,
+      name,
+      description,
+      objective,
       parsimonious: false,
       pfbaBiomassPercent: 100,
       loopless: false,
@@ -639,8 +650,8 @@ export class Store {
     this.scenarios = this.scenarios.filter((s) => !['uploaded-json', scenario.id].includes(s.id));
     this.scenarios.push(scenario);
     this.scenario = scenario;
-    this.objective = OBJECTIVES.EQUAL_GROWTH;
-    this.productTarget = null;
+    this.objective = objective;
+    this.productTarget = productTarget;
     this.customObjective = null;
     this.parsimonious = false;
     this.pfbaBiomassPercent = 100;
@@ -1067,6 +1078,24 @@ export class Store {
     const model = this.models.get(sp.file);
     if (!model) throw new Error(`The model for ${sp.id} was not found.`);
     return toSBML(model);
+  }
+
+  /**
+   * The active community as one COBRA JSON model, with the compartment
+   * hierarchy the map draws (see community-json.js). Opening the file brings
+   * back the same species, so the map saved over them opens on it.
+   */
+  mergedModelJSON() {
+    if (!this.community) throw new Error('Load a model first.');
+    if (this.isZunigaStudy) throw new Error('The Zuñiga case does not save as a merged model. Save a reproducibility bundle instead.');
+    if (this._jointProjectionSpec) {
+      throw new Error('This community is solved as a joint SteadyCom model, which does not save as a merged model.');
+    }
+    const doc = communityModelDocument(this.community, {
+      medium: this.medium,
+      cells: this.map?.cells ?? [],
+    });
+    return JSON.stringify(doc, null, 2);
   }
 
   /**
@@ -5123,7 +5152,7 @@ export class Store {
     const shape = COMPARTMENT_SHAPES[this.compartmentShapePreset];
     if (shape) this.map.editCompartmentShape(speciesId, compartmentId, shape);
 
-    this.mapHistory.record(before, this.map.toJSON(), 'Agregar compartimento');
+    this.mapHistory.record(before, this.map.toJSON(), 'Add compartment');
     this.selectedReaction = null;
     this.selectedGeometry = { cellId: speciesId, compartmentId };
     this.selectedEntity = { type: 'compartment', id: compartmentId, cellId: speciesId };
@@ -6557,7 +6586,7 @@ export class Store {
   /**
    * What exported files are named after. A single-species model goes by its
    * own id (`yeastGEM_v9.1.1`), which is what the person loaded; a community by
-   * its scenario or published-community id (`consorcio-anaerobio`); several
+   * its scenario or published-community id (`anaerobic-consortium`); several
    * uploaded models by their ids together.
    */
   exportBaseName() {

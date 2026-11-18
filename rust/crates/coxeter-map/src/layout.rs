@@ -182,7 +182,7 @@ pub fn layout_community(community: &CommunityModel, opts: &LayoutOptions) -> Lay
         environment: Environment {
             rect: env_rect,
             id: SHARED_COMPARTMENT.into(),
-            label: compartment_name(SHARED_COMPARTMENT, &shared, "en"),
+            label: compartment_name(SHARED_COMPARTMENT, &shared),
             hidden: None,
             extra: Map::new(),
         },
@@ -338,7 +338,7 @@ fn layout_cell(
                 rect: r,
                 depth: node.depth as f64,
                 parent_id: node.parent.clone(),
-                label: cell_compartment_name(id, self.names, "en"),
+                label: cell_compartment_name(id, self.names),
                 membrane: membrane_style(&visual_id, &Names::new()).as_str().to_string(),
                 visual_id: visual_id.clone(),
                 fill: None,
@@ -632,7 +632,7 @@ fn layout_cell(
                 out.local_id = Some(rxn.id.clone());
                 out.name = rxn.name.clone();
                 out.subsystem =
-                    Some(if meta.transfer { "Intercambio con el medio".to_string() } else { rxn.subsystem.clone() });
+                    Some(if meta.transfer { "Exchange with the medium".to_string() } else { rxn.subsystem.clone() });
                 out.cell_id = Some(sp.id.clone());
                 out.kind = if meta.transfer { "transfer".into() } else { rxn.kind.as_str().into() };
                 out.compartments = source.compartments.clone();

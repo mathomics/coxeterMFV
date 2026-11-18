@@ -2,7 +2,7 @@
 //!
 //! Names for exported files: what they are of, then a short suffix for what
 //! they are (`yeastGEM_v9.1.1_map.json`, `yeastGEM_v9.1.1_model.json`,
-//! `consorcio-anaerobio_scenario.json`), so the files saved from one model sort
+//! `anaerobic-consortium_scenario.json`), so the files saved from one model sort
 //! together and say at a glance which is the map and which the model.
 
 use std::sync::LazyLock;
@@ -142,7 +142,7 @@ mod tests {
         assert_eq!(community_data_file_name("steadycom-gut-nine", "media.csv"), "steadycom-gut-nine_media.csv");
         assert_eq!(community_data_file_name("x", "bounds"), "x_bounds.csv", "a file without extension stays a CSV");
         let when = chrono::NaiveDate::from_ymd_opt(2026, 10, 10).unwrap().and_hms_opt(15, 7, 0).unwrap();
-        assert_eq!(timestamped_file_name("consorcio-anaerobio", "repro", "json", &when), "consorcio-anaerobio_repro_20261010-1507.json");
+        assert_eq!(timestamped_file_name("anaerobic-consortium", "repro", "json", &when), "anaerobic-consortium_repro_20261010-1507.json");
         assert_eq!(timestamped_file_name("yeastGEM_v9.1.1", "methods", "md", &when), "yeastGEM_v9.1.1_methods_20261010-1507.md");
         assert_eq!(export_file_name("iML1515+yeastGEM", "map", "json"), "iML1515+yeastGEM_map.json", "the + joining uploads survives");
     }

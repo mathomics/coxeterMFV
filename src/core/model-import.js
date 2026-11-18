@@ -3,6 +3,8 @@ import { extractIdentifiersOrg } from './provenance.js';
 /**
  * Import the models a user supplies: COBRA JSON, SBML Level 3/FBC, a COBRA
  * Toolbox MATLAB file (.mat, v5/v7) or a COBRA Toolbox Excel workbook (.xlsx).
+ * A merged community model saved by this app is COBRA JSON too, and opens as
+ * the species it was merged from.
  *
  * The browser-facing code hands this module {name, text} records, or
  * {name, bytes} for the binary formats. Everything here is pure and
@@ -15,6 +17,7 @@ import { unmangleId } from './sbml.js';
 import { readMat5 } from '../import/mat5.js';
 import { readWorkbookAsync } from './xlsx-core.js';
 import { evaluateGeneRule, geneRuleGenes } from './gene-rules.js';
+import { isCommunityModelDocument, splitCommunityModel } from './community-json.js';
 
 const MODEL_EXTENSION = /\.(json|xml|sbml|mat|xlsx|xlsm)$/i;
 
@@ -23,13 +26,20 @@ const MODEL_EXTENSION = /\.(json|xml|sbml|mat|xlsx|xlsm)$/i;
  * prefixed with `filename` when the file is not a usable model.
  */
 export function parseModelJSON(text, filename = 'model.json') {
-  let raw;
+  return modelFromRaw(parseJSONDocument(text, filename), filename);
+}
+
+/** A JSON file's document, or an Error prefixed with `filename`. */
+function parseJSONDocument(text, filename) {
   try {
-    raw = JSON.parse(text);
+    return JSON.parse(text);
   } catch (error) {
     throw new Error(`${filename}: invalid JSON (${error.message})`);
   }
+}
 
+/** A Model from a parsed COBRA JSON document, validated as parseModelJSON does. */
+function modelFromRaw(raw, filename) {
   validateRawModel(raw, filename);
 
   let model;
@@ -58,10 +68,14 @@ export function parseModelSBML(text, filename = 'model.xml') {
 
 /** Parses a model as SBML (by .xml/.sbml extension or a leading `<`) or else as COBRA JSON. */
 export function parseModelFile(text, filename = 'model.json') {
-  const trimmed = String(text ?? '').trim();
-  const lower = filename.toLowerCase();
-  if (lower.endsWith('.xml') || lower.endsWith('.sbml') || trimmed.startsWith('<')) return parseModelSBML(text, filename);
+  if (isSBMLText(text, filename)) return parseModelSBML(text, filename);
   return parseModelJSON(text, filename);
+}
+
+/** Whether a text model file is SBML: by its .xml/.sbml extension or a leading `<`. */
+function isSBMLText(text, filename) {
+  const lower = filename.toLowerCase();
+  return lower.endsWith('.xml') || lower.endsWith('.sbml') || String(text ?? '').trim().startsWith('<');
 }
 
 /**
@@ -101,23 +115,80 @@ export async function parseModelUpload(file, index = 0) {
   return parseModelFile(file?.text ?? new TextDecoder().decode(bytes ?? new Uint8Array()), filename);
 }
 
-/** prepareImportedModels for uploads in any format: parses each file (see parseModelUpload) first. */
+/**
+ * prepareImportedModels for uploads in any format: reads each file first (see
+ * readModelUpload), so a merged community model opens as its species.
+ */
 export async function prepareModelUploads(files) {
   if (!Array.isArray(files) || files.length === 0) return prepareImportedModels(files);
-  const parsed = await Promise.all(files.map(async (file, index) => ({
-    name: file.name || `model-${index + 1}.json`,
-    model: await parseModelUpload(file, index),
-  })));
-  return prepareImportedModels(parsed);
+  const uploads = await Promise.all(files.map((file, index) => readModelUpload(file, index)));
+  const parsed = [];
+  const communities = [];
+  for (const upload of uploads) {
+    parsed.push(...upload.models);
+    if (upload.community) {
+      communities.push(upload.community);
+    }
+  }
+  return prepareImportedModels(parsed, communities);
+}
+
+/**
+ * One uploaded file as the models it holds. That is its model, or, for a
+ * merged community model (see community-json.js), every species in it with
+ * the species id and abundance it was saved with, plus the medium and the
+ * community objective it was saved with as `community`.
+ */
+async function readModelUpload(file, index) {
+  const filename = file?.name || `model-${index + 1}.json`;
+  const bytes = file?.bytes ? asBytes(file.bytes) : null;
+  let text = null;
+  if (modelFileKind(filename, bytes) === 'text') {
+    text = file?.text ?? new TextDecoder().decode(bytes ?? new Uint8Array());
+  }
+  if (text === null || isSBMLText(text, filename)) {
+    return { models: [{ name: filename, model: await parseModelUpload(file, index) }], community: null };
+  }
+
+  const raw = parseJSONDocument(text, filename);
+  if (!isCommunityModelDocument(raw)) {
+    return { models: [{ name: filename, model: modelFromRaw(raw, filename) }], community: null };
+  }
+
+  const split = splitCommunityModel(raw, filename);
+  const stem = filename.replace(MODEL_EXTENSION, '');
+  const models = [];
+  for (const member of split.members) {
+    models.push({
+      name: `${stem}_${member.id}.json`,
+      model: modelFromRaw(member.model, `${filename} (${member.id})`),
+      speciesId: member.id,
+      abundance: member.abundance,
+      fromCommunity: true,
+    });
+  }
+  return {
+    models,
+    community: {
+      filename,
+      name: split.name,
+      objective: split.objective,
+      productTarget: split.productTarget,
+      medium: split.medium,
+    },
+  };
 }
 
 /**
  * Turns uploaded {name, text} files (or {name, model} already parsed) into
  * community entries: the parsed model, a unique species id and model key, an
- * equal starting abundance and a short summary. Returns {entries, medium},
- * with the medium inferred from all models.
+ * equal starting abundance and a short summary. A species read from a merged
+ * community model ({speciesId, abundance, fromCommunity}) keeps its id and
+ * abundance. Returns {entries, medium, community}: the medium is inferred from
+ * the models opened on their own, and a merged model's `communities` entry
+ * adds the medium it was saved with; `community` is the first of those, or null.
  */
-export function prepareImportedModels(files) {
+export function prepareImportedModels(files, communities = []) {
   if (!Array.isArray(files) || files.length === 0) {
     throw new Error('Select at least one model: COBRA JSON, SBML, MATLAB (.mat) or Excel (.xlsx).');
   }
@@ -129,7 +200,7 @@ export function prepareImportedModels(files) {
     const filename = file.name || `model-${index + 1}.json`;
     const model = file.model instanceof Model ? file.model : parseModelFile(file.text, filename);
     const stem = filename.replace(MODEL_EXTENSION, '');
-    const baseSpecies = safeId(model.id || stem || `sp${index + 1}`);
+    const baseSpecies = safeId(file.speciesId || model.id || stem || `sp${index + 1}`);
     const speciesId = uniqueId(baseSpecies || `sp${index + 1}`, takenSpecies);
     const baseKey = `upload:${safeId(stem || model.id || speciesId)}`;
     const modelKey = uniqueId(baseKey, takenKeys);
@@ -139,7 +210,7 @@ export function prepareImportedModels(files) {
       model,
       modelKey,
       speciesId,
-      abundance: 1 / files.length,
+      abundance: Number.isFinite(file.abundance) ? file.abundance : 1 / files.length,
       enabled: true,
       summary: {
         reactions: model.reactions.size,
@@ -150,9 +221,23 @@ export function prepareImportedModels(files) {
     };
   });
 
+  // A species from a merged model already has the medium it was saved with;
+  // inferring one from its exchange bounds would open more of the medium.
+  const ownModels = [];
+  for (let index = 0; index < entries.length; index += 1) {
+    if (!files[index].fromCommunity) {
+      ownModels.push(entries[index].model);
+    }
+  }
+  const medium = inferCommunityMedium(ownModels);
+  for (const community of communities) {
+    Object.assign(medium, community.medium);
+  }
+
   return {
     entries,
-    medium: inferCommunityMedium(entries.map((x) => x.model)),
+    medium,
+    community: communities[0] ?? null,
   };
 }
 

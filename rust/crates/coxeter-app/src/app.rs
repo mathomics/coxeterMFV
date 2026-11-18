@@ -657,7 +657,7 @@ mod deferred_input_tests {
     #[test]
     fn rapid_medium_changes_preserve_both_component_limits_and_coalesce_repeated_edits() {
         let mut shell = make_shell();
-        shell.store.use_scenario("solo-ecoli").expect("scenario");
+        shell.store.use_scenario("single-ecoli").expect("scenario");
         shell.debounce("medium", 0.12, Deferred::Medium { base: "glc__D".into(), value: "0".into() });
         shell.debounce("medium", 0.12, Deferred::Medium { base: "o2".into(), value: "0".into() });
         assert_eq!(shell.deferred.values().filter(|(_, call)| matches!(call, Deferred::Medium { .. })).count(), 2);
@@ -676,7 +676,7 @@ mod deferred_input_tests {
     #[test]
     fn rapid_changes_to_two_species_preserve_both_abundance_values() {
         let mut shell = make_shell();
-        shell.store.use_scenario("aerobio-mixto").expect("two-species scenario");
+        shell.store.use_scenario("aerobic-coculture").expect("two-species scenario");
         let first = shell.store.species[0].id.clone();
         let second = shell.store.species[1].id.clone();
         shell.debounce("abundance", 0.14, Deferred::Abundance { species: first.clone(), value: "0.2".into() });
@@ -696,7 +696,7 @@ mod input_order_tests {
     fn make_shell() -> Shell {
         let mut store = Store::with_dir(coxeter_core::testkit::repo_root());
         store.init().expect("bundled models");
-        store.use_scenario("solo-ecoli").expect("scenario");
+        store.use_scenario("single-ecoli").expect("scenario");
         Shell::new(store, Box::new(ScriptedDialogs::new()))
     }
 
@@ -704,7 +704,7 @@ mod input_order_tests {
     fn pending_medium_edits_do_not_land_on_a_replacement_scenario() {
         let mut shell = make_shell();
         shell.debounce("medium", 0.12, Deferred::Medium { base: "glc__D".into(), value: "1".into() });
-        shell.queue_scenario_selection("sc:aerobio-mixto");
+        shell.queue_scenario_selection("sc:aerobic-coculture");
         shell.flush_deferred();
         assert_eq!(shell.store.medium["glc__D"], 10.0);
     }
@@ -715,7 +715,7 @@ mod input_order_tests {
         shell.debounce("medium", 0.12, Deferred::Medium { base: "glc__D".into(), value: "1".into() });
         shell.debounce("pfba-biomass-percent", 0.18, Deferred::PfbaPercent("75".into()));
         shell.debounce("rx-search", 0.14, Deferred::ReactionSearch("biomass".into()));
-        shell.store.use_scenario("aerobio-mixto").expect("downloaded context");
+        shell.store.use_scenario("aerobic-coculture").expect("downloaded context");
         shell.on_job_finished(coxeter_state::JobOutcome { id: 1, kind: JobKind::Download, result: Ok(()) });
         shell.flush_deferred();
         assert_eq!(shell.store.medium["glc__D"], 10.0);
@@ -827,7 +827,7 @@ mod input_order_tests {
         assert!(asked.is_empty(), "pending download opened export dialogs: {asked:?}");
         assert!(outcomes.iter().any(|outcome| outcome.kind == JobKind::Download && outcome.result.is_err()));
         let scenario: serde_json::Value = serde_json::from_str(&text).expect("scenario JSON");
-        assert_eq!(scenario["scenario"], "solo-ecoli");
+        assert_eq!(scenario["scenario"], "single-ecoli");
     }
 
     #[test]
@@ -897,14 +897,14 @@ mod input_order_tests {
             shell.store.scenarios.push(scenario);
         }
         shell.queue_scenario_selection(&format!("sc:{id}"));
-        shell.queue_scenario_selection("sc:aerobio-mixto");
+        shell.queue_scenario_selection("sc:aerobic-coculture");
         let status = shell.store.status().clone();
         shell.debounce("medium", 0.12, Deferred::Medium { base: "glc__D".into(), value: "3".into() });
         for outcome in shell.store.wait_for_jobs(std::time::Duration::from_secs(10)) {
             shell.on_job_finished(outcome);
         }
         assert_eq!(shell.store.status(), &status);
-        assert_eq!(shell.store.scenario_id().as_deref(), Some("aerobio-mixto"));
+        assert_eq!(shell.store.scenario_id().as_deref(), Some("aerobic-coculture"));
         shell.flush_deferred();
         assert_eq!(shell.store.medium["glc__D"], 3.0);
         assert!(shell.store.solution.as_ref().expect("newer solution").is_optimal());
@@ -918,7 +918,7 @@ mod input_order_tests {
         shell.store.steady_com_range(false).expect("permitted range request");
         shell.store.wait_steady_com(std::time::Duration::from_secs(20)).expect("range completion").expect("permitted range");
         shell.ui.steady_com_draft = Some(crate::ui_state::SteadyComDraft {
-            community_id: Some("solo-ecoli".into()),
+            community_id: Some("single-ecoli".into()),
             key: Some(shell.store.steady_com_key()),
             value: "0.1".into(),
             ..Default::default()
@@ -974,7 +974,7 @@ mod input_order_tests {
             }
         }
         shell.store.models.insert("ecoli_core_mc", coxeter_core::model::Model::from_value(&raw).expect("annotated model"));
-        shell.store.use_scenario("solo-ecoli").expect("annotated scenario");
+        shell.store.use_scenario("single-ecoli").expect("annotated scenario");
         shell.store.import_metatranscriptomics(
             "MAG,gene,condition,TPM\neco,test_gap,Control,1\neco,test_pgi,Control,8\n", "return-fba-genes.csv",
         ).expect("expression");
@@ -1016,7 +1016,7 @@ mod retired_worker_tests {
     fn cancelled_workers_keep_the_idle_poll_timer_until_their_final_messages_are_drained() {
         let mut store = Store::with_dir(coxeter_core::testkit::repo_root());
         store.init().expect("bundled models");
-        store.use_scenario("solo-ecoli").expect("scenario");
+        store.use_scenario("single-ecoli").expect("scenario");
         store.show_full_map_in_background();
         let job = store.running_jobs().into_iter().find(|job| job.kind == JobKind::Layout).expect("layout job");
         store.cancel_job(job.id);

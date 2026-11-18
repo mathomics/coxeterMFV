@@ -82,7 +82,7 @@ impl Default for OmicsCsvOptions {
 pub fn parse_omics_csv(text: &str, options: &OmicsCsvOptions) -> Result<OmicsDataset> {
     let rows = parse_delimited(text, ',');
     if rows.len() < 2 {
-        return Err(fail("El CSV debe incluir encabezado y al menos una fila de datos."));
+        return Err(fail("The CSV needs a header row and at least one data row."));
     }
 
     let header: Vec<String> = rows[0].iter().map(|x| js_trim(x).to_string()).collect();

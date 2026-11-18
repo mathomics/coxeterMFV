@@ -28,16 +28,16 @@ const scale = {
 
 test('free text can be created, edited, moved and removed', () => {
   const map = emptyMap();
-  const text = map.addText('Glicólisis', 120, 90);
+  const text = map.addText('Glycolysis', 120, 90);
 
   assert.ok(text);
   assert.equal(text.id, 'text-1');
-  assert.equal(text.text, 'Glicólisis');
+  assert.equal(text.text, 'Glycolysis');
   assert.equal(text.x, 120);
   assert.equal(text.y, 90);
 
-  map.updateText(text.id, 'Glucólisis central');
-  assert.equal(map.texts.get(text.id).text, 'Glucólisis central');
+  map.updateText(text.id, 'Central glycolysis');
+  assert.equal(map.texts.get(text.id).text, 'Central glycolysis');
 
   map.moveText(text.id, 180, 140);
   assert.equal(map.texts.get(text.id).x, 180);
@@ -65,12 +65,12 @@ test('blank text is rejected', () => {
 
 test('free text survives EditableMap JSON round trip', () => {
   const map = emptyMap();
-  const item = map.addText('Glicólisis', 200, 150, { fontSize: 28 });
+  const item = map.addText('Glycolysis', 200, 150, { fontSize: 28 });
   map.moveText(item.id, 240, 180);
 
   const restored = EditableMap.fromJSON(JSON.parse(JSON.stringify(map.toJSON())));
   assert.deepEqual(restored.toJSON(), map.toJSON());
-  assert.equal(restored.texts.get(item.id).text, 'Glicólisis');
+  assert.equal(restored.texts.get(item.id).text, 'Glycolysis');
   assert.equal(restored.texts.get(item.id).fontSize, 28);
 });
 
@@ -93,18 +93,18 @@ test('store records add/edit/delete text in map history', () => {
   const store = new Store('.');
   store.map = emptyMap();
 
-  const item = store.addMapText('Glicólisis', 100, 100);
+  const item = store.addMapText('Glycolysis', 100, 100);
   assert.ok(item);
   assert.equal(store.canUndoMap, true);
 
-  store.updateMapText(item.id, 'Glicólisis / PPP');
-  assert.equal(store.map.texts.get(item.id).text, 'Glicólisis / PPP');
+  store.updateMapText(item.id, 'Glycolysis / PPP');
+  assert.equal(store.map.texts.get(item.id).text, 'Glycolysis / PPP');
 
   store.removeMapText(item.id);
   assert.equal(store.map.texts.has(item.id), false);
 
   store.undoMap();
-  assert.equal(store.map.texts.get(item.id).text, 'Glicólisis / PPP');
+  assert.equal(store.map.texts.get(item.id).text, 'Glycolysis / PPP');
 });
 
 test('deleting a selection removes the annotations caught in it', () => {

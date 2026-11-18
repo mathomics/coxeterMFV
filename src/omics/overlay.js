@@ -24,7 +24,7 @@ const SPECIES_HEADERS = new Set(['species', 'organism', 'cell', 'mag', 'genome',
  */
 export function parseOmicsCSV(text, { source = 'omics.csv', dataType = 'gene' } = {}) {
   const rows = parseCSV(text);
-  if (rows.length < 2) throw new Error('El CSV debe incluir encabezado y al menos una fila de datos.');
+  if (rows.length < 2) throw new Error('The CSV needs a header row and at least one data row.');
 
   const header = rows[0].map((x) => String(x).trim());
   const normalized = header.map(normalizeHeader);

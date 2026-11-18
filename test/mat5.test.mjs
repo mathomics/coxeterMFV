@@ -5,7 +5,7 @@ import { readMat5 } from '../src/import/mat5.js';
 
 // Created from our own two-metabolite / three-reaction fixture using SciPy
 // savemat(..., do_compression=True). No published model data is embedded here.
-const scipyFixture = 'TUFUTEFCIDUuMCBNQVQtZmlsZSBQbGF0Zm9ybTogbnQsIENyZWF0ZWQgb246IFRodSBPY3QgIDggMjE6MDI6MjMgMjAyNgAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABSU0PAAAAhgEAAHicnVTNSsNAEJ78VYslehDxmIMPoDdviiDoQQRzEUQkTRYNtEnIj7Q3jz6Cj+DFNxAUvItHH8Gjj+Buukkm09SUTBkyM51v8n2d7ZoA8GwA9PhzlbsCMzNkrsqa8HXu9jRI71jqu2ehx0YJmLz2qFd4leAV5LO6DgOZT7jHkyCRX8GYpWVsQ2WjYRVnKEYhuCiO2X0ZeyxxYz9K/TAANo7SqawL3l+wWLdGeIv+XdSvN+jUUf8Gz44vb5xlcGoNp8LF3nLv02o4DY5Oz3Pc0z+68D676nKu2HU3nJvjHhDOkH2YH9Zl5NjKCu64XvwWYk6fu1V2/76R50GRCx4niEeP8Kf7F3O3y7k770BMzNtH89Za5umy90cTn/k99Ame7k2V/7Q2HH2vKitUv9mCG0j9Rd6kH89rOg+bgM8DwBZ3++MlSFniJ9bnq+UxK4ozNnTmddH9FIb3U/D4hm73kdCH7wt8B9H9NulbIfpEnrDbLPDCHH8I9XOvwGI9BuKH9f0BYC1C2A8AAAAuAAAAeJzjY2BgcABiNiDmAGIeBghghfIZgZgJSoPUFGem56WmIOSBoKEaSAAAWUMEAg8AAAAwAAAAeJzjY2BgcABiNiDmAGJeBghghfIZgZgJSoP4pXnFmel5qSkw9f+BgB1IAwB/PwfxDwAAADMAAAB4nONjYGBwAGI2IOYAYnYGCGCF8hmBmAlKg/hpRYnJJZn5eexQPgPDAXsGBoEDAGmFBbEPAAAANAAAAHic42NgYHAAYjYg5gBiFgYIYIXymaCYEYi5gDg5I7EoMbkktagYok4AqCMxOSkFAHH8Bjs=';
+const scipyFixture = 'TUFUTEFCIDUuMCBNQVQtZmlsZSBQbGF0Zm9ybTogbnQsIENyZWF0ZWQgb246IFdlZCBOb3YgMTggMTU6NDY6MDkgMjAyNgAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABSU0PAAAAewEAAHicnVTNSsNAEJ78FYsl1pvHHHwAvXlTBEEPItiLICI1WTDQJiW7Snvz6CP4CD6EoE8gHvsIHn0Ed5PdZDKmpmTCsDOT+Wbny2zWB4BXD6An1w2pFhTiad/WMaVbUkeLRNwzEYfnacQmHHwZe3YrvE3wFtIi7sJA+3Op2Tzh+hVMmSjtEVQyuavsB2QjE0JkZ+yxtCPGwyyeiThNgE1nYqHjqu8vWM3bIX2r/D2U7zbwdFH+UHonV7fjdXB2DWfD5f56+zk1nAPHZxc57uUfXnieXXmNr9lNN1yY454QztN5uD/My8uxlZjecdx8C1WnLzUos3/eyXpofNXHKeqjR/qn81d1d8q6ux9ARNU7QPU2W+q5OvfbUc/fOfQJns7N1n9aG47ua+sI5e+34Aaav/Gb+ON6TedhCPg8AGyDuU94zIPPt0AwLlA9zIvOxwiej8Etodt9pPjh+wLfQXS+Tfx6hJ/yOQvTJCrwR1A/9xas5uOh/jC/X7GpQB0PAAAALgAAAHic42NgYHAAYjYg5gBiHgYIYIXyGYGYCUqD1BRnpuelpiDkgaChGkgAAFlDBAIPAAAAMAAAAHic42NgYHAAYjYg5gBiXgYIYIXyGYGYCUqD+KV5xZnpeakpMPX/gYAdSAMAfz8H8Q8AAAAzAAAAeJzjY2BgcABiNiDmAGJ2BghghfIZgZgJSoP4aUWJySWZ+XnsUD4DwwF7BgaBAwBphQWxDwAAADQAAAB4nONjYGBwAGI2IOYAYhYGCGCF8pmgmBGIuYA4OSOxKDG5JLWoGKJOAKgjMTkpBQBx/AY7';
 
 function concat(...items) {
   const result = new Uint8Array(items.reduce((size, item) => size + item.length, 0));
@@ -54,7 +54,7 @@ test('SciPy compressed synthetic COBRA structures preserve fields, CSC and numer
   const [model, second] = variables.SyntheticModels;
   assert.deepEqual(model.rxns, ['EX_a', 'R1', 'BIO']);
   assert.deepEqual(model.mets, ['a[e]', 'a[c]']);
-  assert.equal(model.description, 'Síntesis μ de prueba');
+  assert.equal(model.description, 'Synthesis μ test');
   assert.deepEqual(model.S.shape, [2, 3]);
   assert.deepEqual(Array.from(model.S.ir), [0, 0, 1, 1]);
   assert.deepEqual(Array.from(model.S.jc), [0, 1, 3, 4]);
@@ -67,7 +67,7 @@ test('SciPy compressed synthetic COBRA structures preserve fields, CSC and numer
   assert.deepEqual(Array.from(model.c), [0, 0, 1]);
   assert.deepEqual(Array.from(model.rev), [1, 0, 0]);
   assert.equal(model.empty.length, 0);
-  assert.equal(second.description, 'segundo');
+  assert.equal(second.description, 'second');
   assert.deepEqual(second.S.shape, [0, 0]);
   assert.equal(second.S.values.length, 0);
   assert.deepEqual(Array.from(variables.signed), [-2147483648, 123]);

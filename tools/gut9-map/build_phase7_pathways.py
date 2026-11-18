@@ -332,9 +332,9 @@ def main(src, out, log_path, *cells):
         report.append(f'{cell}: {n} reactions added, {len(labels)} pathway labels, {len(f.notes)} notes')
         print(report[-1], flush=True)
     save(cm.doc, out)
-    write_log(log_path, 'Fase 7: vías conceptuales completadas',
-              'Se completaron las vías de cada especie con los pasos que su GEM tiene, antes que los desvíos (R18, R19, R24); '
-              'los desvíos y rutas alternativas activos se agregaron después, como derivaciones de sus pasos (R20).',
+    write_log(log_path, 'Phase 7: conceptual pathways completed',
+              'The pathways of each species were completed with the steps its GEM has, before the detours (R18, R19, R24); '
+              'the active detours and alternative routes were added afterwards, as branches of their steps (R20).',
               entries, closing='\n'.join('- ' + r for r in report + notes), append=Path(log_path).exists())
 
 

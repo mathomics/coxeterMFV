@@ -220,7 +220,7 @@ def main(map_path, out_path, sp, n, log_path):
     g = Grower(cm, s, log)
     added = g.grow(int(n))
     save(cm.doc, out_path)
-    write_log(log_path, 'Fase 6 — metabolismo interno', '', log, append=Path(log_path).exists())
+    write_log(log_path, 'Phase 6 — internal metabolism', '', log, append=Path(log_path).exists())
     print(f'{sp}: {added} reactions added')
     for e in log:
         print(f'   {e["reaction"]:22} {e["flux"]:10.4g}  {e["name"][:50]}')

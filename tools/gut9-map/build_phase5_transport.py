@@ -182,7 +182,7 @@ def place(cm, s, b, chain, e_node, edge, along, ex, gram_neg):
 
 def finish(cm, out_path, log_path, log, pending, sp):
     save(cm.doc, out_path)
-    write_log(log_path, f'Fase 5 — capa de transportadores', '', log,
+    write_log(log_path, f'Phase 5 — transporter layer', '', log,
               closing=('Pendientes: ' + '; '.join(f'{a} ({b})' for a, b in pending)) if pending else 'Sin pendientes.',
               append=Path(log_path).exists())
     print(f'{sp}: {len(log)} transport reactions added; {len(pending)} pending')

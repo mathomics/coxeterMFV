@@ -56,9 +56,9 @@ def main(sp, target, size=10):
             print(f'{sp}: batch rejected ({errors} validation errors, {bad} crossings/crowded nodes); stopping')
             break
         save(cm.doc, MAP)
-        write_log(LOG, 'Fase 6 — metabolismo interno',
-                  'Registro de `tools/gut9-map/phase6_driver.py`: cada tanda pasó la verificación R51 por reacción, '
-                  'el validador y la auditoría de cruces del mapa completo antes de su commit.',
+        write_log(LOG, 'Phase 6 — internal metabolism',
+                  'Log of `tools/gut9-map/phase6_driver.py`: each batch passed the per-reaction R51 check, '
+                  'the validator and the crossing audit of the whole map before its commit.',
                   log, append=LOG.exists())
         k += 1
         total += added

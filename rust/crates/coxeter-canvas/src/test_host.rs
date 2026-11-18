@@ -623,7 +623,7 @@ impl MapHost for EditableMapHost {
         if added.is_none() {
             return false;
         }
-        self.record(&before, "Agregar compartimento");
+        self.record(&before, "Add compartment");
         self.selected_reaction = None;
         self.selected_geometry = Some(GeometrySelection { cell_id: Some(species_id.into()), compartment_id: compartment_id.into() });
         self.selected_entity =
@@ -659,7 +659,7 @@ impl MapHost for EditableMapHost {
         if map.remove_node(node_id).is_none() {
             return false;
         }
-        self.record(&before, "Eliminar metabolito");
+        self.record(&before, "Remove metabolite");
         if self.selected_entity.as_ref().is_some_and(|e| e.kind == "metabolite" && e.id == node_id) {
             self.selected_entity = None;
         }
@@ -719,7 +719,7 @@ impl MapHost for EditableMapHost {
         if map.remove_text(id).is_none() {
             return false;
         }
-        self.record(&before, "Eliminar texto");
+        self.record(&before, "Remove text");
         if self.selected_entity.as_ref().is_some_and(|e| e.kind == "text" && e.id == id) {
             self.selected_entity = None;
         }

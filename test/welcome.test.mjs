@@ -64,7 +64,7 @@ test('the welcome page shows the license and links the user guide, the source co
 test('the welcome page opens at start until the user turns it off, and not when the address names a scenario', () => {
   const storage = memoryStorage();
   assert.equal(welcomeOpensAtStart(storage, ''), true);
-  assert.equal(welcomeOpensAtStart(storage, '?scenario=consorcio-anaerobio'), false);
+  assert.equal(welcomeOpensAtStart(storage, '?scenario=anaerobic-consortium'), false);
 
   rememberWelcomeAtStart(storage, false);
   assert.equal(storage.getItem(WELCOME_STORAGE_KEY), 'off');

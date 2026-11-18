@@ -676,7 +676,7 @@
     },
     {
       "id": "HEX1",
-      "name": "Hexoquinasa",
+      "name": "Hexokinase",
       "metabolites": {
         "atp_c": -1,
         "glc__D_c": -1,
@@ -762,7 +762,7 @@
     },
     {
       "id": "ACt2r",
-      "name": "Simporte acetato/H+",
+      "name": "Acetate/H+ symporter",
       "metabolites": {
         "ac_e": -1,
         "h_e": -1,
@@ -796,7 +796,7 @@
     },
     {
       "id": "PYRt2",
-      "name": "Simporte piruvato/H+",
+      "name": "Pyruvate/H+ symporter",
       "metabolites": {
         "h_e": -1,
         "pyr_e": -1,
@@ -830,7 +830,7 @@
     },
     {
       "id": "PIt2r",
-      "name": "Simporte fosfato/H+",
+      "name": "Phosphate/H+ symporter",
       "metabolites": {
         "h_e": -1,
         "pi_e": -1,
@@ -848,7 +848,7 @@
     },
     {
       "id": "H2Ot",
-      "name": "Agua (acuaporina)",
+      "name": "Water (aquaporin)",
       "metabolites": {
         "h2o_e": -1,
         "h2o_c": 1
@@ -1182,7 +1182,7 @@
     },
     {
       "id": "PDC",
-      "name": "Piruvato descarboxilasa",
+      "name": "Pyruvate decarboxylase",
       "metabolites": {
         "h_c": -1,
         "pyr_c": -1,
@@ -1482,7 +1482,7 @@
     },
     {
       "id": "PPCK",
-      "name": "PEP carboxiquinasa (Pck1)",
+      "name": "PEP carboxykinase (Pck1)",
       "metabolites": {
         "atp_c": -1,
         "oaa_c": -1,
@@ -1540,7 +1540,7 @@
     },
     {
       "id": "GLNS",
-      "name": "Glutamina sintetasa",
+      "name": "Glutamine synthetase",
       "metabolites": {
         "atp_c": -1,
         "glu__L_c": -1,
@@ -1630,7 +1630,7 @@
     },
     {
       "id": "H2Otm",
-      "name": "Agua (mitocondria)",
+      "name": "Water (mitochondrion)",
       "metabolites": {
         "h2o_c": -1,
         "h2o_m": 1
@@ -1646,7 +1646,7 @@
     },
     {
       "id": "PIt2m",
-      "name": "Simporte fosfato/H+ (mitocondria)",
+      "name": "Phosphate/H+ symporter (mitochondrion)",
       "metabolites": {
         "h_c": -1,
         "pi_c": -1,
@@ -1664,7 +1664,7 @@
     },
     {
       "id": "ATPtm",
-      "name": "Translocasa ADP/ATP (ANT)",
+      "name": "ADP/ATP translocase (ANT)",
       "metabolites": {
         "adp_c": -1,
         "atp_m": -1,
@@ -1682,7 +1682,7 @@
     },
     {
       "id": "AKGMALtm",
-      "name": "Antiporte 2-oxoglutarato/malato",
+      "name": "2-oxoglutarate/malate antiporter",
       "metabolites": {
         "akg_m": -1,
         "mal__L_c": -1,

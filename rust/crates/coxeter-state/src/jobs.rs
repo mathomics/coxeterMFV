@@ -437,7 +437,7 @@ mod cancellation_tests {
             }
         }
         store.models.insert("ecoli_core_mc", Model::from_value(&raw).expect("annotated model"));
-        store.use_scenario("solo-ecoli").expect("scenario");
+        store.use_scenario("single-ecoli").expect("scenario");
         store.import_metatranscriptomics(
             "MAG,gene,condition,TPM\neco,test_gap,Control,1\neco,test_pgi,Control,8\n", "job-genes.csv",
         ).expect("expression");
@@ -865,7 +865,7 @@ mod cancellation_tests {
         store.start_community_gimme(CommunityOmicsPatch::default()).expect("pending GIMME");
         let id = latest_job(&store, JobKind::Gimme);
         let messages = take_done(&store, id);
-        store.use_scenario("solo-ecoli").expect("new context");
+        store.use_scenario("single-ecoli").expect("new context");
         let solution = store.solution.clone().expect("new result");
         let export = store.reproducibility_bundle();
         let active = store.job_running(JobKind::Gimme);

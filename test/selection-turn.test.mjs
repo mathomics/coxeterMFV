@@ -244,7 +244,7 @@ test('a straight pathway turns rigidly too, kept straight on its metabolites', a
 test('a pathway picked by its reactions turns and spaces as one straight line, the metabolites at its ends included', async () => {
   // Lower glycolysis of E. coli on the curated anaerobic consortium map, a
   // straight vertical chain g3p - GAPD - 13dpg - PGK - 3pg - PGM - 2pg.
-  const curated = parseMapDocument(await readFile(new URL('../models/maps/consorcio-anaerobio.json', import.meta.url), 'utf8'));
+  const curated = parseMapDocument(await readFile(new URL('../models/maps/anaerobic-consortium.json', import.meta.url), 'utf8'));
   const map = EditableMap.fromJSON(curated.map);
   const chain = ['eco@GAPD', 'eco@PGK', 'eco@PGM'];
   // As a rectangle round the reactions catches it: the inner metabolites, not g3p and 2pg at the ends.

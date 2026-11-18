@@ -166,10 +166,11 @@ export function validateMapContext(parsed, current = {}) {
     }
     // An uploaded model is known only by the name of the file it came from, and
     // a file gets renamed, for instance every time a model is re-exported under
-    // a new version. That is not a different model. Whether the map fits is
-    // settled by what it draws: a reaction or metabolite the active model does
-    // not have is refused, by name, when the map is applied.
-    if (isUploadReference(expected[i].model) && isUploadReference(incoming[i].model)) continue;
+    // a new version. That is not a different model, and neither is a bundled
+    // model opened again from a merged community model file. Whether the map
+    // fits is settled by what it draws: a reaction or metabolite the active
+    // model does not have is refused, by name, when the map is applied.
+    if (isUploadReference(expected[i].model)) continue;
     if (expected[i].model && incoming[i].model && expected[i].model !== incoming[i].model) {
       throw new Error(
         `Species ${expected[i].id} uses a different model in the map file.`,

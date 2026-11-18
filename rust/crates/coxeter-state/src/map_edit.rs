@@ -1137,7 +1137,7 @@ impl Store {
                 species_id: sp.id.clone(),
                 species_name: model.cell.name.clone(),
                 organism: model.cell.organism.clone(),
-                outer_compartment_name: cell_compartment_name(&outer, &model.compartment_names, "en"),
+                outer_compartment_name: cell_compartment_name(&outer, &model.compartment_names),
                 outer_compartment_id: outer,
             });
         }
@@ -1238,7 +1238,7 @@ impl Store {
                     species_id: sp.id.clone(),
                     species_name: model.cell.name.clone(),
                     compartment_id: node.id.clone(),
-                    compartment_name: cell_compartment_name(&node.id, &model.compartment_names, "en"),
+                    compartment_name: cell_compartment_name(&node.id, &model.compartment_names),
                     parent_id: Some(parent.clone()),
                     depth: node.depth,
                 });
@@ -1263,7 +1263,7 @@ impl Store {
             let cell = map.cell(&sp.id);
             let drawn: HashSet<&str> = cell.map(|c| c.compartments.iter().map(|k| k.id.as_str()).collect()).unwrap_or_default();
             let tree = model.compartment_tree(cell.and_then(|c| c.nesting()).as_ref());
-            let name = |id: &str| cell_compartment_name(id, &model.compartment_names, "en");
+            let name = |id: &str| cell_compartment_name(id, &model.compartment_names);
             for node in tree.by_id.values() {
                 let (status, reason) = if drawn.contains(node.id.as_str()) {
                     ("drawn", "already on the map".to_string())
@@ -1416,7 +1416,7 @@ impl Store {
             compartment_id: compartment_id.to_string(),
             parent_id: Some(parent),
             rect,
-            label: Some(cell_compartment_name(compartment_id, &model.compartment_names, "en")),
+            label: Some(cell_compartment_name(compartment_id, &model.compartment_names)),
             membrane: None,
             cell_name: Some(model.cell.name.clone()),
             organism: Some(model.cell.organism.clone()),
@@ -1427,7 +1427,7 @@ impl Store {
         if let Some(shape) = compartment_shape_preset(&self.compartment_shape_preset) {
             map.edit_compartment_shape(Some(species_id), compartment_id, ShapePatch::of(shape));
         }
-        self.record_map(&before, "Agregar compartimento");
+        self.record_map(&before, "Add compartment");
         self.selected_reaction = None;
         self.selected_geometry = Some(GeometrySelection { cell_id: Some(species_id.into()), compartment_id: compartment_id.into() });
         let mut entity = SelectedEntity::new("compartment", compartment_id);
@@ -1484,7 +1484,7 @@ impl Store {
             let Some(node) = tree.by_id.get(&id) else { continue };
             rows.push(NestingRow {
                 id: node.id.clone(),
-                name: cell_compartment_name(&node.id, names, "en"),
+                name: cell_compartment_name(&node.id, names),
                 visual_id: cell_compartment_visual_id(&node.id, names),
                 parent_id: node.parent.clone(),
                 depth: node.depth,
@@ -1532,8 +1532,8 @@ impl Store {
         if let Some(left) = report.left.first() {
             // Nothing is kept of a change that could not be drawn in full.
             self.map = EditableMap::from_json(&before).ok();
-            let into = cell_compartment_name(left.into.as_deref().unwrap_or(""), &names, "en");
-            let id = cell_compartment_name(&left.id, &names, "en");
+            let into = cell_compartment_name(left.into.as_deref().unwrap_or(""), &names);
+            let id = cell_compartment_name(&left.id, &names);
             self.set_status_message(StatusState::Warn, format!("No room for {id} inside {into}. Enlarge {into} first."));
             self.emit("map");
             return None;
@@ -2442,7 +2442,7 @@ mod tests {
     fn ctrl_click_adds_to_the_selection_what_was_picked_before_it_and_a_plain_pick_lets_go() {
         let mut store = Store::with_dir(coxeter_core::testkit::repo_root());
         store.init().expect("bundled files");
-        store.use_scenario("solo-ecoli").expect("scenario");
+        store.use_scenario("single-ecoli").expect("scenario");
         store.select(Some("eco@CS"));
         store.extend_multi_selection("reaction", "eco@ACONT");
         assert_eq!(store.multi_selection.reactions.iter().cloned().collect::<Vec<_>>(), ["eco@CS", "eco@ACONT"]);
@@ -2457,7 +2457,7 @@ mod tests {
     fn circularize_lays_the_tca_cycle_out_in_one_undo_step_and_refuses_a_chain() {
         let mut store = Store::with_dir(coxeter_core::testkit::repo_root());
         store.init().expect("bundled files");
-        store.use_scenario("solo-ecoli").expect("scenario");
+        store.use_scenario("single-ecoli").expect("scenario");
         store.multi_selection = empty_selection();
         store.multi_selection.reactions.extend(["eco@PGI", "eco@PFK", "eco@FBA"].map(String::from));
         assert!(!store.can_circularize_selection());
@@ -2479,7 +2479,7 @@ mod tests {
     fn tidy_curves_on_a_selection_tidies_each_reaction_in_one_undo_step() {
         let mut store = Store::with_dir(coxeter_core::testkit::repo_root());
         store.init().expect("bundled files");
-        store.use_scenario("solo-ecoli").expect("scenario");
+        store.use_scenario("single-ecoli").expect("scenario");
         let reactions = ["eco@PGI", "eco@PFK"];
         let map = store.map.as_mut().expect("a map");
         // Bend the curves of both reactions.
@@ -2523,7 +2523,7 @@ mod presentation_tests {
     fn make_store() -> Store {
         let mut store = Store::with_dir(coxeter_core::testkit::repo_root());
         store.init().expect("bundled files");
-        store.use_scenario("solo-ecoli").expect("scenario");
+        store.use_scenario("single-ecoli").expect("scenario");
         store
     }
 
@@ -2694,7 +2694,7 @@ mod replacement_tests {
     fn make_store() -> Store {
         let mut store = Store::with_dir(coxeter_core::testkit::repo_root());
         store.init().expect("bundled files");
-        store.use_scenario("solo-ecoli").expect("scenario");
+        store.use_scenario("single-ecoli").expect("scenario");
         store
     }
 
@@ -2811,7 +2811,7 @@ mod replacement_tests {
         let mut store = make_store();
         store.show_core_metabolism_overview(true).expect("overview");
         select_objects(&mut store);
-        store.use_scenario("solo-ecoli").expect("scenario");
+        store.use_scenario("single-ecoli").expect("scenario");
         assert_no_selection(&store);
         assert_eq!(store.map_mode, "full");
         store.set_layout_preset("compact");
@@ -2851,7 +2851,7 @@ mod reaction_geometry_control_tests {
     fn make_store() -> Store {
         let mut store = Store::with_dir(coxeter_core::testkit::repo_root());
         store.init().expect("bundled models");
-        store.use_scenario("solo-ecoli").expect("scenario");
+        store.use_scenario("single-ecoli").expect("scenario");
         let community = store.community.as_ref().expect("community");
         let options = layout_engine_options(&(&store.layout_settings).into());
         store.map = Some(EditableMap::empty_from_community(community, &options));
@@ -3025,7 +3025,7 @@ mod manual_metabolite_tests {
     fn make_store() -> Store {
         let mut store = Store::with_dir(coxeter_core::testkit::repo_root());
         store.init().expect("bundled models");
-        store.use_scenario("solo-ecoli").expect("scenario");
+        store.use_scenario("single-ecoli").expect("scenario");
         store.map = Some(EditableMap::empty_from_community(
             store.community.as_ref().expect("community"), &Default::default(),
         ));
@@ -3166,7 +3166,7 @@ mod inspector_selection_tests {
     fn make_store() -> Store {
         let mut store = Store::with_dir(coxeter_core::testkit::repo_root());
         store.init().expect("bundled files");
-        store.use_scenario("solo-ecoli").expect("scenario");
+        store.use_scenario("single-ecoli").expect("scenario");
         store
     }
 
@@ -3351,7 +3351,7 @@ mod shaped_placement_tests {
     fn make_store() -> Store {
         let mut store = Store::with_dir(coxeter_core::testkit::repo_root());
         store.init().expect("bundled models");
-        store.use_scenario("solo-ecoli").expect("scenario");
+        store.use_scenario("single-ecoli").expect("scenario");
         store.map = Some(EditableMap::empty_from_community(
             store.community.as_ref().expect("community"), &Default::default(),
         ));
@@ -3493,7 +3493,7 @@ mod shaped_placement_tests {
 
     #[test]
     fn automatic_layout_contains_secondary_circles_in_their_displayed_compartments_and_connects_their_branches() {
-        for scenario in ["solo-ecoli", "solo-levadura"] {
+        for scenario in ["single-ecoli", "aerobic-coculture"] {
             let mut store = make_store();
             store.use_scenario(scenario).expect("scenario");
             let map = EditableMap::from_community(store.community.as_ref().expect("community"), &Default::default());
@@ -3525,7 +3525,7 @@ mod canvas_transaction_tests {
     fn fixture() -> (Store, String) {
         let mut store = Store::with_dir(coxeter_core::testkit::repo_root());
         store.init().expect("bundled models");
-        store.use_scenario("solo-ecoli").expect("scenario");
+        store.use_scenario("single-ecoli").expect("scenario");
         store.map = Some(EditableMap::empty_from_community(store.community.as_ref().expect("community"), &LayoutOptions::default()));
         store.add_map_reaction("eco@PGI", &PlaceOptions::default()).expect("PGI");
         store.map_history.clear();
@@ -3563,7 +3563,7 @@ mod canvas_transaction_tests {
     fn a_canvas_transaction_cannot_record_against_a_reloaded_scenario_history() {
         let (mut store, _) = fixture();
         let edit = store.begin_map_edit("Move metabolite");
-        store.use_scenario("solo-ecoli").expect("scenario reload");
+        store.use_scenario("single-ecoli").expect("scenario reload");
         let before = store.map.as_ref().expect("map").to_json();
         let solution = store.solution.clone().expect("solution");
         let version = store.map_history.version();
@@ -3667,7 +3667,7 @@ mod nesting_tests {
 
     #[test]
     fn a_cells_saved_nesting_overrides_the_models_tree_for_what_can_be_drawn_and_where() {
-        let mut store = with_cell("solo-ecoli", "eco");
+        let mut store = with_cell("single-ecoli", "eco");
         let available = |store: &Store| -> Vec<(String, Option<String>)> {
             store.available_map_compartments().into_iter().map(|x| (x.compartment_id, x.parent_id)).collect()
         };
@@ -3689,7 +3689,7 @@ mod nesting_tests {
 
     #[test]
     fn moving_a_drawn_compartment_under_another_fits_it_inside_its_new_parent_and_moves_its_transporters_to_the_new_membrane() {
-        let mut store = with_cell("solo-levadura", "sce");
+        let mut store = with_cell("aerobic-coculture", "sce");
         let community = store.community.clone().expect("community");
         let model_before = community.active_species().next().expect("species").model.to_json();
         store.add_map_compartment("sce", "c", Some(Rect::new(80.0, 80.0, 1100.0, 720.0))).expect("c");
@@ -3727,7 +3727,7 @@ mod nesting_tests {
 
     #[test]
     fn nesting_a_drawn_compartment_under_an_undrawn_one_draws_the_parent_and_any_missing_ancestors_around_it() {
-        let mut store = with_cell("solo-ecoli", "eco");
+        let mut store = with_cell("single-ecoli", "eco");
         store.apply_nesting_preset("eco", "empty");
         store.add_map_compartment("eco", "c", Some(Rect::new(300.0, 250.0, 400.0, 300.0))).expect("c");
 
@@ -3738,7 +3738,7 @@ mod nesting_tests {
         assert_eq!(c.parent_id.as_deref(), Some("p"));
         assert!(inside(&c.rect, &p.rect));
 
-        let mut yeast = with_cell("solo-levadura", "sce");
+        let mut yeast = with_cell("aerobic-coculture", "sce");
         yeast.apply_nesting_preset("sce", "empty");
         yeast.add_map_compartment("sce", "m", Some(Rect::new(400.0, 300.0, 300.0, 220.0))).expect("m");
         let nesting = nesting_of(&[("c", Some("e")), ("e", None), ("im", Some("c")), ("m", Some("im"))]);
@@ -3753,7 +3753,7 @@ mod nesting_tests {
 
     #[test]
     fn the_outer_compartment_cannot_move_and_a_compartment_cannot_go_inside_its_own_descendant() {
-        let mut store = with_cell("solo-levadura", "sce");
+        let mut store = with_cell("aerobic-coculture", "sce");
         store.add_map_compartment("sce", "c", Some(Rect::new(80.0, 80.0, 1100.0, 720.0))).expect("c");
         let before = map_text(&store);
 
@@ -3767,7 +3767,7 @@ mod nesting_tests {
 
     #[test]
     fn tab_nests_a_compartment_under_the_one_listed_above_it_and_shift_tab_moves_it_back_out() {
-        let mut store = with_cell("solo-levadura", "sce");
+        let mut store = with_cell("aerobic-coculture", "sce");
         store.apply_nesting_preset("sce", "empty");
 
         store.nest_compartment("sce", "im", "in");
@@ -3782,7 +3782,7 @@ mod nesting_tests {
 
     #[test]
     fn a_nesting_change_is_one_undo_step_and_the_map_saves_and_loads_byte_identical_at_version_4() {
-        let mut store = with_cell("solo-levadura", "sce");
+        let mut store = with_cell("aerobic-coculture", "sce");
         let community = store.community.clone().expect("community");
         store.add_map_compartment("sce", "c", Some(Rect::new(80.0, 80.0, 1100.0, 720.0))).expect("c");
         store.add_map_compartment("sce", "im", Some(Rect::new(120.0, 120.0, 380.0, 320.0))).expect("im");
@@ -3807,7 +3807,7 @@ mod nesting_tests {
 
     #[test]
     fn a_version_3_map_loads_with_automatic_nesting() {
-        let mut store = with_cell("solo-levadura", "sce");
+        let mut store = with_cell("aerobic-coculture", "sce");
         let mut doc = store.map_document().expect("document");
         doc["version"] = json!(3);
         let parsed = parse_map_document(&doc).expect("parsed");
@@ -3820,12 +3820,12 @@ mod nesting_tests {
 
     #[test]
     fn re_laying_out_keeps_the_users_nesting() {
-        let mut store = with_cell("solo-levadura", "sce");
+        let mut store = with_cell("aerobic-coculture", "sce");
         store.apply_nesting_preset("sce", "empty");
         let nesting = store.map.as_ref().expect("map").cell("sce").expect("cell").nesting();
 
         store.relayout_map("Re-layout");
-        let cell = store.map.as_ref().expect("map").cells()[0].clone();
+        let cell = store.map.as_ref().expect("map").cell("sce").expect("cell").clone();
         assert_eq!(cell.nesting(), nesting);
         let parent_of: IndexMap<String, Option<String>> = cell.compartments.iter().map(|c| (c.id.clone(), c.parent_id.clone())).collect();
         assert_eq!(parent_of, nesting_of(&[("e", None), ("c", Some("e")), ("im", Some("e")), ("m", Some("e"))]));

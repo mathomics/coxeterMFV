@@ -516,10 +516,10 @@ def main(src, out, log_path, *targets):
                       f'{len(g.chains)} spines/branches, {len(labels)} labels')
         print(report[-1], flush=True)
     save(cm.doc, out)
-    write_log(log_path, 'Fase 7: espinas desde los sustratos (automático)',
-              'Para cada especie se quitaron las reacciones de la fase 6 y se dibujó su metabolismo desde los '
-              'transportadores de sus sustratos, siguiendo el flujo. Cada reacción se comparó con el GEM y con lo ya '
-              'dibujado.', entries, closing='\n'.join('- ' + r for r in report), append=Path(log_path).exists())
+    write_log(log_path, 'Phase 7: spines from the substrates (automatic)',
+              'For each species the phase 6 reactions were removed and its metabolism was drawn from the '
+              'transporters of its substrates, following the flux. Each reaction was compared with the GEM and with what '
+              'was already drawn.', entries, closing='\n'.join('- ' + r for r in report), append=Path(log_path).exists())
 
 
 if __name__ == '__main__':

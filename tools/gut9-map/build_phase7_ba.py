@@ -121,9 +121,9 @@ def main(src, out, log_path):
     print(report)
     for x in notes:
         print('  ', x)
-    write_log(log_path, 'Fase 7: la vía característica de Ba', 'Ba no tiene flujo a mu = 0,079 (X = 0); se dibujó su '
-              'vía característica, el bifid shunt, como la codifica su GEM (R18, R24), desde un plano.', log,
-              closing='\n'.join('- ' + x for x in [report] + notes + ['Discontinuidad del GEM: ' + g for g in GAPS]),
+    write_log(log_path, 'Phase 7: the characteristic route of Ba', 'Ba carries no flux at mu = 0.079 (X = 0); its '
+              'characteristic route, the bifid shunt, was drawn as its GEM encodes it (R18, R24), from a plan.', log,
+              closing='\n'.join('- ' + x for x in [report] + notes + ['GEM gap: ' + g for g in GAPS]),
               append=Path(log_path).exists())
 
 

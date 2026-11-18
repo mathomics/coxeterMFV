@@ -188,7 +188,7 @@ export class CommunityModel {
     }
 
     // Shared medium metabolites and community boundary exchanges
-    compartments[SHARED_COMPARTMENT] = 'Medio compartido';
+    compartments[SHARED_COMPARTMENT] = 'Shared medium';
     for (const info of mediumPool.values()) {
       const id = sharedMetabolite(info.base);
       metabolites.push({

@@ -591,7 +591,7 @@ mod tests {
     fn empty_store() -> Store {
         let mut store = Store::with_dir(coxeter_core::testkit::repo_root());
         store.init().expect("bundled models");
-        store.use_scenario("solo-ecoli").expect("scenario");
+        store.use_scenario("single-ecoli").expect("scenario");
         store.map = Some(EditableMap::empty_from_community(
             store.community.as_ref().expect("community"), &LayoutOptions::default(),
         ));

@@ -13,6 +13,17 @@ test.before(async () => {
   assert.equal(await initGLPK(), true);
 });
 
+/**
+ * The yeast of the bundled aerobic co-culture on its own, drawn by the
+ * automatic layout: a scenario that does not contain the E. coli model the
+ * creations go into.
+ */
+function yeastOnly(scenarios) {
+  const coculture = scenarios.find((scenario) => scenario.id === 'aerobic-coculture');
+  const yeast = coculture.species.find((member) => member.id === 'sce');
+  return { ...coculture, id: 'yeast-only', name: 'Yeast', map: null, species: [{ ...yeast, abundance: 1 }] };
+}
+
 async function makeStore() {
   const store = new Store('.');
   for (const id of ['ecoli_core_mc', 'yeast_core_mc']) {
@@ -20,7 +31,8 @@ async function makeStore() {
     store.models.set(id, new Model(raw));
   }
   store.scenarios = JSON.parse(await readFile(new URL('../models/scenarios.json', import.meta.url), 'utf8')).scenarios;
-  await store.useScenario('solo-ecoli');
+  store.scenarios.push(yeastOnly(store.scenarios));
+  await store.useScenario('single-ecoli');
   return store;
 }
 
@@ -69,7 +81,7 @@ for (const kind of ['metabolite', 'reaction']) {
       const held = holdNext(store, stage === 'during' ? 'loadModel' : 'rebuild', stage === 'after');
       const pending = create(store, kind);
       await held.ready;
-      await store.useScenario('solo-levadura');
+      await store.useScenario('yeast-only');
       const community = store.community;
       const problem = store.problem;
       const map = store.map;
@@ -82,7 +94,7 @@ for (const kind of ['metabolite', 'reaction']) {
       assert.equal(store.map, map);
       assert.equal(store.solution, solution);
       assert.equal(JSON.stringify(store.status), status);
-      assert.equal(store.scenario.id, 'solo-levadura');
+      assert.equal(store.scenario.id, 'yeast-only');
       assert.equal(store.models.get('ecoli_core_mc').reactions.has('QA_PGI'), kind === 'reaction');
       assert.equal(store.models.get('ecoli_core_mc').metabolites.has('qa_metabolite_c'), kind === 'metabolite');
     });
@@ -95,8 +107,8 @@ for (const stage of ['during', 'after']) {
     const held = holdNext(store, stage === 'during' ? 'loadModel' : 'rebuild', stage === 'after');
     const pending = create(store, 'reaction');
     await held.ready;
-    await store.useScenario('solo-levadura');
-    await store.useScenario('solo-ecoli');
+    await store.useScenario('yeast-only');
+    await store.useScenario('single-ecoli');
     const map = store.map;
     const drawing = JSON.stringify(map.toJSON());
     const solution = store.solution;

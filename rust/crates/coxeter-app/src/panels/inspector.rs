@@ -1858,7 +1858,7 @@ mod reaction_geometry_control_tests {
     fn clicking_active_linear_preserves_the_slid_marker_and_redo() {
         let mut store = Store::with_dir(coxeter_core::testkit::repo_root());
         store.init().expect("bundled models");
-        store.use_scenario("solo-ecoli").expect("scenario");
+        store.use_scenario("single-ecoli").expect("scenario");
         let community = store.community.as_ref().expect("community");
         store.map = Some(EditableMap::empty_from_community(community, &Default::default()));
         store.add_map_reaction("eco@PFK", &PlaceOptions::default()).expect("reaction drawing");
@@ -1916,7 +1916,7 @@ mod reaction_constraint_tests {
         let mut store = Store::with_dir(coxeter_core::testkit::repo_root());
         store.init().expect("bundled models");
         store.models.insert("ecoli_core_mc", Model::from_value(&raw).expect("annotated model"));
-        store.use_scenario("solo-ecoli").expect("scenario");
+        store.use_scenario("single-ecoli").expect("scenario");
         store.select(Some("eco@PGI"));
         Shell::new(store, Box::new(ScriptedDialogs::new()))
     }
@@ -1990,7 +1990,7 @@ mod metabolite_inspector_tests {
     fn make_shell() -> Shell {
         let mut store = Store::with_dir(coxeter_core::testkit::repo_root());
         store.init().expect("bundled models");
-        store.use_scenario("solo-ecoli").expect("scenario");
+        store.use_scenario("single-ecoli").expect("scenario");
         store.select_entity("metabolite", "met:eco@g6p_c", serde_json::Map::new());
         Shell::new(store, Box::new(ScriptedDialogs::new()))
     }

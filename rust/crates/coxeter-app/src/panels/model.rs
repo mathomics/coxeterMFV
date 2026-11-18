@@ -159,7 +159,7 @@ fn species_row(ui: &mut Ui, shell: &mut Shell, sp: &coxeter_state::Species, p: &
                 .iter()
                 .map(|cid| {
                     let c = compartment_colors(&cell_compartment_visual_id(cid, &m.compartment_names), dark, &Names::new());
-                    (cell_compartment_name(cid, &m.compartment_names, "en"), (c.fill.to_string(), c.text.to_string(), c.stroke.to_string()))
+                    (cell_compartment_name(cid, &m.compartment_names), (c.fill.to_string(), c.text.to_string(), c.stroke.to_string()))
                 })
                 .collect()
         })
@@ -466,7 +466,7 @@ fn metabolite_form(ui: &mut Ui, shell: &mut Shell, compartments: &[String]) {
     ui.label(RichText::new("Compartment *").size(12.0).color(p.ink));
     let names = shell.store.model_editor_model().map(|m| m.compartment_names.clone()).unwrap_or_default();
     let options: Vec<(String, String)> =
-        compartments.iter().map(|cid| (cid.clone(), format!("{cid} · {}", cell_compartment_name(cid, &names, "en")))).collect();
+        compartments.iter().map(|cid| (cid.clone(), format!("{cid} · {}", cell_compartment_name(cid, &names)))).collect();
     let first = compartments.first().cloned().unwrap_or_default();
     let current = draft_value(shell, &key, "compartment", &first);
     let width = ui.available_width() - 8.0;
@@ -979,7 +979,7 @@ mod creation_validation_tests {
     fn the_model_form_rejects_blank_bounds_and_bad_gene_rules_then_accepts_the_corrected_input() {
         let mut store = Store::with_dir(coxeter_core::testkit::repo_root());
         store.init().expect("bundled models");
-        store.use_scenario("solo-ecoli").expect("scenario");
+        store.use_scenario("single-ecoli").expect("scenario");
         store.set_model_editor_mode(Some("reaction")).expect("reaction form");
         let biology = store.model_editor_model().expect("model").to_json();
         let solution = store.solution.clone().expect("solution");
@@ -1031,7 +1031,7 @@ mod creation_validation_tests {
     fn the_model_overview_counts_gpr_genes_including_undrawn_reactions() {
         let mut store = Store::with_dir(coxeter_core::testkit::repo_root());
         store.init().expect("bundled models");
-        store.use_scenario("solo-ecoli").expect("scenario");
+        store.use_scenario("single-ecoli").expect("scenario");
         store.create_model_reaction(&json!({
             "id": "QA_PGI", "metabolites": "g6p_c:-1, f6p_c:1",
             "lowerBound": -10, "upperBound": 10, "geneReactionRule": "qa_a and (qa_b or qa_c)",
@@ -1058,7 +1058,7 @@ mod creation_validation_tests {
     fn the_model_form_rejects_nonscalar_json_coefficients_and_accepts_numeric_corrections() {
         let mut store = Store::with_dir(coxeter_core::testkit::repo_root());
         store.init().expect("bundled models");
-        store.use_scenario("solo-ecoli").expect("scenario");
+        store.use_scenario("single-ecoli").expect("scenario");
         store.set_model_editor_mode(Some("reaction")).expect("reaction form");
         let biology = store.model_editor_model().expect("model").to_json();
         let solution = store.solution.clone().expect("solution");
@@ -1100,7 +1100,7 @@ mod creation_validation_tests {
     fn the_create_control_distinguishes_undrawn_creation_and_honors_the_map_checkbox_on_a_blank_canvas() {
         let mut store = Store::with_dir(coxeter_core::testkit::repo_root());
         store.init().expect("bundled models");
-        store.use_scenario("solo-ecoli").expect("scenario");
+        store.use_scenario("single-ecoli").expect("scenario");
         store.show_empty_map();
         let drawing = store.map.as_ref().expect("map").to_json();
         let mut shell = Shell::new(store, Box::new(ScriptedDialogs::new()));

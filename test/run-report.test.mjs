@@ -14,7 +14,7 @@ async function makeStore() {
   const store = new Store('.');
   store.models.set('ecoli_core_mc', new Model(raw));
   store.scenarios = scenarios.scenarios;
-  await store.useScenario('solo-ecoli');
+  await store.useScenario('single-ecoli');
   return store;
 }
 
@@ -34,7 +34,7 @@ test('opening a scenario retires the previous run report', async () => {
   const store = await makeStore();
   await store.runAnalysis('fba');
   assert.equal(store.lastRun.phase, 'done');
-  await store.useScenario('solo-ecoli');
+  await store.useScenario('single-ecoli');
   assert.equal(store.lastRun, null);
   assert.equal(store.solution.status, 'optimal');
 });
@@ -42,7 +42,7 @@ test('opening a scenario retires the previous run report', async () => {
 test('opening a scenario cancels an analysis that is still waiting to start', async () => {
   const store = await makeStore();
   const pending = store.runAnalysis('pfba');
-  await store.useScenario('solo-ecoli');
+  await store.useScenario('single-ecoli');
   await pending;
   assert.equal(store.lastRun, null);
   assert.equal(store.parsimonious, false);

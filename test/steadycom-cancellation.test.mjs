@@ -21,7 +21,7 @@ async function makeStore() {
   const raw = JSON.parse(await readFile(new URL('../models/ecoli_core_mc.json', import.meta.url), 'utf8'));
   store.models.set('ecoli_core_mc', new Model(raw));
   store.scenarios = JSON.parse(await readFile(new URL('../models/scenarios.json', import.meta.url), 'utf8')).scenarios;
-  await store.useScenario('solo-ecoli');
+  await store.useScenario('single-ecoli');
   return store;
 }
 
@@ -136,7 +136,7 @@ test('a preparation failure from an older context is retired without presenting 
     const pending = method === 'range' ? store.steadyComRange() : store.solveSteadyComAt(0.1);
     const rejection = assert.rejects(pending, { name: 'AbortError' });
     await held.ready;
-    await store.useScenario('solo-ecoli');
+    await store.useScenario('single-ecoli');
     const solution = store.solution;
     const status = { ...store.status };
     held.release();

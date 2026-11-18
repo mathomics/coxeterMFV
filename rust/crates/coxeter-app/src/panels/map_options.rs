@@ -1470,7 +1470,7 @@ pub fn compartment_placement_controls(ui: &mut Ui, shell: &mut Shell, id_prefix:
     })
     .collect();
     let width = ui.available_width() - 8.0;
-    ui.label(RichText::new("Compartment to draw").size(12.0).family(bold()).color(p.ink_2));
+    ui.label(RichText::new("Compartment").size(12.0).family(bold()).color(p.ink_2));
     if let Some(key) =
         widgets::select_grouped_enabled(ui, (id_prefix, "compartment-select"), &current_key, &groups, width, !choices.is_empty(), "Compartment to add")
     {
@@ -1488,27 +1488,11 @@ pub fn compartment_placement_controls(ui: &mut Ui, shell: &mut Shell, id_prefix:
 }
 
 /// `compartmentToolControls(store)`: the left panel while Edit Compartments
-/// is the tool: choose, then drag; the nesting has a window of its own.
+/// is the tool: what to draw and its shape, drawn by a drag inside the parent
+/// highlighted on the map; the nesting has a window of its own.
 pub fn compartment_tool_controls(ui: &mut Ui, shell: &mut Shell) {
     ui.add_space(4.0);
     compartment_placement_controls(ui, shell, "tool");
-    let current = shell.store.current_compartment_placement();
-    match current {
-        Some(current) => {
-            let parent = shell
-                .store
-                .map_compartment_choices()
-                .into_iter()
-                .find(|c| c.species_id == current.species_id && c.compartment_id == current.compartment_id)
-                .and_then(|c| c.parent_name)
-                .or(current.parent_id.clone())
-                .unwrap_or_default();
-            widgets::hint_rich(ui, &["Drag inside ", parent.as_str(), ", highlighted on the map."]);
-        }
-        None => {
-            widgets::hint(ui, "Nothing can be drawn yet.");
-        }
-    }
     if Btn::new("Nesting").title("Set which compartment is inside which").show(ui).clicked() {
         let cell = shell.store.selected_geometry.as_ref().and_then(|g| g.cell_id.clone());
         shell.nesting.open(&shell.store, cell.as_deref());
